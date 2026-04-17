@@ -2318,3 +2318,345 @@ button.danger:disabled { opacity: 0.55; transform: none; box-shadow: none; }
   .thinking-dots::after { animation: none !important; }
   .hand-card.unplayable::after { transition: none; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   Multi-deck builder, filters, mana curve, card borders, themes v2
+   Production polish: removes browser-look defaults, tightens taps.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ─── Production app shell polish (less browser look) ─────────────── */
+
+html, body {
+  /* Disable rubber-band scroll on iOS / mobile to feel app-like. */
+  overscroll-behavior: none;
+}
+
+body {
+  /* Most of the UI is interactive; allow text selection only inside
+     selectable surfaces (inputs, paragraphs of body copy). */
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  user-select: none;
+}
+
+input, textarea, p, .card-text, .note, .mini-text {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+button, [role="button"], .nav-chip, .chip {
+  /* Faster tap response on touch devices, no double-tap zoom. */
+  touch-action: manipulation;
+}
+
+/* ─── Theme overrides v2: visible accent / surface differences ─── */
+
+.app-shell.theme-ember {
+  --accent: #f97316;
+  --accent-blue: #ef4444;
+  --border: rgba(249, 115, 22, 0.22);
+  --border-bright: rgba(249, 115, 22, 0.4);
+  --focus-ring: 0 0 0 2px rgba(249, 115, 22, 0.85);
+}
+
+.app-shell.theme-moon {
+  --accent: #38bdf8;
+  --accent-blue: #a78bfa;
+  --border: rgba(167, 139, 250, 0.24);
+  --border-bright: rgba(167, 139, 250, 0.4);
+  --focus-ring: 0 0 0 2px rgba(56, 189, 248, 0.85);
+}
+
+/* Theme swatch in vault matches the new accents. */
+.theme-swatch.royal { background: linear-gradient(135deg, #7c3aed, #2563eb); }
+.theme-swatch.ember { background: linear-gradient(135deg, #f97316, #ef4444); }
+.theme-swatch.moon  { background: linear-gradient(135deg, #38bdf8, #a78bfa); }
+
+/* ─── Multi-deck roster ───────────────────────────────────────────── */
+
+.deck-roster {
+  margin: 12px 0 16px;
+  padding: 12px;
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.deck-roster-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.deck-roster-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 8px;
+}
+
+.deck-roster-item {
+  display: flex;
+  align-items: stretch;
+  background: rgba(0, 0, 0, 0.18);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  transition: border-color 160ms ease, transform 160ms ease;
+}
+
+.deck-roster-item.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent) inset;
+}
+
+.deck-roster-select {
+  flex: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: transparent;
+  border: 0;
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.deck-roster-select:hover { background: rgba(255, 255, 255, 0.04); }
+
+.deck-roster-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+}
+
+.deck-roster-active-dot {
+  color: var(--accent);
+  font-size: 0.6rem;
+  line-height: 1;
+}
+
+.deck-roster-size {
+  font-size: var(--font-xs);
+  padding: 2px 6px;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.deck-roster-size.ready { color: var(--green); }
+.deck-roster-size.warning { color: var(--gold); }
+
+.deck-roster-actions {
+  display: flex;
+  align-items: center;
+  padding-right: 6px;
+}
+
+button.icon-only {
+  padding: 4px 6px;
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+/* ─── Builder filter toolbar ─────────────────────────────────────── */
+
+.builder-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 10px 0 12px;
+  padding: 8px 10px;
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.builder-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--font-sm);
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.builder-toggle input { accent-color: var(--accent); }
+
+.builder-search {
+  flex: 1 1 160px;
+  min-width: 140px;
+  padding: 6px 10px;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font: inherit;
+}
+
+.builder-search:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: var(--focus-ring);
+}
+
+.builder-rarity-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.chip {
+  padding: 4px 10px;
+  font-size: var(--font-xs);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  transition: background 140ms ease, color 140ms ease;
+}
+
+.chip:hover { color: var(--text); }
+.chip.chip-active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+
+/* ─── Deck stats: rarity counts + mana curve ─────────────────────── */
+
+.deck-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-end;
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.18);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-size: var(--font-sm);
+  color: var(--muted);
+}
+
+.deck-stats strong { color: var(--text); }
+
+.mana-curve {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 4px;
+  margin-left: auto;
+  height: 36px;
+}
+
+.mana-curve-col {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  width: 16px;
+  height: 100%;
+  position: relative;
+}
+
+.mana-curve-bar {
+  display: block;
+  width: 100%;
+  min-height: 2px;
+  background: linear-gradient(180deg, var(--accent), var(--accent-blue));
+  border-radius: 2px 2px 0 0;
+  transition: height 200ms ease;
+}
+
+.mana-curve-label {
+  font-size: 9px;
+  color: var(--muted);
+  margin-top: 2px;
+  line-height: 1;
+}
+
+/* ─── Quick Battle template row ──────────────────────────────────── */
+
+.deck-quick-battle {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--border);
+}
+
+.section-head.compact { margin-bottom: 6px; }
+.section-head.compact h3 { margin: 0 0 2px; font-size: var(--font-md); }
+
+/* ─── Card border cosmetics ──────────────────────────────────────── */
+/*
+   Borders apply to .builder-card and .hand-card. They wrap a thin
+   outer ring + a subtle inner glow so cards stay legible. The default
+   border is a no-op (just a soft outline matching --border).
+*/
+
+.builder-card.border-default,
+.hand-card.border-default {
+  /* Default frame: keeps the existing rarity-tinted look, no extra ring. */
+}
+
+.builder-card.border-bronze,
+.hand-card.border-bronze {
+  box-shadow:
+    0 0 0 1px #b07433 inset,
+    0 0 0 2px rgba(176, 116, 51, 0.45),
+    0 6px 16px rgba(176, 116, 51, 0.15);
+}
+
+.builder-card.border-frost,
+.hand-card.border-frost {
+  box-shadow:
+    0 0 0 1px #7dd3fc inset,
+    0 0 0 2px rgba(125, 211, 252, 0.45),
+    0 6px 16px rgba(125, 211, 252, 0.18);
+}
+
+.builder-card.border-solar,
+.hand-card.border-solar {
+  box-shadow:
+    0 0 0 1px #f59e0b inset,
+    0 0 0 2px rgba(245, 158, 11, 0.5),
+    0 6px 18px rgba(245, 158, 11, 0.22);
+}
+
+.builder-card.border-void,
+.hand-card.border-void {
+  box-shadow:
+    0 0 0 1px #a855f7 inset,
+    0 0 0 2px rgba(168, 85, 247, 0.55),
+    0 8px 22px rgba(168, 85, 247, 0.28);
+}
+
+/* Border preview tile in vault catalog. */
+.border-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 64px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.18), rgba(56, 189, 248, 0.12));
+  margin-bottom: 8px;
+}
+
+.border-preview-icon {
+  font-size: 1.6rem;
+  color: var(--text);
+}
+
+.border-preview.border-default { box-shadow: 0 0 0 1px var(--border) inset; }
+.border-preview.border-bronze  { box-shadow: 0 0 0 2px #b07433 inset, 0 0 12px rgba(176, 116, 51, 0.4); }
+.border-preview.border-frost   { box-shadow: 0 0 0 2px #7dd3fc inset, 0 0 14px rgba(125, 211, 252, 0.4); }
+.border-preview.border-solar   { box-shadow: 0 0 0 2px #f59e0b inset, 0 0 16px rgba(245, 158, 11, 0.45); }
+.border-preview.border-void    { box-shadow: 0 0 0 2px #a855f7 inset, 0 0 18px rgba(168, 85, 247, 0.5); }

@@ -168,9 +168,37 @@ type ServerProfile = {
   deckConfig: DeckConfig
   ownedThemes: CosmeticTheme[]
   selectedTheme: CosmeticTheme
+  ownedCardBorders?: CardBorder[]
+  selectedCardBorder?: CardBorder
   lastDaily: string
   totalEarned: number
 }
+
+type CardBorder = 'default' | 'bronze' | 'frost' | 'solar' | 'void'
+
+type SavedDeck = {
+  id: string
+  name: string
+  deckConfig: DeckConfig
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+type CardBorderOffer = {
+  id: CardBorder
+  name: string
+  cost: number
+  description: string
+}
+
+const CARD_BORDER_OFFERS: CardBorderOffer[] = [
+  { id: 'default', name: 'Standard Frame', cost: 0,   description: 'The default arcane bezel every player starts with.' },
+  { id: 'bronze',  name: 'Bronze Filigree', cost: 90, description: 'Warm bronze trim with hammered edges.' },
+  { id: 'frost',   name: 'Frost Shard',     cost: 180, description: 'Cool ice-shard etching with a soft inner glow.' },
+  { id: 'solar',   name: 'Solar Ember',     cost: 280, description: 'Living ember frame with a sunlit inner aura.' },
+  { id: 'void',    name: 'Voidweave',       cost: 420, description: 'Animated dark-matter weave with a violet halo.' },
+]
 
 type AdminUser = {
   accountId: string
@@ -282,6 +310,7 @@ const STORAGE_KEYS = {
 }
 
 const QUICK_EMOTES = ['⚡', '🔥', '✨', '🛡️', '😈']
+const DECK_MAX_TOTAL_DISPLAY = 16
 const AI_DIFFICULTY_OPTIONS: Array<{ id: 'auto' | AIDifficulty; label: string }> = [
   { id: 'auto', label: 'Auto' },
   { id: 'novice', label: 'Novice' },
@@ -527,10 +556,27 @@ function App() {
   const record = { wins: serverProfile?.wins ?? 0, losses: serverProfile?.losses ?? 0, streak: serverProfile?.streak ?? 0 }
   const ownedThemes = serverProfile?.ownedThemes ?? ['royal'] as CosmeticTheme[]
   const selectedTheme = (serverProfile?.selectedTheme ?? 'royal') as CosmeticTheme
+  const ownedCardBorders: CardBorder[] = serverProfile?.ownedCardBorders ?? ['default']
+  const selectedCardBorder: CardBorder = serverProfile?.selectedCardBorder ?? 'default'
   const lastDailyClaim = serverProfile?.lastDaily ?? ''
   const accountRole = serverProfile?.role ?? 'user'
   const isAdminRole = accountRole === 'admin' || accountRole === 'owner'
   const isOwnerRole = accountRole === 'owner'
+
+  // ─── Multi-deck state ─────────────────────────────────────────────────
+  const [savedDecks, setSavedDecks] = useState<SavedDeck[]>([])
+  const [activeDeckId, setActiveDeckId] = useState<string | null>(null)
+  // Deck-builder UI filters.
+  const [builderFilter, setBuilderFilter] = useState<{
+    ownedOnly: boolean
+    search: string
+    rarity: 'all' | 'common' | 'rare' | 'epic' | 'legendary'
+  }>({ ownedOnly: false, search: '', rarity: 'all' })
+  // Pending shard breakdown confirmation. `null` when nothing is pending.
+  const [pendingBreakdown, setPendingBreakdown] = useState<{
+    cardId: string
+    qty: number
+  } | null>(null)
 
   // ─── Local game/UI state ──────────────────────────────────────────────
   const [deckConfig, setDeckConfig] = useState<DeckConfig>(savedDeckConfig)
@@ -1376,6 +1422,253 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deckConfig, authToken, loggedIn])
 
+  // Load saved decks on login. Server is the source of truth; the
+  // setSavedDecks call inside the fetch is async and is exempt from the
+  // react-hooks/set-state-in-effect rule. The early-clear branch happens
+  // when authToken/loggedIn are unset (logout).
+  useEffect(() => {
+    if (!authToken || !loggedIn) {
+      // Defer to next tick so the rule about synchronous setState in
+      // effects is respected. (Logout-triggered cleanup, not derived state.)
+      const handle = window.setTimeout(() => {
+        setSavedDecks([])
+        setActiveDeckId(null)
+      }, 0)
+      return () => window.clearTimeout(handle)
+    }
+    void authFetch('/api/me/decks', authToken)
+      .then((response) => response.json())
+      .then((data: { ok: boolean; decks?: SavedDeck[] }) => {
+        if (data.ok && data.decks) {
+          setSavedDecks(data.decks)
+          const active = data.decks.find((deck) => deck.isActive)
+          if (active) {
+            setActiveDeckId(active.id)
+          } else if (data.decks[0]) {
+            setActiveDeckId(data.decks[0].id)
+          }
+        }
+      })
+      .catch(() => {})
+  }, [authToken, loggedIn])
+
+  // Reload deck list helper used after every CRUD mutation.
+  const reloadDecks = useCallback(
+    async function reloadDecks(): Promise<SavedDeck[] | null> {
+      if (!authToken) return null
+      try {
+        const r = await authFetch('/api/me/decks', authToken)
+        const data = (await r.json()) as { ok: boolean; decks?: SavedDeck[] }
+        if (data.ok && data.decks) {
+          setSavedDecks(data.decks)
+          const active = data.decks.find((d) => d.isActive)
+          if (active) setActiveDeckId(active.id)
+          return data.decks
+        }
+      } catch { /* ignore */ }
+      return null
+    },
+    [authToken],
+  )
+
+  function handleCreateDeck() {
+    if (!authToken) {
+      setToastMessage('Sign in to save multiple decks.')
+      return
+    }
+    const name = window.prompt('Name your new deck (1-30 characters):', `Deck ${savedDecks.length + 1}`)?.trim()
+    if (!name) return
+    void authFetch('/api/me/decks', authToken, {
+      method: 'POST',
+      body: { name, deckConfig: {} },
+    })
+      .then((r) => r.json())
+      .then(async (data: { ok: boolean; error?: string; deck?: SavedDeck }) => {
+        if (!data.ok) {
+          setToastMessage(data.error ?? 'Could not create deck.')
+          return
+        }
+        await reloadDecks()
+        if (data.deck) {
+          // Switching active to the newly-created deck would discard the
+          // current builder state; instead, just update the list and let
+          // the player select it explicitly.
+          setToastMessage(`Deck "${data.deck.name}" created.`)
+        }
+      })
+      .catch(() => setToastMessage('Could not create deck.'))
+  }
+
+  function handleRenameDeck(deck: SavedDeck) {
+    if (!authToken) return
+    const name = window.prompt('Rename deck:', deck.name)?.trim()
+    if (!name || name === deck.name) return
+    void authFetch(`/api/me/decks/${deck.id}/rename`, authToken, {
+      method: 'POST',
+      body: { name },
+    })
+      .then((r) => r.json())
+      .then(async (data: { ok: boolean; error?: string }) => {
+        if (!data.ok) {
+          setToastMessage(data.error ?? 'Could not rename deck.')
+          return
+        }
+        await reloadDecks()
+        setToastMessage(`Renamed to "${name}".`)
+      })
+      .catch(() => setToastMessage('Could not rename deck.'))
+  }
+
+  function handleDeleteDeck(deck: SavedDeck) {
+    if (!authToken) return
+    if (savedDecks.length <= 1) {
+      setToastMessage('You need at least one deck. Create another before deleting this one.')
+      return
+    }
+    if (!window.confirm(`Delete deck "${deck.name}"? This cannot be undone.`)) return
+    void authFetch(`/api/me/decks/${deck.id}`, authToken, { method: 'DELETE' })
+      .then((r) => r.json())
+      .then(async (data: { ok: boolean; error?: string }) => {
+        if (!data.ok) {
+          setToastMessage(data.error ?? 'Could not delete deck.')
+          return
+        }
+        await reloadDecks()
+        setToastMessage(`Deck "${deck.name}" deleted.`)
+      })
+      .catch(() => setToastMessage('Could not delete deck.'))
+  }
+
+  function handleSelectDeck(deck: SavedDeck) {
+    if (!authToken) return
+    if (deck.id === activeDeckId) return
+    void authFetch(`/api/me/decks/${deck.id}/select`, authToken, { method: 'POST' })
+      .then((r) => r.json())
+      .then(async (data: { ok: boolean; error?: string; deck?: SavedDeck }) => {
+        if (!data.ok) {
+          setToastMessage(data.error ?? 'Could not select deck.')
+          return
+        }
+        if (data.deck) {
+          setActiveDeckId(data.deck.id)
+          setDeckConfig(data.deck.deckConfig)
+        }
+        await reloadDecks()
+        setToastMessage(`Switched to "${deck.name}".`)
+      })
+      .catch(() => setToastMessage('Could not select deck.'))
+  }
+
+  function handleBreakdownCard(cardId: string, qty: number) {
+    if (!authToken) {
+      setToastMessage('Sign in to break down cards into Shards.')
+      return
+    }
+    void authFetch('/api/cards/breakdown', authToken, {
+      method: 'POST',
+      body: { cardId, qty },
+    })
+      .then((r) => r.json())
+      .then((data: {
+        ok: boolean
+        error?: string
+        refunded?: number
+        runes?: number
+        owned?: Record<string, number>
+      }) => {
+        if (!data.ok) {
+          setToastMessage(data.error ?? 'Could not break down card.')
+          return
+        }
+        setServerProfile((prev) =>
+          prev
+            ? {
+                ...prev,
+                runes: data.runes ?? prev.runes,
+              }
+            : prev,
+        )
+        setCollection(data.owned ?? {})
+        setToastMessage(`Refunded ${data.refunded ?? 0} Shards.`)
+        playSound('tap', soundEnabled)
+      })
+      .catch(() => setToastMessage('Could not break down card.'))
+      .finally(() => setPendingBreakdown(null))
+  }
+
+  function handlePurchaseBorder(borderId: CardBorder, cost: number) {
+    if (!authToken) {
+      setToastMessage('Sign in to purchase card borders.')
+      return
+    }
+    if (ownedCardBorders.includes(borderId)) {
+      // Already owned — just equip it.
+      void handleSelectBorder(borderId)
+      return
+    }
+    if (runes < cost) {
+      setToastMessage(`Need ${cost - runes} more Shards for that border.`)
+      return
+    }
+    void authFetch('/api/shop/border', authToken, {
+      method: 'POST',
+      body: { borderId },
+    })
+      .then((r) => r.json())
+      .then((data: {
+        ok: boolean
+        error?: string
+        runes?: number
+        ownedCardBorders?: CardBorder[]
+        selectedCardBorder?: CardBorder
+      }) => {
+        if (!data.ok) {
+          setToastMessage(data.error ?? 'Could not purchase border.')
+          return
+        }
+        setServerProfile((prev) =>
+          prev
+            ? {
+                ...prev,
+                runes: data.runes ?? prev.runes,
+                ownedCardBorders: data.ownedCardBorders ?? prev.ownedCardBorders,
+                selectedCardBorder: data.selectedCardBorder ?? prev.selectedCardBorder,
+              }
+            : prev,
+        )
+        setToastMessage(`${CARD_BORDER_OFFERS.find((b) => b.id === borderId)?.name ?? 'Border'} unlocked.`)
+        playSound('summon', soundEnabled)
+      })
+      .catch(() => setToastMessage('Could not purchase border.'))
+  }
+
+  function handleSelectBorder(borderId: CardBorder) {
+    if (!authToken) return
+    if (!ownedCardBorders.includes(borderId)) return
+    void authFetch('/api/me/border', authToken, {
+      method: 'POST',
+      body: { borderId },
+    })
+      .then((r) => r.json())
+      .then((data: { ok: boolean; error?: string; selectedCardBorder?: CardBorder }) => {
+        if (!data.ok) {
+          setToastMessage(data.error ?? 'Could not equip border.')
+          return
+        }
+        setServerProfile((prev) =>
+          prev
+            ? {
+                ...prev,
+                selectedCardBorder: data.selectedCardBorder ?? borderId,
+              }
+            : prev,
+        )
+        setToastMessage(`${CARD_BORDER_OFFERS.find((b) => b.id === borderId)?.name ?? 'Border'} equipped.`)
+        playSound('tap', soundEnabled)
+      })
+      .catch(() => setToastMessage('Could not equip border.'))
+  }
+
   useEffect(() => {
     const handleBeforeInstall = (event: Event) => {
       event.preventDefault()
@@ -2038,8 +2331,13 @@ function App() {
     }
   }
 
-  function startMatch(mode: GameMode = preferredMode, enemyName?: string) {
-    if (!deckReady) {
+  function startMatch(
+    mode: GameMode = preferredMode,
+    enemyName?: string,
+    overrideDeckConfig?: DeckConfig,
+  ) {
+    const deckForMatch = overrideDeckConfig ?? deckConfig
+    if (getDeckSize(deckForMatch) < MIN_DECK_SIZE) {
       setToastMessage('Finish building your deck before entering the arena.')
       setActiveScreen('deck')
       return
@@ -2059,7 +2357,7 @@ function App() {
     prevBoardRef.current = null
     setDamagedSlots(new Set())
     setActiveScreen('battle')
-    setGame(createGame(mode, deckConfig, enemyName, aiDifficulty))
+    setGame(createGame(mode, deckForMatch, enemyName, aiDifficulty))
     void sendAnalytics(
       'match_start',
       {
@@ -2067,6 +2365,7 @@ function App() {
         opponent: enemyName ?? 'Arena Bot',
         aiDifficulty,
         screen: getScreenBucket(),
+        preset: overrideDeckConfig ? true : false,
       },
       'match',
     )
@@ -2597,20 +2896,17 @@ function App() {
     })
   }
 
-  function handleLoadPreset(name: string, config: DeckConfig) {
+  /**
+   * Quick-battle preset launcher. Players never have to "own" the cards in
+   * a preset to play it — presets are curated AI-only loadouts, intended
+   * to give new players an immediate feel for the game without requiring
+   * them to first build a 10-card deck. The preset deck is used directly
+   * by `startMatch` and is never saved into the player's collection.
+   */
+  function handleQuickBattle(name: string, config: DeckConfig) {
     playSound('tap', soundEnabled)
-
-    const filteredConfig = Object.fromEntries(
-      Object.entries(config).map(([cardId, count]) => {
-        const libraryCard = CARD_LIBRARY.find((item) => item.id === cardId)
-        const maxCopies = libraryCard?.rarity === 'legendary' ? MAX_LEGENDARY_COPIES : MAX_COPIES
-        const ownedCount = loggedIn ? (collection[cardId] ?? 0) : maxCopies
-        return [cardId, Math.min(count, ownedCount, maxCopies)]
-      }),
-    ) as DeckConfig
-
-    setToastMessage(`${name} preset loaded${getDeckSize(filteredConfig) < MIN_DECK_SIZE ? ' with your currently owned cards.' : '.'}`)
-    setDeckConfig(filteredConfig)
+    setToastMessage(`Launching quick AI match: ${name} preset.`)
+    startMatch('ai', `${name} Sparring Bot`, config)
   }
 
   function emitAction(action: Record<string, unknown>) {
@@ -3571,33 +3867,163 @@ function App() {
           <div className="section-head">
             <div>
               <h2>Deck Builder</h2>
-              <p className="note">Choose 10–16 cards, with up to 3 copies of each.</p>
+              <p className="note">Choose 10–16 cards, with up to 3 copies of each. Saved decks sync to your account.</p>
             </div>
             <span className={`deck-status ${deckReady ? 'ready' : 'warning'}`}>
-              {deckReady ? 'Deck ready' : 'Add more cards'}
+              {deckReady ? `Deck ready · ${selectedDeckSize}` : `Add more cards · ${selectedDeckSize}/${MIN_DECK_SIZE}`}
             </span>
           </div>
 
-          <div className="controls preset-row">
-            {DECK_PRESETS.map((preset) => (
-              <button
-                className="ghost"
-                key={preset.name}
-                onClick={() => handleLoadPreset(preset.name, preset.config)}
-              >
-                {preset.name}
-              </button>
-            ))}
+          {loggedIn && (
+            <div className="deck-roster" aria-label="Saved decks">
+              <div className="deck-roster-head">
+                <strong>Your decks ({savedDecks.length})</strong>
+                <button
+                  className="ghost mini"
+                  onClick={handleCreateDeck}
+                  title="Create a new empty deck"
+                >
+                  + New Deck
+                </button>
+              </div>
+              <ul className="deck-roster-list">
+                {savedDecks.map((deck) => {
+                  const size = getDeckSize(deck.deckConfig)
+                  const isActive = deck.id === activeDeckId
+                  return (
+                    <li className={`deck-roster-item ${isActive ? 'active' : ''}`} key={deck.id}>
+                      <button
+                        className="deck-roster-select"
+                        onClick={() => handleSelectDeck(deck)}
+                        aria-pressed={isActive}
+                        title={isActive ? 'Active deck' : 'Switch to this deck'}
+                      >
+                        <span className="deck-roster-name">
+                          {isActive && <span className="deck-roster-active-dot" aria-hidden="true">●</span>}
+                          {deck.name}
+                        </span>
+                        <span className={`deck-roster-size ${size >= MIN_DECK_SIZE ? 'ready' : 'warning'}`}>
+                          {size}/{DECK_MAX_TOTAL_DISPLAY}
+                        </span>
+                      </button>
+                      <div className="deck-roster-actions">
+                        <button className="ghost mini icon-only" onClick={() => handleRenameDeck(deck)} aria-label={`Rename ${deck.name}`} title="Rename">
+                          ✏️
+                        </button>
+                        <button
+                          className="ghost mini icon-only"
+                          onClick={() => handleDeleteDeck(deck)}
+                          disabled={savedDecks.length <= 1}
+                          aria-label={`Delete ${deck.name}`}
+                          title={savedDecks.length <= 1 ? 'You need at least one deck' : 'Delete'}
+                        >
+                          🗑️
+                        </button>
+                      </div>
+                    </li>
+                  )
+                })}
+              </ul>
+            </div>
+          )}
+
+          <div className="builder-toolbar">
+            <label className="builder-toggle">
+              <input
+                type="checkbox"
+                checked={builderFilter.ownedOnly}
+                onChange={(event) => setBuilderFilter((prev) => ({ ...prev, ownedOnly: event.target.checked }))}
+              />
+              <span>Owned cards only</span>
+            </label>
+            <input
+              className="builder-search"
+              type="search"
+              inputMode="search"
+              placeholder="Search cards…"
+              value={builderFilter.search}
+              onChange={(event) => setBuilderFilter((prev) => ({ ...prev, search: event.target.value }))}
+              aria-label="Search cards"
+            />
+            <div className="builder-rarity-chips" role="radiogroup" aria-label="Filter by rarity">
+              {(['all', 'common', 'rare', 'epic', 'legendary'] as const).map((rarity) => (
+                <button
+                  key={rarity}
+                  className={`chip ${builderFilter.rarity === rarity ? 'chip-active' : ''}`}
+                  onClick={() => setBuilderFilter((prev) => ({ ...prev, rarity }))}
+                  role="radio"
+                  aria-checked={builderFilter.rarity === rarity}
+                >
+                  {rarity === 'all' ? 'All' : rarity.charAt(0).toUpperCase() + rarity.slice(1)}
+                </button>
+              ))}
+            </div>
           </div>
 
+          {selectedDeckSize > 0 && (
+            <div className="deck-stats" aria-label="Deck statistics">
+              <span>Cards: <strong>{selectedDeckSize}</strong></span>
+              {(() => {
+                const breakdown: Record<string, number> = { common: 0, rare: 0, epic: 0, legendary: 0 }
+                Object.entries(deckConfig).forEach(([cardId, count]) => {
+                  const card = CARD_LIBRARY.find((c) => c.id === cardId)
+                  if (card && count) breakdown[card.rarity] += count
+                })
+                const curve: Record<number, number> = {}
+                Object.entries(deckConfig).forEach(([cardId, count]) => {
+                  const card = CARD_LIBRARY.find((c) => c.id === cardId)
+                  if (card && count) {
+                    const bucket = Math.min(7, card.cost)
+                    curve[bucket] = (curve[bucket] ?? 0) + count
+                  }
+                })
+                const maxCurve = Math.max(1, ...Object.values(curve))
+                return (
+                  <>
+                    <span>● {breakdown.common}</span>
+                    <span style={{ color: RARITY_COLORS.rare }}>◈ {breakdown.rare}</span>
+                    <span style={{ color: RARITY_COLORS.epic }}>◆ {breakdown.epic}</span>
+                    <span style={{ color: RARITY_COLORS.legendary }}>★ {breakdown.legendary}</span>
+                    <span className="mana-curve" aria-label="Mana curve">
+                      {[0, 1, 2, 3, 4, 5, 6, 7].map((cost) => (
+                        <span key={cost} className="mana-curve-col" title={`${cost === 7 ? '7+' : cost} mana: ${curve[cost] ?? 0}`}>
+                          <span
+                            className="mana-curve-bar"
+                            style={{ height: `${Math.round(((curve[cost] ?? 0) / maxCurve) * 100)}%` }}
+                          />
+                          <span className="mana-curve-label">{cost === 7 ? '7+' : cost}</span>
+                        </span>
+                      ))}
+                    </span>
+                  </>
+                )
+              })()}
+            </div>
+          )}
+
           <div className="builder-grid">
-            {CARD_LIBRARY.map((card) => {
+            {CARD_LIBRARY.filter((card) => {
+              if (builderFilter.rarity !== 'all' && card.rarity !== builderFilter.rarity) return false
+              if (builderFilter.search) {
+                const q = builderFilter.search.toLowerCase()
+                if (!card.name.toLowerCase().includes(q) && !card.text.toLowerCase().includes(q)) return false
+              }
+              if (builderFilter.ownedOnly && loggedIn) {
+                const owned = collection[card.id] ?? 0
+                if (owned === 0) return false
+              }
+              return true
+            }).map((card) => {
               const maxCopies = card.rarity === 'legendary' ? MAX_LEGENDARY_COPIES : MAX_COPIES
               const ownedCount = loggedIn ? (collection[card.id] ?? 0) : maxCopies
               const count = deckConfig[card.id] ?? 0
               const addDisabled = count >= Math.min(maxCopies, ownedCount)
               return (
-              <div className={`builder-card rarity-${card.rarity} ${ownedCount === 0 ? 'locked' : ''}`} key={card.id} style={{ '--rarity-color': RARITY_COLORS[card.rarity] } as React.CSSProperties}>
+              <div
+                className={`builder-card rarity-${card.rarity} border-${selectedCardBorder} ${ownedCount === 0 ? 'locked' : ''}`}
+                key={card.id}
+                style={{ '--rarity-color': RARITY_COLORS[card.rarity] } as React.CSSProperties}
+              >
                 <div>
                   <div className="card-art-shell">
                     <img
@@ -3651,6 +4077,30 @@ function App() {
             <button className="ghost" onClick={() => openScreen('home')}>
               Back to Home
             </button>
+          </div>
+
+          <div className="deck-quick-battle">
+            <div className="section-head compact">
+              <div>
+                <h3>Quick Battle Templates</h3>
+                <p className="note">
+                  Try a curated full deck against the AI. Templates do not require ownership and are not saved
+                  to your collection — perfect for sampling new strategies.
+                </p>
+              </div>
+            </div>
+            <div className="controls preset-row">
+              {DECK_PRESETS.map((preset) => (
+                <button
+                  className="ghost"
+                  key={preset.name}
+                  onClick={() => handleQuickBattle(preset.name, preset.config)}
+                  title={`Instantly battle the AI using a curated ${preset.name} deck`}
+                >
+                  ⚔ {preset.name}
+                </button>
+              ))}
+            </div>
           </div>
         </article>
       </section>
@@ -3958,6 +4408,44 @@ function App() {
         <article className="section-card utility-card">
           <div className="section-head">
             <div>
+              <h2>Card Borders</h2>
+              <p className="note">Equip a cosmetic frame for every card you draw, in your deck builder, hand, and on the battlefield.</p>
+            </div>
+            <span className="badge">Cosmetics Only</span>
+          </div>
+
+          <div className="theme-grid">
+            {CARD_BORDER_OFFERS.map((border) => {
+              const owned = ownedCardBorders.includes(border.id)
+              const equipped = selectedCardBorder === border.id
+              const canAfford = runes >= border.cost
+              return (
+                <div className="theme-offer-card" key={border.id}>
+                  <div className={`border-preview border-${border.id}`} aria-hidden="true">
+                    <span className="border-preview-icon">⚔</span>
+                  </div>
+                  <strong>{border.name}</strong>
+                  <p className="mini-text">{border.description}</p>
+                  <div className="badges">
+                    <span className="badge">{owned ? 'Owned' : `${border.cost} Shards`}</span>
+                    {equipped && <span className="badge">Equipped</span>}
+                  </div>
+                  <button
+                    className={owned ? 'secondary' : 'primary'}
+                    onClick={() => handlePurchaseBorder(border.id, border.cost)}
+                    disabled={!loggedIn || (!owned && !canAfford)}
+                  >
+                    {equipped ? 'Equipped' : owned ? 'Equip Border' : 'Unlock Border'}
+                  </button>
+                </div>
+              )
+            })}
+          </div>
+        </article>
+
+        <article className="section-card utility-card">
+          <div className="section-head">
+            <div>
               <h2>Card Packs & Collection</h2>
               <p className="note">New accounts start with a starter library. Open packs with Shards to unlock more cards by rarity.</p>
             </div>
@@ -3999,6 +4487,115 @@ function App() {
               })}
             </div>
           )}
+        </article>
+
+        <article className="section-card utility-card">
+          <div className="section-head">
+            <div>
+              <h2>Break Down Excess Cards</h2>
+              <p className="note">
+                Reduce duplicate copies into Shards. Refunds are based on rarity (Common 5 · Rare 10 · Epic 25 · Legendary 100).
+                Cards required by any saved deck are protected.
+              </p>
+            </div>
+            <span className="badge">Owned {totalOwnedCards}</span>
+          </div>
+
+          {(() => {
+            const breakable = Object.entries(collection)
+              .map(([cardId, owned]) => {
+                const meta = CARD_LIBRARY.find((c) => c.id === cardId)
+                if (!meta) return null
+                let deckMin = 0
+                for (const deck of savedDecks) {
+                  const n = deck.deckConfig?.[cardId] ?? 0
+                  if (n > deckMin) deckMin = n
+                }
+                const extra = owned - deckMin
+                return { cardId, meta, owned, deckMin, extra }
+              })
+              .filter((entry): entry is NonNullable<typeof entry> => entry !== null && entry.extra > 0)
+              .sort((a, b) => {
+                const rarityOrder = { legendary: 0, epic: 1, rare: 2, common: 3 } as const
+                const ra = rarityOrder[a.meta.rarity]
+                const rb = rarityOrder[b.meta.rarity]
+                if (ra !== rb) return ra - rb
+                return b.extra - a.extra
+              })
+
+            if (breakable.length === 0) {
+              return (
+                <p className="note">
+                  No excess cards to break down right now. Open more packs to collect duplicates, or rebuild
+                  your saved decks to free up copies.
+                </p>
+              )
+            }
+
+            return (
+              <div className="leaderboard-list">
+                {breakable.map((entry) => {
+                  const refundPer = { common: 5, rare: 10, epic: 25, legendary: 100 }[entry.meta.rarity]
+                  return (
+                    <div className="leaderboard-row" key={entry.cardId}>
+                      <span className="badge" style={{ color: RARITY_COLORS[entry.meta.rarity] }}>
+                        {entry.meta.rarity}
+                      </span>
+                      <div className="leaderboard-meta">
+                        <strong>{entry.meta.icon} {entry.meta.name}</strong>
+                        <span className="note">
+                          Owned {entry.owned} · In decks {entry.deckMin} · Excess {entry.extra} · {refundPer} Shards each
+                        </span>
+                      </div>
+                      <div className="controls">
+                        <button
+                          className="ghost mini"
+                          onClick={() => setPendingBreakdown({ cardId: entry.cardId, qty: 1 })}
+                        >
+                          Break 1
+                        </button>
+                        {entry.extra > 1 && (
+                          <button
+                            className="ghost mini"
+                            onClick={() => setPendingBreakdown({ cardId: entry.cardId, qty: entry.extra })}
+                          >
+                            Break All ({entry.extra})
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )
+          })()}
+
+          {pendingBreakdown && (() => {
+            const meta = CARD_LIBRARY.find((c) => c.id === pendingBreakdown.cardId)
+            const refundPer = meta ? ({ common: 5, rare: 10, epic: 25, legendary: 100 } as const)[meta.rarity] : 0
+            const total = refundPer * pendingBreakdown.qty
+            return (
+              <div className="leaderboard-list" style={{ marginTop: '0.75rem' }}>
+                <div className="leaderboard-row">
+                  <div className="leaderboard-meta">
+                    <strong>Confirm: break down {pendingBreakdown.qty}× {meta?.icon} {meta?.name}</strong>
+                    <span className="note">You will receive {total} Shards. This cannot be undone.</span>
+                  </div>
+                  <div className="controls">
+                    <button
+                      className="primary mini"
+                      onClick={() => handleBreakdownCard(pendingBreakdown.cardId, pendingBreakdown.qty)}
+                    >
+                      Confirm
+                    </button>
+                    <button className="ghost mini" onClick={() => setPendingBreakdown(null)}>
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )
+          })()}
         </article>
       </section>
 
@@ -4530,7 +5127,7 @@ function App() {
 
               return (
                 <button
-                  className={['hand-card', `rarity-${card.rarity}`, canPlay ? '' : 'unplayable'].filter(Boolean).join(' ')}
+                  className={['hand-card', `rarity-${card.rarity}`, `border-${selectedCardBorder}`, canPlay ? '' : 'unplayable'].filter(Boolean).join(' ')}
                   key={card.instanceId}
                   data-need={overlayLabel}
                   onClick={() => {
