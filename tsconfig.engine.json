@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "target": "es2022",
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "outDir": "./server",
+    "rootDir": "./src",
+    "declaration": false,
+    "strict": false,
+    "skipLibCheck": true,
+    "isolatedModules": true,
+    "erasableSyntaxOnly": true
+  },
+  "include": ["src/game.ts"]
+}

@@ -336,6 +336,88 @@ export function createGame(mode: GameMode, deckConfig: DeckConfig, enemyName?: s
   }
 }
 
+export function createDuelGame(
+  player1Name: string,
+  player1Deck: DeckConfig,
+  player2Name: string,
+  player2Deck: DeckConfig,
+): GameState {
+  return {
+    mode: 'duel',
+    player: beginTurn(createPlayer(player1Name, player1Deck)),
+    enemy: createPlayer(player2Name, player2Deck),
+    turn: 'player',
+    turnNumber: 1,
+    log: ['Duel ready. Prepare your strategy.'],
+    winner: null,
+  }
+}
+
+export type RedactedPlayerState = {
+  name: string
+  health: number
+  mana: number
+  maxMana: number
+  momentum: number
+  deck: CardInstance[]
+  hand: CardInstance[]
+  board: Array<Unit | null>
+  deckCount: number
+  handCount: number
+}
+
+export type RedactedGameState = {
+  mode: GameMode
+  player: RedactedPlayerState
+  enemy: RedactedPlayerState
+  turn: BattleSide
+  turnNumber: number
+  log: string[]
+  winner: Winner
+}
+
+export function redactGameState(state: GameState, forSide: BattleSide): RedactedGameState {
+  const own = state[forSide]
+  const opp = state[otherSide(forSide)]
+  const remapSide = (s: BattleSide): BattleSide => s === forSide ? 'player' : 'enemy'
+
+  const ownRedacted: RedactedPlayerState = {
+    name: own.name,
+    health: own.health,
+    mana: own.mana,
+    maxMana: own.maxMana,
+    momentum: own.momentum,
+    deck: [],
+    hand: own.hand,
+    board: own.board,
+    deckCount: own.deck.length,
+    handCount: own.hand.length,
+  }
+
+  const oppRedacted: RedactedPlayerState = {
+    name: opp.name,
+    health: opp.health,
+    mana: opp.mana,
+    maxMana: opp.maxMana,
+    momentum: opp.momentum,
+    deck: [],
+    hand: [],
+    board: opp.board,
+    deckCount: opp.deck.length,
+    handCount: opp.hand.length,
+  }
+
+  return {
+    mode: state.mode,
+    player: ownRedacted,
+    enemy: oppRedacted,
+    turn: remapSide(state.turn),
+    turnNumber: state.turnNumber,
+    log: state.log,
+    winner: state.winner === 'draw' ? 'draw' : state.winner ? remapSide(state.winner) : null,
+  }
+}
+
 export function finalizeGame(
   base: GameState,
   player: PlayerState,

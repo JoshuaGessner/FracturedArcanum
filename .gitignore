@@ -38,3 +38,6 @@ data/*.json
 
 # Backups
 *.bak
+
+# Compiled game engine (generated from src/game.ts)
+server/game.js

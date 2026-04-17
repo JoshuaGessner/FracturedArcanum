@@ -31,6 +31,13 @@ import {
   openPack,
   PACK_DEFS,
 } from './db.js'
+import {
+  createRoom,
+  getRoom,
+  getRoomBySocket,
+  handleDisconnect,
+  destroyRoom,
+} from './game-room.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const DIST_DIR = path.resolve(__dirname, '../dist')
@@ -60,6 +67,23 @@ const io = new Server(httpServer, {
   },
   pingTimeout: 20000,
   pingInterval: 25000,
+})
+
+// ─── Socket.IO authentication middleware ──────────────────────────────────
+
+io.use((socket, next) => {
+  const token = socket.handshake.auth?.token
+  if (!token || typeof token !== 'string') {
+    return next(new Error('Authentication required.'))
+  }
+  const session = validateSession(token)
+  if (!session) {
+    return next(new Error('Session expired. Please log in again.'))
+  }
+  socket.data.accountId = session.account_id
+  socket.data.username = session.username
+  socket.data.displayName = session.display_name
+  next()
 })
 
 const botProfiles = [
@@ -879,8 +903,27 @@ io.on('connection', (socket) => {
   socket.on('queue:join', (payload = {}) => {
     if (!checkSocketRate(socket.id, 'queue:join', 10)) return
 
-    const name = typeof payload.name === 'string' ? payload.name.slice(0, 24) : 'Rune Captain'
+    const name = socket.data.displayName || socket.data.username || 'Rune Captain'
     const rank = typeof payload.rank === 'string' ? payload.rank.slice(0, 20) : 'Bronze I'
+
+    // Validate and store deck config for server-authoritative game creation
+    const rawDeck = payload.deckConfig
+    const deckValidation = rawDeck && typeof rawDeck === 'object' ? validateDeckConfig(rawDeck) : { ok: false }
+    const deckConfig = deckValidation.ok ? rawDeck : null
+
+    // Fall back to the player's saved deck if no valid deck was sent
+    let finalDeck = deckConfig
+    if (!finalDeck) {
+      const profile = getProfile(socket.data.accountId)
+      finalDeck = profile?.deck_config && typeof profile.deck_config === 'object'
+        ? profile.deck_config
+        : null
+    }
+
+    if (!finalDeck) {
+      socket.emit('queue:error', { error: 'No valid deck available. Build a deck first.' })
+      return
+    }
 
     const profile = {
       name,
@@ -895,18 +938,39 @@ io.on('connection', (socket) => {
       const roomId = `room-${randomUUID().slice(0, 8)}`
       const otherSocket = io.sockets.sockets.get(waitingPlayer.id)
 
-      socket.join(roomId)
-      otherSocket?.join(roomId)
+      try {
+        const room = createRoom(roomId)
 
-      socket.emit('queue:matched', {
-        roomId,
-        opponent: waitingPlayer.profile,
-      })
+        socket.join(roomId)
+        otherSocket?.join(roomId)
 
-      otherSocket?.emit('queue:matched', {
-        roomId,
-        opponent: profile,
-      })
+        room.start(
+          {
+            socketId: socket.id,
+            accountId: socket.data.accountId,
+            name,
+            deckConfig: finalDeck,
+          },
+          {
+            socketId: waitingPlayer.id,
+            accountId: waitingPlayer.accountId,
+            name: waitingPlayer.profile.name,
+            deckConfig: waitingPlayer.deckConfig,
+          },
+        )
+
+        // Send match-found + initial game state to both players
+        const playerView = room.getViewForSocket(socket.id)
+        const enemyView = room.getViewForSocket(waitingPlayer.id)
+
+        socket.emit('queue:matched', { roomId, opponent: waitingPlayer.profile })
+        otherSocket?.emit('queue:matched', { roomId, opponent: profile })
+
+        socket.emit('game:start', playerView)
+        otherSocket?.emit('game:start', enemyView)
+      } catch {
+        socket.emit('queue:error', { error: 'Could not create game room. Try again.' })
+      }
 
       clearTimeout(waitingPlayer.timer)
       waitingPlayer = null
@@ -928,7 +992,9 @@ io.on('connection', (socket) => {
 
     waitingPlayer = {
       id: socket.id,
+      accountId: socket.data.accountId,
       profile,
+      deckConfig: finalDeck,
       timer,
     }
 
@@ -948,24 +1014,107 @@ io.on('connection', (socket) => {
     socket.to(roomId).emit('room:emote', { emote: safeEmote, from: safeFrom })
   })
 
-  socket.on('room:action', ({ roomId, action } = {}) => {
-    if (!checkSocketRate(socket.id, 'room:action', 60)) return
-    if (!roomId || typeof roomId !== 'string') return
-    if (!socket.rooms.has(roomId)) return
-    if (!action || typeof action !== 'object') return
-    socket.to(roomId).emit('room:action', { action })
-  })
+  // ─── Server-authoritative game actions ────────────────────────────────
 
-  socket.on('room:gameOver', ({ roomId, winner } = {}) => {
-    if (!roomId || typeof roomId !== 'string') return
-    if (!socket.rooms.has(roomId)) return
-    socket.to(roomId).emit('room:gameOver', { winner })
-    trackAnalyticsEvent({ type: 'match_complete', route: 'battle', meta: { winner } })
+  socket.on('game:action', (payload = {}) => {
+    if (!checkSocketRate(socket.id, 'game:action', 120)) return
+
+    const room = getRoomBySocket(socket.id)
+    if (!room) {
+      socket.emit('game:error', { error: 'Not in a game room.' })
+      return
+    }
+
+    const action = payload?.action
+    if (!action || typeof action !== 'object') {
+      socket.emit('game:error', { error: 'Invalid action payload.' })
+      return
+    }
+
+    const result = room.handleAction(socket.id, action)
+    if (!result.ok) {
+      socket.emit('game:error', { error: result.error })
+      return
+    }
+
+    // Broadcast updated state to both players
+    const playerSocket = io.sockets.sockets.get(room.sockets.player)
+    const enemySocket = io.sockets.sockets.get(room.sockets.enemy)
+
+    const playerView = room.getViewForSocket(room.sockets.player)
+    const enemyView = room.getViewForSocket(room.sockets.enemy)
+
+    playerSocket?.emit('game:state', playerView)
+    enemySocket?.emit('game:state', enemyView)
+
+    // Check for game over
+    if (room.state?.winner) {
+      const winner = room.state.winner
+      const playerAccountId = room.accounts.player
+      const enemyAccountId = room.accounts.enemy
+      const turns = room.state.turnNumber
+
+      // Resolve match results for both players
+      if (winner === 'draw') {
+        if (playerAccountId) resolveMatchResult(playerAccountId, room.names.enemy, 'duel', 'draw', turns)
+        if (enemyAccountId) resolveMatchResult(enemyAccountId, room.names.player, 'duel', 'draw', turns)
+        playerSocket?.emit('game:over', { winner: 'draw', result: 'draw' })
+        enemySocket?.emit('game:over', { winner: 'draw', result: 'draw' })
+      } else {
+        const winnerAccountId = room.accounts[winner]
+        const loserSide = winner === 'player' ? 'enemy' : 'player'
+        const loserAccountId = room.accounts[loserSide]
+
+        if (winnerAccountId) resolveMatchResult(winnerAccountId, room.names[loserSide], 'duel', 'win', turns)
+        if (loserAccountId) resolveMatchResult(loserAccountId, room.names[winner], 'duel', 'loss', turns)
+
+        playerSocket?.emit('game:over', {
+          winner,
+          result: winner === 'player' ? 'win' : 'loss',
+        })
+        enemySocket?.emit('game:over', {
+          winner,
+          result: winner === 'enemy' ? 'win' : 'loss',
+        })
+      }
+
+      trackAnalyticsEvent({ type: 'match_complete', route: 'battle', meta: { winner, mode: 'duel' } })
+
+      // Clean up room after a delay to let clients process the result
+      setTimeout(() => destroyRoom(room.roomId), 10000)
+    }
   })
 
   socket.on('disconnect', () => {
     removeWaitingPlayer(socket.id)
     socketRateLimits.delete(socket.id)
+
+    // Handle in-progress game disconnection
+    const room = handleDisconnect(socket.id)
+    if (room && room.state && !room.state.winner) {
+      const remainingSide = room.getSideForSocket(room.sockets.player) ? 'player' :
+        room.getSideForSocket(room.sockets.enemy) ? 'enemy' : null
+      const disconnectedSide = remainingSide === 'player' ? 'enemy' : 'player'
+
+      if (remainingSide) {
+        const remainingSocket = io.sockets.sockets.get(room.sockets[remainingSide])
+        remainingSocket?.emit('game:over', {
+          winner: remainingSide,
+          result: 'win',
+          reason: 'opponent_disconnected',
+        })
+
+        // Award win to remaining player, loss to disconnected player
+        const winnerAccountId = room.accounts[remainingSide]
+        const loserAccountId = room.accounts[disconnectedSide]
+        const turns = room.state.turnNumber
+
+        if (winnerAccountId) resolveMatchResult(winnerAccountId, room.names[disconnectedSide], 'duel', 'win', turns)
+        if (loserAccountId) resolveMatchResult(loserAccountId, room.names[remainingSide], 'duel', 'loss', turns)
+      }
+
+      destroyRoom(room.roomId)
+    }
   })
 })
 
