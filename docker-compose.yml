@@ -6,6 +6,7 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=43173
+      - DATA_DIR=/app/data
       - ADMIN_KEY=${ADMIN_KEY:-}
       - CLIENT_ORIGIN=${CLIENT_ORIGIN:-}
     volumes:

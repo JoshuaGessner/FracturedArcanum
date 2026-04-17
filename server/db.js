@@ -5,13 +5,20 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const DATA_DIR = path.resolve(__dirname, '../data')
+const DATA_DIR = path.resolve(process.env.DATA_DIR ?? path.resolve(__dirname, '../data'))
+const DB_PATH = path.join(DATA_DIR, 'fractured-arcanum.db')
 
 if (!existsSync(DATA_DIR)) {
   mkdirSync(DATA_DIR, { recursive: true })
 }
 
-const db = new Database(path.join(DATA_DIR, 'fractured-arcanum.db'), { fileMustExist: false })
+let db
+try {
+  db = new Database(DB_PATH, { fileMustExist: false })
+} catch (error) {
+  console.error(`Failed to open SQLite database at ${DB_PATH}. Ensure the data directory exists and is writable.`)
+  throw error
+}
 db.pragma('journal_mode = WAL')
 db.pragma('foreign_keys = ON')
 

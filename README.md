@@ -83,6 +83,15 @@ docker compose down
 
 The SQLite database persists in a Docker volume (`fractured-arcanum-data`). No data is lost when the container restarts.
 
+If you are updating from an older image and the container is crash-looping on SQLite startup, rebuild and restart with:
+
+```bash
+docker compose down
+docker compose up -d --build
+```
+
+The current image startup flow repairs the mounted data directory permissions before the app launches.
+
 ### Docker (Manual)
 
 ```bash
