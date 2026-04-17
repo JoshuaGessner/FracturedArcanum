@@ -391,6 +391,8 @@ function App() {
   const [queueState, setQueueState] = useState<QueueState>('idle')
   const [queueSeconds, setQueueSeconds] = useState(0)
   const [queuedOpponent, setQueuedOpponent] = useState<OpponentProfile | null>(null)
+  const [battleSessionActive, setBattleSessionActive] = useState(false)
+  const [serverBattleActive, setServerBattleActive] = useState(false)
   const resolvedMatchKeyRef = useRef('')
   const socketClientRef = useRef<Socket | null>(null)
   const [enemyTurnActive, setEnemyTurnActive] = useState(false)
@@ -643,6 +645,8 @@ function App() {
     socketClientRef.current?.disconnect()
     socketClientRef.current = null
     setBackendOnline(false)
+    setBattleSessionActive(false)
+    setServerBattleActive(false)
     setAuthToken('')
     setServerProfile(null)
     setLoggedIn(false)
@@ -709,6 +713,8 @@ function App() {
 
     socket.on('game:start', (payload: { yourSide: BattleSide; state: GameState }) => {
       setGame(payload.state)
+      setBattleSessionActive(true)
+      setServerBattleActive(true)
       setActiveScreen('battle')
       setQueueState('idle')
       setQueueSeconds(0)
@@ -724,6 +730,8 @@ function App() {
     socket.on('game:over', (payload: { result: string }) => {
       setOpponentDisconnected(false)
       setDisconnectGraceMs(0)
+      setBattleSessionActive(false)
+      setServerBattleActive(false)
       if (payload.result === 'win') {
         setToastMessage('Victory! You won the match.')
       } else if (payload.result === 'loss') {
@@ -748,6 +756,8 @@ function App() {
     // ─── Reconnect / disconnect events ──────────────────────────────
     socket.on('game:rejoin', (payload: { yourSide: BattleSide; state: GameState; roomId: string; opponentDisconnected: boolean }) => {
       setGame(payload.state)
+      setBattleSessionActive(true)
+      setServerBattleActive(true)
       setActiveScreen('battle')
       setQueueState('idle')
       setQueueSeconds(0)
@@ -1063,7 +1073,7 @@ function App() {
   const activePlayer = game[activeSide]
   const defendingPlayer = game[defendingSide]
   const isMyTurn = game.turn === 'player' && !enemyTurnActive
-  const hasBattleInProgress = (game.turnNumber > 1 || game.player.hand.length !== game.enemy.hand.length || game.player.board.some(Boolean) || game.enemy.board.some(Boolean)) && !game.winner
+  const hasBattleInProgress = battleSessionActive && !game.winner
   const gameInProgress = activeScreen !== 'battle' && hasBattleInProgress
   const activeBoardHasOpenLane = activePlayer.board.some((slot) => slot === null)
   const selectedDeckSize = getDeckSize(deckConfig)
@@ -1102,7 +1112,7 @@ function App() {
     setActiveScreen(screen)
   }
 
-  function resetBattleState(mode: GameMode = preferredMode, toast = 'Battle reset. Ready when you are.') {
+  function resetBattleState(mode: GameMode = preferredMode, toast = 'Battle reset. Ready when you are.', nextScreen: AppScreen = 'home') {
     clearEnemyTurnTimers()
     battleStartedRef.current = false
     if (battleIntroTimerRef.current) {
@@ -1111,6 +1121,8 @@ function App() {
     }
     resolvedMatchKeyRef.current = ''
     prevBoardRef.current = null
+    setBattleSessionActive(false)
+    setServerBattleActive(false)
     setSelectedAttacker(null)
     setEnemyTurnActive(false)
     setEnemyTurnLabel('')
@@ -1123,7 +1135,7 @@ function App() {
     setQueueSeconds(0)
     setQueuedOpponent(null)
     setGame(createGame(mode, deckConfig))
-    setActiveScreen('home')
+    setActiveScreen(nextScreen)
     setToastMessage(toast)
   }
 
@@ -1136,14 +1148,14 @@ function App() {
   function handleAbandonBattle() {
     playSound('tap', soundEnabled)
 
-    if (game.mode === 'duel' && hasBattleInProgress && socketClientRef.current?.connected) {
+    if (serverBattleActive && hasBattleInProgress && socketClientRef.current?.connected) {
       emitAction({ type: 'surrender' })
       resetBattleState(preferredMode, 'Ranked match abandoned. The result will be recorded by the server.')
       return
     }
 
-    if (game.mode === 'duel' && hasBattleInProgress) {
-      resetBattleState(preferredMode, 'Battle reset locally. Reconnect to finish or rejoin the ranked match if it is still active.')
+    if (hasBattleInProgress) {
+      resetBattleState(preferredMode, game.mode === 'ai' ? 'AI battle abandoned. Ready for a fresh match.' : 'Battle reset. Ready when you are.')
       return
     }
 
@@ -1158,9 +1170,14 @@ function App() {
       return
     }
 
-    if (hasBattleInProgress) {
+    if (serverBattleActive && hasBattleInProgress) {
       setActiveScreen('home')
       setToastMessage(`Battle paused vs ${game.enemy.name}. You can resume or abandon it from the lobby.`)
+      return
+    }
+
+    if (hasBattleInProgress) {
+      resetBattleState(preferredMode, game.mode === 'ai' ? 'AI battle abandoned. Ready for a fresh match.' : 'Battle closed. Start a new match whenever you like.')
       return
     }
 
@@ -1380,6 +1397,8 @@ function App() {
     }
 
     setPreferredMode(mode)
+    setBattleSessionActive(true)
+    setServerBattleActive(false)
     setSelectedAttacker(null)
     resolvedMatchKeyRef.current = ''
     clearEnemyTurnTimers()
@@ -1965,36 +1984,34 @@ function App() {
             </div>
           )}
 
-          {!gameInProgress && (
-            <>
-            <div className="mode-switch">
-              <button
-                className={preferredMode === 'ai' ? 'primary' : 'ghost'}
-                onClick={() => handleModeChange('ai')}
-              >
-                AI Skirmish
-              </button>
-              <button
-                className={preferredMode === 'duel' ? 'primary' : 'ghost'}
-                onClick={() => handleModeChange('duel')}
-              >
-                Local Duel
-              </button>
-            </div>
+          <>
+          <div className="mode-switch">
+            <button
+              className={preferredMode === 'ai' ? 'primary' : 'ghost'}
+              onClick={() => handleModeChange('ai')}
+            >
+              AI Skirmish
+            </button>
+            <button
+              className={preferredMode === 'duel' ? 'primary' : 'ghost'}
+              onClick={() => handleModeChange('duel')}
+            >
+              Local Duel
+            </button>
+          </div>
 
-            <div className="controls">
-              <button className="primary" onClick={() => startMatch()} disabled={!deckReady}>
-                Enter Arena
-              </button>
-              <button className="secondary" onClick={handleStartQueue} disabled={!deckReady || queueState !== 'idle'}>
-                Find Ranked Match
-              </button>
-              <button className="ghost" onClick={() => openScreen('deck')}>
-                Deck Forge
-              </button>
-            </div>
-            </>
-          )}
+          <div className="controls">
+            <button className="primary" onClick={() => startMatch()} disabled={!deckReady}>
+              {gameInProgress ? 'Start Fresh Battle' : 'Enter Arena'}
+            </button>
+            <button className="secondary" onClick={handleStartQueue} disabled={!deckReady || queueState !== 'idle'}>
+              Find Ranked Match
+            </button>
+            <button className="ghost" onClick={() => openScreen('deck')}>
+              Deck Forge
+            </button>
+          </div>
+          </>
 
           {queueState === 'searching' && (
             <div className="queue-searching-block">
