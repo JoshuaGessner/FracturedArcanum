@@ -15,6 +15,7 @@
     "release:check": "npm test && npm run lint && npm run build",
     "build": "npm run build:engine && tsc -b && vite build",
     "lint": "eslint .",
+    "pretest": "npm run build:engine",
     "test": "vitest run",
     "test:watch": "vitest",
     "preview": "vite preview"
