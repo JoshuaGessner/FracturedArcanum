@@ -439,9 +439,12 @@ export function resolveMatchResult(accountId, opponent, mode, result, turns) {
   let ratingDelta = 0
   let newStreak = profile.streak
 
+  // Only server-authoritative modes (duel) affect season rating
+  const ratingEligible = mode === 'duel'
+
   if (result === 'win') {
     runesEarned = WIN_RUNES
-    ratingDelta = WIN_RATING
+    ratingDelta = ratingEligible ? WIN_RATING : 0
     newStreak = profile.streak + 1
     // Streak bonus: extra 5 runes per streak after 2
     if (newStreak > 2) {
@@ -449,7 +452,7 @@ export function resolveMatchResult(accountId, opponent, mode, result, turns) {
     }
   } else if (result === 'loss') {
     runesEarned = LOSS_RUNES
-    ratingDelta = -LOSS_RATING
+    ratingDelta = ratingEligible ? -LOSS_RATING : 0
     newStreak = 0
   }
 

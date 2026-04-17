@@ -326,6 +326,13 @@ function App() {
   const [authLoading, setAuthLoading] = useState(false)
   const [loggedIn, setLoggedIn] = useState(false)
 
+  // ─── First-launch setup state ─────────────────────────────────────────
+  const [setupRequired, setSetupRequired] = useState<boolean | null>(null)
+  const [setupForm, setSetupForm] = useState({ username: '', password: '', displayName: '' })
+  const [setupError, setSetupError] = useState('')
+  const [setupLoading, setSetupLoading] = useState(false)
+  const [setupAdminKey, setSetupAdminKey] = useState('')
+
   // ─── Server-authoritative player state ────────────────────────────────
   const [serverProfile, setServerProfile] = useState<ServerProfile | null>(null)
   const runes = serverProfile?.runes ?? 0
@@ -431,6 +438,56 @@ function App() {
       .catch(() => setAuthToken(''))
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ─── Check if first-launch setup is needed ────────────────────────────
+  useEffect(() => {
+    void fetch(`${ARENA_URL}/api/setup/status`)
+      .then((r) => r.json())
+      .then((data: { ok: boolean; setupComplete: boolean }) => {
+        setSetupRequired(data.ok ? !data.setupComplete : false)
+      })
+      .catch(() => setSetupRequired(false))
+  }, [])
+
+  async function handleSetup(event: FormEvent) {
+    event.preventDefault()
+    setSetupError('')
+    setSetupLoading(true)
+
+    try {
+      const response = await fetch(`${ARENA_URL}/api/setup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: setupForm.username.trim(),
+          password: setupForm.password,
+          displayName: setupForm.displayName.trim() || setupForm.username.trim(),
+        }),
+      })
+      const data = await response.json() as {
+        ok: boolean; error?: string; adminKey?: string;
+        token?: string; profile?: ServerProfile
+      }
+
+      if (!data.ok) {
+        setSetupError(data.error ?? 'Setup failed.')
+        setSetupLoading(false)
+        return
+      }
+
+      setSetupAdminKey(data.adminKey ?? '')
+      setAuthToken(data.token ?? '')
+      setServerProfile(data.profile ?? null)
+      setLoggedIn(true)
+      setSetupRequired(false)
+      if (data.profile?.deckConfig && Object.keys(data.profile.deckConfig).length > 0) {
+        setDeckConfig(data.profile.deckConfig)
+      }
+    } catch {
+      setSetupError('Network error. Is the server running?')
+    }
+    setSetupLoading(false)
+  }
+
   async function handleAuth(event: FormEvent) {
     event.preventDefault()
     setAuthError('')
@@ -486,9 +543,15 @@ function App() {
   }
 
   useEffect(() => {
+    if (!authToken) {
+      setSocketClient(null)
+      setBackendOnline(false)
+      return
+    }
+
     const socket = io(ARENA_URL, {
       autoConnect: true,
-      auth: authToken ? { token: authToken } : undefined,
+      auth: { token: authToken },
     })
     setSocketClient(socket)
 
@@ -497,6 +560,10 @@ function App() {
     })
 
     socket.on('disconnect', () => {
+      setBackendOnline(false)
+    })
+
+    socket.on('connect_error', () => {
       setBackendOnline(false)
     })
 
@@ -605,7 +672,7 @@ function App() {
     return () => {
       socket.disconnect()
     }
-  }, [])
+  }, [authToken]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (queueState !== 'searching') {
@@ -779,7 +846,9 @@ function App() {
     if (authToken && game.mode === 'duel') {
       void authFetch('/api/me', authToken)
         .then((r) => r.json())
-        .then((data: ServerProfile) => setServerProfile(data))
+        .then((data: { ok: boolean; profile?: ServerProfile }) => {
+          if (data.ok && data.profile) setServerProfile(data.profile)
+        })
         .catch(() => {})
     }
   }, [game, resolvedMatchKey, sendAnalytics, authToken])
@@ -1285,8 +1354,70 @@ function App() {
 
   return (
     <main className={`app-shell theme-${selectedTheme}`}>
+      {/* ─── First-launch setup ─────────────────────────────────────── */}
+      {setupRequired && (
+        <div className="auth-gate">
+          <div className="auth-card">
+            <img className="brand-logo" src="/fractured-arcanum-logo.svg" alt="Fractured Arcanum" />
+            <h1>Server Setup</h1>
+            <p className="auth-tagline">Create your admin account to get started</p>
+            {setupAdminKey ? (
+              <div className="setup-complete-block">
+                <p className="auth-tagline">Setup complete! Save your admin key:</p>
+                <code className="admin-key-display">{setupAdminKey}</code>
+                <p className="note">Use this key in the Operations console. Store it securely — it won't be shown again.</p>
+                <button className="primary" onClick={() => setSetupRequired(false)}>
+                  Enter Arena
+                </button>
+              </div>
+            ) : (
+              <form className="auth-form" onSubmit={handleSetup}>
+                <label>
+                  Display Name
+                  <input
+                    type="text"
+                    placeholder="Your arena name"
+                    maxLength={20}
+                    value={setupForm.displayName}
+                    onChange={(event) => setSetupForm((f) => ({ ...f, displayName: event.target.value }))}
+                  />
+                </label>
+                <label>
+                  Username
+                  <input
+                    type="text"
+                    placeholder="3–20 chars, letters/numbers/_"
+                    maxLength={20}
+                    autoComplete="username"
+                    required
+                    value={setupForm.username}
+                    onChange={(event) => setSetupForm((f) => ({ ...f, username: event.target.value }))}
+                  />
+                </label>
+                <label>
+                  Password
+                  <input
+                    type="password"
+                    placeholder="8+ characters"
+                    minLength={8}
+                    autoComplete="new-password"
+                    required
+                    value={setupForm.password}
+                    onChange={(event) => setSetupForm((f) => ({ ...f, password: event.target.value }))}
+                  />
+                </label>
+                {setupError && <p className="auth-error">{setupError}</p>}
+                <button className="primary" type="submit" disabled={setupLoading}>
+                  {setupLoading ? 'Setting up…' : 'Create Admin Account'}
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* ─── Auth gate ─────────────────────────────────────────────── */}
-      {!loggedIn && (
+      {!setupRequired && !loggedIn && (
         <div className="auth-gate">
           <div className="auth-card">
             <img className="brand-logo" src="/fractured-arcanum-logo.svg" alt="Fractured Arcanum" />

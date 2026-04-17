@@ -6,7 +6,7 @@ import helmet from 'helmet'
 import { createServer } from 'node:http'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
-import { createHash, randomUUID } from 'node:crypto'
+import { createHash, randomBytes, randomUUID } from 'node:crypto'
 import { fileURLToPath } from 'node:url'
 import { Server } from 'socket.io'
 import {
@@ -43,14 +43,49 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const DIST_DIR = path.resolve(__dirname, '../dist')
 const DATA_DIR = path.resolve(__dirname, '../data')
 const ADMIN_STORE_PATH = path.join(DATA_DIR, 'arena-admin-store.json')
+const SERVER_CONFIG_PATH = path.join(DATA_DIR, 'server-config.json')
 const CLIENT_ORIGINS = process.env.CLIENT_ORIGIN?.split(',').map((value) => value.trim()).filter(Boolean) ?? []
 
 const DEFAULT_PORT = 43173
 const PORT = Number(process.env.PORT ?? DEFAULT_PORT)
-const ADMIN_KEY = (process.env.ADMIN_KEY ?? '').trim()
 
-if (process.env.NODE_ENV === 'production' && !ADMIN_KEY) {
-  console.warn('WARNING: ADMIN_KEY is not set. Admin console access is disabled until a secure value is configured.')
+// ─── Server config: auto-generate admin key on first launch ──────────────
+
+function ensureDataDir() {
+  if (!existsSync(DATA_DIR)) {
+    mkdirSync(DATA_DIR, { recursive: true })
+  }
+}
+
+function loadServerConfig() {
+  ensureDataDir()
+  try {
+    if (existsSync(SERVER_CONFIG_PATH)) {
+      return JSON.parse(readFileSync(SERVER_CONFIG_PATH, 'utf8'))
+    }
+  } catch { /* corrupt file, regenerate */ }
+  return null
+}
+
+function saveServerConfig(config) {
+  ensureDataDir()
+  writeFileSync(SERVER_CONFIG_PATH, JSON.stringify(config, null, 2))
+}
+
+const serverConfig = loadServerConfig()
+let setupComplete = Boolean(serverConfig?.setupComplete)
+
+// Priority: env var > persisted config > auto-generate on first launch
+let ADMIN_KEY = (process.env.ADMIN_KEY ?? '').trim()
+if (!ADMIN_KEY && serverConfig?.adminKey) {
+  ADMIN_KEY = serverConfig.adminKey
+} else if (!ADMIN_KEY) {
+  ADMIN_KEY = randomBytes(32).toString('hex')
+  saveServerConfig({ adminKey: ADMIN_KEY, setupComplete: false, createdAt: new Date().toISOString() })
+  console.log('─────────────────────────────────────────────────────')
+  console.log('First launch detected. Admin key auto-generated.')
+  console.log('Visit the app to complete server setup.')
+  console.log('─────────────────────────────────────────────────────')
 }
 
 const isProduction = process.env.NODE_ENV === 'production'
@@ -119,12 +154,6 @@ function createDefaultAdminStore() {
     dailyTraffic: {},
     complaints: [],
     activity: [],
-  }
-}
-
-function ensureDataDir() {
-  if (!existsSync(DATA_DIR)) {
-    mkdirSync(DATA_DIR, { recursive: true })
   }
 }
 
@@ -512,6 +541,61 @@ app.post('/api/auth/logout', (request, response) => {
   response.json({ ok: true })
 })
 
+// ─── First-launch setup ────────────────────────────────────────────────────
+
+app.get('/api/setup/status', (_request, response) => {
+  response.json({ ok: true, setupComplete })
+})
+
+app.post(
+  '/api/setup',
+  rateLimit({ windowMs: 15 * 60 * 1000, max: 5, standardHeaders: false, legacyHeaders: false }),
+  (request, response) => {
+    if (setupComplete) {
+      response.status(403).json({ ok: false, error: 'Setup has already been completed.' })
+      return
+    }
+
+    const { username, password, displayName } = request.body ?? {}
+    const uname = String(username ?? '').trim()
+    const pass = String(password ?? '')
+    const dname = String(displayName ?? uname).trim()
+
+    if (!uname || !pass) {
+      response.status(400).json({ ok: false, error: 'Username and password are required.' })
+      return
+    }
+
+    const ip = clientIp(request)
+    const result = createAccount(uname, pass, dname, '')
+    if (!result.ok) {
+      response.status(400).json(result)
+      return
+    }
+
+    const session = createSession(result.accountId, ip)
+    const profile = getProfile(result.accountId)
+
+    // Mark setup complete and persist
+    setupComplete = true
+    const config = loadServerConfig() ?? {}
+    config.setupComplete = true
+    config.setupAt = new Date().toISOString()
+    config.adminAccountId = result.accountId
+    saveServerConfig(config)
+
+    console.log('Server setup completed. Admin account created.')
+
+    response.status(201).json({
+      ok: true,
+      adminKey: ADMIN_KEY,
+      token: session.token,
+      expiresAt: session.expiresAt,
+      profile: sanitizeProfile(profile, uname),
+    })
+  },
+)
+
 function sanitizeProfile(profile, username) {
   if (!profile) return null
   return {
@@ -595,7 +679,11 @@ app.post('/api/match/complete', requireAuth, (request, response) => {
     response.status(400).json({ ok: false, error: 'Invalid match result.' })
     return
   }
-  const safeMode = ['ai', 'duel', 'ranked'].includes(String(mode)) ? String(mode) : 'ai'
+  if (String(mode) === 'duel') {
+    response.status(400).json({ ok: false, error: 'Duel results are resolved by the server.' })
+    return
+  }
+  const safeMode = ['ai', 'ranked'].includes(String(mode)) ? String(mode) : 'ai'
   const safeOpponent = String(opponent ?? 'Unknown').slice(0, 40) || 'Unknown'
   const rawTurns = Number(turns ?? 0)
   const safeTurns = Number.isFinite(rawTurns)
@@ -1092,9 +1180,8 @@ io.on('connection', (socket) => {
     // Handle in-progress game disconnection
     const room = handleDisconnect(socket.id)
     if (room && room.state && !room.state.winner) {
-      const remainingSide = room.getSideForSocket(room.sockets.player) ? 'player' :
-        room.getSideForSocket(room.sockets.enemy) ? 'enemy' : null
-      const disconnectedSide = remainingSide === 'player' ? 'enemy' : 'player'
+      const disconnectedSide = room.sockets.player === socket.id ? 'player' : 'enemy'
+      const remainingSide = disconnectedSide === 'player' ? 'enemy' : 'player'
 
       if (remainingSide) {
         const remainingSocket = io.sockets.sockets.get(room.sockets[remainingSide])

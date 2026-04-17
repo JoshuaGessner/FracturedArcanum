@@ -6,7 +6,7 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=43173
-      - ADMIN_KEY=${ADMIN_KEY:?Set ADMIN_KEY in .env or environment}
+      - ADMIN_KEY=${ADMIN_KEY:-}
       - CLIENT_ORIGIN=${CLIENT_ORIGIN:-}
     volumes:
       - fractured-arcanum-data:/app/data
