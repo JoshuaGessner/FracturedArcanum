@@ -1354,4 +1354,261 @@ export function getAccountById(accountId) {
   return _getAccountFull.get(accountId) ?? null
 }
 
+// ─── Card trading (v1: friends-only) ────────────────────────────────────────
+// Trades are asymmetric: one side offers cards, the other offers cards in
+// return. On accept, both owned_cards blobs are mutated atomically in a
+// single transaction so there is no "half-traded" state.
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS trades (
+    id                 TEXT PRIMARY KEY,
+    from_account_id    TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    to_account_id      TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    status             TEXT NOT NULL CHECK(status IN ('pending','accepted','rejected','cancelled','expired')),
+    offer              TEXT NOT NULL DEFAULT '[]',
+    request            TEXT NOT NULL DEFAULT '[]',
+    created_at         TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at         TEXT NOT NULL DEFAULT (datetime('now')),
+    expires_at         TEXT NOT NULL
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_trades_from ON trades(from_account_id, status, created_at DESC);
+  CREATE INDEX IF NOT EXISTS idx_trades_to   ON trades(to_account_id, status, created_at DESC);
+`)
+
+const TRADE_TTL_DAYS = 7
+const MAX_TRADE_ITEMS_PER_SIDE = 6
+
+const _insertTrade = db.prepare(`
+  INSERT INTO trades (id, from_account_id, to_account_id, status, offer, request, expires_at)
+  VALUES (?, ?, ?, 'pending', ?, ?, datetime('now', ?))
+`)
+const _getTradeById = db.prepare(`SELECT * FROM trades WHERE id = ?`)
+const _updateTradeStatus = db.prepare(
+  `UPDATE trades SET status = ?, updated_at = datetime('now') WHERE id = ? AND status = 'pending'`,
+)
+const _listTradesForAccount = db.prepare(`
+  SELECT * FROM trades
+  WHERE (from_account_id = ? OR to_account_id = ?)
+    AND (status = 'pending' OR updated_at > datetime('now', '-3 days'))
+  ORDER BY created_at DESC
+  LIMIT 50
+`)
+const _expireStaleTrades = db.prepare(
+  `UPDATE trades SET status = 'expired', updated_at = datetime('now')
+   WHERE status = 'pending' AND expires_at < datetime('now')`,
+)
+
+function normalizeTradeItems(raw) {
+  if (!Array.isArray(raw)) return null
+  const normalized = []
+  const seen = new Set()
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') return null
+    const cardId = String(item.cardId ?? '').trim()
+    const qty = Math.floor(Number(item.qty ?? 0))
+    if (!cardId || qty <= 0 || qty > 3) return null
+    if (seen.has(cardId)) return null // no duplicate entries; roll into one
+    seen.add(cardId)
+    normalized.push({ cardId, qty })
+  }
+  if (normalized.length === 0) return null
+  if (normalized.length > MAX_TRADE_ITEMS_PER_SIDE) return null
+  return normalized
+}
+
+function ownsAll(owned, items) {
+  for (const { cardId, qty } of items) {
+    if ((owned[cardId] ?? 0) < qty) return false
+  }
+  return true
+}
+
+export function proposeTrade(fromAccountId, toAccountId, offer, request) {
+  if (!fromAccountId || !toAccountId) {
+    return { ok: false, status: 400, error: 'Missing account.' }
+  }
+  if (fromAccountId === toAccountId) {
+    return { ok: false, status: 400, error: 'You cannot trade with yourself.' }
+  }
+  if (!isFriendOf(fromAccountId, toAccountId)) {
+    return { ok: false, status: 403, error: 'You can only trade with friends.' }
+  }
+
+  const normalizedOffer = normalizeTradeItems(offer)
+  const normalizedRequest = normalizeTradeItems(request)
+  if (!normalizedOffer || !normalizedRequest) {
+    return { ok: false, status: 400, error: 'Each side must list 1–6 distinct cards with quantities between 1 and 3.' }
+  }
+
+  const fromOwned = _getOwnedCards.get(fromAccountId)
+  if (!fromOwned) return { ok: false, status: 404, error: 'Proposer profile not found.' }
+  const fromCollection = normalizeOwnedCards(fromOwned.owned_cards)
+  if (!ownsAll(fromCollection, normalizedOffer)) {
+    return { ok: false, status: 400, error: 'You do not own all of the offered cards.' }
+  }
+
+  // Cap: one pending trade per (from,to) pair.
+  const existing = db.prepare(
+    `SELECT id FROM trades WHERE from_account_id = ? AND to_account_id = ? AND status = 'pending' LIMIT 1`,
+  ).get(fromAccountId, toAccountId)
+  if (existing) {
+    return { ok: false, status: 409, error: 'You already have a pending trade with that friend.' }
+  }
+
+  const id = `trade-${randomBytes(8).toString('hex')}`
+  _insertTrade.run(
+    id,
+    fromAccountId,
+    toAccountId,
+    JSON.stringify(normalizedOffer),
+    JSON.stringify(normalizedRequest),
+    `+${TRADE_TTL_DAYS} days`,
+  )
+  return { ok: true, tradeId: id, offer: normalizedOffer, request: normalizedRequest }
+}
+
+function hydrateTradeRow(row) {
+  if (!row) return null
+  let offer = []
+  let request = []
+  try { offer = JSON.parse(row.offer) } catch { /* ignore */ }
+  try { request = JSON.parse(row.request) } catch { /* ignore */ }
+  return {
+    id: row.id,
+    fromAccountId: row.from_account_id,
+    toAccountId: row.to_account_id,
+    status: row.status,
+    offer,
+    request,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    expiresAt: row.expires_at,
+  }
+}
+
+export function listTradesForAccount(accountId) {
+  if (!accountId) return []
+  _expireStaleTrades.run() // sweep expired trades before listing
+  return _listTradesForAccount.all(accountId, accountId).map(hydrateTradeRow)
+}
+
+export function getTradeById(id) {
+  const row = _getTradeById.get(id)
+  return hydrateTradeRow(row)
+}
+
+function applyCardDelta(owned, items, sign) {
+  const next = { ...owned }
+  for (const { cardId, qty } of items) {
+    const current = next[cardId] ?? 0
+    const updated = current + sign * qty
+    if (updated < 0) return null
+    if (updated === 0) delete next[cardId]
+    else next[cardId] = updated
+  }
+  return next
+}
+
+export function acceptTrade(accepterAccountId, tradeId) {
+  if (!accepterAccountId || !tradeId) {
+    return { ok: false, status: 400, error: 'Missing arguments.' }
+  }
+
+  const result = db.transaction(() => {
+    // Re-read the trade under the transaction to avoid races between two
+    // concurrent accept calls.
+    const row = _getTradeById.get(tradeId)
+    if (!row) return { ok: false, status: 404, error: 'Trade not found.' }
+    if (row.status !== 'pending') return { ok: false, status: 409, error: 'Trade is no longer pending.' }
+    if (row.to_account_id !== accepterAccountId) {
+      return { ok: false, status: 403, error: 'Only the recipient can accept this trade.' }
+    }
+    if (new Date(row.expires_at).getTime() < Date.now()) {
+      _updateTradeStatus.run('expired', row.id)
+      return { ok: false, status: 410, error: 'Trade has expired.' }
+    }
+
+    const trade = hydrateTradeRow(row)
+
+    // Friends-only check is re-verified at accept time — if the friendship
+    // was broken since the proposal, the trade must fail.
+    if (!isFriendOf(trade.fromAccountId, trade.toAccountId)) {
+      _updateTradeStatus.run('cancelled', row.id)
+      return { ok: false, status: 403, error: 'The players are no longer friends.' }
+    }
+
+    const fromRow = _getOwnedCards.get(trade.fromAccountId)
+    const toRow = _getOwnedCards.get(accepterAccountId)
+    if (!fromRow || !toRow) {
+      return { ok: false, status: 404, error: 'One of the profiles no longer exists.' }
+    }
+
+    const fromCards = normalizeOwnedCards(fromRow.owned_cards)
+    const toCards = normalizeOwnedCards(toRow.owned_cards)
+
+    if (!ownsAll(fromCards, trade.offer)) {
+      _updateTradeStatus.run('cancelled', row.id)
+      return { ok: false, status: 409, error: 'Proposer no longer owns the offered cards.' }
+    }
+    if (!ownsAll(toCards, trade.request)) {
+      return { ok: false, status: 400, error: 'You do not own all of the requested cards.' }
+    }
+
+    // Transfer: proposer loses offer, gains request; accepter gains offer, loses request.
+    const fromAfter = applyCardDelta(applyCardDelta(fromCards, trade.offer, -1) ?? {}, trade.request, +1)
+    const toAfter = applyCardDelta(applyCardDelta(toCards, trade.request, -1) ?? {}, trade.offer, +1)
+    if (!fromAfter || !toAfter) {
+      return { ok: false, status: 409, error: 'Card count underflow. Trade aborted.' }
+    }
+
+    // Enforce max-copy limits (e.g. legendary cap) on the receiving side.
+    const RARITY_MAX = { common: GAME_MAX_COPIES, rare: GAME_MAX_COPIES, epic: GAME_MAX_COPIES, legendary: MAX_LEGENDARY_COPIES }
+    const cardById = (id) => CARD_LIBRARY.find((c) => c.id === id)
+    for (const [cardId, qty] of Object.entries(fromAfter)) {
+      const card = cardById(cardId)
+      const max = RARITY_MAX[card?.rarity] ?? GAME_MAX_COPIES
+      if (qty > max) return { ok: false, status: 409, error: `Trade would exceed card-copy limit for ${cardId}.` }
+    }
+    for (const [cardId, qty] of Object.entries(toAfter)) {
+      const card = cardById(cardId)
+      const max = RARITY_MAX[card?.rarity] ?? GAME_MAX_COPIES
+      if (qty > max) return { ok: false, status: 409, error: `Trade would exceed card-copy limit for ${cardId}.` }
+    }
+
+    _setOwnedCards.run(JSON.stringify(fromAfter), trade.fromAccountId)
+    _setOwnedCards.run(JSON.stringify(toAfter), accepterAccountId)
+    const updated = _updateTradeStatus.run('accepted', row.id)
+    if (updated.changes === 0) {
+      // Another transaction accepted/cancelled first. Roll back implicitly by throwing.
+      throw new Error('concurrent_trade_update')
+    }
+    return { ok: true, tradeId: row.id }
+  })
+
+  try {
+    return result()
+  } catch (err) {
+    if (err?.message === 'concurrent_trade_update') {
+      return { ok: false, status: 409, error: 'Trade was updated concurrently. Please refresh.' }
+    }
+    throw err
+  }
+}
+
+export function cancelTrade(accountId, tradeId, reason = 'cancelled') {
+  if (!accountId || !tradeId) return { ok: false, status: 400, error: 'Missing arguments.' }
+  const row = _getTradeById.get(tradeId)
+  if (!row) return { ok: false, status: 404, error: 'Trade not found.' }
+  if (row.status !== 'pending') return { ok: false, status: 409, error: 'Trade is no longer pending.' }
+  if (reason === 'cancelled' && row.from_account_id !== accountId) {
+    return { ok: false, status: 403, error: 'Only the proposer can cancel.' }
+  }
+  if (reason === 'rejected' && row.to_account_id !== accountId) {
+    return { ok: false, status: 403, error: 'Only the recipient can reject.' }
+  }
+  _updateTradeStatus.run(reason, tradeId)
+  return { ok: true, tradeId, status: reason }
+}
+
 export default db

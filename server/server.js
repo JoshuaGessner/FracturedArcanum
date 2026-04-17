@@ -37,6 +37,11 @@ import {
   joinClanByInvite,
   leaveClan,
   isFriendOf,
+  proposeTrade,
+  listTradesForAccount,
+  getTradeById,
+  acceptTrade,
+  cancelTrade,
   getAccountRole,
   hasRoleAtLeast,
   findOwnerAccountId,
@@ -1182,6 +1187,75 @@ app.post('/api/social/clan/leave', requireAuth, (request, response) => {
     response.status(400).json(result)
     return
   }
+  response.json(result)
+})
+
+// ─── Trading (friends-only v1) ───────────────────────────────────────────────
+
+app.get('/api/trades', requireAuth, (request, response) => {
+  const trades = listTradesForAccount(request.accountId)
+  response.json({ ok: true, trades })
+})
+
+app.post('/api/trades/propose', requireAuth, (request, response) => {
+  const rl = checkRateLimit(`trade:propose:${request.accountId}`, 10)
+  if (!rl.allowed) {
+    response.status(429).json({ ok: false, error: 'Too many trade proposals. Slow down.' })
+    return
+  }
+  const toAccountId = String(request.body?.toAccountId ?? '')
+  const offer = Array.isArray(request.body?.offer) ? request.body.offer : []
+  const request_ = Array.isArray(request.body?.request) ? request.body.request : []
+  const result = proposeTrade(request.accountId, toAccountId, offer, request_)
+  if (!result.ok) {
+    response.status(result.status ?? 400).json(result)
+    return
+  }
+  // Notify the target if online.
+  emitToAccount(toAccountId, 'trade:incoming', { tradeId: result.tradeId })
+  response.status(201).json(result)
+})
+
+app.post('/api/trades/:id/accept', requireAuth, (request, response) => {
+  const rl = checkRateLimit(`trade:accept:${request.accountId}`, 20)
+  if (!rl.allowed) {
+    response.status(429).json({ ok: false, error: 'Too many trade actions. Please try again later.' })
+    return
+  }
+  const tradeId = String(request.params?.id ?? '')
+  const result = acceptTrade(request.accountId, tradeId)
+  if (!result.ok) {
+    response.status(result.status ?? 400).json(result)
+    return
+  }
+  const trade = getTradeById(tradeId)
+  if (trade) {
+    emitToAccount(trade.fromAccountId, 'trade:updated', { tradeId, status: 'accepted' })
+  }
+  response.json(result)
+})
+
+app.post('/api/trades/:id/reject', requireAuth, (request, response) => {
+  const tradeId = String(request.params?.id ?? '')
+  const result = cancelTrade(request.accountId, tradeId, 'rejected')
+  if (!result.ok) {
+    response.status(result.status ?? 400).json(result)
+    return
+  }
+  const trade = getTradeById(tradeId)
+  if (trade) emitToAccount(trade.fromAccountId, 'trade:updated', { tradeId, status: 'rejected' })
+  response.json(result)
+})
+
+app.post('/api/trades/:id/cancel', requireAuth, (request, response) => {
+  const tradeId = String(request.params?.id ?? '')
+  const result = cancelTrade(request.accountId, tradeId, 'cancelled')
+  if (!result.ok) {
+    response.status(result.status ?? 400).json(result)
+    return
+  }
+  const trade = getTradeById(tradeId)
+  if (trade) emitToAccount(trade.toAccountId, 'trade:updated', { tradeId, status: 'cancelled' })
   response.json(result)
 })
 

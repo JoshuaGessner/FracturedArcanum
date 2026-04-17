@@ -190,6 +190,19 @@ type AdminAuditEntry = {
   createdAt: string
 }
 
+type TradeItem = { cardId: string; qty: number }
+type Trade = {
+  id: string
+  fromAccountId: string
+  toAccountId: string
+  status: 'pending' | 'accepted' | 'rejected' | 'cancelled' | 'expired'
+  offer: TradeItem[]
+  request: TradeItem[]
+  createdAt: string
+  updatedAt: string
+  expiresAt: string
+}
+
 type InstallPromptEvent = Event & {
   prompt: () => Promise<void>
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>
@@ -555,6 +568,14 @@ function App() {
   const [outgoingChallenge, setOutgoingChallenge] = useState<{ challengeId: string; toAccountId: string; toName: string; expiresAt: number } | null>(null)
   const [incomingChallenge, setIncomingChallenge] = useState<{ challengeId: string; fromAccountId: string; fromName: string; expiresAt: number } | null>(null)
   const [challengeStatus, setChallengeStatus] = useState('')
+  const [trades, setTrades] = useState<Trade[]>([])
+  const [tradesTick, setTradesTick] = useState(0)
+  const [tradeStatus, setTradeStatus] = useState('')
+  const [tradeForm, setTradeForm] = useState<{ toAccountId: string; offer: string; request: string }>({
+    toAccountId: '',
+    offer: '',
+    request: '',
+  })
   const [clan, setClan] = useState<SocialClan | null>(null)
   const [socialLoading, setSocialLoading] = useState(false)
   const [socialStatus, setSocialStatus] = useState('Social hub ready.')
@@ -981,6 +1002,14 @@ function App() {
       setLobbyCode(payload.roomId.toUpperCase())
       setBattleKind('ranked') // reuse ranked-style server-authoritative flow
       setToastMessage(`Unranked duel ready against ${payload.opponent.name}.`)
+    })
+
+    socket.on('trade:incoming', () => {
+      setToastMessage('You have a new trade proposal.')
+      setTradesTick((n) => n + 1)
+    })
+    socket.on('trade:updated', () => {
+      setTradesTick((n) => n + 1)
     })
 
     socket.on(
@@ -2065,6 +2094,106 @@ function App() {
     setOutgoingChallenge(null)
   }
 
+  // ─── Trading ──────────────────────────────────────────────────────
+
+  const parseTradeItems = useCallback((raw: string): TradeItem[] | null => {
+    // Accept "card-id x2, other-id" style shorthand.
+    const parts = raw.split(',').map((p) => p.trim()).filter(Boolean)
+    const seen = new Set<string>()
+    const result: TradeItem[] = []
+    for (const part of parts) {
+      const match = part.match(/^([a-z0-9-]+)(?:\s*x\s*(\d+))?$/i)
+      if (!match) return null
+      const cardId = match[1].toLowerCase()
+      const qty = match[2] ? Math.max(1, Math.min(3, Number(match[2]))) : 1
+      if (seen.has(cardId)) return null
+      seen.add(cardId)
+      result.push({ cardId, qty })
+    }
+    return result
+  }, [])
+
+  const refreshTrades = useCallback(async () => {
+    if (!authToken) return
+    try {
+      const response = await authFetch('/api/trades', authToken)
+      if (!response.ok) return
+      const data = (await response.json()) as { ok: boolean; trades: Trade[] }
+      setTrades(data.trades ?? [])
+    } catch {
+      /* non-fatal */
+    }
+  }, [authToken])
+
+  // Fetch trades whenever a trade event bumps the tick (login, trade:incoming,
+  // trade:updated). This is a plain "subscribe to external event" effect —
+  // the setState call inside refreshTrades is the legitimate way to mirror
+  // external updates into React state.
+  useEffect(() => {
+    if (!loggedIn) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void refreshTrades()
+  }, [loggedIn, tradesTick, refreshTrades])
+
+  async function handleProposeTrade(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!authToken) return
+    const offer = parseTradeItems(tradeForm.offer)
+    const request = parseTradeItems(tradeForm.request)
+    if (!offer || !request) {
+      setTradeStatus('Use format: "card-id x1, other-id x2" (1–6 distinct cards, qty 1–3).')
+      return
+    }
+    try {
+      const response = await authFetch('/api/trades/propose', authToken, {
+        method: 'POST',
+        body: { toAccountId: tradeForm.toAccountId.trim(), offer, request },
+      })
+      const data = (await response.json()) as { ok: boolean; error?: string }
+      if (!response.ok || !data.ok) {
+        setTradeStatus(data.error ?? 'Could not propose trade.')
+        return
+      }
+      setTradeStatus('Trade proposal sent.')
+      setTradeForm({ toAccountId: '', offer: '', request: '' })
+      await refreshTrades()
+    } catch {
+      setTradeStatus('Could not reach server.')
+    }
+  }
+
+  async function handleTradeAction(tradeId: string, action: 'accept' | 'reject' | 'cancel') {
+    if (!authToken) return
+    try {
+      const response = await authFetch(`/api/trades/${encodeURIComponent(tradeId)}/${action}`, authToken, {
+        method: 'POST',
+      })
+      const data = (await response.json()) as { ok: boolean; error?: string }
+      if (!response.ok || !data.ok) {
+        setTradeStatus(data.error ?? `Could not ${action} trade.`)
+        return
+      }
+      if (action === 'accept') setTradeStatus('Trade accepted — cards transferred.')
+      else if (action === 'reject') setTradeStatus('Trade rejected.')
+      else setTradeStatus('Trade cancelled.')
+      await refreshTrades()
+      if (action === 'accept') {
+        // Collection changed; refresh it.
+        try {
+          const collectionResponse = await authFetch('/api/collection', authToken)
+          if (collectionResponse.ok) {
+            const collectionData = (await collectionResponse.json()) as { ok: boolean; collection?: Record<string, number> }
+            if (collectionData.ok && collectionData.collection) {
+              setCollection(collectionData.collection)
+            }
+          }
+        } catch { /* non-fatal */ }
+      }
+    } catch {
+      setTradeStatus('Could not reach server.')
+    }
+  }
+
   async function handleCreateClan(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!authToken) {
@@ -3019,6 +3148,82 @@ function App() {
             )}
 
             <p className="note toast-line">{socialStatus}</p>
+
+            {/* ─── Card trading (friends only) ──────────────────── */}
+            <div className="social-trade-block">
+              <div className="section-head">
+                <h3>Card Trades</h3>
+                <span className="badge">Friends Only</span>
+              </div>
+              <p className="note">
+                Propose a trade with a friend. List card IDs separated by commas, with optional quantity (e.g. <code>spark-imp x2, shadow-whelp</code>). Max 6 distinct cards per side; up to 3 copies per card.
+              </p>
+
+              <form className="social-inline-form" onSubmit={handleProposeTrade}>
+                <input
+                  className="text-input"
+                  value={tradeForm.toAccountId}
+                  placeholder="Friend account id (acct-…)"
+                  onChange={(event) => setTradeForm((f) => ({ ...f, toAccountId: event.target.value }))}
+                />
+                <input
+                  className="text-input"
+                  value={tradeForm.offer}
+                  placeholder="You give: e.g. spark-imp x1"
+                  onChange={(event) => setTradeForm((f) => ({ ...f, offer: event.target.value }))}
+                />
+                <input
+                  className="text-input"
+                  value={tradeForm.request}
+                  placeholder="You receive: e.g. shadow-whelp x1"
+                  onChange={(event) => setTradeForm((f) => ({ ...f, request: event.target.value }))}
+                />
+                <button className="secondary" type="submit">Propose Trade</button>
+              </form>
+              {tradeStatus && <p className="note toast-line">{tradeStatus}</p>}
+
+              <ul className="trade-list">
+                {trades.length === 0 ? (
+                  <li className="note">No trades yet.</li>
+                ) : (
+                  trades.map((trade) => {
+                    const youArePromoter = trade.fromAccountId === (serverProfile?.accountId ?? '')
+                    const pending = trade.status === 'pending'
+                    return (
+                      <li className="trade-row" key={trade.id}>
+                        <div className="trade-identity">
+                          <strong>{youArePromoter ? 'You → friend' : 'Friend → you'}</strong>
+                          <span className={`badge trade-status-${trade.status}`}>{trade.status}</span>
+                        </div>
+                        <div className="mini-text">
+                          Offer: {trade.offer.map((i) => `${i.cardId}×${i.qty}`).join(', ')}
+                          {' · '}
+                          Request: {trade.request.map((i) => `${i.cardId}×${i.qty}`).join(', ')}
+                        </div>
+                        {pending && (
+                          <div className="controls">
+                            {youArePromoter ? (
+                              <button className="ghost mini" onClick={() => void handleTradeAction(trade.id, 'cancel')}>
+                                Cancel
+                              </button>
+                            ) : (
+                              <>
+                                <button className="primary mini" onClick={() => void handleTradeAction(trade.id, 'accept')}>
+                                  Accept
+                                </button>
+                                <button className="ghost mini" onClick={() => void handleTradeAction(trade.id, 'reject')}>
+                                  Reject
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        )}
+                      </li>
+                    )
+                  })
+                )}
+              </ul>
+            </div>
           </article>
         </div>
 

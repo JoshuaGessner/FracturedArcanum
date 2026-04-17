@@ -170,3 +170,123 @@ describe('resolveMatchResult mode gating', () => {
     expect(result.ratingDelta).toBeGreaterThan(0)
   })
 })
+
+describe('card trading', () => {
+  function setOwned(accountId, owned) {
+    db.default.prepare(
+      `UPDATE player_profiles SET owned_cards = ? WHERE account_id = ?`,
+    ).run(JSON.stringify(owned), accountId)
+  }
+
+  function makeFriendPair(prefix) {
+    const a = makeAccount(prefix + 'a')
+    const b = makeAccount(prefix + 'b')
+    db.addFriend(a, prefix + 'b')
+    // Reset collections to a controlled baseline so starter-pack contents
+    // don't interfere with max-copy enforcement.
+    setOwned(a, {})
+    setOwned(b, {})
+    return [a, b]
+  }
+
+  it('proposeTrade rejects non-friends', () => {
+    const a = makeAccount('tradenotfriendx')
+    const b = makeAccount('tradenotfriendy')
+    setOwned(a, { 'spark-imp': 2 })
+    const result = db.proposeTrade(a, b, [{ cardId: 'spark-imp', qty: 1 }], [{ cardId: 'shadow-whelp', qty: 1 }])
+    expect(result.ok).toBe(false)
+    expect(result.status).toBe(403)
+  })
+
+  it('proposeTrade rejects self-trade', () => {
+    const a = makeAccount('tradeselfa')
+    setOwned(a, { 'spark-imp': 1 })
+    const result = db.proposeTrade(a, a, [{ cardId: 'spark-imp', qty: 1 }], [{ cardId: 'spark-imp', qty: 1 }])
+    expect(result.ok).toBe(false)
+  })
+
+  it('proposeTrade rejects when proposer does not own enough copies', () => {
+    const [a, b] = makeFriendPair('tradelow1')
+    setOwned(a, { 'spark-imp': 1 })
+    const result = db.proposeTrade(a, b, [{ cardId: 'spark-imp', qty: 3 }], [{ cardId: 'shadow-whelp', qty: 1 }])
+    expect(result.ok).toBe(false)
+    expect(result.error).toMatch(/do not own/i)
+  })
+
+  it('acceptTrade swaps cards atomically', () => {
+    const [a, b] = makeFriendPair('tradeswap1')
+    setOwned(a, { 'spark-imp': 2 })
+    setOwned(b, { 'shadow-whelp': 2 })
+    const prop = db.proposeTrade(a, b, [{ cardId: 'spark-imp', qty: 1 }], [{ cardId: 'shadow-whelp', qty: 1 }])
+    expect(prop.ok).toBe(true)
+
+    const accept = db.acceptTrade(b, prop.tradeId)
+    expect(accept.ok).toBe(true)
+
+    const aCollection = db.getCollection(a)
+    const bCollection = db.getCollection(b)
+    expect(aCollection['spark-imp']).toBe(1)
+    expect(aCollection['shadow-whelp']).toBe(1)
+    expect(bCollection['shadow-whelp']).toBe(1)
+    expect(bCollection['spark-imp']).toBe(1)
+  })
+
+  it('concurrent accepts: only one wins', () => {
+    const [a, b] = makeFriendPair('tradeconcur1')
+    setOwned(a, { 'spark-imp': 2 })
+    setOwned(b, { 'shadow-whelp': 2 })
+    const prop = db.proposeTrade(a, b, [{ cardId: 'spark-imp', qty: 1 }], [{ cardId: 'shadow-whelp', qty: 1 }])
+    expect(prop.ok).toBe(true)
+
+    const first = db.acceptTrade(b, prop.tradeId)
+    const second = db.acceptTrade(b, prop.tradeId)
+    expect(first.ok).toBe(true)
+    expect(second.ok).toBe(false) // second accept on already-accepted trade
+  })
+
+  it('cancelTrade (by proposer) ends pending trade', () => {
+    const [a, b] = makeFriendPair('tradecancel1')
+    setOwned(a, { 'spark-imp': 1 })
+    setOwned(b, { 'shadow-whelp': 1 })
+    const prop = db.proposeTrade(a, b, [{ cardId: 'spark-imp', qty: 1 }], [{ cardId: 'shadow-whelp', qty: 1 }])
+    const cancelled = db.cancelTrade(a, prop.tradeId, 'cancelled')
+    expect(cancelled.ok).toBe(true)
+    const acceptAfter = db.acceptTrade(b, prop.tradeId)
+    expect(acceptAfter.ok).toBe(false)
+  })
+
+  it('cancelTrade rejects wrong actor', () => {
+    const [a, b] = makeFriendPair('tradeperm1')
+    setOwned(a, { 'spark-imp': 1 })
+    setOwned(b, { 'shadow-whelp': 1 })
+    const prop = db.proposeTrade(a, b, [{ cardId: 'spark-imp', qty: 1 }], [{ cardId: 'shadow-whelp', qty: 1 }])
+    // Recipient cannot use "cancel" action (they must use "reject")
+    const wrong = db.cancelTrade(b, prop.tradeId, 'cancelled')
+    expect(wrong.ok).toBe(false)
+    expect(wrong.status).toBe(403)
+    // Proposer cannot "reject"
+    const wrong2 = db.cancelTrade(a, prop.tradeId, 'rejected')
+    expect(wrong2.ok).toBe(false)
+  })
+
+  it('rejects malformed trade items', () => {
+    const [a, b] = makeFriendPair('tradebad1')
+    setOwned(a, { 'spark-imp': 2 })
+    const bad = db.proposeTrade(a, b, [], [{ cardId: 'shadow-whelp', qty: 1 }])
+    expect(bad.ok).toBe(false)
+    const bad2 = db.proposeTrade(a, b, [{ cardId: 'spark-imp', qty: 99 }], [{ cardId: 'shadow-whelp', qty: 1 }])
+    expect(bad2.ok).toBe(false)
+  })
+
+  it('acceptTrade fails if it would exceed max-copy limit for receiver', () => {
+    const [a, b] = makeFriendPair('tradecap1')
+    // a has 1 spark-imp; b already has 3 (MAX_COPIES). Trading 1 more spark-imp to b would overflow.
+    setOwned(a, { 'spark-imp': 1 })
+    setOwned(b, { 'shadow-whelp': 1, 'spark-imp': 3 })
+    const prop = db.proposeTrade(a, b, [{ cardId: 'spark-imp', qty: 1 }], [{ cardId: 'shadow-whelp', qty: 1 }])
+    expect(prop.ok).toBe(true)
+    const accept = db.acceptTrade(b, prop.tradeId)
+    expect(accept.ok).toBe(false)
+    expect(accept.error).toMatch(/limit/i)
+  })
+})

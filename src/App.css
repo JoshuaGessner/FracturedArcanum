@@ -1324,6 +1324,56 @@ button.danger:hover { filter: brightness(1.08); }
   50%       { box-shadow: 0 0 0 8px rgba(52, 211, 153, 0); }
 }
 
+/* ─── Card trading ───────────────────────────────────────────────── */
+
+.social-trade-block {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(147, 197, 253, 0.18);
+  background: rgba(8, 14, 30, 0.42);
+  margin-top: 12px;
+}
+
+.social-trade-block code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.85em;
+  background: rgba(15, 23, 42, 0.65);
+  padding: 1px 4px;
+  border-radius: 4px;
+}
+
+.trade-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.trade-row {
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(147, 197, 253, 0.15);
+  background: rgba(8, 14, 30, 0.55);
+}
+
+.trade-identity {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.badge.trade-status-pending { background: rgba(250, 204, 21, 0.2); border-color: rgba(250, 204, 21, 0.45); color: #fde68a; }
+.badge.trade-status-accepted { background: rgba(52, 211, 153, 0.2); border-color: rgba(52, 211, 153, 0.45); color: #bbf7d0; }
+.badge.trade-status-rejected,
+.badge.trade-status-cancelled,
+.badge.trade-status-expired { background: rgba(148, 163, 184, 0.18); border-color: rgba(148, 163, 184, 0.4); color: #cbd5e1; }
+
 /* ─── Emotes ────────────────────────────────────────────────────── */
 
 .emote-row { margin-top: 10px; }
