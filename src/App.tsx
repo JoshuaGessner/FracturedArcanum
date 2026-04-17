@@ -159,6 +159,7 @@ type ServerProfile = {
   accountId?: string
   displayName?: string
   username: string
+  role?: 'user' | 'admin' | 'owner'
   runes: number
   seasonRating: number
   wins: number
@@ -169,6 +170,37 @@ type ServerProfile = {
   selectedTheme: CosmeticTheme
   lastDaily: string
   totalEarned: number
+}
+
+type AdminUser = {
+  accountId: string
+  username: string
+  displayName: string
+  role: 'user' | 'admin' | 'owner'
+  createdAt: string
+  lastLogin: string | null
+}
+
+type AdminAuditEntry = {
+  id: string
+  action: string
+  actor: { accountId: string; username: string; displayName: string } | null
+  target: { accountId: string; username: string; displayName: string } | null
+  metadata: Record<string, unknown>
+  createdAt: string
+}
+
+type TradeItem = { cardId: string; qty: number }
+type Trade = {
+  id: string
+  fromAccountId: string
+  toAccountId: string
+  status: 'pending' | 'accepted' | 'rejected' | 'cancelled' | 'expired'
+  offer: TradeItem[]
+  request: TradeItem[]
+  createdAt: string
+  updatedAt: string
+  expiresAt: string
 }
 
 type InstallPromptEvent = Event & {
@@ -487,7 +519,6 @@ function App() {
   const [setupForm, setSetupForm] = useState({ username: '', password: '', displayName: '' })
   const [setupError, setSetupError] = useState('')
   const [setupLoading, setSetupLoading] = useState(false)
-  const [setupAdminKey, setSetupAdminKey] = useState('')
 
   // ─── Server-authoritative player state ────────────────────────────────
   const [serverProfile, setServerProfile] = useState<ServerProfile | null>(null)
@@ -497,6 +528,9 @@ function App() {
   const ownedThemes = serverProfile?.ownedThemes ?? ['royal'] as CosmeticTheme[]
   const selectedTheme = (serverProfile?.selectedTheme ?? 'royal') as CosmeticTheme
   const lastDailyClaim = serverProfile?.lastDaily ?? ''
+  const accountRole = serverProfile?.role ?? 'user'
+  const isAdminRole = accountRole === 'admin' || accountRole === 'owner'
+  const isOwnerRole = accountRole === 'owner'
 
   // ─── Local game/UI state ──────────────────────────────────────────────
   const [deckConfig, setDeckConfig] = useState<DeckConfig>(savedDeckConfig)
@@ -529,6 +563,25 @@ function App() {
   const [openedPackCards, setOpenedPackCards] = useState<OpenedPackCard[]>([])
   const [packOpening, setPackOpening] = useState<string | null>(null)
   const [friends, setFriends] = useState<SocialFriend[]>([])
+  const [onlineFriendIds, setOnlineFriendIds] = useState<Set<string>>(new Set())
+  const [outgoingChallenge, setOutgoingChallenge] = useState<{ challengeId: string; toAccountId: string; toName: string; expiresAt: number } | null>(null)
+  const [incomingChallenge, setIncomingChallenge] = useState<{ challengeId: string; fromAccountId: string; fromName: string; expiresAt: number } | null>(null)
+  const [challengeStatus, setChallengeStatus] = useState('')
+  const [trades, setTrades] = useState<Trade[]>([])
+  const [tradesTick, setTradesTick] = useState(0)
+  const [tradeStatus, setTradeStatus] = useState('')
+  const [tradeForm, setTradeForm] = useState<{ toAccountId: string; offer: TradeItem[]; request: TradeItem[] }>({
+    toAccountId: '',
+    offer: [],
+    request: [],
+  })
+  const [tradePickerDraft, setTradePickerDraft] = useState<{ side: 'offer' | 'request'; cardId: string; qty: number }>({
+    side: 'offer',
+    cardId: '',
+    qty: 1,
+  })
+  const [tradeSubmitting, setTradeSubmitting] = useState(false)
+  const [nowTick, setNowTick] = useState(() => Date.now())
   const [clan, setClan] = useState<SocialClan | null>(null)
   const [socialLoading, setSocialLoading] = useState(false)
   const [socialStatus, setSocialStatus] = useState('Social hub ready.')
@@ -553,7 +606,65 @@ function App() {
   const [visitorId] = useState(() => readStoredValue(STORAGE_KEYS.visitor, createAnonymousId()))
   const [sessionId] = useState(() => `session-${Math.random().toString(36).slice(2, 10)}`)
   const [installPromptEvent, setInstallPromptEvent] = useState<InstallPromptEvent | null>(null)
-  const [toastMessage, setToastMessage] = useState('Ready your deck and enter the arena.')
+  const [toastMessage, setToastMessageRaw] = useState('Ready your deck and enter the arena.')
+  const [toastSeverity, setToastSeverity] = useState<'info' | 'success' | 'warning' | 'error'>('info')
+  type ToastEntry = { id: string; message: string; severity: 'info' | 'success' | 'warning' | 'error' }
+  const [toastStack, setToastStack] = useState<ToastEntry[]>([])
+  const inferToastSeverity = useCallback(
+    (text: string): 'info' | 'success' | 'warning' | 'error' => {
+      const lc = text.toLowerCase()
+      if (/(error|fail|could not|cannot|denied|invalid|wrong|disconnect|lost|revok|too short|too long|already|forbid|unavailable|not enough)/.test(lc))
+        return 'error'
+      if (/(warning|caution|expired|reconnect|waiting|slow|delay)/.test(lc)) return 'warning'
+      if (/(welcome|claimed|unlocked|equipped|victory|won|saved|added|matched|ready|reconnected|installed|now an admin|server owner)/.test(lc))
+        return 'success'
+      return 'info'
+    },
+    [],
+  )
+  const setToastMessage = useCallback(
+    (message: string, severityOverride?: 'info' | 'success' | 'warning' | 'error') => {
+      const severity = severityOverride ?? inferToastSeverity(message)
+      setToastMessageRaw(message)
+      setToastSeverity(severity)
+      const id = `t-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
+      setToastStack((current) => [...current.slice(-3), { id, message, severity }])
+      window.setTimeout(() => {
+        setToastStack((current) => current.filter((entry) => entry.id !== id))
+      }, 4200)
+    },
+    [inferToastSeverity],
+  )
+  type ConfirmOptions = {
+    title: string
+    body: React.ReactNode
+    confirmLabel?: string
+    cancelLabel?: string
+    danger?: boolean
+    requireText?: string
+    requireTextLabel?: string
+  }
+  type ConfirmRequest = ConfirmOptions & { resolve: (ok: boolean) => void }
+  const [confirmRequest, setConfirmRequest] = useState<ConfirmRequest | null>(null)
+  const [confirmTextInput, setConfirmTextInput] = useState('')
+  const askConfirm = useCallback(
+    (options: ConfirmOptions): Promise<boolean> =>
+      new Promise<boolean>((resolve) => {
+        setConfirmTextInput('')
+        setConfirmRequest({ ...options, resolve })
+      }),
+    [],
+  )
+  const closeConfirm = useCallback(
+    (ok: boolean) => {
+      setConfirmRequest((current) => {
+        if (current) current.resolve(ok)
+        return null
+      })
+      setConfirmTextInput('')
+    },
+    [],
+  )
   const [opponentDisconnected, setOpponentDisconnected] = useState(false)
   const [disconnectGraceMs, setDisconnectGraceMs] = useState(0)
   const [swUpdateAvailable, setSwUpdateAvailable] = useState(false)
@@ -565,10 +676,17 @@ function App() {
     details: '',
   })
   const [complaintStatus, setComplaintStatus] = useState('No issue reports submitted in this session.')
-  const [adminKey, setAdminKey] = useState('')
   const [adminOverview, setAdminOverview] = useState<AdminOverview | null>(null)
   const [adminLoading, setAdminLoading] = useState(false)
   const [adminError, setAdminError] = useState('')
+  const [adminUsers, setAdminUsers] = useState<AdminUser[]>([])
+  const [adminUsersLoading, setAdminUsersLoading] = useState(false)
+  const [adminUserSearch, setAdminUserSearch] = useState('')
+  const [adminAudit, setAdminAudit] = useState<AdminAuditEntry[]>([])
+  const [adminAuditFilter, setAdminAuditFilter] = useState<string>('all')
+  const [adminAuditExpandedId, setAdminAuditExpandedId] = useState<string | null>(null)
+  const [transferForm, setTransferForm] = useState({ targetAccountId: '', password: '' })
+  const [transferStatus, setTransferStatus] = useState('')
   const [battleIntroVisible, setBattleIntroVisible] = useState(false)
   const [rewardOverlayVisible, setRewardOverlayVisible] = useState(false)
   const [damagedSlots, setDamagedSlots] = useState<Set<string>>(new Set())
@@ -738,7 +856,7 @@ function App() {
         }),
       })
       const data = await response.json() as {
-        ok: boolean; error?: string; adminKey?: string;
+        ok: boolean; error?: string;
         token?: string; profile?: ServerProfile
       }
 
@@ -748,7 +866,6 @@ function App() {
         return
       }
 
-      setSetupAdminKey(data.adminKey ?? '')
       setAuthToken(data.token ?? '')
       setServerProfile(data.profile ?? null)
       setLoggedIn(true)
@@ -882,6 +999,85 @@ function App() {
 
     socket.on('server:hello', (payload: { message: string }) => {
       setMotd(payload.message)
+    })
+
+    socket.on('server:role_changed', (payload: { role?: unknown }) => {
+      const nextRole = payload?.role
+      if (nextRole !== 'user' && nextRole !== 'admin' && nextRole !== 'owner') return
+      setServerProfile((profile) => (profile ? { ...profile, role: nextRole } : profile))
+      if (nextRole === 'user') {
+        setToastMessage('Your admin privileges were revoked.')
+        setActiveScreen((current) => (current === 'ops' ? 'home' : current))
+      } else if (nextRole === 'admin') {
+        setToastMessage('You are now an admin.')
+      } else if (nextRole === 'owner') {
+        setToastMessage('You are now the server owner.')
+      }
+    })
+
+    socket.on('presence:snapshot', (payload: { onlineFriendIds?: string[] }) => {
+      setOnlineFriendIds(new Set(payload?.onlineFriendIds ?? []))
+    })
+
+    socket.on('presence:update', (payload: { accountId?: string; online?: boolean }) => {
+      if (!payload?.accountId) return
+      setOnlineFriendIds((current) => {
+        const next = new Set(current)
+        if (payload.online) next.add(payload.accountId!)
+        else next.delete(payload.accountId!)
+        return next
+      })
+    })
+
+    socket.on('challenge:incoming', (payload: { challengeId: string; fromAccountId: string; fromName: string; expiresAt: number }) => {
+      setIncomingChallenge(payload)
+      setToastMessage(`${payload.fromName} challenged you to an unranked duel.`)
+    })
+
+    socket.on('challenge:sent', (payload: { challengeId: string; toAccountId: string; toName: string; expiresAt: number }) => {
+      setOutgoingChallenge(payload)
+      setChallengeStatus(`Waiting for ${payload.toName} to accept…`)
+    })
+
+    socket.on('challenge:declined', (payload: { challengeId: string }) => {
+      setOutgoingChallenge((current) => (current?.challengeId === payload.challengeId ? null : current))
+      setIncomingChallenge((current) => (current?.challengeId === payload.challengeId ? null : current))
+      setChallengeStatus('Challenge declined.')
+    })
+
+    socket.on('challenge:cancelled', (payload: { challengeId: string; reason?: string }) => {
+      setOutgoingChallenge((current) => (current?.challengeId === payload.challengeId ? null : current))
+      setIncomingChallenge((current) => (current?.challengeId === payload.challengeId ? null : current))
+      setChallengeStatus(payload?.reason === 'disconnected' ? 'Challenge cancelled — player disconnected.' : 'Challenge cancelled.')
+    })
+
+    socket.on('challenge:expired', (payload: { challengeId: string }) => {
+      setOutgoingChallenge((current) => (current?.challengeId === payload.challengeId ? null : current))
+      setIncomingChallenge((current) => (current?.challengeId === payload.challengeId ? null : current))
+      setChallengeStatus('Challenge expired.')
+    })
+
+    socket.on('challenge:error', (payload: { error?: string }) => {
+      setChallengeStatus(payload?.error ?? 'Challenge failed.')
+    })
+
+    socket.on('challenge:matched', (payload: { roomId: string; opponent: OpponentProfile; mode: string }) => {
+      setOutgoingChallenge(null)
+      setIncomingChallenge(null)
+      setChallengeStatus('')
+      setQueuedOpponent(payload.opponent)
+      setQueueState('found')
+      setLobbyCode(payload.roomId.toUpperCase())
+      setBattleKind('ranked') // reuse ranked-style server-authoritative flow
+      setToastMessage(`Unranked duel ready against ${payload.opponent.name}.`)
+    })
+
+    socket.on('trade:incoming', () => {
+      setToastMessage('You have a new trade proposal.')
+      setTradesTick((n) => n + 1)
+    })
+    socket.on('trade:updated', () => {
+      setTradesTick((n) => n + 1)
     })
 
     socket.on(
@@ -1176,6 +1372,8 @@ function App() {
         .catch(() => {})
     }, 1500)
     return () => window.clearTimeout(timer)
+    // setToastMessage is a stable useCallback; only deck/auth changes should retrigger this debounce.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deckConfig, authToken, loggedIn])
 
   useEffect(() => {
@@ -1197,6 +1395,8 @@ function App() {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstall)
       window.removeEventListener('appinstalled', handleInstalled)
     }
+    // setToastMessage is a stable useCallback wrapper — installation listeners only need to register once.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
@@ -1208,6 +1408,12 @@ function App() {
 
     window.addEventListener('sw-update-available', handleSwUpdate)
     return () => window.removeEventListener('sw-update-available', handleSwUpdate)
+  }, [])
+
+  // Drives time-based UI: trade expiration countdowns, pending challenges, etc.
+  useEffect(() => {
+    const interval = window.setInterval(() => setNowTick(Date.now()), 1000)
+    return () => window.clearInterval(interval)
   }, [])
 
   useEffect(() => {
@@ -1562,20 +1768,20 @@ function App() {
     void sendAnalytics('cosmetic_equip', { themeId }, 'vault')
   }
 
-  async function refreshAdminOverview(key = adminKey) {
-    if (!key.trim()) {
-      setAdminError('Enter the admin key to open the operations console.')
+  async function refreshAdminOverview() {
+    if (!authToken) {
+      setAdminError('Sign in with your owner or admin account to open the operations console.')
+      return
+    }
+    if (!isAdminRole) {
+      setAdminError('Your account does not have admin privileges.')
       return
     }
 
     setAdminLoading(true)
 
     try {
-      const response = await fetch(`${ARENA_URL}/api/admin/overview`, {
-        headers: {
-          'x-admin-key': key.trim(),
-        },
-      })
+      const response = await authFetch('/api/admin/overview', authToken)
 
       if (!response.ok) {
         throw new Error('Admin access denied')
@@ -1585,11 +1791,153 @@ function App() {
       setAdminOverview(data)
       setAdminSettings(data.settings)
       setAdminError('')
+      // Also refresh users + audit for owner UI
+      if (isOwnerRole) {
+        void refreshAdminUsers()
+        void refreshAdminAudit()
+      }
     } catch {
       setAdminOverview(null)
-      setAdminError('Admin access failed. Check the key and try again.')
+      setAdminError('Admin access failed. Your session may have expired.')
     } finally {
       setAdminLoading(false)
+    }
+  }
+
+  async function refreshAdminUsers(searchTerm = adminUserSearch) {
+    if (!authToken || !isAdminRole) return
+    setAdminUsersLoading(true)
+    try {
+      const q = searchTerm.trim()
+      const path = q ? `/api/admin/users?search=${encodeURIComponent(q)}` : '/api/admin/users'
+      const response = await authFetch(path, authToken)
+      if (!response.ok) throw new Error('users fetch failed')
+      const data = (await response.json()) as { ok: boolean; users: AdminUser[] }
+      setAdminUsers(data.users ?? [])
+    } catch {
+      // non-fatal
+    } finally {
+      setAdminUsersLoading(false)
+    }
+  }
+
+  async function refreshAdminAudit() {
+    if (!authToken || !isAdminRole) return
+    try {
+      const response = await authFetch('/api/admin/audit', authToken)
+      if (!response.ok) return
+      const data = (await response.json()) as { ok: boolean; audit: AdminAuditEntry[] }
+      setAdminAudit(data.audit ?? [])
+    } catch { /* non-fatal */ }
+  }
+
+  async function handleSetUserRole(target: AdminUser, newRole: 'admin' | 'user') {
+    if (!authToken || !isOwnerRole) return
+    if (target.accountId === (serverProfile?.accountId ?? '')) {
+      setAdminError('You cannot change your own role.')
+      return
+    }
+    const niceName = target.displayName || target.username
+    const promoting = newRole === 'admin'
+    const ok = await askConfirm({
+      title: promoting ? 'Promote to admin?' : 'Demote to player?',
+      body: (
+        <>
+          {promoting ? (
+            <p>
+              <strong>@{target.username}</strong> will gain access to the Ops console — including
+              live service controls, user moderation, and the audit log.
+            </p>
+          ) : (
+            <p>
+              <strong>@{target.username}</strong> will immediately lose access to the Ops
+              console.
+            </p>
+          )}
+          <p className="mini-text">You can reverse this at any time.</p>
+        </>
+      ),
+      confirmLabel: promoting ? 'Promote' : 'Demote',
+      danger: !promoting,
+    })
+    if (!ok) return
+    try {
+      const response = await authFetch(
+        `/api/admin/users/${encodeURIComponent(target.accountId)}/role`,
+        authToken,
+        { method: 'POST', body: { role: newRole } },
+      )
+      const data = (await response.json()) as { ok: boolean; error?: string }
+      if (!response.ok || !data.ok) {
+        setAdminError(data.error ?? 'Role change failed.')
+        return
+      }
+      setAdminError('')
+      setToastMessage(`${niceName} is now ${promoting ? 'an admin' : 'a regular user'}.`)
+      await refreshAdminUsers()
+      await refreshAdminAudit()
+    } catch {
+      setAdminError('Could not change that role right now.')
+    }
+  }
+
+  async function handleTransferOwnership(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!authToken || !isOwnerRole) return
+    const targetAccountId = transferForm.targetAccountId.trim()
+    const password = transferForm.password
+    if (!targetAccountId || !password) {
+      setTransferStatus('Choose a target account and confirm your password.')
+      return
+    }
+    if (targetAccountId === (serverProfile?.accountId ?? '')) {
+      setTransferStatus('Target must be a different account.')
+      return
+    }
+    const target = adminUsers.find((user) => user.accountId === targetAccountId)
+    const targetUsername = target?.username ?? ''
+    if (!targetUsername) {
+      setTransferStatus('Search for the target account in the list above before transferring.')
+      return
+    }
+    const ok = await askConfirm({
+      title: 'Transfer server ownership',
+      body: (
+        <>
+          <p>
+            Ownership will be transferred to <strong>@{targetUsername}</strong>
+            {target?.displayName ? <> ({target.displayName})</> : null}.
+          </p>
+          <p>
+            You will be demoted to <strong>admin</strong>. Only the new owner can promote you back —
+            this action cannot be reversed without their cooperation or filesystem-level recovery.
+          </p>
+        </>
+      ),
+      confirmLabel: 'Transfer ownership',
+      danger: true,
+      requireText: targetUsername,
+      requireTextLabel: `Type @${targetUsername} to confirm`,
+    })
+    if (!ok) return
+    try {
+      const response = await authFetch('/api/admin/owner/transfer', authToken, {
+        method: 'POST',
+        body: { targetAccountId, password },
+      })
+      const data = (await response.json()) as { ok: boolean; error?: string }
+      if (!response.ok || !data.ok) {
+        setTransferStatus(data.error ?? 'Ownership transfer failed.')
+        return
+      }
+      setTransferStatus(`Ownership transferred to @${targetUsername}. You are now an admin on this server.`)
+      setTransferForm({ targetAccountId: '', password: '' })
+      setServerProfile((profile) => (profile ? { ...profile, role: 'admin' } : profile))
+      await refreshAdminUsers()
+      await refreshAdminAudit()
+      await refreshAdminOverview()
+    } catch {
+      setTransferStatus('Could not reach the server. Try again.')
     }
   }
 
@@ -1635,19 +1983,15 @@ function App() {
   }
 
   async function handleSaveAdminSettings() {
-    if (!adminKey.trim()) {
-      setAdminError('Enter the admin key before saving live settings.')
+    if (!authToken || !isAdminRole) {
+      setAdminError('Sign in with an admin account to save live settings.')
       return
     }
 
     try {
-      const response = await fetch(`${ARENA_URL}/api/admin/settings`, {
+      const response = await authFetch('/api/admin/settings', authToken, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-admin-key': adminKey.trim(),
-        },
-        body: JSON.stringify(adminSettings),
+        body: adminSettings,
       })
 
       if (!response.ok) {
@@ -1659,32 +2003,28 @@ function App() {
       setFeaturedMode(adminSettings.featuredMode)
       setMaintenanceMode(adminSettings.maintenanceMode)
       setToastMessage('Admin live settings updated.')
-      await refreshAdminOverview(adminKey)
+      await refreshAdminOverview()
     } catch {
       setAdminError('The live settings could not be saved.')
     }
   }
 
   async function handleUpdateComplaintStatus(id: string, status: string) {
-    if (!adminKey.trim()) {
-      setAdminError('Enter the admin key before updating tickets.')
+    if (!authToken || !isAdminRole) {
+      setAdminError('Sign in with an admin account to update tickets.')
       return
     }
 
     try {
-      const response = await fetch(`${ARENA_URL}/api/admin/complaints/${id}`, {
+      const response = await authFetch(`/api/admin/complaints/${id}`, authToken, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-admin-key': adminKey.trim(),
-        },
-        body: JSON.stringify({
+        body: {
           status,
           note:
             status === 'resolved'
               ? 'Marked resolved from the in-app admin console.'
               : 'Marked investigating from the in-app admin console.',
-        }),
+        },
       })
 
       if (!response.ok) {
@@ -1692,7 +2032,7 @@ function App() {
       }
 
       setToastMessage(`Complaint ${id} updated to ${status}.`)
-      await refreshAdminOverview(adminKey)
+      await refreshAdminOverview()
     } catch {
       setAdminError('The complaint status could not be updated.')
     }
@@ -1830,6 +2170,207 @@ function App() {
       setSocialStatus('Could not remove friend right now.')
     } finally {
       setSocialLoading(false)
+    }
+  }
+
+  function handleChallengeFriend(friend: SocialFriend) {
+    const socket = socketClientRef.current
+    if (!socket?.connected) {
+      setChallengeStatus('Not connected to arena server.')
+      return
+    }
+    if (!deckReady) {
+      setChallengeStatus('Finish your deck before challenging friends.')
+      return
+    }
+    if (outgoingChallenge) {
+      setChallengeStatus('Cancel your pending challenge first.')
+      return
+    }
+    setChallengeStatus(`Inviting ${friend.displayName}…`)
+    socket.emit('challenge:send', {
+      targetAccountId: friend.accountId,
+      deckConfig,
+    })
+  }
+
+  function handleAcceptChallenge() {
+    const socket = socketClientRef.current
+    if (!socket?.connected || !incomingChallenge) return
+    if (!deckReady) {
+      setChallengeStatus('Build a deck before accepting challenges.')
+      return
+    }
+    socket.emit('challenge:accept', {
+      challengeId: incomingChallenge.challengeId,
+      deckConfig,
+    })
+  }
+
+  function handleDeclineChallenge() {
+    const socket = socketClientRef.current
+    if (!socket?.connected || !incomingChallenge) return
+    socket.emit('challenge:decline', { challengeId: incomingChallenge.challengeId })
+    setIncomingChallenge(null)
+  }
+
+  function handleCancelOutgoingChallenge() {
+    const socket = socketClientRef.current
+    if (!socket?.connected || !outgoingChallenge) return
+    socket.emit('challenge:cancel', { challengeId: outgoingChallenge.challengeId })
+    setOutgoingChallenge(null)
+  }
+
+  // ─── Trading ──────────────────────────────────────────────────────
+
+  const refreshTrades = useCallback(async () => {
+    if (!authToken) return
+    try {
+      const response = await authFetch('/api/trades', authToken)
+      if (!response.ok) return
+      const data = (await response.json()) as { ok: boolean; trades: Trade[] }
+      setTrades(data.trades ?? [])
+    } catch {
+      /* non-fatal */
+    }
+  }, [authToken])
+
+  // Fetch trades whenever a trade event bumps the tick (login, trade:incoming,
+  // trade:updated). This is a plain "subscribe to external event" effect —
+  // the setState call inside refreshTrades is the legitimate way to mirror
+  // external updates into React state.
+  useEffect(() => {
+    if (!loggedIn) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void refreshTrades()
+  }, [loggedIn, tradesTick, refreshTrades])
+
+  async function handleProposeTrade(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!authToken || tradeSubmitting) return
+    const toAccountId = tradeForm.toAccountId.trim()
+    if (!toAccountId) {
+      setTradeStatus('Choose a friend to trade with.')
+      return
+    }
+    if (!tradeForm.offer.length || !tradeForm.request.length) {
+      setTradeStatus('Add at least one card to each side of the trade.')
+      return
+    }
+    setTradeSubmitting(true)
+    try {
+      const response = await authFetch('/api/trades/propose', authToken, {
+        method: 'POST',
+        body: { toAccountId, offer: tradeForm.offer, request: tradeForm.request },
+      })
+      const data = (await response.json()) as { ok: boolean; error?: string }
+      if (!response.ok || !data.ok) {
+        setTradeStatus(data.error ?? 'Could not propose trade.')
+        return
+      }
+      setTradeStatus('Trade proposal sent.')
+      setTradeForm({ toAccountId: '', offer: [], request: [] })
+      setTradePickerDraft({ side: 'offer', cardId: '', qty: 1 })
+      await refreshTrades()
+    } catch {
+      setTradeStatus('Could not reach server.')
+    } finally {
+      setTradeSubmitting(false)
+    }
+  }
+
+  function addTradeChip() {
+    const cardId = tradePickerDraft.cardId
+    if (!cardId) return
+    const qty = Math.max(1, Math.min(3, tradePickerDraft.qty || 1))
+    const sideKey = tradePickerDraft.side
+    setTradeForm((current) => {
+      const sideItems = current[sideKey]
+      if (sideItems.length >= 6 && !sideItems.some((item) => item.cardId === cardId)) {
+        setTradeStatus('Each side can include at most 6 distinct cards.')
+        return current
+      }
+      const nextItems = [...sideItems]
+      const existingIndex = nextItems.findIndex((item) => item.cardId === cardId)
+      if (existingIndex >= 0) {
+        nextItems[existingIndex] = { cardId, qty: Math.min(3, nextItems[existingIndex].qty + qty) }
+      } else {
+        nextItems.push({ cardId, qty })
+      }
+      return { ...current, [sideKey]: nextItems }
+    })
+    setTradePickerDraft((current) => ({ ...current, cardId: '', qty: 1 }))
+  }
+
+  function removeTradeChip(side: 'offer' | 'request', cardId: string) {
+    setTradeForm((current) => ({
+      ...current,
+      [side]: current[side].filter((item) => item.cardId !== cardId),
+    }))
+  }
+
+  function getCardName(cardId: string): string {
+    const card = CARD_LIBRARY.find((entry) => entry.id === cardId)
+    return card ? card.name : cardId
+  }
+
+  function getCardIcon(cardId: string): string {
+    const card = CARD_LIBRARY.find((entry) => entry.id === cardId)
+    return card?.icon ?? '🃏'
+  }
+
+  function formatCountdown(targetMs: number): string {
+    const remaining = Math.max(0, targetMs - nowTick)
+    if (remaining <= 0) return 'expired'
+    const totalSec = Math.floor(remaining / 1000)
+    if (totalSec >= 86400) {
+      const d = Math.floor(totalSec / 86400)
+      const h = Math.floor((totalSec % 86400) / 3600)
+      return `${d}d ${h}h`
+    }
+    if (totalSec >= 3600) {
+      const h = Math.floor(totalSec / 3600)
+      const m = Math.floor((totalSec % 3600) / 60)
+      return `${h}h ${m}m`
+    }
+    if (totalSec >= 60) {
+      const m = Math.floor(totalSec / 60)
+      const s = totalSec % 60
+      return `${m}m ${s.toString().padStart(2, '0')}s`
+    }
+    return `${totalSec}s`
+  }
+
+
+  async function handleTradeAction(tradeId: string, action: 'accept' | 'reject' | 'cancel') {
+    if (!authToken) return
+    try {
+      const response = await authFetch(`/api/trades/${encodeURIComponent(tradeId)}/${action}`, authToken, {
+        method: 'POST',
+      })
+      const data = (await response.json()) as { ok: boolean; error?: string }
+      if (!response.ok || !data.ok) {
+        setTradeStatus(data.error ?? `Could not ${action} trade.`)
+        return
+      }
+      if (action === 'accept') setTradeStatus('Trade accepted — cards transferred.')
+      else if (action === 'reject') setTradeStatus('Trade rejected.')
+      else setTradeStatus('Trade cancelled.')
+      await refreshTrades()
+      if (action === 'accept') {
+        // Collection changed; refresh it.
+        try {
+          const collectionResponse = await authFetch('/api/collection', authToken)
+          if (collectionResponse.ok) {
+            const collectionData = (await collectionResponse.json()) as { ok: boolean; collection?: Record<string, number> }
+            if (collectionData.ok && collectionData.collection) {
+              setCollection(collectionData.collection)
+            }
+          }
+        } catch { /* non-fatal */ }
+      }
+    } catch {
+      setTradeStatus('Could not reach server.')
     }
   }
 
@@ -2212,6 +2753,66 @@ function App() {
 
   return (
     <main className={`app-shell theme-${selectedTheme}`}>
+      {/* ─── Floating toast stack (auto-fading) ──────────────────────── */}
+      {toastStack.length > 0 && (
+        <div className="toast-stack" role="status" aria-live="polite">
+          {toastStack.map((entry) => (
+            <div key={entry.id} className={`toast toast-${entry.severity}`}>{entry.message}</div>
+          ))}
+        </div>
+      )}
+
+      {/* ─── Branded confirmation modal ──────────────────────────────── */}
+      {confirmRequest && (
+        <div
+          className="modal-backdrop"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="confirm-title"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) closeConfirm(false)
+          }}
+        >
+          <div className="modal">
+            <div className="modal-head">
+              <h3 id="confirm-title">{confirmRequest.title}</h3>
+              <button type="button" className="modal-close" onClick={() => closeConfirm(false)} aria-label="Close">
+                ✕
+              </button>
+            </div>
+            <div className="modal-body">{confirmRequest.body}</div>
+            {confirmRequest.requireText && (
+              <label className="form-field">
+                <span>{confirmRequest.requireTextLabel ?? `Type "${confirmRequest.requireText}" to confirm`}</span>
+                <input
+                  className="text-input"
+                  autoFocus
+                  value={confirmTextInput}
+                  onChange={(event) => setConfirmTextInput(event.target.value)}
+                />
+              </label>
+            )}
+            <div className="modal-actions">
+              <button type="button" className="ghost" onClick={() => closeConfirm(false)}>
+                {confirmRequest.cancelLabel ?? 'Cancel'}
+              </button>
+              <button
+                type="button"
+                className={confirmRequest.danger ? 'btn-danger' : 'primary'}
+                disabled={
+                  confirmRequest.requireText
+                    ? confirmTextInput.trim().toLowerCase() !== confirmRequest.requireText.toLowerCase()
+                    : false
+                }
+                onClick={() => closeConfirm(true)}
+              >
+                {confirmRequest.confirmLabel ?? 'Confirm'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ─── First-launch setup ─────────────────────────────────────── */}
       {setupRequired && (
         <div className="auth-gate">
@@ -2219,17 +2820,7 @@ function App() {
             <img className="brand-logo" src="/fractured-arcanum-logo.svg" alt="Fractured Arcanum" />
             <h1>Server Setup</h1>
             <p className="auth-tagline">Create your admin account to get started</p>
-            {setupAdminKey ? (
-              <div className="setup-complete-block">
-                <p className="auth-tagline">Setup complete! Save your admin key:</p>
-                <code className="admin-key-display">{setupAdminKey}</code>
-                <p className="note">Use this key in the Operations console. Store it securely — it won't be shown again.</p>
-                <button className="primary" onClick={() => setSetupRequired(false)}>
-                  Enter Arena
-                </button>
-              </div>
-            ) : (
-              <form className="auth-form" onSubmit={handleSetup}>
+            <form className="auth-form" onSubmit={handleSetup}>
                 <label>
                   Display Name
                   <input
@@ -2269,7 +2860,6 @@ function App() {
                   {setupLoading ? 'Setting up…' : 'Create Admin Account'}
                 </button>
               </form>
-            )}
           </div>
         </div>
       )}
@@ -2281,6 +2871,19 @@ function App() {
           <div className="update-banner-actions">
             <button className="primary small" onClick={handleAcceptUpdate}>Update Now</button>
             <button className="ghost small" onClick={handleDismissUpdate}>Later</button>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Incoming friend challenge ────────────────────────────── */}
+      {incomingChallenge && (
+        <div className="challenge-banner incoming update-banner">
+          <span>
+            <strong>{incomingChallenge.fromName}</strong> is challenging you to an unranked duel.
+          </span>
+          <div className="update-banner-actions">
+            <button className="primary small" onClick={handleAcceptChallenge}>Accept</button>
+            <button className="ghost small" onClick={handleDeclineChallenge}>Decline</button>
           </div>
         </div>
       )}
@@ -2548,7 +3151,12 @@ function App() {
 
           {queueState === 'searching' && (
             <div className="queue-searching-block">
-              <p className="card-text">Searching for a real opponent... {queueSeconds}s</p>
+              <div className="queue-spinner-row">
+                <span className="spinner spinner-lg" aria-hidden="true" />
+                <p className="card-text" style={{ margin: 0 }}>
+                  Searching for a real opponent<span className="thinking-dots" /> <strong style={{ marginLeft: 6 }}>{queueSeconds}s</strong>
+                </p>
+              </div>
               <div className="live-status-grid">
                 <div>
                   <strong>#{queueSearchStatus.position}</strong>
@@ -2577,7 +3185,7 @@ function App() {
             </div>
           )}
 
-          <p className="note toast-line">{toastMessage}</p>
+          <p className={`toast toast-${toastSeverity} toast-line`}>{toastMessage}</p>
         </article>
 
         <div className="home-cards">
@@ -2668,18 +3276,49 @@ function App() {
             </form>
 
             <div className="social-list">
-              {friends.slice(0, 5).map((friend) => (
-                <div className="social-row" key={friend.accountId}>
-                  <div className="leaderboard-meta">
-                    <strong>{friend.displayName}</strong>
-                    <span className="note">@{friend.username}</span>
+              {friends.slice(0, 8).map((friend) => {
+                const online = onlineFriendIds.has(friend.accountId)
+                const canChallenge = online && !outgoingChallenge && !incomingChallenge
+                return (
+                  <div className="social-row" key={friend.accountId}>
+                    <div className="leaderboard-meta">
+                      <strong>
+                        <span
+                          className={`presence-dot ${online ? 'online' : 'offline'}`}
+                          role="img"
+                          aria-label={online ? 'online' : 'offline'}
+                          title={online ? 'Online' : 'Offline'}
+                        />
+                        {friend.displayName}
+                      </strong>
+                      <span className="note">@{friend.username}</span>
+                    </div>
+                    <div className="controls">
+                      <button
+                        className="primary mini"
+                        disabled={!canChallenge}
+                        title={online ? 'Challenge to an unranked duel' : 'Friend is offline'}
+                        onClick={() => handleChallengeFriend(friend)}
+                      >
+                        ⚔ Challenge
+                      </button>
+                      <button className="ghost mini" disabled={socialLoading} onClick={() => void handleRemoveFriend(friend.accountId, friend.displayName)}>
+                        Remove
+                      </button>
+                    </div>
                   </div>
-                  <button className="ghost mini" disabled={socialLoading} onClick={() => void handleRemoveFriend(friend.accountId, friend.displayName)}>
-                    Remove
-                  </button>
-                </div>
-              ))}
+                )
+              })}
               {!friends.length && <p className="note">No friends yet. Add players by username to build your roster.</p>}
+              {challengeStatus && <p className="note toast-line">{challengeStatus}</p>}
+              {outgoingChallenge && (
+                <div className="challenge-banner outgoing">
+                  <span>
+                    Waiting for <strong>{outgoingChallenge.toName}</strong>…
+                  </span>
+                  <button className="ghost mini" onClick={handleCancelOutgoingChallenge}>Cancel</button>
+                </div>
+              )}
             </div>
 
             {clan ? (
@@ -2744,6 +3383,177 @@ function App() {
             )}
 
             <p className="note toast-line">{socialStatus}</p>
+
+            {/* ─── Card trading (friends only) ──────────────────── */}
+            <div className="social-trade-block">
+              <div className="section-head">
+                <h3>Card Trades</h3>
+                <span className="badge">Friends Only</span>
+              </div>
+              <p className="note">
+                Pick a friend, then add cards to each side of the trade. Up to 6 distinct cards per side, max 3 copies of any card. Trades expire 7 days after they're sent.
+              </p>
+
+              <form className="form-stack" onSubmit={handleProposeTrade}>
+                <label className="form-field">
+                  <span>Trade with</span>
+                  <select
+                    className="text-input"
+                    value={tradeForm.toAccountId}
+                    onChange={(event) => setTradeForm((f) => ({ ...f, toAccountId: event.target.value }))}
+                  >
+                    <option value="">Choose a friend…</option>
+                    {friends.map((friend) => (
+                      <option key={friend.accountId} value={friend.accountId}>
+                        {friend.displayName} (@{friend.username}){onlineFriendIds.has(friend.accountId) ? ' • online' : ''}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <div className="trade-card-picker">
+                  <div className="trade-picker-row">
+                    <select
+                      className="text-input"
+                      value={tradePickerDraft.cardId}
+                      onChange={(event) => setTradePickerDraft((d) => ({ ...d, cardId: event.target.value }))}
+                    >
+                      <option value="">Choose a card…</option>
+                      {CARD_LIBRARY.map((card) => {
+                        const owned = collection[card.id] ?? 0
+                        const isYourSide = tradePickerDraft.side === 'offer'
+                        return (
+                          <option key={card.id} value={card.id} disabled={isYourSide && owned === 0}>
+                            {card.icon} {card.name} • {card.rarity}{isYourSide ? ` (own ${owned})` : ''}
+                          </option>
+                        )
+                      })}
+                    </select>
+                    <select
+                      className="text-input"
+                      value={tradePickerDraft.side}
+                      onChange={(event) => setTradePickerDraft((d) => ({ ...d, side: event.target.value as 'offer' | 'request' }))}
+                      aria-label="Trade side"
+                    >
+                      <option value="offer">You give</option>
+                      <option value="request">You receive</option>
+                    </select>
+                    <input
+                      className="text-input"
+                      type="number"
+                      min={1}
+                      max={3}
+                      value={tradePickerDraft.qty}
+                      onChange={(event) => setTradePickerDraft((d) => ({ ...d, qty: Math.max(1, Math.min(3, Number(event.target.value) || 1)) }))}
+                      aria-label="Quantity"
+                      style={{ width: '4.5rem' }}
+                    />
+                  </div>
+                  <div className="row-2">
+                    <button type="button" className="ghost mini" disabled={!tradePickerDraft.cardId} onClick={addTradeChip}>
+                      ＋ Add to {tradePickerDraft.side === 'offer' ? 'your offer' : 'your request'}
+                    </button>
+                  </div>
+
+                  <div className="stack-2">
+                    <div>
+                      <span className="mini-text">You give:</span>
+                      <div className="trade-chip-list">
+                        {tradeForm.offer.map((item) => (
+                          <span className="trade-chip" key={item.cardId}>
+                            <span className="chip-icon">{getCardIcon(item.cardId)}</span>
+                            {getCardName(item.cardId)}
+                            <span className="chip-qty">×{item.qty}</span>
+                            <button type="button" onClick={() => removeTradeChip('offer', item.cardId)} aria-label={`Remove ${getCardName(item.cardId)}`}>✕</button>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <span className="mini-text">You receive:</span>
+                      <div className="trade-chip-list">
+                        {tradeForm.request.map((item) => (
+                          <span className="trade-chip" key={item.cardId}>
+                            <span className="chip-icon">{getCardIcon(item.cardId)}</span>
+                            {getCardName(item.cardId)}
+                            <span className="chip-qty">×{item.qty}</span>
+                            <button type="button" onClick={() => removeTradeChip('request', item.cardId)} aria-label={`Remove ${getCardName(item.cardId)}`}>✕</button>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="row-2">
+                  <button className="secondary" type="submit" disabled={tradeSubmitting || !tradeForm.toAccountId || !tradeForm.offer.length || !tradeForm.request.length}>
+                    {tradeSubmitting ? <><span className="spinner spinner-inline" />Sending…</> : 'Propose Trade'}
+                  </button>
+                </div>
+              </form>
+              {tradeStatus && <p className={`toast toast-${inferToastSeverity(tradeStatus)} toast-line`}>{tradeStatus}</p>}
+
+              <ul className="trade-list">
+                {trades.length === 0 ? (
+                  <li className="note">No trades yet.</li>
+                ) : (
+                  trades.map((trade) => {
+                    const youArePromoter = trade.fromAccountId === (serverProfile?.accountId ?? '')
+                    const pending = trade.status === 'pending'
+                    const counterpartyId = youArePromoter ? trade.toAccountId : trade.fromAccountId
+                    const counterparty = friends.find((f) => f.accountId === counterpartyId)
+                    const counterpartyName = counterparty?.displayName ?? counterparty?.username ?? 'friend'
+                    const expiresMs = Date.parse(trade.expiresAt)
+                    return (
+                      <li className="trade-row" key={trade.id}>
+                        <div className="trade-identity">
+                          <strong>{youArePromoter ? `You → ${counterpartyName}` : `${counterpartyName} → You`}</strong>
+                          <span className={`badge trade-status-${trade.status}`}>{trade.status}</span>
+                        </div>
+                        <div className="mini-text">
+                          <strong>Offer:</strong>{' '}
+                          {trade.offer.map((item, index) => (
+                            <span key={item.cardId}>
+                              {index > 0 ? ', ' : ''}{getCardIcon(item.cardId)} {getCardName(item.cardId)} ×{item.qty}
+                            </span>
+                          ))}
+                          {' · '}
+                          <strong>Request:</strong>{' '}
+                          {trade.request.map((item, index) => (
+                            <span key={item.cardId}>
+                              {index > 0 ? ', ' : ''}{getCardIcon(item.cardId)} {getCardName(item.cardId)} ×{item.qty}
+                            </span>
+                          ))}
+                        </div>
+                        {pending && Number.isFinite(expiresMs) && (
+                          <div className="trade-expiry">
+                            Expires in <strong>{formatCountdown(expiresMs)}</strong>
+                          </div>
+                        )}
+                        {pending && (
+                          <div className="controls">
+                            {youArePromoter ? (
+                              <button className="ghost mini" onClick={() => void handleTradeAction(trade.id, 'cancel')}>
+                                Cancel
+                              </button>
+                            ) : (
+                              <>
+                                <button className="primary mini" onClick={() => void handleTradeAction(trade.id, 'accept')}>
+                                  Accept
+                                </button>
+                                <button className="ghost mini" onClick={() => void handleTradeAction(trade.id, 'reject')}>
+                                  Reject
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        )}
+                      </li>
+                    )
+                  })
+                )}
+              </ul>
+            </div>
           </article>
         </div>
 
@@ -2908,7 +3718,11 @@ function App() {
             Burst
           </button>
           <button className="secondary" onClick={handleEndTurn} disabled={Boolean(game.winner) || !isMyTurn}>
-            {!isMyTurn ? 'Opponent Turn…' : 'End Turn'}
+            {!isMyTurn ? (
+              <><span className="spinner spinner-inline" aria-hidden="true" />Opponent thinking<span className="thinking-dots" /></>
+            ) : (
+              'End Turn'
+            )}
           </button>
           <button className="ghost" onClick={handleLeaveBattle}>
             Leave
@@ -3159,7 +3973,11 @@ function App() {
                   <span className="badge">{pack.cost} Shards</span>
                 </div>
                 <button className="primary" onClick={() => void handleOpenPack(pack.id)} disabled={packOpening === pack.id || runes < pack.cost}>
-                  {packOpening === pack.id ? 'Opening…' : 'Open Pack'}
+                  {packOpening === pack.id ? (
+                    <><span className="spinner spinner-inline" aria-hidden="true" />Opening…</>
+                  ) : (
+                    'Open Pack'
+                  )}
                 </button>
               </div>
             ))}
@@ -3184,7 +4002,7 @@ function App() {
         </article>
       </section>
 
-      <section className={`ops-grid screen-panel ${activeScreen === 'ops' ? 'active' : 'hidden'}`}>
+      <section className={`ops-grid screen-panel ${activeScreen === 'ops' && isAdminRole ? 'active' : 'hidden'}`}>
         <article className="section-card utility-card">
           <div className="section-head">
             <div>
@@ -3331,23 +4149,28 @@ function App() {
           <div className="section-head">
             <div>
               <h2>Admin Operations Console</h2>
-              <p className="note">Monitor traffic, review complaints, and control live service messaging.</p>
+              <p className="note">
+                {isAdminRole
+                  ? 'Monitor traffic, review complaints, and control live service messaging.'
+                  : 'This console is only available to owner and admin accounts.'}
+              </p>
             </div>
-            <span className="badge">Admin</span>
+            <span className={`badge role-badge role-${accountRole}`}>
+              {accountRole === 'owner' ? 'Owner' : accountRole === 'admin' ? 'Admin' : 'Player'}
+            </span>
           </div>
 
-          <div className="admin-auth-row">
-            <input
-              className="text-input"
-              type="password"
-              value={adminKey}
-              placeholder="Enter admin key"
-              onChange={(event) => setAdminKey(event.target.value)}
-            />
-            <button className="secondary" onClick={() => void refreshAdminOverview()}>
-              {adminLoading ? 'Loading…' : 'Open Console'}
-            </button>
-          </div>
+          {isAdminRole ? (
+            <div className="admin-auth-row">
+              <button className="secondary" onClick={() => void refreshAdminOverview()}>
+                {adminLoading ? 'Loading…' : adminOverview ? 'Refresh Console' : 'Open Console'}
+              </button>
+            </div>
+          ) : (
+            <p className="note toast-line">
+              Your account does not have admin privileges. Contact the server owner if you believe this is a mistake.
+            </p>
+          )}
 
           {adminError && <p className="note toast-line">{adminError}</p>}
 
@@ -3517,6 +4340,167 @@ function App() {
                   )}
                 </div>
               </div>
+
+              {isOwnerRole && (
+                <div className="admin-panel-block admin-role-block">
+                  <div className="section-head log-heading">
+                    <h3>Account Roles</h3>
+                    <span className="badge">Owner</span>
+                  </div>
+
+                  <div className="admin-auth-row">
+                    <input
+                      className="text-input"
+                      value={adminUserSearch}
+                      placeholder="Search users by username, name, or id"
+                      onChange={(event) => setAdminUserSearch(event.target.value)}
+                    />
+                    <button className="secondary" onClick={() => void refreshAdminUsers(adminUserSearch)}>
+                      {adminUsersLoading ? 'Loading…' : 'Search'}
+                    </button>
+                  </div>
+
+                  <ul className="role-list">
+                    {adminUsers.length === 0 ? (
+                      <li className="note">No users loaded. Click search to list accounts.</li>
+                    ) : (
+                      adminUsers.map((user) => {
+                        const isSelf = user.accountId === (serverProfile?.accountId ?? '')
+                        const isRoleOwner = user.role === 'owner'
+                        return (
+                          <li className="role-row" key={user.accountId}>
+                            <div className="role-identity">
+                              <strong>{user.displayName || user.username}</strong>
+                              <span className="mini-text">@{user.username}</span>
+                              <span className={`badge role-badge role-${user.role}`}>
+                                {user.role === 'owner' ? 'Owner' : user.role === 'admin' ? 'Admin' : 'Player'}
+                              </span>
+                            </div>
+                            <div className="controls">
+                              {isRoleOwner || isSelf ? (
+                                <span className="mini-text">
+                                  {isSelf ? 'You' : 'Cannot modify the owner'}
+                                </span>
+                              ) : user.role === 'admin' ? (
+                                <button className="ghost" onClick={() => void handleSetUserRole(user, 'user')}>
+                                  Demote to Player
+                                </button>
+                              ) : (
+                                <button className="primary" onClick={() => void handleSetUserRole(user, 'admin')}>
+                                  Promote to Admin
+                                </button>
+                              )}
+                            </div>
+                          </li>
+                        )
+                      })
+                    )}
+                  </ul>
+
+                  <div className="section-head log-heading">
+                    <h3>Transfer Ownership</h3>
+                    <span className="badge">Irreversible</span>
+                  </div>
+                  <form className="form-stack" onSubmit={handleTransferOwnership}>
+                    <label className="form-field">
+                      <span>New owner</span>
+                      <select
+                        className="text-input"
+                        value={transferForm.targetAccountId}
+                        onChange={(event) => setTransferForm((f) => ({ ...f, targetAccountId: event.target.value }))}
+                      >
+                        <option value="">Choose an admin from the list above…</option>
+                        {adminUsers
+                          .filter((user) => user.accountId !== (serverProfile?.accountId ?? ''))
+                          .map((user) => (
+                            <option key={user.accountId} value={user.accountId}>
+                              @{user.username}{user.displayName ? ` (${user.displayName})` : ''}{user.role === 'admin' ? ' • admin' : ''}
+                            </option>
+                          ))}
+                      </select>
+                    </label>
+                    <label className="form-field">
+                      <span>Confirm your password</span>
+                      <input
+                        className="text-input"
+                        type="password"
+                        autoComplete="current-password"
+                        value={transferForm.password}
+                        onChange={(event) => setTransferForm((f) => ({ ...f, password: event.target.value }))}
+                      />
+                    </label>
+                    {transferStatus && <p className={`toast toast-${inferToastSeverity(transferStatus)} toast-line`}>{transferStatus}</p>}
+                    <div className="controls">
+                      <button className="btn-danger" type="submit" disabled={!transferForm.targetAccountId || !transferForm.password}>
+                        Transfer ownership
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              )}
+
+              {isAdminRole && (
+                <div className="admin-panel-block">
+                  <div className="section-head log-heading">
+                    <h3>Admin Audit Log</h3>
+                    <button className="ghost" onClick={() => void refreshAdminAudit()}>Refresh</button>
+                  </div>
+                  <div className="audit-toolbar">
+                    <label className="mini-text">
+                      Filter:&nbsp;
+                      <select value={adminAuditFilter} onChange={(event) => setAdminAuditFilter(event.target.value)}>
+                        <option value="all">All actions</option>
+                        {Array.from(new Set(adminAudit.map((entry) => entry.action))).sort().map((action) => (
+                          <option key={action} value={action}>{action}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <span className="mini-text">{adminAudit.length} total entries</span>
+                  </div>
+                  <ul className="audit-list">
+                    {adminAudit.length === 0 ? (
+                      <li className="note">No audit entries yet.</li>
+                    ) : (
+                      adminAudit
+                        .filter((entry) => adminAuditFilter === 'all' || entry.action === adminAuditFilter)
+                        .slice(0, 20)
+                        .map((entry) => {
+                          const expanded = adminAuditExpandedId === entry.id
+                          const hasMeta = entry.metadata && Object.keys(entry.metadata).length > 0
+                          return (
+                            <li
+                              key={entry.id}
+                              className="audit-row"
+                              onClick={() => setAdminAuditExpandedId(expanded ? null : entry.id)}
+                              role="button"
+                              tabIndex={0}
+                              onKeyDown={(event) => {
+                                if (event.key === 'Enter' || event.key === ' ') {
+                                  event.preventDefault()
+                                  setAdminAuditExpandedId(expanded ? null : entry.id)
+                                }
+                              }}
+                              aria-expanded={expanded}
+                            >
+                              <span className="badge">{entry.action}</span>
+                              <span className="mini-text">
+                                {entry.actor ? `@${entry.actor.username}` : 'system'}
+                                {entry.target ? ` → @${entry.target.username}` : ''}
+                              </span>
+                              <span className="mini-text">{formatTimestamp(entry.createdAt)}</span>
+                              {hasMeta && (
+                                <span className="mini-text" aria-hidden="true">{expanded ? '▾' : '▸'}</span>
+                              )}
+                              {expanded && hasMeta && (
+                                <pre className="audit-meta">{JSON.stringify(entry.metadata, null, 2)}</pre>
+                              )}
+                            </li>
+                          )
+                        })
+                    )}
+                  </ul>
+                </div>
+              )}
             </>
           )}
         </article>
@@ -3532,18 +4516,30 @@ function App() {
           <div className="hand-grid">
             {activePlayer.hand.map((card, index) => {
               const canPlay = !game.winner && activeBoardHasOpenLane && card.cost <= activePlayer.mana
+              const needMana = card.cost - activePlayer.mana
+              const needLane = !activeBoardHasOpenLane
+              const overlayLabel = !canPlay
+                ? game.winner
+                  ? 'Battle over'
+                  : needLane
+                    ? 'Board is full'
+                    : needMana > 0
+                      ? `Need ${needMana} more mana`
+                      : 'Cannot play'
+                : ''
 
               return (
                 <button
                   className={['hand-card', `rarity-${card.rarity}`, canPlay ? '' : 'unplayable'].filter(Boolean).join(' ')}
                   key={card.instanceId}
+                  data-need={overlayLabel}
                   onClick={() => {
                     if (consumeLongPressAction()) return
                     if (canPlay) handlePlayCard(index)
                   }}
                   {...getLongPressProps({ name: card.name, icon: card.icon, id: card.id, cost: card.cost, attack: card.attack, health: card.health, rarity: card.rarity, tribe: card.tribe, text: card.text, effect: card.effect ?? null })}
                   aria-disabled={!canPlay}
-                  title={canPlay ? 'Tap to play or long press to inspect' : 'Long press to inspect'}
+                  title={canPlay ? 'Tap to play or long press to inspect' : `${overlayLabel}. Long press to inspect.`}
                   style={{ '--rarity-color': RARITY_COLORS[card.rarity] } as React.CSSProperties}
                 >
                   <div className="card-top">
@@ -3581,9 +4577,11 @@ function App() {
         <button className={activeScreen === 'vault' ? 'nav-chip active' : 'nav-chip'} onClick={() => openScreen('vault')}>
           💎 Vault
         </button>
-        <button className={activeScreen === 'ops' ? 'nav-chip active' : 'nav-chip'} onClick={() => openScreen('ops')}>
-          📊 Ops
-        </button>
+        {isAdminRole && (
+          <button className={activeScreen === 'ops' ? 'nav-chip active' : 'nav-chip'} onClick={() => openScreen('ops')}>
+            📊 Ops
+          </button>
+        )}
       </nav>
       </>)}
     </main>

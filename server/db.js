@@ -126,7 +126,33 @@ function ensureColumn(tableName, columnName, definition) {
 
 ensureColumn('accounts', 'created_ip_hash', 'TEXT')
 ensureColumn('accounts', 'created_ua_hash', 'TEXT')
+ensureColumn('accounts', 'role', "TEXT NOT NULL DEFAULT 'user'")
 ensureColumn('player_profiles', 'owned_cards', "TEXT NOT NULL DEFAULT '{}' ")
+
+// ─── Admin role schema ───────────────────────────────────────────────────────
+// Exactly one account may have role='owner'. Enforced at the DB layer via a
+// partial unique index, and at the application layer via setAccountRole /
+// transferOwnership. Roles are re-read from the DB on every privileged request
+// so that demotion takes effect immediately without session invalidation.
+
+db.exec(`
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_accounts_single_owner
+    ON accounts(role) WHERE role = 'owner';
+
+  CREATE TABLE IF NOT EXISTS admin_audit (
+    id                 TEXT PRIMARY KEY,
+    actor_account_id   TEXT REFERENCES accounts(id) ON DELETE SET NULL,
+    target_account_id  TEXT REFERENCES accounts(id) ON DELETE SET NULL,
+    action             TEXT NOT NULL,
+    metadata           TEXT NOT NULL DEFAULT '{}',
+    ip_hash            TEXT,
+    created_at         TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_admin_audit_created_at ON admin_audit(created_at DESC);
+  CREATE INDEX IF NOT EXISTS idx_admin_audit_actor ON admin_audit(actor_account_id);
+  CREATE INDEX IF NOT EXISTS idx_admin_audit_target ON admin_audit(target_account_id);
+`)
 
 // ─── Password hashing (scrypt — no native addon needed) ──────────────────────
 
@@ -707,6 +733,12 @@ const _hasFriendEdge = db.prepare(`
   SELECT 1 as linked FROM social_friends WHERE account_id = ? AND friend_account_id = ? LIMIT 1
 `)
 
+export function isFriendOf(accountId, otherAccountId) {
+  if (!accountId || !otherAccountId || accountId === otherAccountId) return false
+  const row = _hasFriendEdge.get(accountId, otherAccountId)
+  return Boolean(row?.linked)
+}
+
 const _insertFriendEdge = db.prepare(`
   INSERT OR IGNORE INTO social_friends (account_id, friend_account_id) VALUES (?, ?)
 `)
@@ -1063,5 +1095,527 @@ export function openPack(accountId, packType) {
 }
 
 export { PACK_DEFS, ALL_CARDS }
+
+// ─── Admin role management ──────────────────────────────────────────────────
+// Role is the source of truth for privileged access. Sessions are NOT
+// role-stamped; every privileged request re-reads the role so demotion takes
+// effect on the next request.
+
+const ROLE_VALUES = new Set(['user', 'admin', 'owner'])
+const ROLE_RANK = { user: 0, admin: 1, owner: 2 }
+
+const _getRole = db.prepare(`SELECT role FROM accounts WHERE id = ?`)
+const _setRole = db.prepare(`UPDATE accounts SET role = ? WHERE id = ?`)
+const _findOwnerId = db.prepare(`SELECT id FROM accounts WHERE role = 'owner' LIMIT 1`)
+const _searchAccounts = db.prepare(`
+  SELECT id, username, display_name as displayName, role, created_at as createdAt, last_login as lastLogin
+  FROM accounts
+  WHERE (? = '' OR username LIKE ? OR display_name LIKE ? OR id = ?)
+  ORDER BY
+    CASE role WHEN 'owner' THEN 0 WHEN 'admin' THEN 1 ELSE 2 END,
+    last_login DESC NULLS LAST,
+    username COLLATE NOCASE ASC
+  LIMIT ? OFFSET ?
+`)
+
+const _insertAudit = db.prepare(`
+  INSERT INTO admin_audit (id, actor_account_id, target_account_id, action, metadata, ip_hash)
+  VALUES (?, ?, ?, ?, ?, ?)
+`)
+
+const _listAudit = db.prepare(`
+  SELECT
+    a.id,
+    a.actor_account_id   as actorAccountId,
+    actor.username       as actorUsername,
+    actor.display_name   as actorDisplayName,
+    a.target_account_id  as targetAccountId,
+    target.username      as targetUsername,
+    target.display_name  as targetDisplayName,
+    a.action,
+    a.metadata,
+    a.created_at         as createdAt
+  FROM admin_audit a
+  LEFT JOIN accounts actor  ON actor.id  = a.actor_account_id
+  LEFT JOIN accounts target ON target.id = a.target_account_id
+  ORDER BY a.created_at DESC
+  LIMIT ?
+`)
+
+export function getAccountRole(accountId) {
+  if (!accountId) return 'user'
+  const row = _getRole.get(accountId)
+  return row?.role && ROLE_VALUES.has(row.role) ? row.role : 'user'
+}
+
+export function hasRoleAtLeast(role, minRole) {
+  return (ROLE_RANK[role] ?? 0) >= (ROLE_RANK[minRole] ?? 0)
+}
+
+export function findOwnerAccountId() {
+  const row = _findOwnerId.get()
+  return row?.id ?? null
+}
+
+/**
+ * Promote or demote another account. Owner-only. Cannot create or overwrite
+ * the owner role — use transferOwnership for that.
+ *
+ * @param {string} actorAccountId  The account performing the action (must be owner).
+ * @param {string} targetAccountId The account whose role is changing.
+ * @param {'admin'|'user'} newRole The desired role.
+ * @param {{ ipHash?: string | null }} [options]
+ */
+export function setAccountRole(actorAccountId, targetAccountId, newRole, { ipHash = null } = {}) {
+  if (!actorAccountId || !targetAccountId) {
+    return { ok: false, status: 400, error: 'Actor and target are required.' }
+  }
+  if (actorAccountId === targetAccountId) {
+    return { ok: false, status: 400, error: 'You cannot change your own role.' }
+  }
+  if (newRole !== 'admin' && newRole !== 'user') {
+    return { ok: false, status: 400, error: 'Role must be "admin" or "user".' }
+  }
+  const actorRole = getAccountRole(actorAccountId)
+  if (actorRole !== 'owner') {
+    return { ok: false, status: 403, error: 'Only the owner can change roles.' }
+  }
+  const targetRow = _getById.get(targetAccountId)
+  if (!targetRow) {
+    return { ok: false, status: 404, error: 'Target account not found.' }
+  }
+  if (targetRow.role === 'owner') {
+    return { ok: false, status: 403, error: 'The owner role cannot be changed here. Use ownership transfer.' }
+  }
+  if (targetRow.role === newRole) {
+    return { ok: true, role: newRole, unchanged: true, target: sanitizeAdminAccount(targetRow) }
+  }
+
+  const previousRole = targetRow.role
+  const metadata = JSON.stringify({ previousRole, newRole })
+  const auditId = `aud-${randomBytes(10).toString('hex')}`
+
+  const tx = db.transaction(() => {
+    _setRole.run(newRole, targetAccountId)
+    _insertAudit.run(auditId, actorAccountId, targetAccountId, 'role_change', metadata, ipHash)
+  })
+  tx()
+
+  return {
+    ok: true,
+    role: newRole,
+    previousRole,
+    auditId,
+    target: sanitizeAdminAccount({ ...targetRow, role: newRole }),
+  }
+}
+
+/**
+ * Transfer ownership from the current owner to another account.
+ * Demotes the current owner to 'admin' and promotes the target to 'owner'
+ * atomically. The caller must verify the owner's password before calling.
+ *
+ * @param {string} currentOwnerId
+ * @param {string} targetAccountId
+ * @param {{ ipHash?: string | null }} [options]
+ */
+export function transferOwnership(currentOwnerId, targetAccountId, { ipHash = null } = {}) {
+  if (!currentOwnerId || !targetAccountId) {
+    return { ok: false, status: 400, error: 'Current owner and target are required.' }
+  }
+  if (currentOwnerId === targetAccountId) {
+    return { ok: false, status: 400, error: 'Target must be a different account.' }
+  }
+  if (getAccountRole(currentOwnerId) !== 'owner') {
+    return { ok: false, status: 403, error: 'Only the current owner can transfer ownership.' }
+  }
+  const target = _getById.get(targetAccountId)
+  if (!target) {
+    return { ok: false, status: 404, error: 'Target account not found.' }
+  }
+
+  const metadata = JSON.stringify({ previousOwnerId: currentOwnerId, newOwnerId: targetAccountId })
+  const auditId = `aud-${randomBytes(10).toString('hex')}`
+
+  // SQLite can't do a swap in a single UPDATE because of the unique partial
+  // index; demote first, then promote, inside a transaction.
+  const tx = db.transaction(() => {
+    _setRole.run('admin', currentOwnerId)
+    _setRole.run('owner', targetAccountId)
+    _insertAudit.run(auditId, currentOwnerId, targetAccountId, 'ownership_transfer', metadata, ipHash)
+  })
+  tx()
+
+  return { ok: true, auditId, previousOwnerId: currentOwnerId, newOwnerId: targetAccountId }
+}
+
+/**
+ * Bootstrap or recover the owner role. Used by the setup flow on first launch
+ * and by the ADMIN_KEY-gated recovery endpoint. Refuses to run if an owner
+ * already exists (use transferOwnership for that path).
+ *
+ * @param {string} targetAccountId
+ * @param {{ ipHash?: string | null, actorAccountId?: string | null, reason?: string }} [options]
+ */
+export function assignInitialOwner(targetAccountId, { ipHash = null, actorAccountId = null, reason = 'bootstrap' } = {}) {
+  if (!targetAccountId) {
+    return { ok: false, status: 400, error: 'Target is required.' }
+  }
+  const target = _getById.get(targetAccountId)
+  if (!target) {
+    return { ok: false, status: 404, error: 'Target account not found.' }
+  }
+  const existingOwner = findOwnerAccountId()
+  if (existingOwner && existingOwner !== targetAccountId) {
+    return { ok: false, status: 409, error: 'An owner already exists. Use ownership transfer instead.' }
+  }
+
+  const auditId = `aud-${randomBytes(10).toString('hex')}`
+  const metadata = JSON.stringify({ reason })
+
+  const tx = db.transaction(() => {
+    _setRole.run('owner', targetAccountId)
+    _insertAudit.run(auditId, actorAccountId, targetAccountId, 'owner_assigned', metadata, ipHash)
+  })
+  tx()
+
+  return { ok: true, auditId }
+}
+
+function sanitizeAdminAccount(row) {
+  if (!row) return null
+  return {
+    accountId: row.id ?? row.accountId,
+    username: row.username,
+    displayName: row.display_name ?? row.displayName,
+    role: row.role,
+    createdAt: row.created_at ?? row.createdAt,
+    lastLogin: row.last_login ?? row.lastLogin,
+  }
+}
+
+export function listAccounts({ search = '', limit = 25, offset = 0 } = {}) {
+  const normalized = String(search ?? '').trim().toLowerCase().slice(0, 60)
+  const like = normalized ? `%${normalized}%` : ''
+  const safeLimit = Math.min(100, Math.max(1, Number(limit) || 25))
+  const safeOffset = Math.max(0, Number(offset) || 0)
+  const rows = _searchAccounts.all(normalized, like, like, normalized, safeLimit, safeOffset)
+  return rows.map((row) => ({
+    accountId: row.id,
+    username: row.username,
+    displayName: row.displayName,
+    role: row.role,
+    createdAt: row.createdAt,
+    lastLogin: row.lastLogin,
+  }))
+}
+
+/**
+ * @param {string|null} actorAccountId
+ * @param {string|null} targetAccountId
+ * @param {string} action
+ * @param {Record<string, unknown>} [metadata]
+ * @param {string|null} [ipHash]
+ */
+export function recordAudit(actorAccountId, targetAccountId, action, metadata = {}, ipHash = null) {
+  const safeAction = String(action ?? '').slice(0, 60) || 'unknown'
+  const safeMeta = JSON.stringify(metadata ?? {}).slice(0, 2000)
+  const id = `aud-${randomBytes(10).toString('hex')}`
+  _insertAudit.run(id, actorAccountId ?? null, targetAccountId ?? null, safeAction, safeMeta, ipHash ?? null)
+  return id
+}
+
+export function listAudit({ limit = 50 } = {}) {
+  const safeLimit = Math.min(200, Math.max(1, Number(limit) || 50))
+  const rows = _listAudit.all(safeLimit)
+  return rows.map((row) => {
+    let metadata = {}
+    try { metadata = JSON.parse(row.metadata) } catch { /* ignore */ }
+    return {
+      id: row.id,
+      action: row.action,
+      actor: row.actorAccountId
+        ? { accountId: row.actorAccountId, username: row.actorUsername, displayName: row.actorDisplayName }
+        : null,
+      target: row.targetAccountId
+        ? { accountId: row.targetAccountId, username: row.targetUsername, displayName: row.targetDisplayName }
+        : null,
+      metadata,
+      createdAt: row.createdAt,
+    }
+  })
+}
+
+// Helper for the server.js setup endpoint: returns a narrow subset of account
+// columns, used by the password-confirmation flow for ownership transfer.
+// We intentionally avoid `SELECT *` to ensure the password hash is only
+// surfaced through this named accessor.
+const _getAccountFull = db.prepare(
+  `SELECT id, username, display_name, password_hash, role FROM accounts WHERE id = ?`,
+)
+export function getAccountById(accountId) {
+  if (!accountId) return null
+  return _getAccountFull.get(accountId) ?? null
+}
+
+// ─── Card trading (v1: friends-only) ────────────────────────────────────────
+// Trades are asymmetric: one side offers cards, the other offers cards in
+// return. On accept, both owned_cards blobs are mutated atomically in a
+// single transaction so there is no "half-traded" state.
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS trades (
+    id                 TEXT PRIMARY KEY,
+    from_account_id    TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    to_account_id      TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    status             TEXT NOT NULL CHECK(status IN ('pending','accepted','rejected','cancelled','expired')),
+    offer              TEXT NOT NULL DEFAULT '[]',
+    request            TEXT NOT NULL DEFAULT '[]',
+    created_at         TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at         TEXT NOT NULL DEFAULT (datetime('now')),
+    expires_at         TEXT NOT NULL
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_trades_from ON trades(from_account_id, status, created_at DESC);
+  CREATE INDEX IF NOT EXISTS idx_trades_to   ON trades(to_account_id, status, created_at DESC);
+`)
+
+const TRADE_TTL_DAYS = 7
+const MAX_TRADE_ITEMS_PER_SIDE = 6
+
+const _insertTrade = db.prepare(`
+  INSERT INTO trades (id, from_account_id, to_account_id, status, offer, request, expires_at)
+  VALUES (?, ?, ?, 'pending', ?, ?, datetime('now', ?))
+`)
+const _getTradeById = db.prepare(`SELECT * FROM trades WHERE id = ?`)
+const _updateTradeStatus = db.prepare(
+  `UPDATE trades SET status = ?, updated_at = datetime('now') WHERE id = ? AND status = 'pending'`,
+)
+const _listTradesForAccount = db.prepare(`
+  SELECT * FROM trades
+  WHERE (from_account_id = ? OR to_account_id = ?)
+    AND (status = 'pending' OR updated_at > datetime('now', '-3 days'))
+  ORDER BY created_at DESC
+  LIMIT 50
+`)
+const _expireStaleTrades = db.prepare(
+  `UPDATE trades SET status = 'expired', updated_at = datetime('now')
+   WHERE status = 'pending' AND expires_at < datetime('now')`,
+)
+
+function normalizeTradeItems(raw) {
+  if (!Array.isArray(raw)) return null
+  const normalized = []
+  const seen = new Set()
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') return null
+    const cardId = String(item.cardId ?? '').trim()
+    const qty = Math.floor(Number(item.qty ?? 0))
+    if (!cardId || qty <= 0 || qty > 3) return null
+    if (seen.has(cardId)) return null // no duplicate entries; roll into one
+    seen.add(cardId)
+    normalized.push({ cardId, qty })
+  }
+  if (normalized.length === 0) return null
+  if (normalized.length > MAX_TRADE_ITEMS_PER_SIDE) return null
+  return normalized
+}
+
+function ownsAll(owned, items) {
+  for (const { cardId, qty } of items) {
+    if ((owned[cardId] ?? 0) < qty) return false
+  }
+  return true
+}
+
+export function proposeTrade(fromAccountId, toAccountId, offer, request) {
+  if (!fromAccountId || !toAccountId) {
+    return { ok: false, status: 400, error: 'Missing account.' }
+  }
+  if (fromAccountId === toAccountId) {
+    return { ok: false, status: 400, error: 'You cannot trade with yourself.' }
+  }
+  if (!isFriendOf(fromAccountId, toAccountId)) {
+    return { ok: false, status: 403, error: 'You can only trade with friends.' }
+  }
+
+  const normalizedOffer = normalizeTradeItems(offer)
+  const normalizedRequest = normalizeTradeItems(request)
+  if (!normalizedOffer || !normalizedRequest) {
+    return { ok: false, status: 400, error: 'Each side must list 1–6 distinct cards with quantities between 1 and 3.' }
+  }
+
+  const fromOwned = _getOwnedCards.get(fromAccountId)
+  if (!fromOwned) return { ok: false, status: 404, error: 'Proposer profile not found.' }
+  const fromCollection = normalizeOwnedCards(fromOwned.owned_cards)
+  if (!ownsAll(fromCollection, normalizedOffer)) {
+    return { ok: false, status: 400, error: 'You do not own all of the offered cards.' }
+  }
+
+  // Cap: one pending trade per (from,to) pair.
+  const existing = db.prepare(
+    `SELECT id FROM trades WHERE from_account_id = ? AND to_account_id = ? AND status = 'pending' LIMIT 1`,
+  ).get(fromAccountId, toAccountId)
+  if (existing) {
+    return { ok: false, status: 409, error: 'You already have a pending trade with that friend.' }
+  }
+
+  const id = `trade-${randomBytes(8).toString('hex')}`
+  _insertTrade.run(
+    id,
+    fromAccountId,
+    toAccountId,
+    JSON.stringify(normalizedOffer),
+    JSON.stringify(normalizedRequest),
+    `+${TRADE_TTL_DAYS} days`,
+  )
+  return { ok: true, tradeId: id, offer: normalizedOffer, request: normalizedRequest }
+}
+
+function hydrateTradeRow(row) {
+  if (!row) return null
+  let offer = []
+  let request = []
+  try { offer = JSON.parse(row.offer) } catch { /* ignore */ }
+  try { request = JSON.parse(row.request) } catch { /* ignore */ }
+  return {
+    id: row.id,
+    fromAccountId: row.from_account_id,
+    toAccountId: row.to_account_id,
+    status: row.status,
+    offer,
+    request,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    expiresAt: row.expires_at,
+  }
+}
+
+export function listTradesForAccount(accountId) {
+  if (!accountId) return []
+  _expireStaleTrades.run() // sweep expired trades before listing
+  return _listTradesForAccount.all(accountId, accountId).map(hydrateTradeRow)
+}
+
+export function getTradeById(id) {
+  const row = _getTradeById.get(id)
+  return hydrateTradeRow(row)
+}
+
+function applyCardDelta(owned, items, sign) {
+  const next = { ...owned }
+  for (const { cardId, qty } of items) {
+    const current = next[cardId] ?? 0
+    const updated = current + sign * qty
+    if (updated < 0) return null
+    if (updated === 0) delete next[cardId]
+    else next[cardId] = updated
+  }
+  return next
+}
+
+export function acceptTrade(accepterAccountId, tradeId) {
+  if (!accepterAccountId || !tradeId) {
+    return { ok: false, status: 400, error: 'Missing arguments.' }
+  }
+
+  const result = db.transaction(() => {
+    // Re-read the trade under the transaction to avoid races between two
+    // concurrent accept calls.
+    const row = _getTradeById.get(tradeId)
+    if (!row) return { ok: false, status: 404, error: 'Trade not found.' }
+    if (row.status !== 'pending') return { ok: false, status: 409, error: 'Trade is no longer pending.' }
+    if (row.to_account_id !== accepterAccountId) {
+      return { ok: false, status: 403, error: 'Only the recipient can accept this trade.' }
+    }
+    if (new Date(row.expires_at).getTime() < Date.now()) {
+      _updateTradeStatus.run('expired', row.id)
+      return { ok: false, status: 410, error: 'Trade has expired.' }
+    }
+
+    const trade = hydrateTradeRow(row)
+
+    // Friends-only check is re-verified at accept time — if the friendship
+    // was broken since the proposal, the trade must fail.
+    if (!isFriendOf(trade.fromAccountId, trade.toAccountId)) {
+      _updateTradeStatus.run('cancelled', row.id)
+      return { ok: false, status: 403, error: 'The players are no longer friends.' }
+    }
+
+    const fromRow = _getOwnedCards.get(trade.fromAccountId)
+    const toRow = _getOwnedCards.get(accepterAccountId)
+    if (!fromRow || !toRow) {
+      return { ok: false, status: 404, error: 'One of the profiles no longer exists.' }
+    }
+
+    const fromCards = normalizeOwnedCards(fromRow.owned_cards)
+    const toCards = normalizeOwnedCards(toRow.owned_cards)
+
+    if (!ownsAll(fromCards, trade.offer)) {
+      _updateTradeStatus.run('cancelled', row.id)
+      return { ok: false, status: 409, error: 'Proposer no longer owns the offered cards.' }
+    }
+    if (!ownsAll(toCards, trade.request)) {
+      return { ok: false, status: 400, error: 'You do not own all of the requested cards.' }
+    }
+
+    // Transfer: proposer loses offer, gains request; accepter gains offer, loses request.
+    const fromAfter = applyCardDelta(applyCardDelta(fromCards, trade.offer, -1) ?? {}, trade.request, +1)
+    const toAfter = applyCardDelta(applyCardDelta(toCards, trade.request, -1) ?? {}, trade.offer, +1)
+    if (!fromAfter || !toAfter) {
+      return { ok: false, status: 409, error: 'Card count underflow. Trade aborted.' }
+    }
+
+    // Enforce max-copy limits (e.g. legendary cap) on the receiving side.
+    const RARITY_MAX = { common: GAME_MAX_COPIES, rare: GAME_MAX_COPIES, epic: GAME_MAX_COPIES, legendary: MAX_LEGENDARY_COPIES }
+    const cardById = (id) => CARD_LIBRARY.find((c) => c.id === id)
+    for (const [cardId, qty] of Object.entries(fromAfter)) {
+      const card = cardById(cardId)
+      const max = RARITY_MAX[card?.rarity] ?? GAME_MAX_COPIES
+      if (qty > max) return { ok: false, status: 409, error: `Trade would exceed card-copy limit for ${cardId}.` }
+    }
+    for (const [cardId, qty] of Object.entries(toAfter)) {
+      const card = cardById(cardId)
+      const max = RARITY_MAX[card?.rarity] ?? GAME_MAX_COPIES
+      if (qty > max) return { ok: false, status: 409, error: `Trade would exceed card-copy limit for ${cardId}.` }
+    }
+
+    _setOwnedCards.run(JSON.stringify(fromAfter), trade.fromAccountId)
+    _setOwnedCards.run(JSON.stringify(toAfter), accepterAccountId)
+    const updated = _updateTradeStatus.run('accepted', row.id)
+    if (updated.changes === 0) {
+      // Another transaction already moved this trade out of 'pending'.
+      // Throw to roll back the better-sqlite3 transaction (which runs BEGIN/
+      // COMMIT around the callback); we catch the sentinel error below and
+      // convert it into a structured {ok:false} result for the caller.
+      throw new Error('concurrent_trade_update')
+    }
+    return { ok: true, tradeId: row.id }
+  })
+
+  try {
+    return result()
+  } catch (err) {
+    if (err?.message === 'concurrent_trade_update') {
+      return { ok: false, status: 409, error: 'Trade was updated concurrently. Please refresh.' }
+    }
+    throw err
+  }
+}
+
+export function cancelTrade(accountId, tradeId, reason = 'cancelled') {
+  if (!accountId || !tradeId) return { ok: false, status: 400, error: 'Missing arguments.' }
+  const row = _getTradeById.get(tradeId)
+  if (!row) return { ok: false, status: 404, error: 'Trade not found.' }
+  if (row.status !== 'pending') return { ok: false, status: 409, error: 'Trade is no longer pending.' }
+  if (reason === 'cancelled' && row.from_account_id !== accountId) {
+    return { ok: false, status: 403, error: 'Only the proposer can cancel.' }
+  }
+  if (reason === 'rejected' && row.to_account_id !== accountId) {
+    return { ok: false, status: 403, error: 'Only the recipient can reject.' }
+  }
+  _updateTradeStatus.run(reason, tradeId)
+  return { ok: true, tradeId, status: reason }
+}
 
 export default db
