@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="Fractured Arcanum crest">
+  <defs>
+    <linearGradient id="shield" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="100%" stop-color="#7c3aed"/>
+    </linearGradient>
+  </defs>
+  <rect width="256" height="256" rx="48" fill="#0b1020"/>
+  <path d="M128 36 L196 64 V122 C196 167 169 205 128 222 C87 205 60 167 60 122 V64 Z" fill="url(#shield)"/>
+  <path d="M128 71 L144 110 L187 128 L144 146 L128 185 L112 146 L69 128 L112 110 Z" fill="#fbbf24"/>
+  <circle cx="128" cy="128" r="14" fill="#0b1020"/>
+  <circle cx="128" cy="128" r="6" fill="#fbbf24"/>
+</svg>

@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 340 220" role="img" aria-label="War Chief illustration">
+  <defs>
+    <linearGradient id="sky-war-chief" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0a1226"/>
+      <stop offset="100%" stop-color="#b91c1c" stop-opacity="0.75"/>
+    </linearGradient>
+    <linearGradient id="ground-war-chief" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#ef4444" stop-opacity="0.22"/>
+      <stop offset="100%" stop-color="#0b1020" stop-opacity="0.12"/>
+    </linearGradient>
+  </defs>
+  <rect width="340" height="220" rx="28" fill="url(#sky-war-chief)"/>
+  <rect x="10" y="10" width="320" height="200" rx="22" fill="none" stroke="rgba(168,85,247,.6)"/>
+  <circle cx="40" cy="28" r="2.4" fill="rgba(255,255,255,.18)"/><circle cx="76" cy="46" r="2.4" fill="rgba(255,255,255,.18)"/><circle cx="112" cy="64" r="2.4" fill="rgba(255,255,255,.18)"/><circle cx="148" cy="28" r="2.4" fill="rgba(255,255,255,.18)"/><circle cx="184" cy="46" r="2.4" fill="rgba(255,255,255,.18)"/><circle cx="220" cy="64" r="2.4" fill="rgba(255,255,255,.18)"/><circle cx="256" cy="28" r="2.4" fill="rgba(255,255,255,.18)"/>
+  <path d="M0 182 C54 154 102 162 170 176 C232 188 280 182 340 154 V220 H0 Z" fill="url(#ground-war-chief)"/>
+  
+    <path d="M88 162 C128 130 148 122 170 122 C192 122 212 130 252 162 C216 156 202 158 170 170 C138 158 124 156 88 162 Z" fill="#b91c1c" opacity=".75"/>
+    <circle cx="170" cy="108" r="18" fill="#ef4444"/>
+    <path d="M86 152 L66 108 M254 152 L274 108" stroke="#ef4444" stroke-width="5" stroke-linecap="round" fill="none"/>
+</svg>

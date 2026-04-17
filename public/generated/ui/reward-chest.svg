@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 240" role="img" aria-label="Fractured Arcanum reward chest">
+  <rect width="320" height="240" rx="34" fill="#1a1328"/>
+  <rect x="56" y="98" width="208" height="92" rx="18" fill="#7c3aed" stroke="#fbbf24" stroke-width="8"/>
+  <path d="M56 108 C88 56 232 56 264 108" fill="#a78bfa" stroke="#fbbf24" stroke-width="8"/>
+  <rect x="146" y="86" width="28" height="104" rx="10" fill="#fbbf24"/>
+  <circle cx="160" cy="142" r="14" fill="#fff7ed"/>
+  <circle cx="70" cy="42" r="10" fill="rgba(255,255,255,.18)"/>
+  <circle cx="254" cy="46" r="8" fill="rgba(255,255,255,.15)"/>
+</svg>

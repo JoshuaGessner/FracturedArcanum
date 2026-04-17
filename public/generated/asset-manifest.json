@@ -1,0 +1,699 @@
+{
+  "generatedAt": "2026-04-17T03:06:46.157Z",
+  "provider": "local-svg",
+  "apiReady": false,
+  "commercialSafe": true,
+  "notes": "All bundled defaults are original local SVG assets. If an external image service is later connected, review output manually before shipping.",
+  "assets": [
+    {
+      "id": "fractured-arcanum-logo.svg",
+      "path": "/fractured-arcanum-logo.svg",
+      "type": "brand",
+      "source": "local-generated"
+    },
+    {
+      "id": "fractured-arcanum-crest.svg",
+      "path": "/fractured-arcanum-crest.svg",
+      "type": "brand",
+      "source": "local-generated"
+    },
+    {
+      "id": "fractured-arcanum-board.svg",
+      "path": "/fractured-arcanum-board.svg",
+      "type": "brand",
+      "source": "local-generated"
+    },
+    {
+      "id": "fractured-arcanum-card.svg",
+      "path": "/fractured-arcanum-card.svg",
+      "type": "brand",
+      "source": "local-generated"
+    },
+    {
+      "id": "fractured-arcanum-hero-player.svg",
+      "path": "/fractured-arcanum-hero-player.svg",
+      "type": "brand",
+      "source": "local-generated"
+    },
+    {
+      "id": "fractured-arcanum-hero-enemy.svg",
+      "path": "/fractured-arcanum-hero-enemy.svg",
+      "type": "brand",
+      "source": "local-generated"
+    },
+    {
+      "id": "generated/ui/admin-ops-banner.svg",
+      "path": "/generated/ui/admin-ops-banner.svg",
+      "type": "ui-banner",
+      "source": "local-generated"
+    },
+    {
+      "id": "generated/ui/asset-forge-banner.svg",
+      "path": "/generated/ui/asset-forge-banner.svg",
+      "type": "ui-banner",
+      "source": "local-generated"
+    },
+    {
+      "id": "generated/ui/season-medal.svg",
+      "path": "/generated/ui/season-medal.svg",
+      "type": "brand",
+      "source": "local-generated"
+    },
+    {
+      "id": "generated/ui/reward-chest.svg",
+      "path": "/generated/ui/reward-chest.svg",
+      "type": "brand",
+      "source": "local-generated"
+    },
+    {
+      "id": "spark-imp",
+      "path": "/generated/cards/spark-imp.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "common"
+    },
+    {
+      "id": "shade-fox",
+      "path": "/generated/cards/shade-fox.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "common"
+    },
+    {
+      "id": "ironbark-guard",
+      "path": "/generated/cards/ironbark-guard.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "common"
+    },
+    {
+      "id": "dawn-healer",
+      "path": "/generated/cards/dawn-healer.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "common"
+    },
+    {
+      "id": "rune-scholar",
+      "path": "/generated/cards/rune-scholar.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "common"
+    },
+    {
+      "id": "sky-raider",
+      "path": "/generated/cards/sky-raider.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "common"
+    },
+    {
+      "id": "moonwell-sage",
+      "path": "/generated/cards/moonwell-sage.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "common"
+    },
+    {
+      "id": "ember-witch",
+      "path": "/generated/cards/ember-witch.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "common"
+    },
+    {
+      "id": "storm-brute",
+      "path": "/generated/cards/storm-brute.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "common"
+    },
+    {
+      "id": "sunforged-giant",
+      "path": "/generated/cards/sunforged-giant.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "common"
+    },
+    {
+      "id": "void-leech",
+      "path": "/generated/cards/void-leech.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "common"
+    },
+    {
+      "id": "warcry-sentinel",
+      "path": "/generated/cards/warcry-sentinel.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "common"
+    },
+    {
+      "id": "venom-drake",
+      "path": "/generated/cards/venom-drake.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "common"
+    },
+    {
+      "id": "aegis-knight",
+      "path": "/generated/cards/aegis-knight.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "common"
+    },
+    {
+      "id": "soul-reaver",
+      "path": "/generated/cards/soul-reaver.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "common"
+    },
+    {
+      "id": "tide-caller",
+      "path": "/generated/cards/tide-caller.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "common"
+    },
+    {
+      "id": "crystal-golem",
+      "path": "/generated/cards/crystal-golem.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "common"
+    },
+    {
+      "id": "blaze-runner",
+      "path": "/generated/cards/blaze-runner.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "common"
+    },
+    {
+      "id": "nether-witch",
+      "path": "/generated/cards/nether-witch.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "common"
+    },
+    {
+      "id": "runebound-oracle",
+      "path": "/generated/cards/runebound-oracle.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "common"
+    },
+    {
+      "id": "flame-imp",
+      "path": "/generated/cards/flame-imp.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "common"
+    },
+    {
+      "id": "stone-wall",
+      "path": "/generated/cards/stone-wall.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "common"
+    },
+    {
+      "id": "elven-archer",
+      "path": "/generated/cards/elven-archer.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "common"
+    },
+    {
+      "id": "dark-cultist",
+      "path": "/generated/cards/dark-cultist.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "common"
+    },
+    {
+      "id": "mana-wisp",
+      "path": "/generated/cards/mana-wisp.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "common"
+    },
+    {
+      "id": "shadow-fiend",
+      "path": "/generated/cards/shadow-fiend.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "common"
+    },
+    {
+      "id": "frost-archer",
+      "path": "/generated/cards/frost-archer.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "common"
+    },
+    {
+      "id": "iron-guard",
+      "path": "/generated/cards/iron-guard.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "common"
+    },
+    {
+      "id": "war-grunt",
+      "path": "/generated/cards/war-grunt.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "common"
+    },
+    {
+      "id": "nature-sprite",
+      "path": "/generated/cards/nature-sprite.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "common"
+    },
+    {
+      "id": "fire-drake",
+      "path": "/generated/cards/fire-drake.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "common"
+    },
+    {
+      "id": "crystal-shard",
+      "path": "/generated/cards/crystal-shard.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "common"
+    },
+    {
+      "id": "swamp-lurker",
+      "path": "/generated/cards/swamp-lurker.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "common"
+    },
+    {
+      "id": "battle-dog",
+      "path": "/generated/cards/battle-dog.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "common"
+    },
+    {
+      "id": "wind-sprite",
+      "path": "/generated/cards/wind-sprite.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "common"
+    },
+    {
+      "id": "ember-mage",
+      "path": "/generated/cards/ember-mage.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "common"
+    },
+    {
+      "id": "stone-golem",
+      "path": "/generated/cards/stone-golem.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "common"
+    },
+    {
+      "id": "sea-serpent",
+      "path": "/generated/cards/sea-serpent.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "common"
+    },
+    {
+      "id": "poison-dart",
+      "path": "/generated/cards/poison-dart.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "common"
+    },
+    {
+      "id": "flame-dancer",
+      "path": "/generated/cards/flame-dancer.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "common"
+    },
+    {
+      "id": "iron-sentry",
+      "path": "/generated/cards/iron-sentry.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "common"
+    },
+    {
+      "id": "plague-rat",
+      "path": "/generated/cards/plague-rat.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "common"
+    },
+    {
+      "id": "wild-boar",
+      "path": "/generated/cards/wild-boar.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "common"
+    },
+    {
+      "id": "dust-devil",
+      "path": "/generated/cards/dust-devil.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "common"
+    },
+    {
+      "id": "moss-troll",
+      "path": "/generated/cards/moss-troll.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "common"
+    },
+    {
+      "id": "thorn-bush",
+      "path": "/generated/cards/thorn-bush.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "common"
+    },
+    {
+      "id": "spark-elemental",
+      "path": "/generated/cards/spark-elemental.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "common"
+    },
+    {
+      "id": "clay-soldier",
+      "path": "/generated/cards/clay-soldier.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "common"
+    },
+    {
+      "id": "fire-imp",
+      "path": "/generated/cards/fire-imp.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "rare"
+    },
+    {
+      "id": "silver-knight",
+      "path": "/generated/cards/silver-knight.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "rare"
+    },
+    {
+      "id": "golden-dragon",
+      "path": "/generated/cards/golden-dragon.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "rare"
+    },
+    {
+      "id": "spirit-healer",
+      "path": "/generated/cards/spirit-healer.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "rare"
+    },
+    {
+      "id": "rune-weaver",
+      "path": "/generated/cards/rune-weaver.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "rare"
+    },
+    {
+      "id": "blood-mage",
+      "path": "/generated/cards/blood-mage.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "rare"
+    },
+    {
+      "id": "thunder-wolf",
+      "path": "/generated/cards/thunder-wolf.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "rare"
+    },
+    {
+      "id": "bone-knight",
+      "path": "/generated/cards/bone-knight.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "rare"
+    },
+    {
+      "id": "sand-wurm",
+      "path": "/generated/cards/sand-wurm.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "rare"
+    },
+    {
+      "id": "moon-druid",
+      "path": "/generated/cards/moon-druid.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "rare"
+    },
+    {
+      "id": "lava-hound",
+      "path": "/generated/cards/lava-hound.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "rare"
+    },
+    {
+      "id": "ghost-knight",
+      "path": "/generated/cards/ghost-knight.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "rare"
+    },
+    {
+      "id": "jungle-panther",
+      "path": "/generated/cards/jungle-panther.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "rare"
+    },
+    {
+      "id": "coral-golem",
+      "path": "/generated/cards/coral-golem.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "rare"
+    },
+    {
+      "id": "obsidian-knight",
+      "path": "/generated/cards/obsidian-knight.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "rare"
+    },
+    {
+      "id": "shadow-assassin",
+      "path": "/generated/cards/shadow-assassin.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "rare"
+    },
+    {
+      "id": "glacial-colossus",
+      "path": "/generated/cards/glacial-colossus.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "rare"
+    },
+    {
+      "id": "arcane-golem",
+      "path": "/generated/cards/arcane-golem.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "rare"
+    },
+    {
+      "id": "storm-shaman",
+      "path": "/generated/cards/storm-shaman.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "rare"
+    },
+    {
+      "id": "bone-collector",
+      "path": "/generated/cards/bone-collector.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "rare"
+    },
+    {
+      "id": "ancient-hydra",
+      "path": "/generated/cards/ancient-hydra.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "rare"
+    },
+    {
+      "id": "druid-elder",
+      "path": "/generated/cards/druid-elder.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "rare"
+    },
+    {
+      "id": "inferno-dragon",
+      "path": "/generated/cards/inferno-dragon.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "epic"
+    },
+    {
+      "id": "abyssal-tyrant",
+      "path": "/generated/cards/abyssal-tyrant.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "epic"
+    },
+    {
+      "id": "iron-clad",
+      "path": "/generated/cards/iron-clad.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "epic"
+    },
+    {
+      "id": "phoenix-ascendant",
+      "path": "/generated/cards/phoenix-ascendant.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "epic"
+    },
+    {
+      "id": "crimson-witch",
+      "path": "/generated/cards/crimson-witch.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "epic"
+    },
+    {
+      "id": "thunder-titan",
+      "path": "/generated/cards/thunder-titan.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "epic"
+    },
+    {
+      "id": "deep-kraken",
+      "path": "/generated/cards/deep-kraken.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "epic"
+    },
+    {
+      "id": "war-chief",
+      "path": "/generated/cards/war-chief.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "epic"
+    },
+    {
+      "id": "crystal-oracle",
+      "path": "/generated/cards/crystal-oracle.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "epic"
+    },
+    {
+      "id": "necro-sage",
+      "path": "/generated/cards/necro-sage.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "epic"
+    },
+    {
+      "id": "celestial-archer",
+      "path": "/generated/cards/celestial-archer.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "epic"
+    },
+    {
+      "id": "void-stalker",
+      "path": "/generated/cards/void-stalker.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "epic"
+    },
+    {
+      "id": "arcane-artificer",
+      "path": "/generated/cards/arcane-artificer.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "epic"
+    },
+    {
+      "id": "tempest-eagle",
+      "path": "/generated/cards/tempest-eagle.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "epic"
+    },
+    {
+      "id": "velara",
+      "path": "/generated/cards/velara.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "legendary"
+    },
+    {
+      "id": "malachar",
+      "path": "/generated/cards/malachar.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "legendary"
+    },
+    {
+      "id": "kronos",
+      "path": "/generated/cards/kronos.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "legendary"
+    },
+    {
+      "id": "aethon",
+      "path": "/generated/cards/aethon.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "legendary"
+    },
+    {
+      "id": "drakarion",
+      "path": "/generated/cards/drakarion.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "legendary"
+    },
+    {
+      "id": "zephyr",
+      "path": "/generated/cards/zephyr.svg",
+      "type": "card-art",
+      "source": "local-generated",
+      "rarity": "legendary"
+    }
+  ]
+}

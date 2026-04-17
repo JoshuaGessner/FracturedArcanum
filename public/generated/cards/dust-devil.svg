@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 340 220" role="img" aria-label="Dust Devil illustration">
+  <defs>
+    <linearGradient id="sky-dust-devil" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0a1226"/>
+      <stop offset="100%" stop-color="#a8a29e" stop-opacity="0.75"/>
+    </linearGradient>
+    <linearGradient id="ground-dust-devil" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#d4d4d8" stop-opacity="0.22"/>
+      <stop offset="100%" stop-color="#0b1020" stop-opacity="0.12"/>
+    </linearGradient>
+  </defs>
+  <rect width="340" height="220" rx="28" fill="url(#sky-dust-devil)"/>
+  <rect x="10" y="10" width="320" height="200" rx="22" fill="none" stroke="rgba(156,163,175,.45)"/>
+  <circle cx="40" cy="28" r="2.4" fill="rgba(255,255,255,.18)"/><circle cx="76" cy="46" r="2.4" fill="rgba(255,255,255,.18)"/><circle cx="112" cy="64" r="2.4" fill="rgba(255,255,255,.18)"/><circle cx="148" cy="28" r="2.4" fill="rgba(255,255,255,.18)"/><circle cx="184" cy="46" r="2.4" fill="rgba(255,255,255,.18)"/><circle cx="220" cy="64" r="2.4" fill="rgba(255,255,255,.18)"/><circle cx="256" cy="28" r="2.4" fill="rgba(255,255,255,.18)"/>
+  <path d="M0 182 C54 154 102 162 170 176 C232 188 280 182 340 154 V220 H0 Z" fill="url(#ground-dust-devil)"/>
+  
+    <path d="M105 186 C129 155 155 127 170 127 C185 127 211 155 235 186 Z" fill="#a8a29e"/>
+    <circle cx="170" cy="107" r="25" fill="#d4d4d8"/>
+    <path d="235 186 C245 177 255 177 255 171" fill="none" stroke="#d4d4d8" stroke-width="5" stroke-linecap="round"/>
+    <circle cx="163" cy="103" r="3" fill="#fff"/>
+    <circle cx="177" cy="103" r="3" fill="#fff"/>
+</svg>

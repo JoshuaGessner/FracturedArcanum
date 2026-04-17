@@ -1,0 +1,21 @@
+services:
+  fractured-arcanum:
+    build: .
+    ports:
+      - "${PORT:-43173}:43173"
+    environment:
+      - NODE_ENV=production
+      - PORT=43173
+      - ADMIN_KEY=${ADMIN_KEY:?Set ADMIN_KEY in .env or environment}
+      - CLIENT_ORIGIN=${CLIENT_ORIGIN:-}
+    volumes:
+      - fractured-arcanum-data:/app/data
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "1.0"
+
+volumes:
+  fractured-arcanum-data:

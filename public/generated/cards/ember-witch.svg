@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 340 220" role="img" aria-label="Ember Witch illustration">
+  <defs>
+    <linearGradient id="sky-ember-witch" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0a1226"/>
+      <stop offset="100%" stop-color="#f59e0b" stop-opacity="0.75"/>
+    </linearGradient>
+    <linearGradient id="ground-ember-witch" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#ef4444" stop-opacity="0.22"/>
+      <stop offset="100%" stop-color="#0b1020" stop-opacity="0.12"/>
+    </linearGradient>
+  </defs>
+  <rect width="340" height="220" rx="28" fill="url(#sky-ember-witch)"/>
+  <rect x="10" y="10" width="320" height="200" rx="22" fill="none" stroke="rgba(251,191,36,.45)"/>
+  <circle cx="40" cy="28" r="2.4" fill="rgba(255,255,255,.18)"/><circle cx="76" cy="46" r="2.4" fill="rgba(255,255,255,.18)"/><circle cx="112" cy="64" r="2.4" fill="rgba(255,255,255,.18)"/><circle cx="148" cy="28" r="2.4" fill="rgba(255,255,255,.18)"/><circle cx="184" cy="46" r="2.4" fill="rgba(255,255,255,.18)"/><circle cx="220" cy="64" r="2.4" fill="rgba(255,255,255,.18)"/><circle cx="256" cy="28" r="2.4" fill="rgba(255,255,255,.18)"/>
+  <path d="M0 182 C54 154 102 162 170 176 C232 188 280 182 340 154 V220 H0 Z" fill="url(#ground-ember-witch)"/>
+  
+      <path d="M170 66 C194 100 206 128 206 150 C206 176 190 194 170 194 C150 194 134 176 134 150 C134 128 146 100 170 66 Z" fill="#fb7185"/>
+      <path d="M150 164 C162 152 170 134 176 114 C186 132 190 146 190 158 C190 172 182 180 170 180 C160 180 152 174 150 164 Z" fill="#fbbf24"/>
+      <circle cx="226" cy="102" r="14" fill="rgba(251,191,36,.35)"/>
+    
+</svg>

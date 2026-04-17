@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 320" role="img" aria-label="Fractured Arcanum hero portrait">
+  <defs>
+    <linearGradient id="heroA" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="100%" stop-color="#7c3aed"/>
+    </linearGradient>
+  </defs>
+  <rect width="320" height="320" rx="40" fill="#10182f"/>
+  <circle cx="160" cy="96" r="52" fill="url(#heroA)"/>
+  <path d="M78 260 C92 180 126 142 160 142 C194 142 228 180 242 260 Z" fill="#263d78"/>
+  <path d="M122 108 L160 54 L198 108" fill="none" stroke="#fbbf24" stroke-width="10" stroke-linecap="round"/>
+  <circle cx="142" cy="95" r="5" fill="#fff"/>
+  <circle cx="178" cy="95" r="5" fill="#fff"/>
+</svg>

@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 340 220" role="img" aria-label="Nether Witch illustration">
+  <defs>
+    <linearGradient id="sky-nether-witch" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0a1226"/>
+      <stop offset="100%" stop-color="#ec4899" stop-opacity="0.75"/>
+    </linearGradient>
+    <linearGradient id="ground-nether-witch" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#a855f7" stop-opacity="0.22"/>
+      <stop offset="100%" stop-color="#0b1020" stop-opacity="0.12"/>
+    </linearGradient>
+  </defs>
+  <rect width="340" height="220" rx="28" fill="url(#sky-nether-witch)"/>
+  <rect x="10" y="10" width="320" height="200" rx="22" fill="none" stroke="rgba(251,191,36,.45)"/>
+  <circle cx="40" cy="28" r="2.4" fill="rgba(255,255,255,.18)"/><circle cx="76" cy="46" r="2.4" fill="rgba(255,255,255,.18)"/><circle cx="112" cy="64" r="2.4" fill="rgba(255,255,255,.18)"/><circle cx="148" cy="28" r="2.4" fill="rgba(255,255,255,.18)"/><circle cx="184" cy="46" r="2.4" fill="rgba(255,255,255,.18)"/><circle cx="220" cy="64" r="2.4" fill="rgba(255,255,255,.18)"/><circle cx="256" cy="28" r="2.4" fill="rgba(255,255,255,.18)"/>
+  <path d="M0 182 C54 154 102 162 170 176 C232 188 280 182 340 154 V220 H0 Z" fill="url(#ground-nether-witch)"/>
+  
+      <path d="M170 62 L194 110 L148 110 Z" fill="#581c87"/>
+      <circle cx="170" cy="138" r="24" fill="#7e22ce"/>
+      <path d="M118 158 C134 128 150 128 170 138 C190 128 206 128 222 158" fill="none" stroke="#d8b4fe" stroke-width="6" stroke-linecap="round"/>
+      <circle cx="128" cy="162" r="8" fill="rgba(236,72,153,.4)"/>
+      <circle cx="212" cy="162" r="8" fill="rgba(168,85,247,.4)"/>
+    
+</svg>

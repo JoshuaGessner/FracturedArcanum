@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 280" role="img" aria-label="Fractured Arcanum admin operations banner">
+  <defs>
+    <linearGradient id="ops-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0b1020"/>
+      <stop offset="100%" stop-color="#1e3a8a"/>
+    </linearGradient>
+  </defs>
+  <rect width="960" height="280" rx="32" fill="url(#ops-bg)"/>
+  <circle cx="164" cy="92" r="58" fill="rgba(56,189,248,.18)"/>
+  <circle cx="790" cy="82" r="44" fill="rgba(124,58,237,.18)"/>
+  <rect x="76" y="154" width="230" height="62" rx="16" fill="rgba(15,23,42,.6)" stroke="rgba(56,189,248,.25)"/>
+  <rect x="332" y="124" width="260" height="92" rx="16" fill="rgba(15,23,42,.48)" stroke="rgba(251,191,36,.25)"/>
+  <rect x="620" y="144" width="254" height="72" rx="16" fill="rgba(15,23,42,.58)" stroke="rgba(124,58,237,.25)"/>
+  <text x="78" y="76" font-size="32" font-family="Verdana,Segoe UI,sans-serif" font-weight="700" fill="#f8f7ff">Arena Operations</text>
+  <text x="78" y="110" font-size="16" font-family="Verdana,Segoe UI,sans-serif" fill="#d7e5ff">Traffic, complaints, and release-quality monitoring</text>
+</svg>

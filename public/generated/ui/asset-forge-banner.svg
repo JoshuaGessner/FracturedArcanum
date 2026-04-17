@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 280" role="img" aria-label="Fractured Arcanum art forge banner">
+  <defs>
+    <linearGradient id="forge-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#160f28"/>
+      <stop offset="100%" stop-color="#1d4ed8"/>
+    </linearGradient>
+  </defs>
+  <rect width="960" height="280" rx="32" fill="url(#forge-bg)"/>
+  <circle cx="178" cy="96" r="54" fill="rgba(251,191,36,.2)"/>
+  <path d="M168 54 L186 92 L228 102 L186 112 L168 150 L150 112 L108 102 L150 92 Z" fill="#fbbf24"/>
+  <text x="278" y="92" font-size="34" font-family="Verdana,Segoe UI,sans-serif" font-weight="700" fill="#fff">Arcanum Forge Pipeline</text>
+  <text x="278" y="126" font-size="16" font-family="Verdana,Segoe UI,sans-serif" fill="#dbeafe">Local generated art, manifest-driven replacement, production-safe polish</text>
+</svg>

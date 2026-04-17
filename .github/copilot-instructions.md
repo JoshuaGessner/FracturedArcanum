@@ -1,0 +1,10 @@
+- [x] Verify .github/copilot-instructions.md exists.
+- [x] Clarify project requirements: mobile-first fantasy card battler prototype using React, TypeScript, and Vite.
+- [x] Scaffold the project in the current workspace.
+- [x] Customize the project with an original playable starter called Fractured Arcanum.
+- [x] Install required extensions: none needed.
+- [x] Compile the project successfully.
+- [x] Create and run task: not required because npm scripts are already available.
+- [x] Launch the project: the Vite dev server is available during setup.
+- [x] Ensure documentation is complete: README has been updated.
+- Keep the design original and avoid copyrighted assets or names.

@@ -1,0 +1,23 @@
+{
+  "name": "Fractured Arcanum",
+  "short_name": "FracturedArcanum",
+  "description": "A mobile-first cosmic-horror card battler with deck building, ranked play, and live arena features.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0b1020",
+  "theme_color": "#0b1020",
+  "icons": [
+    {
+      "src": "/fractured-arcanum-crest.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/fractured-arcanum-logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 600" role="img" aria-label="Fractured Arcanum card frame">
+  <defs>
+    <linearGradient id="frame" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.28"/>
+      <stop offset="100%" stop-color="#7c3aed" stop-opacity="0.38"/>
+    </linearGradient>
+  </defs>
+  <rect width="420" height="600" rx="34" fill="#191f3d"/>
+  <rect x="16" y="16" width="388" height="568" rx="28" fill="url(#frame)" stroke="rgba(251,191,36,.55)"/>
+  <circle cx="74" cy="74" r="28" fill="rgba(56,189,248,.25)"/>
+  <circle cx="346" cy="526" r="34" fill="rgba(124,58,237,.24)"/>
+  <path d="M210 98 L227 132 L263 140 L227 148 L210 182 L193 148 L157 140 L193 132 Z" fill="rgba(251,191,36,.55)"/>
+</svg>

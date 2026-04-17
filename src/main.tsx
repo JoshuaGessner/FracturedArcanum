@@ -1,0 +1,52 @@
+import { StrictMode } from 'react'
+import { createRoot } from 'react-dom/client'
+import './index.css'
+import App from './App.tsx'
+
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>
+    <App />
+  </StrictMode>,
+)
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    let refreshing = false
+
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (refreshing) {
+        return
+      }
+
+      refreshing = true
+      window.location.reload()
+    })
+
+    void navigator.serviceWorker
+      .register('/sw.js', { updateViaCache: 'none' })
+      .then((registration) => {
+        const requestUpdate = () => void registration.update()
+
+        registration.addEventListener('updatefound', () => {
+          const newWorker = registration.installing
+
+          if (!newWorker) {
+            return
+          }
+
+          newWorker.addEventListener('statechange', () => {
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              newWorker.postMessage({ type: 'SKIP_WAITING' })
+            }
+          })
+        })
+
+        requestUpdate()
+        document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState === 'visible') {
+            requestUpdate()
+          }
+        })
+      })
+  })
+}

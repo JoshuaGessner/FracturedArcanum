@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: fractured-arcanum
+    env: node
+    plan: starter
+    buildCommand: npm ci && npm run build
+    startCommand: npm run start
+    envVars:
+      - key: NODE_ENV
+        value: production

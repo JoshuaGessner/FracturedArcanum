@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" role="img" aria-label="Fractured Arcanum board art">
+  <defs>
+    <radialGradient id="mist" cx="50%" cy="20%" r="70%">
+      <stop offset="0%" stop-color="#263d78"/>
+      <stop offset="100%" stop-color="#0b1020"/>
+    </radialGradient>
+    <linearGradient id="lane" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="rgba(124,58,237,.15)"/>
+      <stop offset="50%" stop-color="rgba(56,189,248,.25)"/>
+      <stop offset="100%" stop-color="rgba(124,58,237,.15)"/>
+    </linearGradient>
+  </defs>
+  <rect width="1600" height="900" fill="url(#mist)"/>
+  <circle cx="800" cy="150" r="130" fill="rgba(56,189,248,.12)"/>
+  <circle cx="1300" cy="170" r="90" fill="rgba(124,58,237,.12)"/>
+  <rect x="110" y="260" width="1380" height="90" rx="32" fill="url(#lane)"/>
+  <rect x="110" y="405" width="1380" height="90" rx="32" fill="url(#lane)"/>
+  <rect x="110" y="550" width="1380" height="90" rx="32" fill="url(#lane)"/>
+  <g fill="none" stroke="rgba(251,191,36,.3)" stroke-width="4">
+    <circle cx="200" cy="740" r="70"/>
+    <circle cx="1400" cy="740" r="70"/>
+    <path d="M760 80 L800 40 L840 80 L800 120 Z" />
+  </g>
+</svg>
