@@ -358,7 +358,12 @@ function getEffectAmount(card: CardInstance, kind?: CardEffect, override?: numbe
   if (params.amount !== undefined && (kind === undefined || kind === card.effect)) {
     return params.amount
   }
-  return DEFAULT_EFFECT_AMOUNT[kind ?? card.effect ?? 'blast'] ?? 0
+  // Resolve the effect kind to look up. A card with no `effect` and no
+  // explicit `kind` falls through to 0 (no work to do); we never invent
+  // a default keyword for an effect-less unit.
+  const resolvedKind = kind ?? card.effect
+  if (!resolvedKind) return 0
+  return DEFAULT_EFFECT_AMOUNT[resolvedKind] ?? 0
 }
 
 /**

@@ -514,6 +514,7 @@ const DECK_MAX_TOTAL = 16
 const DECK_MAX_COPIES = 3
 const DECK_MAX_PER_ACCOUNT = 12
 const DECK_NAME_RE = /^[A-Za-z0-9][A-Za-z0-9 _'\-]{0,29}$/
+const DECK_NAME_ERROR = "Deck name must be 1-30 characters: letters, numbers, spaces, underscore, hyphen, apostrophe."
 const DECK_CARD_ID_RE = /^[a-z0-9][a-z0-9-]{0,40}$/
 
 export function validateDeckConfig(deckConfig) {
@@ -636,7 +637,7 @@ export function getActiveDeck(accountId) {
 export function createDeck(accountId, name, deckConfig) {
   const trimmedName = String(name ?? '').trim()
   if (!DECK_NAME_RE.test(trimmedName)) {
-    return { ok: false, error: 'Deck name must be 1-30 characters: letters, numbers, spaces, underscore, hyphen, apostrophe.' }
+    return { ok: false, error: DECK_NAME_ERROR }
   }
   const validation = validateDeckConfig(deckConfig ?? {})
   if (!validation.ok) return validation
@@ -666,7 +667,7 @@ export function updateDeck(accountId, deckId, { name, deckConfig }) {
 
   const nextName = name === undefined ? existing.name : String(name).trim()
   if (!DECK_NAME_RE.test(nextName)) {
-    return { ok: false, error: 'Deck name must be 1-30 characters: letters, numbers, spaces, underscore, hyphen, apostrophe.' }
+    return { ok: false, error: DECK_NAME_ERROR }
   }
 
   const nextConfigRaw = deckConfig ?? JSON.parse(existing.deck_config)
@@ -694,7 +695,7 @@ export function updateDeck(accountId, deckId, { name, deckConfig }) {
 export function renameDeck(accountId, deckId, name) {
   const trimmed = String(name ?? '').trim()
   if (!DECK_NAME_RE.test(trimmed)) {
-    return { ok: false, error: 'Deck name must be 1-30 characters: letters, numbers, spaces, underscore, hyphen, apostrophe.' }
+    return { ok: false, error: DECK_NAME_ERROR }
   }
   const existing = _getDeckById.get(deckId, accountId)
   if (!existing) return { ok: false, error: 'Deck not found.' }
