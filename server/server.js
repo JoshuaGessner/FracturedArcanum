@@ -584,7 +584,7 @@ app.post('/api/auth/signup', (request, response) => {
     ok: true,
     token: session.token,
     expiresAt: session.expiresAt,
-    profile: sanitizeProfile(profile, username),
+    profile: sanitizeProfile(profile, username, result.accountId),
   })
 })
 
@@ -610,7 +610,7 @@ app.post('/api/auth/login', (request, response) => {
     ok: true,
     token: session.token,
     expiresAt: session.expiresAt,
-    profile: sanitizeProfile(profile, username),
+    profile: sanitizeProfile(profile, username, result.accountId),
   })
 })
 
@@ -672,14 +672,16 @@ app.post(
       adminKey: ADMIN_KEY,
       token: session.token,
       expiresAt: session.expiresAt,
-      profile: sanitizeProfile(profile, uname),
+      profile: sanitizeProfile(profile, uname, result.accountId),
     })
   },
 )
 
-function sanitizeProfile(profile, username) {
+function sanitizeProfile(profile, username, accountId) {
   if (!profile) return null
   return {
+    accountId: accountId ?? profile.account_id,
+    displayName: profile.display_name ?? username ?? '',
     username: username ?? '',
     runes: profile.runes,
     seasonRating: profile.season_rating,
@@ -700,7 +702,7 @@ app.get('/api/me', requireAuth, (request, response) => {
   const profile = getProfile(request.accountId)
   response.json({
     ok: true,
-    profile: sanitizeProfile(profile, request.username),
+    profile: sanitizeProfile(profile, request.username, request.accountId),
   })
 })
 

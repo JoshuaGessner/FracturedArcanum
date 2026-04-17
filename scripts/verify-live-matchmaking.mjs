@@ -66,7 +66,7 @@ await new Promise((resolve, reject) => {
     else resolve()
   }
 
-  const makeSocket = (token, rating, label) => {
+  const makeSocket = (token, rating, label, surrenderOnStart = false) => {
     const socket = io(base, { auth: { token }, transports: ['websocket'] })
     sockets.push(socket)
 
@@ -81,7 +81,17 @@ await new Promise((resolve, reject) => {
     socket.on('game:start', (payload) => {
       results.push(`${label}:${payload.state.mode}:${payload.state.player.name} vs ${payload.state.enemy.name}`)
       starts += 1
-      if (starts === 2) finish()
+      if (surrenderOnStart) {
+        setTimeout(() => {
+          socket.emit('game:action', { action: { type: 'surrender' } })
+        }, 300)
+      }
+    })
+
+    socket.on('game:over', () => {
+      if (starts >= 2) {
+        finish()
+      }
     })
 
     socket.on('connect_error', (error) => finish(error))
@@ -89,10 +99,22 @@ await new Promise((resolve, reject) => {
   }
 
   makeSocket(tokenA, 1200, 'playerA')
-  makeSocket(tokenB, 1210, 'playerB')
-  setTimeout(() => finish(new Error('timed out waiting for both live players to enter the match')), 8000)
+  makeSocket(tokenB, 1210, 'playerB', true)
+  setTimeout(() => finish(new Error('timed out waiting for the live ranked match to resolve')), 10000)
 })
 
+const profileA = await fetch(base + '/api/me', {
+  headers: { Authorization: `Bearer ${tokenA}` },
+}).then((response) => response.json())
+const profileB = await fetch(base + '/api/me', {
+  headers: { Authorization: `Bearer ${tokenB}` },
+}).then((response) => response.json())
 const leaderboardResponse = await fetch(base + '/api/leaderboard')
 const leaderboard = await leaderboardResponse.json()
-console.log(JSON.stringify({ ok: true, results, leaderboardCount: leaderboard.entries?.length ?? 0 }))
+console.log(JSON.stringify({
+  ok: true,
+  results,
+  ratingA: profileA.profile?.seasonRating ?? 0,
+  ratingB: profileB.profile?.seasonRating ?? 0,
+  leaderboardCount: leaderboard.entries?.length ?? 0,
+}))
