@@ -461,6 +461,22 @@ export function applySides(
     : finalizeGame(base, rival, actor, log)
 }
 
+export function surrenderGame(base: GameState, side: BattleSide): GameState {
+  if (base.winner) {
+    return base
+  }
+
+  const loser = base[side]
+  const winnerSide = otherSide(side)
+  const winner = base[winnerSide]
+
+  return {
+    ...base,
+    winner: winnerSide,
+    log: pushLog(base.log, `${loser.name} abandons the battle. ${winner.name} wins by forfeit.`),
+  }
+}
+
 export function playCard(base: GameState, side: BattleSide, handIndex: number): GameState {
   if (base.winner) {
     return base

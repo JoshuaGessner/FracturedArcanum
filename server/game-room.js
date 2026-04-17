@@ -6,6 +6,7 @@ import {
   passTurn,
   redactGameState,
   otherSide,
+  surrenderGame,
   BOARD_SIZE,
 } from './game.js'
 
@@ -150,11 +151,11 @@ class GameRoom {
     const side = this.getSideForSocket(socketId)
     if (!side) return { ok: false, error: 'Not in this room.' }
     if (this.state.winner) return { ok: false, error: 'Game is over.' }
-    if (this.state.turn !== side) return { ok: false, error: 'Not your turn.' }
-
     if (!action || typeof action !== 'object') return { ok: false, error: 'Invalid action.' }
 
     const type = String(action.type ?? '')
+    if (type !== 'surrender' && this.state.turn !== side) return { ok: false, error: 'Not your turn.' }
+
     let newState = this.state
 
     switch (type) {
@@ -197,6 +198,10 @@ class GameRoom {
       }
       case 'endTurn': {
         newState = passTurn(this.state)
+        break
+      }
+      case 'surrender': {
+        newState = surrenderGame(this.state, side)
         break
       }
       default:

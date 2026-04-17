@@ -1014,7 +1014,8 @@ function App() {
   const activePlayer = game[activeSide]
   const defendingPlayer = game[defendingSide]
   const isMyTurn = game.turn === 'player' && !enemyTurnActive
-  const gameInProgress = activeScreen === 'battle' ? false : (game.turnNumber > 1 || game.player.hand.length !== game.enemy.hand.length || game.player.board.some(Boolean) || game.enemy.board.some(Boolean)) && !game.winner
+  const hasBattleInProgress = (game.turnNumber > 1 || game.player.hand.length !== game.enemy.hand.length || game.player.board.some(Boolean) || game.enemy.board.some(Boolean)) && !game.winner
+  const gameInProgress = activeScreen !== 'battle' && hasBattleInProgress
   const activeBoardHasOpenLane = activePlayer.board.some((slot) => slot === null)
   const selectedDeckSize = getDeckSize(deckConfig)
   const deckReady = selectedDeckSize >= MIN_DECK_SIZE
@@ -1049,12 +1050,72 @@ function App() {
 
   function openScreen(screen: AppScreen) {
     playSound('tap', soundEnabled)
-    if (screen !== 'battle' && enemyTurnActive) {
-      clearEnemyTurnTimers()
-      setEnemyTurnActive(false)
-      setEnemyTurnLabel('')
-    }
     setActiveScreen(screen)
+  }
+
+  function resetBattleState(mode: GameMode = preferredMode, toast = 'Battle reset. Ready when you are.') {
+    clearEnemyTurnTimers()
+    battleStartedRef.current = false
+    if (battleIntroTimerRef.current) {
+      window.clearTimeout(battleIntroTimerRef.current)
+      battleIntroTimerRef.current = null
+    }
+    resolvedMatchKeyRef.current = ''
+    prevBoardRef.current = null
+    setSelectedAttacker(null)
+    setEnemyTurnActive(false)
+    setEnemyTurnLabel('')
+    setRewardOverlayVisible(false)
+    setDamagedSlots(new Set())
+    setInspectedCard(null)
+    setOpponentDisconnected(false)
+    setDisconnectGraceMs(0)
+    setQueueState('idle')
+    setQueueSeconds(0)
+    setQueuedOpponent(null)
+    setGame(createGame(mode, deckConfig))
+    setActiveScreen('home')
+    setToastMessage(toast)
+  }
+
+  function handleResumeBattle() {
+    playSound('tap', soundEnabled)
+    setActiveScreen('battle')
+    setToastMessage(`Resuming your battle against ${game.enemy.name}.`)
+  }
+
+  function handleAbandonBattle() {
+    playSound('tap', soundEnabled)
+
+    if (game.mode === 'duel' && hasBattleInProgress && socketClientRef.current?.connected) {
+      emitAction({ type: 'surrender' })
+      resetBattleState(preferredMode, 'Ranked match abandoned. The result will be recorded by the server.')
+      return
+    }
+
+    if (game.mode === 'duel' && hasBattleInProgress) {
+      resetBattleState(preferredMode, 'Battle reset locally. Reconnect to finish or rejoin the ranked match if it is still active.')
+      return
+    }
+
+    resetBattleState(preferredMode)
+  }
+
+  function handleLeaveBattle() {
+    playSound('tap', soundEnabled)
+
+    if (queueState !== 'idle' && !hasBattleInProgress) {
+      handleCancelQueue()
+      return
+    }
+
+    if (hasBattleInProgress) {
+      setActiveScreen('home')
+      setToastMessage(`Battle paused vs ${game.enemy.name}. You can resume or abandon it from the lobby.`)
+      return
+    }
+
+    setActiveScreen('home')
   }
 
   function handleClaimDailyReward() {
@@ -1848,8 +1909,8 @@ function App() {
             <div className="game-resume-block">
               <p className="note">You have a battle in progress vs <strong>{game.enemy.name}</strong> (Turn {game.turnNumber})</p>
               <div className="controls">
-                <button className="primary" onClick={() => openScreen('battle')}>Resume Battle</button>
-                <button className="ghost" onClick={() => setGame(createGame(preferredMode, deckConfig))}>Abandon &amp; Reset</button>
+                <button className="primary" onClick={handleResumeBattle}>Resume Battle</button>
+                <button className="ghost" onClick={handleAbandonBattle}>Abandon &amp; Reset</button>
               </div>
             </div>
           )}
@@ -2095,7 +2156,7 @@ function App() {
           <button className="secondary" onClick={handleEndTurn} disabled={Boolean(game.winner) || !isMyTurn}>
             {!isMyTurn ? 'Opponent Turn…' : 'End Turn'}
           </button>
-          <button className="ghost" onClick={() => openScreen('home')}>
+          <button className="ghost" onClick={handleLeaveBattle}>
             Leave
           </button>
         </div>

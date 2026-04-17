@@ -6,6 +6,7 @@ import {
   createGame,
   getDeckSize,
   playCard,
+  surrenderGame,
 } from './game'
 
 describe('Fractured Arcanum core rules', () => {
@@ -42,5 +43,13 @@ describe('Fractured Arcanum core rules', () => {
 
     const result = playCard(base, 'player', playableIndex)
     expect(result.player.board.some((slot) => slot !== null)).toBe(true)
+  })
+
+  it('awards the match to the opponent when a player surrenders', () => {
+    const base = createGame('duel', DEFAULT_DECK_CONFIG)
+    const result = surrenderGame(base, 'player')
+
+    expect(result.winner).toBe('enemy')
+    expect(result.log[0]).toContain('wins by forfeit')
   })
 })
