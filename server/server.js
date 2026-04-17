@@ -21,6 +21,12 @@ import {
   getProfile,
   saveDeck,
   validateDeckConfig,
+  listDecks,
+  createDeck,
+  updateDeck,
+  renameDeck,
+  deleteDeck,
+  selectActiveDeck,
   selectTheme,
   claimDailyReward,
   purchaseTheme,
@@ -30,6 +36,10 @@ import {
   getCollection,
   openPack,
   PACK_DEFS,
+  breakdownCard,
+  listCardBorders,
+  purchaseCardBorder,
+  selectCardBorder,
   getSocialOverview,
   addFriend,
   removeFriend,
@@ -975,6 +985,8 @@ function sanitizeProfile(profile, username, accountId, role) {
     deckConfig: profile.deck_config,
     ownedThemes: profile.owned_themes,
     selectedTheme: profile.selected_theme,
+    ownedCardBorders: profile.owned_card_borders,
+    selectedCardBorder: profile.selected_card_border,
     lastDaily: profile.last_daily,
     totalEarned: profile.total_earned,
   }
@@ -998,6 +1010,111 @@ app.post('/api/me/deck', requireAuth, (request, response) => {
     return
   }
   const result = saveDeck(request.accountId, deckConfig)
+  if (!result.ok) {
+    response.status(400).json(result)
+    return
+  }
+  response.json(result)
+})
+
+// ─── Multi-deck CRUD endpoints ──────────────────────────────────────
+
+app.get('/api/me/decks', requireAuth, (request, response) => {
+  const decks = listDecks(request.accountId)
+  response.json({ ok: true, decks })
+})
+
+app.post('/api/me/decks', requireAuth, (request, response) => {
+  const { name, deckConfig } = request.body ?? {}
+  const result = createDeck(request.accountId, String(name ?? '').slice(0, 50), deckConfig ?? {})
+  if (!result.ok) {
+    response.status(400).json(result)
+    return
+  }
+  response.json(result)
+})
+
+app.patch('/api/me/decks/:deckId', requireAuth, (request, response) => {
+  const { deckId } = request.params
+  const { name, deckConfig } = request.body ?? {}
+  const payload = {}
+  if (name !== undefined) payload.name = String(name).slice(0, 50)
+  if (deckConfig !== undefined) payload.deckConfig = deckConfig
+  const result = updateDeck(request.accountId, String(deckId), payload)
+  if (!result.ok) {
+    response.status(400).json(result)
+    return
+  }
+  response.json(result)
+})
+
+app.post('/api/me/decks/:deckId/rename', requireAuth, (request, response) => {
+  const { deckId } = request.params
+  const { name } = request.body ?? {}
+  const result = renameDeck(request.accountId, String(deckId), String(name ?? '').slice(0, 50))
+  if (!result.ok) {
+    response.status(400).json(result)
+    return
+  }
+  response.json(result)
+})
+
+app.delete('/api/me/decks/:deckId', requireAuth, (request, response) => {
+  const { deckId } = request.params
+  const result = deleteDeck(request.accountId, String(deckId))
+  if (!result.ok) {
+    response.status(400).json(result)
+    return
+  }
+  response.json(result)
+})
+
+app.post('/api/me/decks/:deckId/select', requireAuth, (request, response) => {
+  const { deckId } = request.params
+  const result = selectActiveDeck(request.accountId, String(deckId))
+  if (!result.ok) {
+    response.status(400).json(result)
+    return
+  }
+  response.json(result)
+})
+
+// ─── Shard breakdown of excess cards ────────────────────────────────
+
+app.post('/api/cards/breakdown', requireAuth, (request, response) => {
+  const rl = checkRateLimit(`breakdown:${request.accountId}`, 30)
+  if (!rl.allowed) {
+    response.status(429).json({ ok: false, error: 'Too many breakdown requests. Slow down.' })
+    return
+  }
+  const { cardId, qty } = request.body ?? {}
+  const result = breakdownCard(request.accountId, String(cardId ?? ''), Number(qty ?? 0))
+  if (!result.ok) {
+    response.status(400).json(result)
+    return
+  }
+  response.json(result)
+})
+
+// ─── Card border cosmetic endpoints ─────────────────────────────────
+
+app.get('/api/shop/borders', requireAuth, (_request, response) => {
+  response.json({ ok: true, borders: listCardBorders() })
+})
+
+app.post('/api/shop/border', requireAuth, (request, response) => {
+  const { borderId } = request.body ?? {}
+  const result = purchaseCardBorder(request.accountId, String(borderId ?? ''))
+  if (!result.ok) {
+    response.status(400).json(result)
+    return
+  }
+  response.json(result)
+})
+
+app.post('/api/me/border', requireAuth, (request, response) => {
+  const { borderId } = request.body ?? {}
+  const result = selectCardBorder(request.accountId, String(borderId ?? ''))
   if (!result.ok) {
     response.status(400).json(result)
     return

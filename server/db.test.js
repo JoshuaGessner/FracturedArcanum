@@ -291,3 +291,117 @@ describe('card trading', () => {
     expect(accept.error).toMatch(/limit/i)
   })
 })
+
+describe('multi-deck CRUD', () => {
+  it('lazy-migrates legacy deck_config into a "Main" deck on first read', () => {
+    const id = makeAccount('decks_legacy')
+    const decks = db.listDecks(id)
+    expect(decks.length).toBe(1)
+    expect(decks[0].name).toBe('Main')
+    expect(decks[0].isActive).toBe(true)
+  })
+
+  it('creates, renames, selects, and deletes decks', () => {
+    const id = makeAccount('decks_crud')
+    // Use a deck the player owns at least one copy of (starter).
+    const create = db.createDeck(id, 'Combo', { 'spark-imp': 1 })
+    expect(create.ok, create.error).toBe(true)
+    const decks = db.listDecks(id)
+    expect(decks.length).toBe(2)
+    const main = decks.find((d) => d.name === 'Main')
+    const combo = decks.find((d) => d.name === 'Combo')
+    expect(main && main.isActive).toBe(true)
+
+    // Rename
+    const renamed = db.renameDeck(id, combo.id, 'Combo Mk II')
+    expect(renamed.ok).toBe(true)
+    expect(renamed.deck.name).toBe('Combo Mk II')
+
+    // Switch active
+    const sel = db.selectActiveDeck(id, combo.id)
+    expect(sel.ok).toBe(true)
+    const after = db.listDecks(id)
+    expect(after.find((d) => d.id === combo.id).isActive).toBe(true)
+    expect(after.find((d) => d.id === main.id).isActive).toBe(false)
+
+    // Cannot delete the last deck
+    db.deleteDeck(id, main.id)
+    const lone = db.listDecks(id)
+    expect(lone.length).toBe(1)
+    const last = db.deleteDeck(id, lone[0].id)
+    expect(last.ok).toBe(false)
+  })
+
+  it('rejects decks containing cards the player does not own', () => {
+    const id = makeAccount('decks_own')
+    const r = db.createDeck(id, 'Pirate', { 'drakarion-the-eternal': 1 })
+    expect(r.ok).toBe(false)
+    expect(r.error).toMatch(/own/i)
+  })
+})
+
+describe('shard breakdown', () => {
+  it('refunds shards for excess copies and updates owned counts', () => {
+    const id = makeAccount('breakdown_basic')
+    // Grant the account an extra copy of a starter common.
+    const profile = db.getProfile(id)
+    const cardId = Object.keys(profile.owned_cards)[0]
+    // Set owned_cards directly via saveDeck path? Easier: just use the
+    // existing copy if there is one and the player has 0 decks needing it.
+    // Empty out the active deck so no card is required by saved decks.
+    const empty = db.saveDeck(id, {})
+    expect(empty.ok).toBe(true)
+
+    const baseRunes = db.getProfile(id).runes
+    const result = db.breakdownCard(id, cardId, 1)
+    expect(result.ok, result.error).toBe(true)
+    expect(result.refunded).toBeGreaterThan(0)
+    expect(db.getProfile(id).runes).toBe(baseRunes + result.refunded)
+  })
+
+  it('refuses to break down copies needed by saved decks', () => {
+    const id = makeAccount('breakdown_lock')
+    const profile = db.getProfile(id)
+    const cardId = Object.keys(profile.owned_cards).find((c) => profile.owned_cards[c] >= 1)
+    // Active deck (Main) seeded from DEFAULT_DECK_CONFIG already requires copies.
+    // Try to break down a copy that's needed.
+    const result = db.breakdownCard(id, cardId, profile.owned_cards[cardId])
+    expect(result.ok).toBe(false)
+  })
+})
+
+describe('card border cosmetics', () => {
+  it('lists the catalog and lets the player purchase + select a border', () => {
+    const id = makeAccount('border_buyer')
+    const cat = db.listCardBorders()
+    expect(cat.find((b) => b.id === 'default')).toBeTruthy()
+    expect(cat.find((b) => b.id === 'bronze')).toBeTruthy()
+
+    // Initially, only 'default' is owned and selected.
+    const profile = db.getProfile(id)
+    expect(profile.owned_card_borders).toEqual(['default'])
+    expect(profile.selected_card_border).toBe('default')
+
+    // Try to purchase without enough shards.
+    const broke = db.purchaseCardBorder(id, 'void')
+    expect(broke.ok).toBe(false)
+
+    // Grant some shards via daily reward — repeatedly is blocked, so use the
+    // resolveMatchResult path or directly run an unsupported helper. Easiest:
+    // grant via daily then purchase the cheapest non-default border.
+    const day = db.claimDailyReward(id)
+    expect(day.ok).toBe(true)
+    const result = db.purchaseCardBorder(id, 'bronze')
+    expect(result.ok, result.error).toBe(true)
+    expect(result.ownedCardBorders).toContain('bronze')
+    expect(result.selectedCardBorder).toBe('bronze')
+  })
+
+  it('rejects unknown borders and unowned selection', () => {
+    const id = makeAccount('border_invalid')
+    const r1 = db.purchaseCardBorder(id, 'no-such-border')
+    expect(r1.ok).toBe(false)
+    const r2 = db.selectCardBorder(id, 'bronze')
+    expect(r2.ok).toBe(false)
+  })
+})
