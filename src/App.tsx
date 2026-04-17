@@ -79,6 +79,32 @@ type OpenedPackCard = {
   duplicate?: boolean
 }
 
+type SocialFriend = {
+  accountId: string
+  username: string
+  displayName: string
+  since: string
+}
+
+type SocialClanMember = {
+  accountId: string
+  username: string
+  displayName: string
+  role: 'owner' | 'member'
+  joinedAt: string
+  isYou: boolean
+}
+
+type SocialClan = {
+  id: string
+  name: string
+  tag: string
+  inviteCode: string
+  ownerAccountId: string
+  createdAt: string
+  members: SocialClanMember[]
+}
+
 type BattleKind = 'ai' | 'local' | 'ranked'
 
 type ComplaintFormState = {
@@ -304,8 +330,54 @@ function formatTimestamp(value: string) {
   })
 }
 
+const CARD_ART_ALIASES: Record<string, string> = {
+  'cave-bat': 'plague-rat',
+  'copper-automaton': 'clay-soldier',
+  'bog-lurker': 'swamp-lurker',
+  'militia-recruit': 'war-grunt',
+  'rust-golem': 'stone-golem',
+  'thornback-boar': 'wild-boar',
+  'granite-sentinel': 'stone-wall',
+  'field-medic': 'spirit-healer',
+  'sand-elemental': 'dust-devil',
+  'pack-wolf': 'thunder-wolf',
+  'clockwork-knight': 'iron-sentry',
+  'siege-turtle': 'moss-troll',
+  'flame-juggler': 'flame-dancer',
+  'highland-archer': 'elven-archer',
+  'moss-treant': 'thorn-bush',
+  'coral-guardian': 'coral-golem',
+  'frost-weaver': 'frost-archer',
+  'crimson-berserker': 'bone-knight',
+  'war-mammoth': 'sunforged-giant',
+  'thunder-hawk': 'tempest-eagle',
+  'hex-spider': 'shadow-fiend',
+  'shadow-dancer': 'shadow-fiend',
+  'vine-lasher': 'nature-sprite',
+  'bronze-drake': 'fire-drake',
+  'blood-queen': 'crimson-witch',
+  'iron-juggernaut': 'iron-sentry',
+  'void-empress': 'void-stalker',
+  'storm-titan': 'thunder-titan',
+  'drakarion-the-eternal': 'drakarion',
+  'zephyr-world-breaker': 'zephyr',
+  'velara-the-lifebinder': 'velara',
+  'malachar-the-undying': 'malachar',
+  'kronos-the-forgemaster': 'kronos',
+  'aethon-runekeeper': 'aethon',
+}
+
 function cardArtPath(cardId: string) {
-  return `/generated/cards/${cardId}.svg`
+  const mappedCardId = CARD_ART_ALIASES[cardId] ?? cardId
+  return `/generated/cards/${mappedCardId}.svg`
+}
+
+function handleCardArtError(event: React.SyntheticEvent<HTMLImageElement>) {
+  const fallbackPath = '/generated/cards/mana-wisp.svg'
+  if (event.currentTarget.src.endsWith(fallbackPath)) {
+    return
+  }
+  event.currentTarget.src = fallbackPath
 }
 
 const EFFECT_LABELS: Record<string, string> = {
@@ -335,22 +407,22 @@ const EFFECT_LABELS: Record<string, string> = {
 const EFFECT_DESCRIPTIONS: Record<string, string> = {
   charge: 'Can attack immediately when played — does not wait a turn.',
   guard: 'Enemies must attack this unit before they can target your hero or other units.',
-  rally: 'Gives +1 attack to all friendly units on the board when played.',
-  blast: 'Deals 2 damage to a random enemy unit when played.',
-  heal: 'Restores 3 health to your hero when played.',
+  rally: 'Grants +1 Momentum when played (some cards grant more).',
+  blast: 'Deals 2 damage to the enemy hero when played (some cards deal more or less).',
+  heal: 'Restores 2 health to your hero when played (some cards heal more).',
   draw: 'Draw an extra card when played.',
-  fury: 'Attacks twice each turn.',
-  drain: 'Deals 1 damage to the enemy hero when played.',
-  empower: 'Gives +1/+1 to an adjacent friendly unit when played.',
-  poison: 'Destroys any unit it damages, regardless of remaining health.',
-  shield: 'Takes 2 less damage from attacks (minimum 1).',
-  siphon: 'Deals 2 damage to the enemy hero and heals your hero for 2 when played.',
-  bolster: 'Gives +0/+2 health to all friendly units when played.',
+  fury: 'Gains +1 attack after surviving combat.',
+  drain: 'Steals enemy Momentum when played.',
+  empower: 'Gives all friendly units +1 attack when played (some cards grant more).',
+  poison: 'Deals damage to all enemy units when played.',
+  shield: 'Grants bonus armor (extra hero health) when played.',
+  siphon: 'Damages the enemy hero and heals your hero for the same amount.',
+  bolster: 'Boosts friendly health when played (usually +1, with stronger card-specific variants).',
   cleave: 'Attacks all enemy lanes at once instead of just one.',
   lifesteal: 'Heals your hero for the amount of damage dealt.',
   summon: 'Creates a 1/1 token unit in an empty lane when played.',
-  silence: 'Removes the effect from a random enemy unit when played.',
-  frostbite: 'Exhausts a random enemy unit for an extra turn when played.',
+  silence: 'Removes effects from all enemy units when played.',
+  frostbite: 'Exhausts a random enemy unit when played; stronger cards can freeze all enemies.',
   enrage: 'Gains +2 attack when damaged.',
   deathrattle: 'Triggers a special effect when this unit is destroyed.',
   overwhelm: 'Excess damage to a unit carries over to the enemy hero.',
@@ -456,6 +528,12 @@ function App() {
   const [packOffers, setPackOffers] = useState<PackOffer[]>([])
   const [openedPackCards, setOpenedPackCards] = useState<OpenedPackCard[]>([])
   const [packOpening, setPackOpening] = useState<string | null>(null)
+  const [friends, setFriends] = useState<SocialFriend[]>([])
+  const [clan, setClan] = useState<SocialClan | null>(null)
+  const [socialLoading, setSocialLoading] = useState(false)
+  const [socialStatus, setSocialStatus] = useState('Social hub ready.')
+  const [friendUsernameInput, setFriendUsernameInput] = useState('')
+  const [clanForm, setClanForm] = useState({ name: '', tag: '', inviteCode: '' })
   const [battleKind, setBattleKind] = useState<BattleKind>(savedMode === 'duel' ? 'local' : 'ai')
   const [battleSessionActive, setBattleSessionActive] = useState(false)
   const [serverBattleActive, setServerBattleActive] = useState(false)
@@ -534,6 +612,30 @@ function App() {
     },
     [analyticsConsent, sessionId, visitorId],
   )
+
+  const refreshSocialHub = useCallback(async () => {
+    if (!authToken || !loggedIn) {
+      return
+    }
+
+    setSocialLoading(true)
+    try {
+      const response = await authFetch('/api/social', authToken)
+      const data = (await response.json()) as { ok?: boolean; error?: string; friends?: SocialFriend[]; clan?: SocialClan | null }
+      if (!response.ok || !data.ok) {
+        setSocialStatus(data.error ?? 'Unable to load social hub right now.')
+        return
+      }
+
+      setFriends(data.friends ?? [])
+      setClan(data.clan ?? null)
+      setSocialStatus(data.clan ? 'Clan and friend roster synced.' : 'No clan joined yet. Create one or join with an invite code.')
+    } catch {
+      setSocialStatus('Social hub is temporarily unavailable.')
+    } finally {
+      setSocialLoading(false)
+    }
+  }, [authToken, loggedIn])
 
   function clearLongPressTimer() {
     if (longPressTimerRef.current) {
@@ -716,6 +818,10 @@ function App() {
     setServerBattleActive(false)
     setCollection({})
     setPackOffers([])
+    setFriends([])
+    setClan(null)
+    setFriendUsernameInput('')
+    setClanForm({ name: '', tag: '', inviteCode: '' })
     setAuthToken('')
     setServerProfile(null)
     setLoggedIn(false)
@@ -985,11 +1091,21 @@ function App() {
     void Promise.all([
       authFetch('/api/me/collection', authToken).then((r) => r.json()),
       authFetch('/api/shop/packs', authToken).then((r) => r.json()),
+      authFetch('/api/social', authToken).then((r) => r.json()),
     ])
-      .then(([collectionData, packData]: [{ ok?: boolean; collection?: CardCollection }, { ok?: boolean; packs?: PackOffer[] }]) => {
+      .then(([collectionData, packData, socialData]: [
+        { ok?: boolean; collection?: CardCollection },
+        { ok?: boolean; packs?: PackOffer[] },
+        { ok?: boolean; friends?: SocialFriend[]; clan?: SocialClan | null; error?: string },
+      ]) => {
         const nextCollection = collectionData.collection ?? {}
         setCollection(nextCollection)
         setPackOffers(packData.packs ?? [])
+        setFriends(socialData.friends ?? [])
+        setClan(socialData.clan ?? null)
+        if (!socialData.ok && socialData.error) {
+          setSocialStatus(socialData.error)
+        }
         setDeckConfig((current) => {
           const clampedDeck = Object.fromEntries(
             Object.entries(current).map(([cardId, count]) => {
@@ -1665,6 +1781,137 @@ function App() {
     }
   }
 
+  async function handleAddFriend(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!authToken) {
+      return
+    }
+
+    const username = friendUsernameInput.trim()
+    if (!username) {
+      setSocialStatus('Enter a username to add a friend.')
+      return
+    }
+
+    setSocialLoading(true)
+    try {
+      const response = await authFetch('/api/social/friends', authToken, { method: 'POST', body: { username } })
+      const data = (await response.json()) as { ok?: boolean; error?: string }
+      if (!response.ok || !data.ok) {
+        setSocialStatus(data.error ?? 'Could not add friend right now.')
+        return
+      }
+      setFriendUsernameInput('')
+      setSocialStatus(`Friend added: @${username}.`)
+      await refreshSocialHub()
+    } catch {
+      setSocialStatus('Could not add friend right now.')
+    } finally {
+      setSocialLoading(false)
+    }
+  }
+
+  async function handleRemoveFriend(friendAccountId: string, displayName: string) {
+    if (!authToken) {
+      return
+    }
+
+    setSocialLoading(true)
+    try {
+      const response = await authFetch(`/api/social/friends/${friendAccountId}`, authToken, { method: 'DELETE' })
+      const data = (await response.json()) as { ok?: boolean; error?: string }
+      if (!response.ok || !data.ok) {
+        setSocialStatus(data.error ?? 'Could not remove friend right now.')
+        return
+      }
+      setSocialStatus(`${displayName} removed from your friends list.`)
+      await refreshSocialHub()
+    } catch {
+      setSocialStatus('Could not remove friend right now.')
+    } finally {
+      setSocialLoading(false)
+    }
+  }
+
+  async function handleCreateClan(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!authToken) {
+      return
+    }
+
+    setSocialLoading(true)
+    try {
+      const response = await authFetch('/api/social/clan/create', authToken, {
+        method: 'POST',
+        body: { name: clanForm.name, tag: clanForm.tag },
+      })
+      const data = (await response.json()) as { ok?: boolean; error?: string }
+      if (!response.ok || !data.ok) {
+        setSocialStatus(data.error ?? 'Could not create clan right now.')
+        return
+      }
+      setClanForm((current) => ({ ...current, name: '', tag: '' }))
+      setSocialStatus('Clan created successfully.')
+      await refreshSocialHub()
+    } catch {
+      setSocialStatus('Could not create clan right now.')
+    } finally {
+      setSocialLoading(false)
+    }
+  }
+
+  async function handleJoinClan(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!authToken) {
+      return
+    }
+
+    const inviteCode = clanForm.inviteCode.trim().toUpperCase()
+    if (!inviteCode) {
+      setSocialStatus('Enter a clan invite code to join.')
+      return
+    }
+
+    setSocialLoading(true)
+    try {
+      const response = await authFetch('/api/social/clan/join', authToken, { method: 'POST', body: { inviteCode } })
+      const data = (await response.json()) as { ok?: boolean; error?: string }
+      if (!response.ok || !data.ok) {
+        setSocialStatus(data.error ?? 'Could not join clan right now.')
+        return
+      }
+      setClanForm((current) => ({ ...current, inviteCode: '' }))
+      setSocialStatus(`Joined clan via ${inviteCode}.`)
+      await refreshSocialHub()
+    } catch {
+      setSocialStatus('Could not join clan right now.')
+    } finally {
+      setSocialLoading(false)
+    }
+  }
+
+  async function handleLeaveClan() {
+    if (!authToken) {
+      return
+    }
+
+    setSocialLoading(true)
+    try {
+      const response = await authFetch('/api/social/clan/leave', authToken, { method: 'POST' })
+      const data = (await response.json()) as { ok?: boolean; error?: string }
+      if (!response.ok || !data.ok) {
+        setSocialStatus(data.error ?? 'Could not leave clan right now.')
+        return
+      }
+      setSocialStatus('You left your clan.')
+      await refreshSocialHub()
+    } catch {
+      setSocialStatus('Could not leave clan right now.')
+    } finally {
+      setSocialLoading(false)
+    }
+  }
+
   async function handleInstallApp() {
     if (!installPromptEvent) {
       return
@@ -2212,7 +2459,7 @@ function App() {
               </div>
             </div>
             <div className="card-art-shell large">
-              <img className="card-illustration" src={cardArtPath(inspectedCard.id)} alt={inspectedCard.name} />
+              <img className="card-illustration" src={cardArtPath(inspectedCard.id)} alt={inspectedCard.name} onError={handleCardArtError} />
             </div>
             <div className="card-inspect-stats">
               <span>⚔️ Attack: {inspectedCard.attack}</span>
@@ -2402,6 +2649,102 @@ function App() {
               {!leaderboardEntries.length && <p className="note">No ladder data yet. Win ranked matches to claim the top spot.</p>}
             </div>
           </article>
+
+          <article className="section-card utility-card">
+            <div className="section-head">
+              <h2>Social Hub</h2>
+              <span className="badge">{friends.length} friend{friends.length === 1 ? '' : 's'}</span>
+            </div>
+
+            <form className="social-inline-form" onSubmit={(event) => void handleAddFriend(event)}>
+              <input
+                className="text-input"
+                value={friendUsernameInput}
+                maxLength={20}
+                placeholder="Friend username"
+                onChange={(event) => setFriendUsernameInput(event.target.value)}
+              />
+              <button className="secondary" disabled={socialLoading}>Add Friend</button>
+            </form>
+
+            <div className="social-list">
+              {friends.slice(0, 5).map((friend) => (
+                <div className="social-row" key={friend.accountId}>
+                  <div className="leaderboard-meta">
+                    <strong>{friend.displayName}</strong>
+                    <span className="note">@{friend.username}</span>
+                  </div>
+                  <button className="ghost mini" disabled={socialLoading} onClick={() => void handleRemoveFriend(friend.accountId, friend.displayName)}>
+                    Remove
+                  </button>
+                </div>
+              ))}
+              {!friends.length && <p className="note">No friends yet. Add players by username to build your roster.</p>}
+            </div>
+
+            {clan ? (
+              <div className="social-clan-block">
+                <div className="section-head">
+                  <strong>[{clan.tag}] {clan.name}</strong>
+                  <button className="ghost mini" disabled={socialLoading} onClick={() => void handleLeaveClan()}>
+                    Leave
+                  </button>
+                </div>
+                <div className="badges">
+                  <span className="badge">Invite {clan.inviteCode}</span>
+                  <span className="badge">{clan.members.length} members</span>
+                </div>
+                <div className="social-list">
+                  {clan.members.map((member) => (
+                    <div className="social-row" key={member.accountId}>
+                      <div className="leaderboard-meta">
+                        <strong>{member.displayName} {member.isYou ? '(You)' : ''}</strong>
+                        <span className="note">@{member.username} • {member.role}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="social-clan-block">
+                <form className="form-stack" onSubmit={(event) => void handleCreateClan(event)}>
+                  <label className="form-field">
+                    <span>Create clan</span>
+                    <div className="social-inline-form">
+                      <input
+                        className="text-input"
+                        value={clanForm.name}
+                        maxLength={32}
+                        placeholder="Clan name"
+                        onChange={(event) => setClanForm((current) => ({ ...current, name: event.target.value }))}
+                      />
+                      <input
+                        className="text-input clan-tag-field"
+                        value={clanForm.tag}
+                        maxLength={6}
+                        placeholder="TAG"
+                        onChange={(event) => setClanForm((current) => ({ ...current, tag: event.target.value.toUpperCase() }))}
+                      />
+                      <button className="secondary" disabled={socialLoading}>Create</button>
+                    </div>
+                  </label>
+                </form>
+
+                <form className="social-inline-form" onSubmit={(event) => void handleJoinClan(event)}>
+                  <input
+                    className="text-input"
+                    value={clanForm.inviteCode}
+                    maxLength={12}
+                    placeholder="Invite code (CLN-XXXXXXXX)"
+                    onChange={(event) => setClanForm((current) => ({ ...current, inviteCode: event.target.value.toUpperCase() }))}
+                  />
+                  <button className="ghost" disabled={socialLoading}>Join Clan</button>
+                </form>
+              </div>
+            )}
+
+            <p className="note toast-line">{socialStatus}</p>
+          </article>
         </div>
 
         <div className="controls emote-row">
@@ -2452,6 +2795,7 @@ function App() {
                       src={cardArtPath(card.id)}
                       alt={`${card.name} illustration`}
                       loading="lazy"
+                      onError={handleCardArtError}
                     />
                   </div>
                   <div className="slot-head">
@@ -2621,7 +2965,7 @@ function App() {
                   aria-disabled={Boolean(game.winner) || (isSelectable ? unit.exhausted : selectedAttacker === null)}
                   title="Long press to inspect"
                 >
-                  <img className="unit-portrait" src={cardArtPath(unit.id)} alt={`${unit.name} artwork`} loading="lazy" />
+                  <img className="unit-portrait" src={cardArtPath(unit.id)} alt={`${unit.name} artwork`} loading="lazy" onError={handleCardArtError} />
                   <div className="slot-head">
                     <strong>
                       {unit.icon} {unit.name}
@@ -2679,7 +3023,7 @@ function App() {
                   aria-disabled={Boolean(game.winner) || (isSelectable ? unit.exhausted : selectedAttacker === null)}
                   title="Long press to inspect"
                 >
-                  <img className="unit-portrait" src={cardArtPath(unit.id)} alt={`${unit.name} artwork`} loading="lazy" />
+                  <img className="unit-portrait" src={cardArtPath(unit.id)} alt={`${unit.name} artwork`} loading="lazy" onError={handleCardArtError} />
                   <div className="slot-head">
                     <strong>
                       {unit.icon} {unit.name}
@@ -2873,6 +3217,7 @@ function App() {
                 src={cardArtPath(card.id)}
                 alt={`${card.name} artwork`}
                 loading="lazy"
+                onError={handleCardArtError}
               />
             ))}
           </div>
@@ -3206,7 +3551,7 @@ function App() {
                     <span className="hero-label">{card.icon}</span>
                   </div>
                   <div className="card-art-shell thumb">
-                    <img className="card-illustration" src={cardArtPath(card.id)} alt={`${card.name} artwork`} loading="lazy" />
+                    <img className="card-illustration" src={cardArtPath(card.id)} alt={`${card.name} artwork`} loading="lazy" onError={handleCardArtError} />
                   </div>
                   <div>
                     <strong className="card-name">{card.name}</strong>

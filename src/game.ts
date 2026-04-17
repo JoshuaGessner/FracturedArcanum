@@ -227,6 +227,30 @@ export const AI_DIFFICULTY_DECKS: Record<AIDifficulty, DeckConfig> = {
   },
 }
 
+const RALLY_GAIN_BY_CARD: Record<string, number> = {
+  'arcane-golem': 3,
+}
+
+const BLAST_DAMAGE_BY_CARD: Record<string, number> = {
+  'fire-imp': 1,
+  'storm-shaman': 3,
+}
+
+const HEAL_AMOUNT_BY_CARD: Record<string, number> = {
+  'field-medic': 3,
+  'druid-elder': 4,
+}
+
+const DRAW_COUNT_BY_CARD: Record<string, number> = {
+  'runebound-oracle': 2,
+  'aethon-runekeeper': 3,
+}
+
+const EMPOWER_AMOUNT_BY_CARD: Record<string, number> = {
+  'void-empress': 2,
+  'kronos-the-forgemaster': 3,
+}
+
 export function getRecommendedAIDifficulty(rating: number): AIDifficulty {
   if (rating >= 1500) {
     return 'legend'
@@ -571,33 +595,37 @@ export function playCard(base: GameState, side: BattleSide, handIndex: number): 
   let nextLog = pushLog(base.log, `${actor.name} played ${card.icon} ${card.name}.`)
 
   if (card.effect === 'rally') {
+    const rallyGain = RALLY_GAIN_BY_CARD[card.id] ?? 1
     nextActor = {
       ...nextActor,
-      momentum: Math.min(10, nextActor.momentum + 1),
+      momentum: Math.min(10, nextActor.momentum + rallyGain),
     }
-    nextLog = pushLog(nextLog, `${card.name} rallies the crowd for +1 Momentum.`)
+    nextLog = pushLog(nextLog, `${card.name} rallies the crowd for +${rallyGain} Momentum.`)
   }
 
   if (card.effect === 'blast') {
+    const blastDamage = BLAST_DAMAGE_BY_CARD[card.id] ?? 2
     nextRival = {
       ...nextRival,
-      health: nextRival.health - 2,
+      health: nextRival.health - blastDamage,
     }
-    nextLog = pushLog(nextLog, `${card.name} blasts the opposing hero for 2.`)
+    nextLog = pushLog(nextLog, `${card.name} blasts the opposing hero for ${blastDamage}.`)
   }
 
   if (card.effect === 'heal') {
+    const healAmount = HEAL_AMOUNT_BY_CARD[card.id] ?? 2
     nextActor = {
       ...nextActor,
-      health: Math.min(STARTING_HEALTH, nextActor.health + 2),
+      health: Math.min(STARTING_HEALTH, nextActor.health + healAmount),
     }
-    nextLog = pushLog(nextLog, `${card.name} restores 2 health.`)
+    nextLog = pushLog(nextLog, `${card.name} restores ${healAmount} health.`)
   }
 
   if (card.effect === 'draw') {
-    const drawCount = card.id === 'runebound-oracle' ? 2 : 1
+    const drawCount = DRAW_COUNT_BY_CARD[card.id] ?? 1
     nextActor = drawCards(nextActor, drawCount)
-    nextLog = pushLog(nextLog, `${card.name} draws ${drawCount === 2 ? '2 omens' : 'a fresh omen'} from the deck.`)
+    const drawLabel = drawCount === 1 ? 'a fresh omen' : `${drawCount} omens`
+    nextLog = pushLog(nextLog, `${card.name} draws ${drawLabel} from the deck.`)
   }
 
   if (card.effect === 'drain') {
@@ -608,13 +636,14 @@ export function playCard(base: GameState, side: BattleSide, handIndex: number): 
   }
 
   if (card.effect === 'empower') {
+    const empowerAmount = EMPOWER_AMOUNT_BY_CARD[card.id] ?? 1
     nextActor = {
       ...nextActor,
       board: nextActor.board.map((unit) =>
-        unit ? { ...unit, attack: unit.attack + 1 } : null,
+        unit ? { ...unit, attack: unit.attack + empowerAmount } : null,
       ),
     }
-    nextLog = pushLog(nextLog, `${card.name} empowers all friendly units with +1 attack.`)
+    nextLog = pushLog(nextLog, `${card.name} empowers all friendly units with +${empowerAmount} attack.`)
   }
 
   if (card.effect === 'poison') {
@@ -735,13 +764,6 @@ export function playCard(base: GameState, side: BattleSide, handIndex: number): 
     nextLog = pushLog(nextLog, `${card.name} also draws a card from the blast impact.`)
   }
 
-  if (card.id === 'fire-imp') {
-    // Fire Imp does only 1 blast damage (already handled by blast above for 2)
-    // Override: fire-imp blast is 1, not 2
-    nextRival = { ...nextRival, health: nextRival.health + 1 } // undo the 2, net = 1
-    nextLog = pushLog(nextLog, `${card.name}'s flame sears for 1.`)
-  }
-
   if (card.id === 'iron-clad') {
     nextActor = { ...nextActor, health: nextActor.health + 2 }
     nextLog = pushLog(nextLog, `${card.name} reinforces the hero with +2 armor.`)
@@ -799,17 +821,13 @@ export function playCard(base: GameState, side: BattleSide, handIndex: number): 
     nextActor = {
       ...nextActor,
       health: nextActor.health + 5,
-      board: nextActor.board.map((unit) =>
-        unit ? { ...unit, attack: unit.attack + 3 } : null,
-      ),
     }
-    nextLog = pushLog(nextLog, `${card.name} forges +3 attack for all and +5 armor for the hero.`)
+    nextLog = pushLog(nextLog, `${card.name} forges +3 attack for allies and +5 armor for the hero.`)
   }
 
   if (card.id === 'aethon-runekeeper') {
-    nextActor = drawCards(nextActor, 3)
     nextActor = { ...nextActor, momentum: Math.min(10, nextActor.momentum + 3) }
-    nextLog = pushLog(nextLog, `${card.name} unleashes the starless litany: 3 draws, 3 Momentum.`)
+    nextLog = pushLog(nextLog, `${card.name} unleashes the starless litany: 3 draws, +3 Momentum.`)
   }
 
   if (card.id === 'drakarion-the-eternal') {
@@ -841,7 +859,6 @@ export function playCard(base: GameState, side: BattleSide, handIndex: number): 
   }
 
   if (card.id === 'druid-elder') {
-    nextActor = { ...nextActor, health: Math.min(STARTING_HEALTH, nextActor.health + 4) }
     nextActor = {
       ...nextActor,
       board: nextActor.board.map((unit) =>
@@ -851,20 +868,9 @@ export function playCard(base: GameState, side: BattleSide, handIndex: number): 
     nextLog = pushLog(nextLog, `${card.name} heals the hero and bolsters all allies.`)
   }
 
-  if (card.id === 'void-empress') {
-    nextActor = {
-      ...nextActor,
-      board: nextActor.board.map((unit) =>
-        unit ? { ...unit, attack: unit.attack + 2 } : null,
-      ),
-    }
-    nextLog = pushLog(nextLog, `${card.name} empowers all units with +2 attack.`)
-  }
-
   if (card.id === 'arcane-golem') {
-    nextActor = { ...nextActor, momentum: Math.min(10, nextActor.momentum + 3) }
     nextActor = drawCards(nextActor, 1)
-    nextLog = pushLog(nextLog, `${card.name} grants 3 Momentum and draws a card.`)
+    nextLog = pushLog(nextLog, `${card.name} surges with +3 Momentum and also draws a card.`)
   }
 
   if (card.id === 'ancient-hydra') {
