@@ -1099,6 +1099,10 @@ button:disabled {
   animation: cardPlay 0.3s ease-out;
 }
 
+.slot.damage-flash {
+  animation: damageFlash 0.4s ease-out !important;
+}
+
 .hand-card {
   animation: cardPlay 0.25s ease-out;
 }

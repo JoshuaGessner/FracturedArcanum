@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { io, type Socket } from 'socket.io-client'
 import { playSound } from './audio'
 import {
@@ -6,6 +6,7 @@ import {
   type BattleSide,
   type DeckConfig,
   type GameState,
+  type Unit,
   MIN_DECK_SIZE,
   MAX_DECK_SIZE,
   MAX_COPIES,
@@ -382,6 +383,10 @@ function App() {
   const [adminError, setAdminError] = useState('')
   const [battleIntroVisible, setBattleIntroVisible] = useState(false)
   const [rewardOverlayVisible, setRewardOverlayVisible] = useState(false)
+  const [damagedSlots, setDamagedSlots] = useState<Set<string>>(new Set())
+  const battleStartedRef = useRef(false)
+  const enemyTurnTimers = useRef<number[]>([])
+  const prevBoardRef = useRef<{ player: Array<Unit | null>; enemy: Array<Unit | null> } | null>(null)
   const [adminSettings, setAdminSettings] = useState({
     motd: 'Queue up for ranked arena play.',
     quest: 'Win 1 ranked arena match',
@@ -760,8 +765,12 @@ function App() {
   useEffect(() => {
     if (activeScreen !== 'battle') {
       setBattleIntroVisible(false)
+      battleStartedRef.current = false
       return
     }
+
+    if (battleStartedRef.current) return
+    battleStartedRef.current = true
 
     setBattleIntroVisible(true)
     const timer = window.setTimeout(() => {
@@ -771,7 +780,7 @@ function App() {
     return () => {
       window.clearTimeout(timer)
     }
-  }, [activeScreen, game.turnNumber, game.enemy.name])
+  }, [activeScreen])
 
   useEffect(() => {
     void sendAnalytics(
@@ -785,6 +794,39 @@ function App() {
   }, [game.mode, sendAnalytics])
 
   useEffect(() => {
+    const prev = prevBoardRef.current
+    const playerBoard = game.player.board
+    const enemyBoard = game.enemy.board
+    if (!prev) {
+      prevBoardRef.current = { player: playerBoard, enemy: enemyBoard }
+      return
+    }
+
+    const damaged = new Set<string>()
+
+    for (const side of ['player', 'enemy'] as const) {
+      const oldBoard = prev[side]
+      const newBoard = side === 'player' ? playerBoard : enemyBoard
+      for (let i = 0; i < oldBoard.length; i++) {
+        const oldUnit = oldBoard[i]
+        const newUnit = newBoard[i]
+        if (oldUnit && newUnit && newUnit.uid === oldUnit.uid && newUnit.currentHealth < oldUnit.currentHealth) {
+          damaged.add(newUnit.uid)
+        }
+      }
+    }
+
+    prevBoardRef.current = { player: playerBoard, enemy: enemyBoard }
+
+    if (damaged.size > 0) {
+      setDamagedSlots(damaged)
+      const t = window.setTimeout(() => setDamagedSlots(new Set()), 400)
+      return () => window.clearTimeout(t)
+    }
+  }, [game.player.board, game.enemy.board])
+
+  useEffect(() => {
+    if (enemyTurnActive) return
     if (game.winner === 'player') {
       playSound('win', soundEnabled)
       setRewardOverlayVisible(true)
@@ -794,7 +836,7 @@ function App() {
     } else if (!game.winner) {
       setRewardOverlayVisible(false)
     }
-  }, [game.winner, soundEnabled])
+  }, [game.winner, soundEnabled, enemyTurnActive])
 
   useEffect(() => {
     if (!game.winner) {
@@ -892,6 +934,11 @@ function App() {
 
   function openScreen(screen: AppScreen) {
     playSound('tap', soundEnabled)
+    if (screen !== 'battle' && enemyTurnActive) {
+      clearEnemyTurnTimers()
+      setEnemyTurnActive(false)
+      setEnemyTurnLabel('')
+    }
     setActiveScreen(screen)
   }
 
@@ -1110,6 +1157,11 @@ function App() {
     setPreferredMode(mode)
     setSelectedAttacker(null)
     setResolvedMatchKey('')
+    clearEnemyTurnTimers()
+    setEnemyTurnActive(false)
+    setEnemyTurnLabel('')
+    prevBoardRef.current = null
+    setDamagedSlots(new Set())
     setActiveScreen('battle')
     setGame(createGame(mode, deckConfig, enemyName))
     void sendAnalytics(
@@ -1318,6 +1370,11 @@ function App() {
     setGame((current) => castMomentumBurst(current, current.turn))
   }
 
+  function clearEnemyTurnTimers() {
+    enemyTurnTimers.current.forEach((id) => window.clearTimeout(id))
+    enemyTurnTimers.current = []
+  }
+
   function handleEndTurn() {
     if (game.winner || !isMyTurn) {
       return
@@ -1334,21 +1391,46 @@ function App() {
     const steps = generateEnemyTurnSteps(game)
     if (steps.length === 0) return
 
+    clearEnemyTurnTimers()
     setEnemyTurnActive(true)
     setEnemyTurnLabel(steps[0].label)
     setGame(steps[0].state)
+    prevBoardRef.current = { player: steps[0].state.player.board, enemy: steps[0].state.enemy.board }
+
+    if (steps.length === 1) {
+      const t = window.setTimeout(() => {
+        setEnemyTurnActive(false)
+        setEnemyTurnLabel('')
+      }, 600)
+      enemyTurnTimers.current.push(t)
+      return
+    }
 
     steps.slice(1).forEach((step, i) => {
-      setTimeout(() => {
-        setGame(step.state)
-        setEnemyTurnLabel(step.label)
-        if (i === steps.length - 2) {
-          setTimeout(() => {
+      const t = window.setTimeout(() => {
+        if (step.state.winner) {
+          setGame(step.state)
+          setEnemyTurnLabel(step.label)
+          clearEnemyTurnTimers()
+          const done = window.setTimeout(() => {
             setEnemyTurnActive(false)
             setEnemyTurnLabel('')
           }, 600)
+          enemyTurnTimers.current = [done]
+          return
+        }
+
+        setGame(step.state)
+        setEnemyTurnLabel(step.label)
+        if (i === steps.length - 2) {
+          const done = window.setTimeout(() => {
+            setEnemyTurnActive(false)
+            setEnemyTurnLabel('')
+          }, 600)
+          enemyTurnTimers.current.push(done)
         }
       }, (i + 1) * 700)
+      enemyTurnTimers.current.push(t)
     })
   }
 
@@ -1837,6 +1919,7 @@ function App() {
                     unit.effect === 'guard' ? 'guard' : '',
                     unit.exhausted ? 'exhausted' : '',
                     isSelected ? 'selected' : '',
+                    damagedSlots.has(unit.uid) ? 'damage-flash' : '',
                   ]
                     .filter(Boolean)
                     .join(' ')}
@@ -1895,6 +1978,7 @@ function App() {
                     unit.effect === 'guard' ? 'guard' : '',
                     unit.exhausted ? 'exhausted' : '',
                     isSelected ? 'selected' : '',
+                    damagedSlots.has(unit.uid) ? 'damage-flash' : '',
                   ]
                     .filter(Boolean)
                     .join(' ')}
