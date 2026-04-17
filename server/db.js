@@ -104,6 +104,16 @@ db.exec(`
     window_start TEXT NOT NULL DEFAULT (datetime('now'))
   );
 
+  CREATE TABLE IF NOT EXISTS player_decks (
+    id           TEXT PRIMARY KEY,
+    account_id   TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    name         TEXT NOT NULL,
+    deck_config  TEXT NOT NULL DEFAULT '{}',
+    is_active    INTEGER NOT NULL DEFAULT 0,
+    created_at   TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at   TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
   CREATE INDEX IF NOT EXISTS idx_sessions_account ON sessions(account_id);
   CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires_at);
   CREATE INDEX IF NOT EXISTS idx_match_log_account ON match_log(account_id);
@@ -113,6 +123,9 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_accounts_device_fp ON accounts(device_fp);
   CREATE INDEX IF NOT EXISTS idx_accounts_created_ip ON accounts(created_ip_hash);
   CREATE INDEX IF NOT EXISTS idx_accounts_created_ip_ua_created_at ON accounts(created_ip_hash, created_ua_hash, created_at);
+  CREATE INDEX IF NOT EXISTS idx_player_decks_account ON player_decks(account_id);
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_player_decks_active
+    ON player_decks(account_id) WHERE is_active = 1;
 `)
 
 function ensureColumn(tableName, columnName, definition) {
@@ -128,6 +141,8 @@ ensureColumn('accounts', 'created_ip_hash', 'TEXT')
 ensureColumn('accounts', 'created_ua_hash', 'TEXT')
 ensureColumn('accounts', 'role', "TEXT NOT NULL DEFAULT 'user'")
 ensureColumn('player_profiles', 'owned_cards', "TEXT NOT NULL DEFAULT '{}' ")
+ensureColumn('player_profiles', 'owned_card_borders', "TEXT NOT NULL DEFAULT '[\"default\"]'")
+ensureColumn('player_profiles', 'selected_card_border', "TEXT NOT NULL DEFAULT 'default'")
 
 // ─── Admin role schema ───────────────────────────────────────────────────────
 // Exactly one account may have role='owner'. Enforced at the DB layer via a
@@ -472,17 +487,33 @@ const _updateTheme = db.prepare(`
 export function getProfile(accountId) {
   const row = _getProfile.get(accountId)
   if (!row) return null
+  // Lazy migration: ensure at least one entry in player_decks for this
+  // account. New accounts get a "Main" deck seeded from the legacy
+  // deck_config column (which is also kept in sync as the active deck for
+  // backwards compatibility with /api/me/deck).
+  ensureMigratedDecks(accountId, row.deck_config)
+  const ownedBorders = (() => {
+    try {
+      const parsed = JSON.parse(row.owned_card_borders ?? '["default"]')
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed
+    } catch { /* ignore */ }
+    return ['default']
+  })()
   return {
     ...row,
     owned_themes: JSON.parse(row.owned_themes),
     deck_config: JSON.parse(row.deck_config),
     owned_cards: normalizeOwnedCards(row.owned_cards),
+    owned_card_borders: ownedBorders,
+    selected_card_border: row.selected_card_border ?? 'default',
   }
 }
 
 const DECK_MIN_TOTAL = 10
 const DECK_MAX_TOTAL = 16
 const DECK_MAX_COPIES = 3
+const DECK_MAX_PER_ACCOUNT = 12
+const DECK_NAME_RE = /^[A-Za-z0-9][A-Za-z0-9 _'\-]{0,29}$/
 const DECK_CARD_ID_RE = /^[a-z0-9][a-z0-9-]{0,40}$/
 
 export function validateDeckConfig(deckConfig) {
@@ -515,7 +546,199 @@ export function validateDeckConfig(deckConfig) {
   return { ok: true, deckConfig: sanitized, total, ready: total >= DECK_MIN_TOTAL }
 }
 
+function validateOwnership(profile, deckConfig) {
+  for (const [cardId, count] of Object.entries(deckConfig)) {
+    const owned = profile.owned_cards?.[cardId] ?? 0
+    if (count > owned) {
+      const cardName = CARD_LIBRARY.find((card) => card.id === cardId)?.name ?? cardId
+      return { ok: false, error: `You only own ${owned} copy/copies of ${cardName}. Open packs to unlock more.` }
+    }
+  }
+  return { ok: true }
+}
+
+// ─── Multi-deck CRUD ─────────────────────────────────────────────────
+
+const _listDecks = db.prepare(`
+  SELECT id, name, deck_config, is_active, created_at, updated_at
+  FROM player_decks WHERE account_id = ?
+  ORDER BY is_active DESC, created_at ASC
+`)
+const _getDeckById = db.prepare(`
+  SELECT id, account_id, name, deck_config, is_active, created_at, updated_at
+  FROM player_decks WHERE id = ? AND account_id = ?
+`)
+const _countDecks = db.prepare(`SELECT COUNT(*) as cnt FROM player_decks WHERE account_id = ?`)
+const _insertDeck = db.prepare(`
+  INSERT INTO player_decks (id, account_id, name, deck_config, is_active)
+  VALUES (?, ?, ?, ?, ?)
+`)
+const _updateDeckRow = db.prepare(`
+  UPDATE player_decks SET name = ?, deck_config = ?, updated_at = datetime('now')
+  WHERE id = ? AND account_id = ?
+`)
+const _renameDeckRow = db.prepare(`
+  UPDATE player_decks SET name = ?, updated_at = datetime('now') WHERE id = ? AND account_id = ?
+`)
+const _deleteDeckRow = db.prepare(`DELETE FROM player_decks WHERE id = ? AND account_id = ?`)
+const _deactivateDecks = db.prepare(`UPDATE player_decks SET is_active = 0 WHERE account_id = ?`)
+const _activateDeckRow = db.prepare(`
+  UPDATE player_decks SET is_active = 1, updated_at = datetime('now') WHERE id = ? AND account_id = ?
+`)
+const _getActiveDeckRow = db.prepare(`
+  SELECT id, name, deck_config, created_at, updated_at FROM player_decks
+  WHERE account_id = ? AND is_active = 1 LIMIT 1
+`)
+
+function mapDeckRow(row) {
+  if (!row) return null
+  return {
+    id: row.id,
+    name: row.name,
+    deckConfig: JSON.parse(row.deck_config),
+    isActive: Boolean(row.is_active),
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }
+}
+
+function ensureMigratedDecks(accountId, legacyDeckConfig) {
+  const count = Number(_countDecks.get(accountId)?.cnt ?? 0)
+  if (count > 0) return
+  let parsed
+  try {
+    parsed = JSON.parse(legacyDeckConfig ?? '{}')
+  } catch {
+    parsed = {}
+  }
+  const seedConfig = parsed && Object.keys(parsed).length > 0 ? parsed : DEFAULT_DECK_CONFIG
+  const id = `dck-${randomBytes(8).toString('hex')}`
+  _insertDeck.run(id, accountId, 'Main', JSON.stringify(seedConfig), 1)
+}
+
+export function listDecks(accountId) {
+  // getProfile triggers ensureMigratedDecks; safe to call without it though.
+  ensureMigratedDecks(accountId, null)
+  return _listDecks.all(accountId).map(mapDeckRow)
+}
+
+export function getActiveDeck(accountId) {
+  ensureMigratedDecks(accountId, null)
+  const row = _getActiveDeckRow.get(accountId)
+  if (!row) return null
+  return {
+    id: row.id,
+    name: row.name,
+    deckConfig: JSON.parse(row.deck_config),
+  }
+}
+
+export function createDeck(accountId, name, deckConfig) {
+  const trimmedName = String(name ?? '').trim()
+  if (!DECK_NAME_RE.test(trimmedName)) {
+    return { ok: false, error: 'Deck name must be 1-30 characters: letters, numbers, spaces, underscore, hyphen, apostrophe.' }
+  }
+  const validation = validateDeckConfig(deckConfig ?? {})
+  if (!validation.ok) return validation
+  const profile = getProfile(accountId)
+  if (!profile) return { ok: false, error: 'Profile not found.' }
+  const ownership = validateOwnership(profile, validation.deckConfig)
+  if (!ownership.ok) return ownership
+
+  const count = Number(_countDecks.get(accountId)?.cnt ?? 0)
+  if (count >= DECK_MAX_PER_ACCOUNT) {
+    return { ok: false, error: `You can save at most ${DECK_MAX_PER_ACCOUNT} decks. Delete one first.` }
+  }
+
+  const id = `dck-${randomBytes(8).toString('hex')}`
+  // First deck for an account is also the active deck.
+  const isActive = count === 0 ? 1 : 0
+  _insertDeck.run(id, accountId, trimmedName, JSON.stringify(validation.deckConfig), isActive)
+  if (isActive) {
+    _updateDeck.run(JSON.stringify(validation.deckConfig), accountId)
+  }
+  return { ok: true, deck: mapDeckRow(_getDeckById.get(id, accountId)) }
+}
+
+export function updateDeck(accountId, deckId, { name, deckConfig }) {
+  const existing = _getDeckById.get(deckId, accountId)
+  if (!existing) return { ok: false, error: 'Deck not found.' }
+
+  const nextName = name === undefined ? existing.name : String(name).trim()
+  if (!DECK_NAME_RE.test(nextName)) {
+    return { ok: false, error: 'Deck name must be 1-30 characters: letters, numbers, spaces, underscore, hyphen, apostrophe.' }
+  }
+
+  const nextConfigRaw = deckConfig ?? JSON.parse(existing.deck_config)
+  const validation = validateDeckConfig(nextConfigRaw)
+  if (!validation.ok) return validation
+
+  const profile = getProfile(accountId)
+  if (!profile) return { ok: false, error: 'Profile not found.' }
+  const ownership = validateOwnership(profile, validation.deckConfig)
+  if (!ownership.ok) return ownership
+
+  _updateDeckRow.run(nextName, JSON.stringify(validation.deckConfig), deckId, accountId)
+  // Mirror to legacy deck_config if this is the active deck.
+  if (existing.is_active) {
+    _updateDeck.run(JSON.stringify(validation.deckConfig), accountId)
+  }
+  return {
+    ok: true,
+    deck: mapDeckRow(_getDeckById.get(deckId, accountId)),
+    total: validation.total,
+    ready: validation.ready,
+  }
+}
+
+export function renameDeck(accountId, deckId, name) {
+  const trimmed = String(name ?? '').trim()
+  if (!DECK_NAME_RE.test(trimmed)) {
+    return { ok: false, error: 'Deck name must be 1-30 characters: letters, numbers, spaces, underscore, hyphen, apostrophe.' }
+  }
+  const existing = _getDeckById.get(deckId, accountId)
+  if (!existing) return { ok: false, error: 'Deck not found.' }
+  _renameDeckRow.run(trimmed, deckId, accountId)
+  return { ok: true, deck: mapDeckRow(_getDeckById.get(deckId, accountId)) }
+}
+
+export function deleteDeck(accountId, deckId) {
+  const existing = _getDeckById.get(deckId, accountId)
+  if (!existing) return { ok: false, error: 'Deck not found.' }
+  const count = Number(_countDecks.get(accountId)?.cnt ?? 0)
+  if (count <= 1) {
+    return { ok: false, error: 'You must keep at least one deck. Create another deck before deleting this one.' }
+  }
+  const tx = db.transaction(() => {
+    _deleteDeckRow.run(deckId, accountId)
+    if (existing.is_active) {
+      // Promote the oldest remaining deck to active.
+      const next = _listDecks.all(accountId)[0]
+      if (next) {
+        _activateDeckRow.run(next.id, accountId)
+        _updateDeck.run(next.deck_config, accountId)
+      }
+    }
+  })
+  tx()
+  return { ok: true }
+}
+
+export function selectActiveDeck(accountId, deckId) {
+  const existing = _getDeckById.get(deckId, accountId)
+  if (!existing) return { ok: false, error: 'Deck not found.' }
+  const tx = db.transaction(() => {
+    _deactivateDecks.run(accountId)
+    _activateDeckRow.run(deckId, accountId)
+    _updateDeck.run(existing.deck_config, accountId)
+  })
+  tx()
+  return { ok: true, deck: mapDeckRow(_getDeckById.get(deckId, accountId)) }
+}
+
 export function saveDeck(accountId, deckConfig) {
+  // Legacy single-deck endpoint: writes to the active deck (and the
+  // mirrored player_profiles.deck_config) so older clients keep working.
   const result = validateDeckConfig(deckConfig)
   if (!result.ok) return result
 
@@ -523,15 +746,13 @@ export function saveDeck(accountId, deckConfig) {
   if (!profile) {
     return { ok: false, error: 'Profile not found.' }
   }
+  const ownership = validateOwnership(profile, result.deckConfig)
+  if (!ownership.ok) return ownership
 
-  for (const [cardId, count] of Object.entries(result.deckConfig)) {
-    const owned = profile.owned_cards?.[cardId] ?? 0
-    if (count > owned) {
-      const cardName = CARD_LIBRARY.find((card) => card.id === cardId)?.name ?? cardId
-      return { ok: false, error: `You only own ${owned} copy/copies of ${cardName}. Open packs to unlock more.` }
-    }
+  const active = _getActiveDeckRow.get(accountId)
+  if (active) {
+    _updateDeckRow.run(active.name, JSON.stringify(result.deckConfig), active.id, accountId)
   }
-
   _updateDeck.run(JSON.stringify(result.deckConfig), accountId)
   return { ok: true, total: result.total, ready: result.ready }
 }
@@ -637,6 +858,156 @@ export function purchaseTheme(accountId, themeId) {
   tx()
   const refreshed = getProfile(accountId)
   return { ok: true, runes: refreshed.runes, ownedThemes: refreshed.owned_themes }
+}
+
+// ─── Card border cosmetic system ─────────────────────────────────────
+//
+// Borders are pure-cosmetic frames applied to every rendered card in
+// the deck builder, vault, and battlefield. Pricing is server-side so
+// the catalog cannot be tampered with from the client.
+
+const CARD_BORDER_CATALOG = [
+  { id: 'default', name: 'Standard Frame', cost: 0,   description: 'The default arcane bezel every player starts with.' },
+  { id: 'bronze',  name: 'Bronze Filigree', cost: 90, description: 'Warm bronze trim with hammered edges.' },
+  { id: 'frost',   name: 'Frost Shard',     cost: 180, description: 'Cool ice-shard etching with a soft inner glow.' },
+  { id: 'solar',   name: 'Solar Ember',     cost: 280, description: 'Living ember frame with a sunlit inner aura.' },
+  { id: 'void',    name: 'Voidweave',       cost: 420, description: 'Animated dark-matter weave with a violet halo.' },
+]
+
+export function listCardBorders() {
+  return CARD_BORDER_CATALOG.map((entry) => ({ ...entry }))
+}
+
+const _setCardBorder = db.prepare(`
+  UPDATE player_profiles
+  SET selected_card_border = ?, updated_at = datetime('now')
+  WHERE account_id = ?
+`)
+const _setOwnedCardBorders = db.prepare(`
+  UPDATE player_profiles
+  SET owned_card_borders = ?, updated_at = datetime('now')
+  WHERE account_id = ?
+`)
+
+export function purchaseCardBorder(accountId, borderId) {
+  const entry = CARD_BORDER_CATALOG.find((b) => b.id === borderId)
+  if (!entry) return { ok: false, error: 'Unknown card border.' }
+
+  const profile = getProfile(accountId)
+  if (!profile) return { ok: false, error: 'Profile not found.' }
+
+  if (profile.owned_card_borders.includes(borderId)) {
+    return { ok: false, error: 'Card border already owned.' }
+  }
+
+  if (entry.cost > 0 && profile.runes < entry.cost) {
+    return { ok: false, error: 'Not enough Shards for that card border.' }
+  }
+
+  const tx = db.transaction(() => {
+    if (entry.cost > 0) {
+      _deductRunes.run(entry.cost, accountId, entry.cost)
+    }
+    const updated = [...profile.owned_card_borders, borderId]
+    _setOwnedCardBorders.run(JSON.stringify(updated), accountId)
+    _setCardBorder.run(borderId, accountId)
+  })
+  tx()
+
+  const refreshed = getProfile(accountId)
+  return {
+    ok: true,
+    runes: refreshed.runes,
+    ownedCardBorders: refreshed.owned_card_borders,
+    selectedCardBorder: refreshed.selected_card_border,
+  }
+}
+
+export function selectCardBorder(accountId, borderId) {
+  const entry = CARD_BORDER_CATALOG.find((b) => b.id === borderId)
+  if (!entry) return { ok: false, error: 'Unknown card border.' }
+  const profile = getProfile(accountId)
+  if (!profile) return { ok: false, error: 'Profile not found.' }
+  if (!profile.owned_card_borders.includes(borderId)) {
+    return { ok: false, error: 'Card border not owned.' }
+  }
+  _setCardBorder.run(borderId, accountId)
+  return { ok: true, selectedCardBorder: borderId }
+}
+
+// ─── Shard breakdown (excess copies → currency) ─────────────────────
+//
+// Refund value is the same per-rarity table used to compensate dupes
+// from packs, so breaking down a copy yields exactly what opening a
+// duplicate of the same rarity would have refunded. Players can never
+// reduce a card below the maximum copy count required by any of their
+// saved decks (so an active deck never breaks).
+
+const RARITY_BREAKDOWN_VALUE = { common: 5, rare: 10, epic: 25, legendary: 100 }
+
+function deckCopiesIncluding(decks, cardId) {
+  let max = 0
+  for (const deck of decks) {
+    const n = deck.deckConfig?.[cardId] ?? 0
+    if (n > max) max = n
+  }
+  return max
+}
+
+export function breakdownCard(accountId, cardId, qty) {
+  if (typeof cardId !== 'string' || !DECK_CARD_ID_RE.test(cardId)) {
+    return { ok: false, error: 'Invalid card identifier.' }
+  }
+  const requested = Number(qty)
+  if (!Number.isInteger(requested) || requested < 1 || requested > 10) {
+    return { ok: false, error: 'Quantity must be an integer between 1 and 10.' }
+  }
+  const cardMeta = CARD_LIBRARY.find((c) => c.id === cardId)
+  if (!cardMeta) return { ok: false, error: 'Unknown card.' }
+
+  const profile = getProfile(accountId)
+  if (!profile) return { ok: false, error: 'Profile not found.' }
+
+  const owned = profile.owned_cards?.[cardId] ?? 0
+  if (owned <= 0) return { ok: false, error: 'You do not own that card.' }
+
+  const decks = listDecks(accountId)
+  const deckMin = deckCopiesIncluding(decks, cardId)
+  const breakable = owned - deckMin
+  if (breakable <= 0) {
+    return { ok: false, error: 'All copies of that card are needed by one of your saved decks.' }
+  }
+  if (requested > breakable) {
+    return { ok: false, error: `You can only break down ${breakable} extra copy/copies of that card.` }
+  }
+
+  const refundPer = RARITY_BREAKDOWN_VALUE[cardMeta.rarity] ?? 5
+  const totalRefund = refundPer * requested
+
+  const updatedOwned = { ...profile.owned_cards }
+  const newCount = owned - requested
+  if (newCount > 0) {
+    updatedOwned[cardId] = newCount
+  } else {
+    delete updatedOwned[cardId]
+  }
+
+  const tx = db.transaction(() => {
+    _setOwnedCards.run(JSON.stringify(updatedOwned), accountId)
+    _grantRunes.run(totalRefund, totalRefund, accountId)
+  })
+  tx()
+
+  const refreshed = getProfile(accountId)
+  return {
+    ok: true,
+    cardId,
+    refunded: totalRefund,
+    refundPer,
+    qty: requested,
+    runes: refreshed.runes,
+    owned: refreshed.owned_cards,
+  }
 }
 
 export function resolveMatchResult(accountId, opponent, mode, result, turns) {
