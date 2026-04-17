@@ -25,7 +25,7 @@ A mobile-first cosmic-horror card battler built with React, TypeScript, and Vite
 
 ```bash
 # 1. Clone the repository
-git clone <your-repo-url> fractured-arcanum
+git clone https://github.com/JoshuaGessner/FracturedArcanum.git fractured-arcanum
 cd fractured-arcanum
 
 # 2. Install dependencies
@@ -95,7 +95,7 @@ docker run -d -p 43173:43173 \
 ### Any VPS (DigitalOcean, AWS, Linode, etc.)
 
 ```bash
-git clone <your-repo-url> fractured-arcanum
+git clone https://github.com/JoshuaGessner/FracturedArcanum.git fractured-arcanum
 cd fractured-arcanum
 npm ci --production
 npm run assets:generate
@@ -118,6 +118,44 @@ A `render.yaml` is included for one-click deployment:
 1. Push this repo to GitHub
 2. Connect the repo in the [Render Dashboard](https://render.com)
 3. Render auto-detects `render.yaml` and deploys
+
+### Safe Server Updates
+
+A safe updater is included for server admins:
+
+```bash
+npm run update:server
+```
+
+What it does:
+- creates a timestamped backup before making changes
+- preserves Docker volume data and local `data/` contents
+- preserves your `.env` file
+- pulls the latest git changes with fast-forward protection
+- rebuilds and restarts either the Docker deployment or the Node deployment
+- runs a health check against `/api/health`
+- aborts if the repo has uncommitted changes unless you explicitly force it
+
+Useful variants:
+
+```bash
+# Preview actions without changing anything
+npm run update:server:dry
+
+# Force through a locally modified checkout
+bash scripts/update.sh --force
+
+# Skip the git pull if you've already updated the checkout manually
+bash scripts/update.sh --skip-pull
+
+# Force node-only mode on a non-Docker VPS
+bash scripts/update.sh --mode node
+
+# Force Docker Compose mode
+bash scripts/update.sh --mode docker
+```
+
+Backups are written to `backups/update-YYYYMMDD-HHMMSS/` so admins can restore data if an update fails.
 
 ### Environment Variables
 

@@ -10,6 +10,8 @@
     "start": "node server/server.js",
     "dev:full": "npm run build:engine && concurrently \"npm run server\" \"npm run dev\"",
     "assets:generate": "node scripts/generate-brand-assets.mjs",
+    "update:server": "bash scripts/update.sh",
+    "update:server:dry": "bash scripts/update.sh --dry-run",
     "release:check": "npm test && npm run lint && npm run build",
     "build": "npm run build:engine && tsc -b && vite build",
     "lint": "eslint .",
