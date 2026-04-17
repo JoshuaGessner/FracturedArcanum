@@ -1,110 +1,11 @@
-import type { FormEvent } from 'react'
 import {
   CARD_LIBRARY,
-  type GameMode,
-  type AIDifficulty,
-  type GameState,
 } from '../game'
 import { AI_DIFFICULTY_OPTIONS, QUICK_EMOTES } from '../constants'
 import { formatTimestamp } from '../utils'
-import type {
-  AppScreen,
-  CardCollection,
-  LeaderboardEntry,
-  OpponentProfile,
-  QueuePresence,
-  QueueSearchStatus,
-  QueueState,
-  ServerProfile,
-  SocialClan,
-  SocialFriend,
-  Trade,
-  TradeItem,
-} from '../types'
+import { useApp } from '../useApp'
 
 type ToastSeverity = 'info' | 'success' | 'warning' | 'error'
-
-type ChallengeRef = { challengeId: string; toAccountId?: string; toName?: string; fromAccountId?: string; fromName?: string; expiresAt: number } | null
-
-type HomeScreenProps = {
-  activeScreen: AppScreen
-  // Battle resume
-  gameInProgress: boolean
-  game: GameState
-  handleResumeBattle: () => void
-  handleAbandonBattle: () => void
-  // Mode + AI
-  preferredMode: GameMode
-  handleModeChange: (mode: GameMode) => void
-  resolvedAIDifficulty: AIDifficulty
-  aiDifficultySetting: 'auto' | AIDifficulty
-  seasonRating: number
-  handleAIDifficultyChange: (id: 'auto' | AIDifficulty) => void
-  // Match controls
-  startMatch: () => void
-  deckReady: boolean
-  handleStartQueue: () => void
-  queueState: QueueState
-  openScreen: (screen: AppScreen) => void
-  // Queue feedback
-  queueSeconds: number
-  queueSearchStatus: QueueSearchStatus
-  queuePresence: QueuePresence
-  handleCancelQueue: () => void
-  queuedOpponent: OpponentProfile | null
-  handleAcceptQueue: () => void
-  // Toast
-  toastSeverity: ToastSeverity
-  toastMessage: string
-  // Quests / profile cards
-  record: { wins: number; losses: number; streak: number }
-  dailyQuest: string
-  winRate: number
-  selectedDeckSize: number
-  serverProfile: ServerProfile | null
-  rankLabel: string
-  totalGames: number
-  runes: number
-  liveQueueLabel: string
-  leaderboardEntries: LeaderboardEntry[]
-  // Social
-  friends: SocialFriend[]
-  friendUsernameInput: string
-  setFriendUsernameInput: (value: string) => void
-  handleAddFriend: (event: FormEvent<HTMLFormElement>) => void | Promise<void>
-  socialLoading: boolean
-  onlineFriendIds: Set<string>
-  outgoingChallenge: ChallengeRef
-  incomingChallenge: ChallengeRef
-  handleChallengeFriend: (friend: SocialFriend) => void
-  handleRemoveFriend: (accountId: string, displayName: string) => void | Promise<void>
-  challengeStatus: string
-  handleCancelOutgoingChallenge: () => void
-  // Clan
-  clan: SocialClan | null
-  handleLeaveClan: () => void | Promise<void>
-  clanForm: { name: string; tag: string; inviteCode: string }
-  setClanForm: (updater: (current: { name: string; tag: string; inviteCode: string }) => { name: string; tag: string; inviteCode: string }) => void
-  handleCreateClan: (event: FormEvent<HTMLFormElement>) => void | Promise<void>
-  handleJoinClan: (event: FormEvent<HTMLFormElement>) => void | Promise<void>
-  socialStatus: string
-  // Trades
-  tradeForm: { toAccountId: string; offer: TradeItem[]; request: TradeItem[] }
-  setTradeForm: (updater: (current: { toAccountId: string; offer: TradeItem[]; request: TradeItem[] }) => { toAccountId: string; offer: TradeItem[]; request: TradeItem[] }) => void
-  handleProposeTrade: (event: FormEvent<HTMLFormElement>) => void | Promise<void>
-  tradeSubmitting: boolean
-  tradePickerDraft: { side: 'offer' | 'request'; cardId: string; qty: number }
-  setTradePickerDraft: (updater: (current: { side: 'offer' | 'request'; cardId: string; qty: number }) => { side: 'offer' | 'request'; cardId: string; qty: number }) => void
-  addTradeChip: () => void
-  removeTradeChip: (side: 'offer' | 'request', cardId: string) => void
-  collection: CardCollection
-  formatCountdown: (targetMs: number) => string
-  tradeStatus: string
-  trades: Trade[]
-  handleTradeAction: (tradeId: string, action: 'accept' | 'reject' | 'cancel') => void | Promise<void>
-  // Emotes
-  handleSendEmote: (emote: string) => void
-}
 
 function inferToastSeverity(text: string): ToastSeverity {
   const lc = text.toLowerCase()
@@ -126,7 +27,7 @@ function getCardIcon(cardId: string): string {
   return card?.icon ?? '🃏'
 }
 
-export function HomeScreen(props: HomeScreenProps) {
+export function HomeScreen() {
   const {
     activeScreen,
     gameInProgress, game, handleResumeBattle, handleAbandonBattle,
@@ -146,7 +47,7 @@ export function HomeScreen(props: HomeScreenProps) {
     tradePickerDraft, setTradePickerDraft, addTradeChip, removeTradeChip,
     collection, formatCountdown, tradeStatus, trades, handleTradeAction,
     handleSendEmote,
-  } = props
+  } = useApp()
 
   return (
     <section className={`home-screen screen-panel ${activeScreen === 'home' ? 'active' : 'hidden'}`}>

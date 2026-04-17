@@ -13,9 +13,8 @@
 
 | File | Lines | Role |
 |------|-------|------|
-| `src/App.tsx` | 3,010 | Root component — state, effects, handlers, screen wiring |
-| `src/AppProvider.tsx` | 2,360 | Context provider scaffold (dormant — Phase B target) |
-| `src/AppContext.ts` | 274 | Shared `AppContext` + `AppContextValue` type |
+| `src/App.tsx` | 2,896 | Root component — state, effects, handlers, context provider, screen wiring |
+| `src/AppContext.ts` | 275 | Shared `AppContext` + `AppContextValue` type |
 | `src/useApp.ts` | 10 | `useApp()` hook |
 | `src/game.ts` | 1,410 | Game engine — types, cards, combat, AI |
 | `src/types.ts` | 252 | UI-only TypeScript types (auth, social, admin, etc.) |
@@ -31,11 +30,11 @@
 
 | File | Lines | Role |
 |------|-------|------|
-| `src/screens/HomeScreen.tsx` | 633 | Lobby — queue, mode switch, profile, leaderboard, social, trades |
-| `src/screens/OpsScreen.tsx` | 606 | Privacy, complaints, admin console, audit log |
-| `src/screens/BattleScreen.tsx` | 387 | Battle topbar, battlefield, hand, summary (consolidated) |
-| `src/screens/DeckScreen.tsx` | 314 | Deck builder, saved decks, filters, mana curve |
-| `src/screens/VaultScreen.tsx` | 314 | Rewards, themes, borders, packs, breakdown |
+| `src/screens/HomeScreen.tsx` | 534 | Lobby — queue, mode switch, profile, leaderboard, social, trades |
+| `src/screens/OpsScreen.tsx` | 554 | Privacy, complaints, admin console, audit log |
+| `src/screens/BattleScreen.tsx` | 346 | Battle topbar, battlefield, hand, summary (consolidated) |
+| `src/screens/DeckScreen.tsx` | 282 | Deck builder, saved decks, filters, mana curve |
+| `src/screens/VaultScreen.tsx` | 288 | Rewards, themes, borders, packs, breakdown |
 
 ### Client — Shared Components (`src/components/`)
 
@@ -81,7 +80,7 @@
 
 ## Architecture Notes
 
-- **Screens are presentational, prop-driven.** All state and handlers live in `App.tsx` and are passed as props. The `AppProvider`/`useApp` context exists but is not yet wired (Phase B).
+- **Screens consume `useApp()` context.** All app state and handlers live in `App.tsx`, which constructs an `AppContextValue` and provides it via `<AppContext.Provider>` wrapping the entire UI tree. Screens call `useApp()` to pull the slice they need; small components remain prop-driven for clarity.
 - **Game engine is pure.** All functions in `src/game.ts` take state and return new state — no mutation, no side effects. Shared between client (TypeScript source) and server (compiled `server/game.js`).
 - **5-screen architecture.** `type AppScreen = 'home' | 'deck' | 'battle' | 'vault' | 'ops'`. Screens are CSS-toggled (`screen-panel.active` vs `.hidden`) so they all stay mounted but only one is visible.
 - **Multiplayer.** AI mode runs the engine in-browser. Duel mode (`battleKind = 'ranked'`) is server-authoritative — clients emit `game:action`, server validates, broadcasts redacted `game:state`.

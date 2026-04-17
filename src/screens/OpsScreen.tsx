@@ -1,60 +1,8 @@
-import type {
-  AdminAuditEntry,
-  AdminOverview,
-  AdminSettings,
-  AdminUser,
-  AppScreen,
-  ComplaintFormState,
-  ServerProfile,
-  ToastSeverity,
-} from '../types'
 import { CARD_LIBRARY } from '../game'
 import { cardArtPath, formatTimestamp, handleCardArtError } from '../utils'
+import { useApp } from '../useApp'
 
-type OpsScreenProps = {
-  activeScreen: AppScreen
-  isAdminRole: boolean
-  isOwnerRole: boolean
-  accountRole: 'user' | 'admin' | 'owner'
-  analyticsConsent: boolean
-  setAnalyticsConsent: (value: boolean) => void
-  serverProfile: ServerProfile | null
-  visitorId: string
-  featuredMode: string
-  backendOnline: boolean
-  complaintForm: ComplaintFormState
-  setComplaintForm: React.Dispatch<React.SetStateAction<ComplaintFormState>>
-  complaintStatus: string
-  handleSubmitComplaint: (event: React.FormEvent<HTMLFormElement>) => void | Promise<void>
-  adminLoading: boolean
-  adminOverview: AdminOverview | null
-  adminError: string
-  refreshAdminOverview: () => void | Promise<void>
-  adminSettings: AdminSettings
-  setAdminSettings: React.Dispatch<React.SetStateAction<AdminSettings>>
-  handleSaveAdminSettings: () => void | Promise<void>
-  handleUpdateComplaintStatus: (id: string, status: string) => void | Promise<void>
-  adminUserSearch: string
-  setAdminUserSearch: (value: string) => void
-  adminUsers: AdminUser[]
-  adminUsersLoading: boolean
-  refreshAdminUsers: (searchTerm?: string) => void | Promise<void>
-  handleSetUserRole: (target: AdminUser, newRole: 'admin' | 'user') => void | Promise<void>
-  transferForm: { targetAccountId: string; password: string }
-  setTransferForm: React.Dispatch<React.SetStateAction<{ targetAccountId: string; password: string }>>
-  transferStatus: string
-  handleTransferOwnership: (event: React.FormEvent<HTMLFormElement>) => void | Promise<void>
-  adminAudit: AdminAuditEntry[]
-  adminAuditFilter: string
-  setAdminAuditFilter: (value: string) => void
-  adminAuditExpandedId: string | null
-  setAdminAuditExpandedId: (value: string | null) => void
-  refreshAdminAudit: () => void | Promise<void>
-  inferToastSeverity: (text: string) => ToastSeverity
-  setToastMessage: (message: string, severityOverride?: ToastSeverity) => void
-}
-
-export function OpsScreen(props: OpsScreenProps) {
+export function OpsScreen() {
   const {
     activeScreen,
     isAdminRole,
@@ -96,7 +44,7 @@ export function OpsScreen(props: OpsScreenProps) {
     refreshAdminAudit,
     inferToastSeverity,
     setToastMessage,
-  } = props
+  } = useApp()
 
   return (
     <section className={`ops-grid screen-panel ${activeScreen === 'ops' && isAdminRole ? 'active' : 'hidden'}`}>

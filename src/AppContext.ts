@@ -113,7 +113,7 @@ export type AppContextValue = {
 
   // ─── Navigation / UI shell ─────────────────────────────────────
   activeScreen: AppScreen
-  previousScreen: AppScreen
+
   openScreen: (screen: AppScreen) => void
   screenTitle: string
   toastMessage: string
@@ -143,7 +143,7 @@ export type AppContextValue = {
 
   // ─── Live service info ─────────────────────────────────────────
   backendOnline: boolean
-  motd: string
+
   dailyQuest: string
   featuredMode: string
 
@@ -178,6 +178,7 @@ export type AppContextValue = {
   opponentDisconnected: boolean
   disconnectGraceMs: number
   preferredMode: GameMode
+  setPreferredMode: React.Dispatch<React.SetStateAction<GameMode>>
   aiDifficultySetting: 'auto' | AIDifficulty
   resolvedAIDifficulty: AIDifficulty
   activePlayer: GameState['player']

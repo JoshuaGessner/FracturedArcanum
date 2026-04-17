@@ -1,52 +1,11 @@
 import {
-  type GameState,
-  type PlayerState,
   RARITY_COLORS,
 } from '../game'
 import { EFFECT_LABELS } from '../constants'
 import { cardArtPath, handleCardArtError } from '../utils'
-import type { AppScreen, BattleKind, CardBorder, InspectedCard } from '../types'
+import { useApp } from '../useApp'
 
-type LongPressProps = ReturnType<(card: InspectedCard) => Record<string, unknown>>
-
-type BattleScreenProps = {
-  activeScreen: AppScreen
-  game: GameState
-  activePlayer: PlayerState
-  isMyTurn: boolean
-  isRankedBattle: boolean
-  battleKind: BattleKind
-  // Banners
-  enemyTurnActive: boolean
-  enemyTurnLabel: string
-  backendOnline: boolean
-  opponentDisconnected: boolean
-  disconnectGraceMs: number
-  // Combat handlers
-  handleBurst: () => void
-  handleEndTurn: () => void
-  handleLeaveBattle: () => void
-  handleAttackTarget: (target: number | 'hero') => void
-  handleSelectAttacker: (index: number) => void
-  selectedAttacker: number | null
-  defenderHasGuard: boolean
-  damagedSlots: Set<string>
-  consumeLongPressAction: () => boolean
-  getLongPressProps: (card: InspectedCard) => LongPressProps
-  // Hand
-  handlePlayCard: (index: number) => void
-  activeBoardHasOpenLane: boolean
-  selectedCardBorder: CardBorder
-  // Summary
-  rankLabel: string
-  seasonRating: number
-  winRate: number
-  startMatch: (mode?: GameState['mode']) => void
-  setPreferredMode: (mode: 'ai' | 'duel') => void
-  openScreen: (screen: AppScreen) => void
-}
-
-export function BattleScreen(props: BattleScreenProps) {
+export function BattleScreen() {
   const {
     activeScreen,
     game,
@@ -78,7 +37,7 @@ export function BattleScreen(props: BattleScreenProps) {
     startMatch,
     setPreferredMode,
     openScreen,
-  } = props
+  } = useApp()
 
   const isBattle = activeScreen === 'battle'
 

@@ -53,6 +53,7 @@ import { VaultScreen } from './screens/VaultScreen'
 import { DeckScreen } from './screens/DeckScreen'
 import { HomeScreen } from './screens/HomeScreen'
 import { BattleScreen } from './screens/BattleScreen'
+import { AppContext, type AppContextValue } from './AppContext'
 import type {
   AdminAuditEntry,
   AdminOverview,
@@ -2590,7 +2591,77 @@ function App() {
     })
   }
 
+  const appCtx: AppContextValue = {
+    // Auth / setup
+    authToken, setAuthToken, authScreen, setAuthScreen, authForm, setAuthForm,
+    authError, authLoading, loggedIn,
+    setupRequired, setupForm, setSetupForm, setupError, setupLoading,
+    handleSetup, handleAuth, handleLogout,
+    // Profile
+    serverProfile, setServerProfile, runes, seasonRating, record,
+    ownedThemes, selectedTheme, ownedCardBorders, selectedCardBorder,
+    lastDailyClaim, accountRole, isAdminRole, isOwnerRole,
+    rankLabel, totalGames, winRate, rankProgress, nextRankTarget, nextRewardLabel,
+    todayKey, canClaimDailyReward, totalOwnedCards,
+    // Decks / collection
+    collection, setCollection, deckConfig, setDeckConfig, selectedDeckSize, deckReady,
+    savedDecks, activeDeckId, builderFilter, setBuilderFilter,
+    pendingBreakdown, setPendingBreakdown,
+    handleCreateDeck, handleRenameDeck, handleDeleteDeck, handleSelectDeck,
+    handleBreakdownCard, handleDeckCount,
+    // Cosmetics / shop
+    packOffers, openedPackCards, packOpening,
+    handleOpenPack, handlePurchaseBorder, handleSelectBorder, handleEquipTheme, handleClaimDailyReward,
+    // Navigation / UI shell
+    activeScreen, openScreen, screenTitle,
+    toastMessage, toastSeverity, toastStack, setToastMessage, inferToastSeverity,
+    confirmRequest, confirmTextInput, setConfirmTextInput, askConfirm, closeConfirm,
+    inspectedCard, setInspectedCard, consumeLongPressAction, getLongPressProps,
+    installPromptEvent, handleInstallApp,
+    swUpdateAvailable, handleAcceptUpdate, handleDismissUpdate,
+    soundEnabled, setSoundEnabled, analyticsConsent, setAnalyticsConsent, visitorId,
+    // Live service
+    backendOnline, dailyQuest, featuredMode,
+    // Queue
+    queueState, queueSeconds, queuedOpponent, queuePresence, queueSearchStatus,
+    liveQueueLabel, leaderboardEntries,
+    handleStartQueue, handleCancelQueue, handleAcceptQueue,
+    // Battle
+    game, battleKind, isRankedBattle, isLocalPassBattle,
+    battleSessionActive, serverBattleActive, hasBattleInProgress, gameInProgress,
+    selectedAttacker, enemyTurnActive, enemyTurnLabel,
+    battleIntroVisible, rewardOverlayVisible, setRewardOverlayVisible,
+    damagedSlots, opponentDisconnected, disconnectGraceMs,
+    preferredMode, setPreferredMode, aiDifficultySetting, resolvedAIDifficulty,
+    activePlayer, defendingPlayer, isMyTurn, defenderHasGuard, activeBoardHasOpenLane,
+    startMatch, handleQuickBattle, handleResumeBattle, handleAbandonBattle, handleLeaveBattle,
+    handleModeChange, handleAIDifficultyChange,
+    handlePlayCard, handleSelectAttacker, handleAttackTarget,
+    handleBurst, handleEndTurn, handleSendEmote,
+    // Social
+    friends, onlineFriendIds, outgoingChallenge, incomingChallenge, challengeStatus,
+    socialLoading, socialStatus, friendUsernameInput, setFriendUsernameInput,
+    clan, clanForm, setClanForm,
+    handleAddFriend, handleRemoveFriend, handleChallengeFriend,
+    handleAcceptChallenge, handleDeclineChallenge, handleCancelOutgoingChallenge,
+    handleCreateClan, handleJoinClan, handleLeaveClan,
+    // Trading
+    trades, tradeStatus, tradeForm, setTradeForm, tradePickerDraft, setTradePickerDraft,
+    tradeSubmitting, handleProposeTrade, handleTradeAction,
+    addTradeChip, removeTradeChip, formatCountdown,
+    // Settings / admin / complaints
+    complaintForm, setComplaintForm, complaintStatus, handleSubmitComplaint,
+    adminOverview, adminLoading, adminError,
+    adminUsers, adminUsersLoading, adminUserSearch, setAdminUserSearch,
+    adminAudit, adminAuditFilter, setAdminAuditFilter,
+    adminAuditExpandedId, setAdminAuditExpandedId,
+    adminSettings, setAdminSettings, transferForm, setTransferForm, transferStatus,
+    refreshAdminOverview, refreshAdminUsers, refreshAdminAudit,
+    handleSetUserRole, handleTransferOwnership, handleSaveAdminSettings, handleUpdateComplaintStatus,
+  }
+
   return (
+    <AppContext.Provider value={appCtx}>
     <main className={`app-shell theme-${selectedTheme}`}>
       {/* ─── Floating toast stack (auto-fading) ──────────────────────── */}
       <ToastStack toasts={toastStack} />
@@ -2805,205 +2876,20 @@ function App() {
 
 
       {loggedIn && (<>
-      <HomeScreen
-        activeScreen={activeScreen}
-        gameInProgress={gameInProgress}
-        game={game}
-        handleResumeBattle={handleResumeBattle}
-        handleAbandonBattle={handleAbandonBattle}
-        preferredMode={preferredMode}
-        handleModeChange={handleModeChange}
-        resolvedAIDifficulty={resolvedAIDifficulty}
-        aiDifficultySetting={aiDifficultySetting}
-        seasonRating={seasonRating}
-        handleAIDifficultyChange={handleAIDifficultyChange}
-        startMatch={startMatch}
-        deckReady={deckReady}
-        handleStartQueue={handleStartQueue}
-        queueState={queueState}
-        openScreen={openScreen}
-        queueSeconds={queueSeconds}
-        queueSearchStatus={queueSearchStatus}
-        queuePresence={queuePresence}
-        handleCancelQueue={handleCancelQueue}
-        queuedOpponent={queuedOpponent}
-        handleAcceptQueue={handleAcceptQueue}
-        toastSeverity={toastSeverity}
-        toastMessage={toastMessage}
-        record={record}
-        dailyQuest={dailyQuest}
-        winRate={winRate}
-        selectedDeckSize={selectedDeckSize}
-        serverProfile={serverProfile}
-        rankLabel={rankLabel}
-        totalGames={totalGames}
-        runes={runes}
-        liveQueueLabel={liveQueueLabel}
-        leaderboardEntries={leaderboardEntries}
-        friends={friends}
-        friendUsernameInput={friendUsernameInput}
-        setFriendUsernameInput={setFriendUsernameInput}
-        handleAddFriend={handleAddFriend}
-        socialLoading={socialLoading}
-        onlineFriendIds={onlineFriendIds}
-        outgoingChallenge={outgoingChallenge}
-        incomingChallenge={incomingChallenge}
-        handleChallengeFriend={handleChallengeFriend}
-        handleRemoveFriend={handleRemoveFriend}
-        challengeStatus={challengeStatus}
-        handleCancelOutgoingChallenge={handleCancelOutgoingChallenge}
-        clan={clan}
-        handleLeaveClan={handleLeaveClan}
-        clanForm={clanForm}
-        setClanForm={setClanForm}
-        handleCreateClan={handleCreateClan}
-        handleJoinClan={handleJoinClan}
-        socialStatus={socialStatus}
-        tradeForm={tradeForm}
-        setTradeForm={setTradeForm}
-        handleProposeTrade={handleProposeTrade}
-        tradeSubmitting={tradeSubmitting}
-        tradePickerDraft={tradePickerDraft}
-        setTradePickerDraft={setTradePickerDraft}
-        addTradeChip={addTradeChip}
-        removeTradeChip={removeTradeChip}
-        collection={collection}
-        formatCountdown={formatCountdown}
-        tradeStatus={tradeStatus}
-        trades={trades}
-        handleTradeAction={handleTradeAction}
-        handleSendEmote={handleSendEmote}
-      />
+      <HomeScreen />
 
-      <DeckScreen
-        activeScreen={activeScreen}
-        loggedIn={loggedIn}
-        deckReady={deckReady}
-        selectedDeckSize={selectedDeckSize}
-        savedDecks={savedDecks}
-        activeDeckId={activeDeckId}
-        handleCreateDeck={handleCreateDeck}
-        handleSelectDeck={handleSelectDeck}
-        handleRenameDeck={handleRenameDeck}
-        handleDeleteDeck={handleDeleteDeck}
-        builderFilter={builderFilter}
-        setBuilderFilter={setBuilderFilter}
-        deckConfig={deckConfig}
-        collection={collection}
-        selectedCardBorder={selectedCardBorder}
-        handleDeckCount={handleDeckCount}
-        startMatch={startMatch}
-        handleStartQueue={handleStartQueue}
-        queueState={queueState}
-        openScreen={openScreen}
-        handleQuickBattle={handleQuickBattle}
-      />
+      <DeckScreen />
 
-      <BattleScreen
-        activeScreen={activeScreen}
-        game={game}
-        activePlayer={activePlayer}
-        isMyTurn={isMyTurn}
-        isRankedBattle={isRankedBattle}
-        battleKind={battleKind}
-        enemyTurnActive={enemyTurnActive}
-        enemyTurnLabel={enemyTurnLabel}
-        backendOnline={backendOnline}
-        opponentDisconnected={opponentDisconnected}
-        disconnectGraceMs={disconnectGraceMs}
-        handleBurst={handleBurst}
-        handleEndTurn={handleEndTurn}
-        handleLeaveBattle={handleLeaveBattle}
-        handleAttackTarget={handleAttackTarget}
-        handleSelectAttacker={handleSelectAttacker}
-        selectedAttacker={selectedAttacker}
-        defenderHasGuard={defenderHasGuard}
-        damagedSlots={damagedSlots}
-        consumeLongPressAction={consumeLongPressAction}
-        getLongPressProps={getLongPressProps}
-        handlePlayCard={handlePlayCard}
-        activeBoardHasOpenLane={activeBoardHasOpenLane}
-        selectedCardBorder={selectedCardBorder}
-        rankLabel={rankLabel}
-        seasonRating={seasonRating}
-        winRate={winRate}
-        startMatch={startMatch}
-        setPreferredMode={setPreferredMode}
-        openScreen={openScreen}
-      />
+      <BattleScreen />
 
-      <VaultScreen
-        activeScreen={activeScreen}
-        loggedIn={loggedIn}
-        runes={runes}
-        totalOwnedCards={totalOwnedCards}
-        nextRewardLabel={nextRewardLabel}
-        canClaimDailyReward={canClaimDailyReward}
-        handleClaimDailyReward={handleClaimDailyReward}
-        startMatch={startMatch}
-        ownedThemes={ownedThemes}
-        selectedTheme={selectedTheme}
-        handleEquipTheme={handleEquipTheme}
-        ownedCardBorders={ownedCardBorders}
-        selectedCardBorder={selectedCardBorder}
-        handlePurchaseBorder={handlePurchaseBorder}
-        packOffers={packOffers}
-        packOpening={packOpening}
-        openedPackCards={openedPackCards}
-        handleOpenPack={handleOpenPack}
-        collection={collection}
-        savedDecks={savedDecks}
-        pendingBreakdown={pendingBreakdown}
-        setPendingBreakdown={setPendingBreakdown}
-        handleBreakdownCard={handleBreakdownCard}
-      />
+      <VaultScreen />
 
-      <OpsScreen
-        activeScreen={activeScreen}
-        isAdminRole={isAdminRole}
-        isOwnerRole={isOwnerRole}
-        accountRole={accountRole}
-        analyticsConsent={analyticsConsent}
-        setAnalyticsConsent={setAnalyticsConsent}
-        serverProfile={serverProfile}
-        visitorId={visitorId}
-        featuredMode={featuredMode}
-        backendOnline={backendOnline}
-        complaintForm={complaintForm}
-        setComplaintForm={setComplaintForm}
-        complaintStatus={complaintStatus}
-        handleSubmitComplaint={handleSubmitComplaint}
-        adminLoading={adminLoading}
-        adminOverview={adminOverview}
-        adminError={adminError}
-        refreshAdminOverview={refreshAdminOverview}
-        adminSettings={adminSettings}
-        setAdminSettings={setAdminSettings}
-        handleSaveAdminSettings={handleSaveAdminSettings}
-        handleUpdateComplaintStatus={handleUpdateComplaintStatus}
-        adminUserSearch={adminUserSearch}
-        setAdminUserSearch={setAdminUserSearch}
-        adminUsers={adminUsers}
-        adminUsersLoading={adminUsersLoading}
-        refreshAdminUsers={refreshAdminUsers}
-        handleSetUserRole={handleSetUserRole}
-        transferForm={transferForm}
-        setTransferForm={setTransferForm}
-        transferStatus={transferStatus}
-        handleTransferOwnership={handleTransferOwnership}
-        adminAudit={adminAudit}
-        adminAuditFilter={adminAuditFilter}
-        setAdminAuditFilter={setAdminAuditFilter}
-        adminAuditExpandedId={adminAuditExpandedId}
-        setAdminAuditExpandedId={setAdminAuditExpandedId}
-        refreshAdminAudit={refreshAdminAudit}
-        inferToastSeverity={inferToastSeverity}
-        setToastMessage={setToastMessage}
-      />
+      <OpsScreen />
 
       <NavBar activeScreen={activeScreen} isAdminRole={isAdminRole} onNavigate={openScreen} />
       </>)}
     </main>
+    </AppContext.Provider>
   )
 }
 

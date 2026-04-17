@@ -1,14 +1,13 @@
 # Client UI Index
 
-The client UI was extracted from a 5,188-line monolith into a root file plus screens/components/types/constants/utils modules.
+The client UI was extracted from a 5,188-line monolith into a root file plus screens/components/types/constants/utils modules. App-wide state is provided via React Context (`AppContext` + `useApp()`); screens call `useApp()` to pull the slice they need.
 
 ## File Structure
 
 ```
 src/
-├── App.tsx                    (3,010 lines)  Root: state, effects, handlers, JSX wiring
-├── AppProvider.tsx            (2,360 lines)  Dormant context provider scaffold
-├── AppContext.ts              (274)          AppContextValue type + createContext
+├── App.tsx                    (2,896 lines)  Root: state, effects, handlers, context provider, JSX wiring
+├── AppContext.ts              (275)          AppContextValue type + createContext
 ├── useApp.ts                  (10)           useApp() hook
 ├── types.ts                   (252)          UI-only type definitions
 ├── constants.ts               (182)          Themes, borders, presets, labels
@@ -26,7 +25,7 @@ src/
 │   ├── TopBar.tsx
 │   ├── BattleIntroOverlay.tsx
 │   └── RewardOverlay.tsx
-└── screens/                                 5 main app screens
+└── screens/                                 5 main app screens (consume useApp() context)
     ├── HomeScreen.tsx
     ├── DeckScreen.tsx
     ├── BattleScreen.tsx
@@ -36,9 +35,9 @@ src/
 
 ---
 
-## `src/App.tsx` (3,010 lines)
+## `src/App.tsx` (2,896 lines)
 
-Root component. Owns ALL state via `useState`/`useRef`, ALL effects, ALL handler functions. Passes data and callbacks down to screens/components as props. The dormant `AppProvider` mirrors this state and is the Phase B target.
+Root component. Owns ALL state via `useState`/`useRef`, ALL effects, ALL handler functions. Just before its JSX return it builds an `AppContextValue` object literal and wraps the entire `<main>` tree in `<AppContext.Provider value={appCtx}>`. Screens consume that context via `useApp()`.
 
 ### Imports (Lines 1–62)
 - React hooks + `FormEvent` type
@@ -79,23 +78,25 @@ Root component. Owns ALL state via `useState`/`useRef`, ALL effects, ALL handler
 ### JSX Render Tree (Lines ~2596–3008)
 
 ```
-<main>
-  <ToastStack toasts={toastStack} />
-  <ConfirmModal ... />
-  <CardInspectModal ... />              (when inspectedCard set)
-  <TopBar ... />
-  <BattleIntroOverlay ... />
-  <RewardOverlay ... />
+<AppContext.Provider value={appCtx}>
+  <main>
+    <ToastStack toasts={toastStack} />
+    <ConfirmModal ... />
+    <CardInspectModal ... />              (when inspectedCard set)
+    <TopBar ... />
+    <BattleIntroOverlay ... />
+    <RewardOverlay ... />
 
-  {loggedIn && (<>
-    <HomeScreen ... />        ← screen-panel, active when activeScreen === 'home'
-    <DeckScreen ... />        ← screen-panel, active when activeScreen === 'deck'
-    <BattleScreen ... />      ← screen-panel, active when activeScreen === 'battle'
-    <VaultScreen ... />       ← screen-panel, active when activeScreen === 'vault'
-    <OpsScreen ... />         ← screen-panel, active when activeScreen === 'ops'
-    <NavBar activeScreen={activeScreen} ... />
-  </>)}
-</main>
+    {loggedIn && (<>
+      <HomeScreen />          ← reads useApp()
+      <DeckScreen />          ← reads useApp()
+      <BattleScreen />        ← reads useApp()
+      <VaultScreen />         ← reads useApp()
+      <OpsScreen />           ← reads useApp()
+      <NavBar activeScreen={activeScreen} ... />
+    </>)}
+  </main>
+</AppContext.Provider>
 ```
 
 All screens stay mounted; only the active one is visible (CSS class toggle).
@@ -148,15 +149,15 @@ Pure helper functions:
 
 ## `src/screens/`
 
-All screens are **presentational**: they receive state and handlers via props. None of them hold app state. Each is wrapped in a `<section className="... screen-panel ${active ? 'active' : 'hidden'}">` so it can stay mounted.
+All screens are propless and consume app state via `const { ... } = useApp()`. None of them hold local app state. Each is wrapped in a `<section className="... screen-panel ${active ? 'active' : 'hidden'}">` so it can stay mounted.
 
-| Screen | Lines | Props | Notes |
-|--------|-------|-------|-------|
-| `HomeScreen.tsx` | 633 | ~70 | Largest screen — lobby, queue, mode switch, profile, leaderboard, social hub, friends, clan, trades, emotes |
-| `OpsScreen.tsx` | 606 | ~30 | Privacy + complaint form + admin console (overview, users, audit, role transfer) |
-| `BattleScreen.tsx` | 387 | ~30 | Returns a `<>` fragment containing 6 sibling sections: enemy-turn-banner, connection banners, battle-topbar, battlefield, summary-card, hand-section |
-| `DeckScreen.tsx` | 314 | ~24 | Saved decks roster, builder filters, mana curve, quick-battle presets |
-| `VaultScreen.tsx` | 314 | ~26 | Daily reward, themes, borders, packs, breakdown |
+| Screen | Lines | Notes |
+|--------|-------|-------|
+| `HomeScreen.tsx` | 534 | Largest screen — lobby, queue, mode switch, profile, leaderboard, social hub, friends, clan, trades, emotes |
+| `OpsScreen.tsx` | 554 | Privacy + complaint form + admin console (overview, users, audit, role transfer) |
+| `BattleScreen.tsx` | 346 | Returns a `<>` fragment containing 6 sibling sections: enemy-turn-banner, connection banners, battle-topbar, battlefield, summary-card, hand-section |
+| `DeckScreen.tsx` | 282 | Saved decks roster, builder filters, mana curve, quick-battle presets |
+| `VaultScreen.tsx` | 288 | Daily reward, themes, borders, packs, breakdown |
 
 ---
 
@@ -176,21 +177,18 @@ Small reusable UI primitives. All prop-driven, no app state.
 
 ---
 
-## `src/AppProvider.tsx` + `src/AppContext.ts` + `src/useApp.ts`
+## `src/AppContext.ts` + `src/useApp.ts`
 
-These three files hold a **dormant** context-based replacement of App.tsx state. Currently NOT imported anywhere. Phase B will:
+- **`AppContext.ts`** — declares the `AppContextValue` type (every state slice and handler exposed to screens) and creates the React context. The type is grouped by domain: auth/setup, profile, decks/collection, cosmetics/shop, navigation/UI shell, live service, queue/matchmaking, battle/game, social, trading, settings/admin/complaints.
+- **`useApp.ts`** — a tiny `useApp()` hook that reads the context and throws if used outside `<AppContext.Provider>`.
 
-1. Wrap `<App />` in `<AppProvider>`.
-2. Replace App.tsx state/effects/handlers with `const { ... } = useApp()`.
-3. Convert screens to use `useApp()` directly instead of receiving props.
-
-The split into 3 files (type+context, provider, hook) is required by ESLint's `react-refresh/only-export-components` rule.
+App.tsx is the sole provider. Each screen imports `useApp` and pulls only the keys it needs. The split into 2 files (type+context, hook) is required by ESLint's `react-refresh/only-export-components` rule.
 
 ---
 
 ## Conventions
 
-- **No app state below App.tsx.** Screens and components are pure functions of their props.
+- **No app state below App.tsx.** Screens read context, components read props — neither holds shared state.
 - **Effects only in App.tsx.** Network calls, socket setup, persistence, and timers all live in App.tsx.
 - **Game engine is the source of truth for cards/combat.** UI never duplicates game logic.
-- **Long-press inspect** is wired through `getLongPressProps(card)` returned from App.tsx and passed down as a prop to BattleScreen.
+- **Long-press inspect** is wired through `getLongPressProps(card)` from the context and used by BattleScreen.

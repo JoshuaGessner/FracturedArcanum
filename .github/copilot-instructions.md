@@ -44,8 +44,9 @@ A detailed code index lives in `.github/index/`. **Consult it before writing or 
 - Avoid `useEffect` for derived state — compute inline.
 - Prefix event handlers with `handle` (e.g., `handlePlayCard`, `handleEndTurn`).
 - Keep sound effects and haptic feedback in handler functions, not in effects.
-- App-level state, effects, and handlers live in `src/App.tsx`. Screens (`src/screens/*`) and shared components (`src/components/*`) are presentational and prop-driven — do not introduce app state inside them.
-- New shared UI primitives go in `src/components/`. New full screens go in `src/screens/` (and must be wired into App.tsx's screen-panel switch).
+- App-level state, effects, and handlers live in `src/App.tsx`. Screens (`src/screens/*`) consume that state via `useApp()` (the `AppContext.Provider` wraps the entire UI tree). Shared components (`src/components/*`) remain prop-driven. Do not introduce app state inside screens or components.
+- New shared UI primitives go in `src/components/`. New full screens go in `src/screens/` (and must be wired into App.tsx's screen-panel switch and read state via `useApp()`).
+- When adding new app-wide state in App.tsx, also add the corresponding key to `AppContextValue` in `src/AppContext.ts` and include it in the `appCtx` object literal in App.tsx.
 - Pure helpers belong in `src/utils.ts`. Static UI data (themes, presets, labels) belongs in `src/constants.ts`.
 
 ### Game Engine Rules
@@ -89,14 +90,13 @@ A detailed code index lives in `.github/index/`. **Consult it before writing or 
 | File | Lines | Role | Edit Rules |
 |------|-------|------|------------|
 | `src/game.ts` | 1,410 | Game engine — single source of truth for all mechanics | Pure functions only. After edit: `npm run build:engine` |
-| `src/App.tsx` | 3,010 | Root React component — all state, effects, handlers, screen wiring | Owns app state. Pass data down via props. |
-| `src/AppProvider.tsx` | 2,360 | Dormant context provider (Phase B target) | Keep in sync conceptually with App.tsx until wired |
-| `src/AppContext.ts` | 274 | `AppContextValue` type + `createContext` | Update when adding shared state |
+| `src/App.tsx` | 2,896 | Root React component — all state, effects, handlers, builds AppContextValue and provides via `<AppContext.Provider>` | Owns app state. Screens read it via `useApp()`. |
+| `src/AppContext.ts` | 275 | `AppContextValue` type + `createContext` | Update when adding shared state |
 | `src/useApp.ts` | 10 | `useApp()` hook | |
 | `src/types.ts` | 252 | UI-only TypeScript types | Add new UI types here |
 | `src/constants.ts` | 182 | Static UI constants (themes, presets, labels) | No functions — data only |
 | `src/utils.ts` | 134 | Pure helper functions | No React, no app state |
-| `src/screens/*.tsx` | 314–633 each | Presentational screens (Home, Deck, Battle, Vault, Ops) | Prop-driven only — no app state |
+| `src/screens/*.tsx` | 282–554 each | Presentational screens (Home, Deck, Battle, Vault, Ops) | Propless — read state via `useApp()` |
 | `src/components/*.tsx` | 18–66 each | Shared UI primitives (modals, nav, overlays) | Prop-driven only |
 | `src/App.css` | 2,662 | All styles | Add to correct section per `06-styles.md` |
 | `src/audio.ts` | 91 | Sound synthesis | 7 sound types via Web Audio API |

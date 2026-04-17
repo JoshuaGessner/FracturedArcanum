@@ -1,4 +1,3 @@
-import type { AppScreen, CardCollection, CardBorder, QueueState, SavedDeck } from '../types'
 import {
   CARD_LIBRARY,
   MAX_COPIES,
@@ -6,43 +5,12 @@ import {
   MIN_DECK_SIZE,
   RARITY_COLORS,
   getDeckSize,
-  type DeckConfig,
-  type GameMode,
 } from '../game'
 import { DECK_MAX_TOTAL_DISPLAY, DECK_PRESETS, EFFECT_LABELS } from '../constants'
 import { cardArtPath, handleCardArtError } from '../utils'
+import { useApp } from '../useApp'
 
-type BuilderFilter = {
-  ownedOnly: boolean
-  search: string
-  rarity: 'all' | 'common' | 'rare' | 'epic' | 'legendary'
-}
-
-type DeckScreenProps = {
-  activeScreen: AppScreen
-  loggedIn: boolean
-  deckReady: boolean
-  selectedDeckSize: number
-  savedDecks: SavedDeck[]
-  activeDeckId: string | null
-  handleCreateDeck: () => void
-  handleSelectDeck: (deck: SavedDeck) => void
-  handleRenameDeck: (deck: SavedDeck) => void
-  handleDeleteDeck: (deck: SavedDeck) => void
-  builderFilter: BuilderFilter
-  setBuilderFilter: React.Dispatch<React.SetStateAction<BuilderFilter>>
-  deckConfig: DeckConfig
-  collection: CardCollection
-  selectedCardBorder: CardBorder
-  handleDeckCount: (cardId: string, delta: number) => void
-  startMatch: (mode?: GameMode) => void
-  handleStartQueue: () => void
-  queueState: QueueState
-  openScreen: (screen: AppScreen) => void
-  handleQuickBattle: (name: string, config: DeckConfig) => void
-}
-
-export function DeckScreen(props: DeckScreenProps) {
+export function DeckScreen() {
   const {
     activeScreen,
     loggedIn,
@@ -65,7 +33,7 @@ export function DeckScreen(props: DeckScreenProps) {
     queueState,
     openScreen,
     handleQuickBattle,
-  } = props
+  } = useApp()
 
   return (
     <section className={`meta-grid deck-focus screen-panel ${activeScreen === 'deck' ? 'active' : 'hidden'}`}>

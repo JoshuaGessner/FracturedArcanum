@@ -1,36 +1,10 @@
-import type { AppScreen, CardCollection, CosmeticTheme, CardBorder, OpenedPackCard, PackOffer, SavedDeck } from '../types'
-import { CARD_LIBRARY, RARITY_COLORS, type GameMode } from '../game'
+import { CARD_LIBRARY, RARITY_COLORS } from '../game'
 import { CARD_BORDER_OFFERS, THEME_OFFERS } from '../constants'
-
-type VaultScreenProps = {
-  activeScreen: AppScreen
-  loggedIn: boolean
-  runes: number
-  totalOwnedCards: number
-  nextRewardLabel: string
-  canClaimDailyReward: boolean
-  handleClaimDailyReward: () => void
-  startMatch: (mode?: GameMode) => void
-  ownedThemes: CosmeticTheme[]
-  selectedTheme: CosmeticTheme
-  handleEquipTheme: (themeId: CosmeticTheme, cost: number) => void
-  ownedCardBorders: CardBorder[]
-  selectedCardBorder: CardBorder
-  handlePurchaseBorder: (borderId: CardBorder, cost: number) => void
-  packOffers: PackOffer[]
-  packOpening: string | null
-  openedPackCards: OpenedPackCard[]
-  handleOpenPack: (packType: string) => void | Promise<void>
-  collection: CardCollection
-  savedDecks: SavedDeck[]
-  pendingBreakdown: { cardId: string; qty: number } | null
-  setPendingBreakdown: (value: { cardId: string; qty: number } | null) => void
-  handleBreakdownCard: (cardId: string, qty: number) => void
-}
+import { useApp } from '../useApp'
 
 const RARITY_REFUND = { common: 5, rare: 10, epic: 25, legendary: 100 } as const
 
-export function VaultScreen(props: VaultScreenProps) {
+export function VaultScreen() {
   const {
     activeScreen,
     loggedIn,
@@ -55,7 +29,7 @@ export function VaultScreen(props: VaultScreenProps) {
     pendingBreakdown,
     setPendingBreakdown,
     handleBreakdownCard,
-  } = props
+  } = useApp()
 
   return (
     <section className={`vault-grid screen-panel ${activeScreen === 'vault' ? 'active' : 'hidden'}`}>
