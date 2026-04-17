@@ -570,11 +570,18 @@ function App() {
   const [trades, setTrades] = useState<Trade[]>([])
   const [tradesTick, setTradesTick] = useState(0)
   const [tradeStatus, setTradeStatus] = useState('')
-  const [tradeForm, setTradeForm] = useState<{ toAccountId: string; offer: string; request: string }>({
+  const [tradeForm, setTradeForm] = useState<{ toAccountId: string; offer: TradeItem[]; request: TradeItem[] }>({
     toAccountId: '',
-    offer: '',
-    request: '',
+    offer: [],
+    request: [],
   })
+  const [tradePickerDraft, setTradePickerDraft] = useState<{ side: 'offer' | 'request'; cardId: string; qty: number }>({
+    side: 'offer',
+    cardId: '',
+    qty: 1,
+  })
+  const [tradeSubmitting, setTradeSubmitting] = useState(false)
+  const [nowTick, setNowTick] = useState(() => Date.now())
   const [clan, setClan] = useState<SocialClan | null>(null)
   const [socialLoading, setSocialLoading] = useState(false)
   const [socialStatus, setSocialStatus] = useState('Social hub ready.')
@@ -599,7 +606,65 @@ function App() {
   const [visitorId] = useState(() => readStoredValue(STORAGE_KEYS.visitor, createAnonymousId()))
   const [sessionId] = useState(() => `session-${Math.random().toString(36).slice(2, 10)}`)
   const [installPromptEvent, setInstallPromptEvent] = useState<InstallPromptEvent | null>(null)
-  const [toastMessage, setToastMessage] = useState('Ready your deck and enter the arena.')
+  const [toastMessage, _setToastMessage] = useState('Ready your deck and enter the arena.')
+  const [toastSeverity, setToastSeverity] = useState<'info' | 'success' | 'warning' | 'error'>('info')
+  type ToastEntry = { id: string; message: string; severity: 'info' | 'success' | 'warning' | 'error' }
+  const [toastStack, setToastStack] = useState<ToastEntry[]>([])
+  const inferToastSeverity = useCallback(
+    (text: string): 'info' | 'success' | 'warning' | 'error' => {
+      const lc = text.toLowerCase()
+      if (/(error|fail|could not|cannot|denied|invalid|wrong|disconnect|lost|revok|too short|too long|already|forbid|unavailable|not enough)/.test(lc))
+        return 'error'
+      if (/(warning|caution|expired|reconnect|waiting|slow|delay)/.test(lc)) return 'warning'
+      if (/(welcome|claimed|unlocked|equipped|victory|won|saved|added|matched|ready|reconnected|installed|now an admin|server owner)/.test(lc))
+        return 'success'
+      return 'info'
+    },
+    [],
+  )
+  const setToastMessage = useCallback(
+    (message: string, severityOverride?: 'info' | 'success' | 'warning' | 'error') => {
+      const severity = severityOverride ?? inferToastSeverity(message)
+      _setToastMessage(message)
+      setToastSeverity(severity)
+      const id = `t-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
+      setToastStack((current) => [...current.slice(-3), { id, message, severity }])
+      window.setTimeout(() => {
+        setToastStack((current) => current.filter((entry) => entry.id !== id))
+      }, 4200)
+    },
+    [inferToastSeverity],
+  )
+  type ConfirmOptions = {
+    title: string
+    body: React.ReactNode
+    confirmLabel?: string
+    cancelLabel?: string
+    danger?: boolean
+    requireText?: string
+    requireTextLabel?: string
+  }
+  type ConfirmRequest = ConfirmOptions & { resolve: (ok: boolean) => void }
+  const [confirmRequest, setConfirmRequest] = useState<ConfirmRequest | null>(null)
+  const [confirmTextInput, setConfirmTextInput] = useState('')
+  const askConfirm = useCallback(
+    (options: ConfirmOptions): Promise<boolean> =>
+      new Promise<boolean>((resolve) => {
+        setConfirmTextInput('')
+        setConfirmRequest({ ...options, resolve })
+      }),
+    [],
+  )
+  const closeConfirm = useCallback(
+    (ok: boolean) => {
+      setConfirmRequest((current) => {
+        if (current) current.resolve(ok)
+        return null
+      })
+      setConfirmTextInput('')
+    },
+    [],
+  )
   const [opponentDisconnected, setOpponentDisconnected] = useState(false)
   const [disconnectGraceMs, setDisconnectGraceMs] = useState(0)
   const [swUpdateAvailable, setSwUpdateAvailable] = useState(false)
@@ -618,6 +683,8 @@ function App() {
   const [adminUsersLoading, setAdminUsersLoading] = useState(false)
   const [adminUserSearch, setAdminUserSearch] = useState('')
   const [adminAudit, setAdminAudit] = useState<AdminAuditEntry[]>([])
+  const [adminAuditFilter, setAdminAuditFilter] = useState<string>('all')
+  const [adminAuditExpandedId, setAdminAuditExpandedId] = useState<string | null>(null)
   const [transferForm, setTransferForm] = useState({ targetAccountId: '', password: '' })
   const [transferStatus, setTransferStatus] = useState('')
   const [battleIntroVisible, setBattleIntroVisible] = useState(false)
@@ -1303,6 +1370,8 @@ function App() {
         .catch(() => {})
     }, 1500)
     return () => window.clearTimeout(timer)
+    // setToastMessage is a stable useCallback; only deck/auth changes should retrigger this debounce.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deckConfig, authToken, loggedIn])
 
   useEffect(() => {
@@ -1324,6 +1393,8 @@ function App() {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstall)
       window.removeEventListener('appinstalled', handleInstalled)
     }
+    // setToastMessage is a stable useCallback wrapper — installation listeners only need to register once.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
@@ -1335,6 +1406,12 @@ function App() {
 
     window.addEventListener('sw-update-available', handleSwUpdate)
     return () => window.removeEventListener('sw-update-available', handleSwUpdate)
+  }, [])
+
+  // Drives time-based UI: trade expiration countdowns, pending challenges, etc.
+  useEffect(() => {
+    const interval = window.setInterval(() => setNowTick(Date.now()), 1000)
+    return () => window.clearInterval(interval)
   }, [])
 
   useEffect(() => {
@@ -1758,6 +1835,30 @@ function App() {
       setAdminError('You cannot change your own role.')
       return
     }
+    const niceName = target.displayName || target.username
+    const promoting = newRole === 'admin'
+    const ok = await askConfirm({
+      title: promoting ? 'Promote to admin?' : 'Demote to player?',
+      body: (
+        <>
+          {promoting ? (
+            <p>
+              <strong>@{target.username}</strong> will gain access to the Ops console — including
+              live service controls, user moderation, and the audit log.
+            </p>
+          ) : (
+            <p>
+              <strong>@{target.username}</strong> will immediately lose access to the Ops
+              console.
+            </p>
+          )}
+          <p className="mini-text">You can reverse this at any time.</p>
+        </>
+      ),
+      confirmLabel: promoting ? 'Promote' : 'Demote',
+      danger: !promoting,
+    })
+    if (!ok) return
     try {
       const response = await authFetch(
         `/api/admin/users/${encodeURIComponent(target.accountId)}/role`,
@@ -1770,7 +1871,7 @@ function App() {
         return
       }
       setAdminError('')
-      setToastMessage(`${target.displayName || target.username} is now ${newRole === 'admin' ? 'an admin' : 'a regular user'}.`)
+      setToastMessage(`${niceName} is now ${promoting ? 'an admin' : 'a regular user'}.`)
       await refreshAdminUsers()
       await refreshAdminAudit()
     } catch {
@@ -1791,7 +1892,32 @@ function App() {
       setTransferStatus('Target must be a different account.')
       return
     }
-    if (!window.confirm('Transfer ownership? You will be demoted to admin.')) return
+    const target = adminUsers.find((user) => user.accountId === targetAccountId)
+    const targetUsername = target?.username ?? ''
+    if (!targetUsername) {
+      setTransferStatus('Search for the target account in the list above before transferring.')
+      return
+    }
+    const ok = await askConfirm({
+      title: 'Transfer server ownership',
+      body: (
+        <>
+          <p>
+            Ownership will be transferred to <strong>@{targetUsername}</strong>
+            {target?.displayName ? <> ({target.displayName})</> : null}.
+          </p>
+          <p>
+            You will be demoted to <strong>admin</strong>. Only the new owner can promote you back —
+            this action cannot be reversed without their cooperation or filesystem-level recovery.
+          </p>
+        </>
+      ),
+      confirmLabel: 'Transfer ownership',
+      danger: true,
+      requireText: targetUsername,
+      requireTextLabel: `Type @${targetUsername} to confirm`,
+    })
+    if (!ok) return
     try {
       const response = await authFetch('/api/admin/owner/transfer', authToken, {
         method: 'POST',
@@ -1802,7 +1928,7 @@ function App() {
         setTransferStatus(data.error ?? 'Ownership transfer failed.')
         return
       }
-      setTransferStatus('Ownership transferred. You are now an admin on this server.')
+      setTransferStatus(`Ownership transferred to @${targetUsername}. You are now an admin on this server.`)
       setTransferForm({ targetAccountId: '', password: '' })
       setServerProfile((profile) => (profile ? { ...profile, role: 'admin' } : profile))
       await refreshAdminUsers()
@@ -2095,23 +2221,6 @@ function App() {
 
   // ─── Trading ──────────────────────────────────────────────────────
 
-  const parseTradeItems = useCallback((raw: string): TradeItem[] | null => {
-    // Accept "card-id x2, other-id" style shorthand.
-    const parts = raw.split(',').map((p) => p.trim()).filter(Boolean)
-    const seen = new Set<string>()
-    const result: TradeItem[] = []
-    for (const part of parts) {
-      const match = part.match(/^([a-z0-9-]+)(?:\s*x\s*(\d+))?$/i)
-      if (!match) return null
-      const cardId = match[1].toLowerCase()
-      const qty = match[2] ? Math.max(1, Math.min(3, Number(match[2]))) : 1
-      if (seen.has(cardId)) return null
-      seen.add(cardId)
-      result.push({ cardId, qty })
-    }
-    return result
-  }, [])
-
   const refreshTrades = useCallback(async () => {
     if (!authToken) return
     try {
@@ -2136,17 +2245,21 @@ function App() {
 
   async function handleProposeTrade(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (!authToken) return
-    const offer = parseTradeItems(tradeForm.offer)
-    const request = parseTradeItems(tradeForm.request)
-    if (!offer || !request) {
-      setTradeStatus('Use format: "card-id x1, other-id x2" (1–6 distinct cards, qty 1–3).')
+    if (!authToken || tradeSubmitting) return
+    const toAccountId = tradeForm.toAccountId.trim()
+    if (!toAccountId) {
+      setTradeStatus('Choose a friend to trade with.')
       return
     }
+    if (!tradeForm.offer.length || !tradeForm.request.length) {
+      setTradeStatus('Add at least one card to each side of the trade.')
+      return
+    }
+    setTradeSubmitting(true)
     try {
       const response = await authFetch('/api/trades/propose', authToken, {
         method: 'POST',
-        body: { toAccountId: tradeForm.toAccountId.trim(), offer, request },
+        body: { toAccountId, offer: tradeForm.offer, request: tradeForm.request },
       })
       const data = (await response.json()) as { ok: boolean; error?: string }
       if (!response.ok || !data.ok) {
@@ -2154,12 +2267,78 @@ function App() {
         return
       }
       setTradeStatus('Trade proposal sent.')
-      setTradeForm({ toAccountId: '', offer: '', request: '' })
+      setTradeForm({ toAccountId: '', offer: [], request: [] })
+      setTradePickerDraft({ side: 'offer', cardId: '', qty: 1 })
       await refreshTrades()
     } catch {
       setTradeStatus('Could not reach server.')
+    } finally {
+      setTradeSubmitting(false)
     }
   }
+
+  function addTradeChip() {
+    const cardId = tradePickerDraft.cardId
+    if (!cardId) return
+    const qty = Math.max(1, Math.min(3, tradePickerDraft.qty || 1))
+    const sideKey = tradePickerDraft.side
+    setTradeForm((current) => {
+      const sideItems = current[sideKey]
+      if (sideItems.length >= 6 && !sideItems.some((item) => item.cardId === cardId)) {
+        setTradeStatus('Each side can include at most 6 distinct cards.')
+        return current
+      }
+      const nextItems = [...sideItems]
+      const existingIndex = nextItems.findIndex((item) => item.cardId === cardId)
+      if (existingIndex >= 0) {
+        nextItems[existingIndex] = { cardId, qty: Math.min(3, nextItems[existingIndex].qty + qty) }
+      } else {
+        nextItems.push({ cardId, qty })
+      }
+      return { ...current, [sideKey]: nextItems }
+    })
+    setTradePickerDraft((current) => ({ ...current, cardId: '', qty: 1 }))
+  }
+
+  function removeTradeChip(side: 'offer' | 'request', cardId: string) {
+    setTradeForm((current) => ({
+      ...current,
+      [side]: current[side].filter((item) => item.cardId !== cardId),
+    }))
+  }
+
+  function getCardName(cardId: string): string {
+    const card = CARD_LIBRARY.find((entry) => entry.id === cardId)
+    return card ? card.name : cardId
+  }
+
+  function getCardIcon(cardId: string): string {
+    const card = CARD_LIBRARY.find((entry) => entry.id === cardId)
+    return card?.icon ?? '🃏'
+  }
+
+  function formatCountdown(targetMs: number): string {
+    const remaining = Math.max(0, targetMs - nowTick)
+    if (remaining <= 0) return 'expired'
+    const totalSec = Math.floor(remaining / 1000)
+    if (totalSec >= 86400) {
+      const d = Math.floor(totalSec / 86400)
+      const h = Math.floor((totalSec % 86400) / 3600)
+      return `${d}d ${h}h`
+    }
+    if (totalSec >= 3600) {
+      const h = Math.floor(totalSec / 3600)
+      const m = Math.floor((totalSec % 3600) / 60)
+      return `${h}h ${m}m`
+    }
+    if (totalSec >= 60) {
+      const m = Math.floor(totalSec / 60)
+      const s = totalSec % 60
+      return `${m}m ${s.toString().padStart(2, '0')}s`
+    }
+    return `${totalSec}s`
+  }
+
 
   async function handleTradeAction(tradeId: string, action: 'accept' | 'reject' | 'cancel') {
     if (!authToken) return
@@ -2572,6 +2751,66 @@ function App() {
 
   return (
     <main className={`app-shell theme-${selectedTheme}`}>
+      {/* ─── Floating toast stack (auto-fading) ──────────────────────── */}
+      {toastStack.length > 0 && (
+        <div className="toast-stack" role="status" aria-live="polite">
+          {toastStack.map((entry) => (
+            <div key={entry.id} className={`toast toast-${entry.severity}`}>{entry.message}</div>
+          ))}
+        </div>
+      )}
+
+      {/* ─── Branded confirmation modal ──────────────────────────────── */}
+      {confirmRequest && (
+        <div
+          className="modal-backdrop"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="confirm-title"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) closeConfirm(false)
+          }}
+        >
+          <div className="modal">
+            <div className="modal-head">
+              <h3 id="confirm-title">{confirmRequest.title}</h3>
+              <button type="button" className="modal-close" onClick={() => closeConfirm(false)} aria-label="Close">
+                ✕
+              </button>
+            </div>
+            <div className="modal-body">{confirmRequest.body}</div>
+            {confirmRequest.requireText && (
+              <label className="form-field">
+                <span>{confirmRequest.requireTextLabel ?? `Type "${confirmRequest.requireText}" to confirm`}</span>
+                <input
+                  className="text-input"
+                  autoFocus
+                  value={confirmTextInput}
+                  onChange={(event) => setConfirmTextInput(event.target.value)}
+                />
+              </label>
+            )}
+            <div className="modal-actions">
+              <button type="button" className="ghost" onClick={() => closeConfirm(false)}>
+                {confirmRequest.cancelLabel ?? 'Cancel'}
+              </button>
+              <button
+                type="button"
+                className={confirmRequest.danger ? 'btn-danger' : 'primary'}
+                disabled={
+                  confirmRequest.requireText
+                    ? confirmTextInput.trim().toLowerCase() !== confirmRequest.requireText.toLowerCase()
+                    : false
+                }
+                onClick={() => closeConfirm(true)}
+              >
+                {confirmRequest.confirmLabel ?? 'Confirm'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ─── First-launch setup ─────────────────────────────────────── */}
       {setupRequired && (
         <div className="auth-gate">
@@ -2910,7 +3149,12 @@ function App() {
 
           {queueState === 'searching' && (
             <div className="queue-searching-block">
-              <p className="card-text">Searching for a real opponent... {queueSeconds}s</p>
+              <div className="queue-spinner-row">
+                <span className="spinner spinner-lg" aria-hidden="true" />
+                <p className="card-text" style={{ margin: 0 }}>
+                  Searching for a real opponent<span className="thinking-dots" /> <strong style={{ marginLeft: 6 }}>{queueSeconds}s</strong>
+                </p>
+              </div>
               <div className="live-status-grid">
                 <div>
                   <strong>#{queueSearchStatus.position}</strong>
@@ -2939,7 +3183,7 @@ function App() {
             </div>
           )}
 
-          <p className="note toast-line">{toastMessage}</p>
+          <p className={`toast toast-${toastSeverity} toast-line`}>{toastMessage}</p>
         </article>
 
         <div className="home-cards">
@@ -3144,31 +3388,107 @@ function App() {
                 <span className="badge">Friends Only</span>
               </div>
               <p className="note">
-                Propose a trade with a friend. List card IDs separated by commas, with optional quantity (e.g. <code>spark-imp x2, shadow-whelp</code>). Max 6 distinct cards per side; up to 3 copies per card.
+                Pick a friend, then add cards to each side of the trade. Up to 6 distinct cards per side, max 3 copies of any card. Trades expire 7 days after they're sent.
               </p>
 
-              <form className="social-inline-form" onSubmit={handleProposeTrade}>
-                <input
-                  className="text-input"
-                  value={tradeForm.toAccountId}
-                  placeholder="Friend account id (acct-…)"
-                  onChange={(event) => setTradeForm((f) => ({ ...f, toAccountId: event.target.value }))}
-                />
-                <input
-                  className="text-input"
-                  value={tradeForm.offer}
-                  placeholder="You give: e.g. spark-imp x1"
-                  onChange={(event) => setTradeForm((f) => ({ ...f, offer: event.target.value }))}
-                />
-                <input
-                  className="text-input"
-                  value={tradeForm.request}
-                  placeholder="You receive: e.g. shadow-whelp x1"
-                  onChange={(event) => setTradeForm((f) => ({ ...f, request: event.target.value }))}
-                />
-                <button className="secondary" type="submit">Propose Trade</button>
+              <form className="form-stack" onSubmit={handleProposeTrade}>
+                <label className="form-field">
+                  <span>Trade with</span>
+                  <select
+                    className="text-input"
+                    value={tradeForm.toAccountId}
+                    onChange={(event) => setTradeForm((f) => ({ ...f, toAccountId: event.target.value }))}
+                  >
+                    <option value="">Choose a friend…</option>
+                    {friends.map((friend) => (
+                      <option key={friend.accountId} value={friend.accountId}>
+                        {friend.displayName} (@{friend.username}){onlineFriendIds.has(friend.accountId) ? ' • online' : ''}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <div className="trade-card-picker">
+                  <div className="trade-picker-row">
+                    <select
+                      className="text-input"
+                      value={tradePickerDraft.cardId}
+                      onChange={(event) => setTradePickerDraft((d) => ({ ...d, cardId: event.target.value }))}
+                    >
+                      <option value="">Choose a card…</option>
+                      {CARD_LIBRARY.map((card) => {
+                        const owned = collection[card.id] ?? 0
+                        const isYourSide = tradePickerDraft.side === 'offer'
+                        return (
+                          <option key={card.id} value={card.id} disabled={isYourSide && owned === 0}>
+                            {card.icon} {card.name} • {card.rarity}{isYourSide ? ` (own ${owned})` : ''}
+                          </option>
+                        )
+                      })}
+                    </select>
+                    <select
+                      className="text-input"
+                      value={tradePickerDraft.side}
+                      onChange={(event) => setTradePickerDraft((d) => ({ ...d, side: event.target.value as 'offer' | 'request' }))}
+                      aria-label="Trade side"
+                    >
+                      <option value="offer">You give</option>
+                      <option value="request">You receive</option>
+                    </select>
+                    <input
+                      className="text-input"
+                      type="number"
+                      min={1}
+                      max={3}
+                      value={tradePickerDraft.qty}
+                      onChange={(event) => setTradePickerDraft((d) => ({ ...d, qty: Math.max(1, Math.min(3, Number(event.target.value) || 1)) }))}
+                      aria-label="Quantity"
+                      style={{ width: '4.5rem' }}
+                    />
+                  </div>
+                  <div className="row-2">
+                    <button type="button" className="ghost mini" disabled={!tradePickerDraft.cardId} onClick={addTradeChip}>
+                      ＋ Add to {tradePickerDraft.side === 'offer' ? 'your offer' : 'your request'}
+                    </button>
+                  </div>
+
+                  <div className="stack-2">
+                    <div>
+                      <span className="mini-text">You give:</span>
+                      <div className="trade-chip-list">
+                        {tradeForm.offer.map((item) => (
+                          <span className="trade-chip" key={item.cardId}>
+                            <span className="chip-icon">{getCardIcon(item.cardId)}</span>
+                            {getCardName(item.cardId)}
+                            <span className="chip-qty">×{item.qty}</span>
+                            <button type="button" onClick={() => removeTradeChip('offer', item.cardId)} aria-label={`Remove ${getCardName(item.cardId)}`}>✕</button>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <span className="mini-text">You receive:</span>
+                      <div className="trade-chip-list">
+                        {tradeForm.request.map((item) => (
+                          <span className="trade-chip" key={item.cardId}>
+                            <span className="chip-icon">{getCardIcon(item.cardId)}</span>
+                            {getCardName(item.cardId)}
+                            <span className="chip-qty">×{item.qty}</span>
+                            <button type="button" onClick={() => removeTradeChip('request', item.cardId)} aria-label={`Remove ${getCardName(item.cardId)}`}>✕</button>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="row-2">
+                  <button className="secondary" type="submit" disabled={tradeSubmitting || !tradeForm.toAccountId || !tradeForm.offer.length || !tradeForm.request.length}>
+                    {tradeSubmitting ? <><span className="spinner spinner-inline" />Sending…</> : 'Propose Trade'}
+                  </button>
+                </div>
               </form>
-              {tradeStatus && <p className="note toast-line">{tradeStatus}</p>}
+              {tradeStatus && <p className={`toast toast-${inferToastSeverity(tradeStatus)} toast-line`}>{tradeStatus}</p>}
 
               <ul className="trade-list">
                 {trades.length === 0 ? (
@@ -3177,17 +3497,36 @@ function App() {
                   trades.map((trade) => {
                     const youArePromoter = trade.fromAccountId === (serverProfile?.accountId ?? '')
                     const pending = trade.status === 'pending'
+                    const counterpartyId = youArePromoter ? trade.toAccountId : trade.fromAccountId
+                    const counterparty = friends.find((f) => f.accountId === counterpartyId)
+                    const counterpartyName = counterparty?.displayName ?? counterparty?.username ?? 'friend'
+                    const expiresMs = Date.parse(trade.expiresAt)
                     return (
                       <li className="trade-row" key={trade.id}>
                         <div className="trade-identity">
-                          <strong>{youArePromoter ? 'You → friend' : 'Friend → you'}</strong>
+                          <strong>{youArePromoter ? `You → ${counterpartyName}` : `${counterpartyName} → You`}</strong>
                           <span className={`badge trade-status-${trade.status}`}>{trade.status}</span>
                         </div>
                         <div className="mini-text">
-                          Offer: {trade.offer.map((i) => `${i.cardId}×${i.qty}`).join(', ')}
+                          <strong>Offer:</strong>{' '}
+                          {trade.offer.map((item, index) => (
+                            <span key={item.cardId}>
+                              {index > 0 ? ', ' : ''}{getCardIcon(item.cardId)} {getCardName(item.cardId)} ×{item.qty}
+                            </span>
+                          ))}
                           {' · '}
-                          Request: {trade.request.map((i) => `${i.cardId}×${i.qty}`).join(', ')}
+                          <strong>Request:</strong>{' '}
+                          {trade.request.map((item, index) => (
+                            <span key={item.cardId}>
+                              {index > 0 ? ', ' : ''}{getCardIcon(item.cardId)} {getCardName(item.cardId)} ×{item.qty}
+                            </span>
+                          ))}
                         </div>
+                        {pending && Number.isFinite(expiresMs) && (
+                          <div className="trade-expiry">
+                            Expires in <strong>{formatCountdown(expiresMs)}</strong>
+                          </div>
+                        )}
                         {pending && (
                           <div className="controls">
                             {youArePromoter ? (
@@ -3376,7 +3715,11 @@ function App() {
             Burst
           </button>
           <button className="secondary" onClick={handleEndTurn} disabled={Boolean(game.winner) || !isMyTurn}>
-            {!isMyTurn ? 'Opponent Turn…' : 'End Turn'}
+            {!isMyTurn ? (
+              <><span className="spinner spinner-inline" aria-hidden="true" />Opponent thinking<span className="thinking-dots" /></>
+            ) : (
+              'End Turn'
+            )}
           </button>
           <button className="ghost" onClick={handleLeaveBattle}>
             Leave
@@ -3627,7 +3970,11 @@ function App() {
                   <span className="badge">{pack.cost} Shards</span>
                 </div>
                 <button className="primary" onClick={() => void handleOpenPack(pack.id)} disabled={packOpening === pack.id || runes < pack.cost}>
-                  {packOpening === pack.id ? 'Opening…' : 'Open Pack'}
+                  {packOpening === pack.id ? (
+                    <><span className="spinner spinner-inline" aria-hidden="true" />Opening…</>
+                  ) : (
+                    'Open Pack'
+                  )}
                 </button>
               </div>
             ))}
@@ -4053,13 +4400,21 @@ function App() {
                   </div>
                   <form className="form-stack" onSubmit={handleTransferOwnership}>
                     <label className="form-field">
-                      <span>Target account id</span>
-                      <input
+                      <span>New owner</span>
+                      <select
                         className="text-input"
                         value={transferForm.targetAccountId}
-                        placeholder="acct-…"
                         onChange={(event) => setTransferForm((f) => ({ ...f, targetAccountId: event.target.value }))}
-                      />
+                      >
+                        <option value="">Choose an admin from the list above…</option>
+                        {adminUsers
+                          .filter((user) => user.accountId !== (serverProfile?.accountId ?? ''))
+                          .map((user) => (
+                            <option key={user.accountId} value={user.accountId}>
+                              @{user.username}{user.displayName ? ` (${user.displayName})` : ''}{user.role === 'admin' ? ' • admin' : ''}
+                            </option>
+                          ))}
+                      </select>
                     </label>
                     <label className="form-field">
                       <span>Confirm your password</span>
@@ -4071,9 +4426,9 @@ function App() {
                         onChange={(event) => setTransferForm((f) => ({ ...f, password: event.target.value }))}
                       />
                     </label>
-                    {transferStatus && <p className="note toast-line">{transferStatus}</p>}
+                    {transferStatus && <p className={`toast toast-${inferToastSeverity(transferStatus)} toast-line`}>{transferStatus}</p>}
                     <div className="controls">
-                      <button className="danger" type="submit">
+                      <button className="btn-danger" type="submit" disabled={!transferForm.targetAccountId || !transferForm.password}>
                         Transfer ownership
                       </button>
                     </div>
@@ -4087,20 +4442,58 @@ function App() {
                     <h3>Admin Audit Log</h3>
                     <button className="ghost" onClick={() => void refreshAdminAudit()}>Refresh</button>
                   </div>
+                  <div className="audit-toolbar">
+                    <label className="mini-text">
+                      Filter:&nbsp;
+                      <select value={adminAuditFilter} onChange={(event) => setAdminAuditFilter(event.target.value)}>
+                        <option value="all">All actions</option>
+                        {Array.from(new Set(adminAudit.map((entry) => entry.action))).sort().map((action) => (
+                          <option key={action} value={action}>{action}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <span className="mini-text">{adminAudit.length} total entries</span>
+                  </div>
                   <ul className="audit-list">
                     {adminAudit.length === 0 ? (
                       <li className="note">No audit entries yet.</li>
                     ) : (
-                      adminAudit.slice(0, 20).map((entry) => (
-                        <li key={entry.id} className="audit-row">
-                          <span className="badge">{entry.action}</span>
-                          <span className="mini-text">
-                            {entry.actor ? `@${entry.actor.username}` : 'system'}
-                            {entry.target ? ` → @${entry.target.username}` : ''}
-                          </span>
-                          <span className="mini-text">{formatTimestamp(entry.createdAt)}</span>
-                        </li>
-                      ))
+                      adminAudit
+                        .filter((entry) => adminAuditFilter === 'all' || entry.action === adminAuditFilter)
+                        .slice(0, 20)
+                        .map((entry) => {
+                          const expanded = adminAuditExpandedId === entry.id
+                          const hasMeta = entry.metadata && Object.keys(entry.metadata).length > 0
+                          return (
+                            <li
+                              key={entry.id}
+                              className="audit-row"
+                              onClick={() => setAdminAuditExpandedId(expanded ? null : entry.id)}
+                              role="button"
+                              tabIndex={0}
+                              onKeyDown={(event) => {
+                                if (event.key === 'Enter' || event.key === ' ') {
+                                  event.preventDefault()
+                                  setAdminAuditExpandedId(expanded ? null : entry.id)
+                                }
+                              }}
+                              aria-expanded={expanded}
+                            >
+                              <span className="badge">{entry.action}</span>
+                              <span className="mini-text">
+                                {entry.actor ? `@${entry.actor.username}` : 'system'}
+                                {entry.target ? ` → @${entry.target.username}` : ''}
+                              </span>
+                              <span className="mini-text">{formatTimestamp(entry.createdAt)}</span>
+                              {hasMeta && (
+                                <span className="mini-text" aria-hidden="true">{expanded ? '▾' : '▸'}</span>
+                              )}
+                              {expanded && hasMeta && (
+                                <pre className="audit-meta">{JSON.stringify(entry.metadata, null, 2)}</pre>
+                              )}
+                            </li>
+                          )
+                        })
                     )}
                   </ul>
                 </div>
@@ -4120,18 +4513,30 @@ function App() {
           <div className="hand-grid">
             {activePlayer.hand.map((card, index) => {
               const canPlay = !game.winner && activeBoardHasOpenLane && card.cost <= activePlayer.mana
+              const needMana = card.cost - activePlayer.mana
+              const needLane = !activeBoardHasOpenLane
+              const overlayLabel = !canPlay
+                ? game.winner
+                  ? 'Battle over'
+                  : needLane
+                    ? 'Board is full'
+                    : needMana > 0
+                      ? `Need ${needMana} more mana`
+                      : 'Cannot play'
+                : ''
 
               return (
                 <button
                   className={['hand-card', `rarity-${card.rarity}`, canPlay ? '' : 'unplayable'].filter(Boolean).join(' ')}
                   key={card.instanceId}
+                  data-need={overlayLabel}
                   onClick={() => {
                     if (consumeLongPressAction()) return
                     if (canPlay) handlePlayCard(index)
                   }}
                   {...getLongPressProps({ name: card.name, icon: card.icon, id: card.id, cost: card.cost, attack: card.attack, health: card.health, rarity: card.rarity, tribe: card.tribe, text: card.text, effect: card.effect ?? null })}
                   aria-disabled={!canPlay}
-                  title={canPlay ? 'Tap to play or long press to inspect' : 'Long press to inspect'}
+                  title={canPlay ? 'Tap to play or long press to inspect' : `${overlayLabel}. Long press to inspect.`}
                   style={{ '--rarity-color': RARITY_COLORS[card.rarity] } as React.CSSProperties}
                 >
                   <div className="card-top">
