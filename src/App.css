@@ -19,6 +19,68 @@
   --rarity-rare: #3b82f6;
   --rarity-epic: #a855f7;
   --rarity-legendary: #f59e0b;
+
+  /* ─── Design tokens (v1) ─────────────────────────────────────────
+     Consistent spacing / radii / typography scales. New components
+     should prefer these tokens over magic numbers so the look stays
+     coherent as the UI grows. Existing components are not refactored
+     wholesale — they continue to work as-is.
+     ─────────────────────────────────────────────────────────────── */
+
+  /* Spacing — 4 px base scale. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+
+  /* Border radii. */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-pill: 999px;
+
+  /* Typography scale. */
+  --font-xs: 11px;
+  --font-sm: 13px;
+  --font-md: 15px;
+  --font-lg: 18px;
+  --font-xl: 22px;
+  --font-2xl: 28px;
+
+  /* Elevation / shadows. */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.45);
+
+  /* Focus ring (accessibility). */
+  --focus-ring: 0 0 0 2px rgba(124, 58, 237, 0.85);
+}
+
+/* ─── Shared layout primitives ───────────────────────────────────── */
+
+.stack-1 { display: grid; gap: var(--space-1); }
+.stack-2 { display: grid; gap: var(--space-2); }
+.stack-3 { display: grid; gap: var(--space-3); }
+.stack-4 { display: grid; gap: var(--space-4); }
+
+.row-2   { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+.row-3   { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; }
+
+/* Consistent keyboard-focus ring for interactive elements that opt in. */
+.focusable:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+a:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: var(--radius-sm);
 }
 
 * {

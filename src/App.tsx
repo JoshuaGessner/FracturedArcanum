@@ -519,7 +519,6 @@ function App() {
   const [setupForm, setSetupForm] = useState({ username: '', password: '', displayName: '' })
   const [setupError, setSetupError] = useState('')
   const [setupLoading, setSetupLoading] = useState(false)
-  const [setupAdminKey] = useState('') // deprecated: previously displayed the recovery key after setup; the owner now uses their account session for admin access.
 
   // ─── Server-authoritative player state ────────────────────────────────
   const [serverProfile, setServerProfile] = useState<ServerProfile | null>(null)
@@ -2580,17 +2579,7 @@ function App() {
             <img className="brand-logo" src="/fractured-arcanum-logo.svg" alt="Fractured Arcanum" />
             <h1>Server Setup</h1>
             <p className="auth-tagline">Create your admin account to get started</p>
-            {setupAdminKey ? (
-              <div className="setup-complete-block">
-                <p className="auth-tagline">Setup complete! Save your admin key:</p>
-                <code className="admin-key-display">{setupAdminKey}</code>
-                <p className="note">Use this key in the Operations console. Store it securely — it won't be shown again.</p>
-                <button className="primary" onClick={() => setSetupRequired(false)}>
-                  Enter Arena
-                </button>
-              </div>
-            ) : (
-              <form className="auth-form" onSubmit={handleSetup}>
+            <form className="auth-form" onSubmit={handleSetup}>
                 <label>
                   Display Name
                   <input
@@ -2630,7 +2619,6 @@ function App() {
                   {setupLoading ? 'Setting up…' : 'Create Admin Account'}
                 </button>
               </form>
-            )}
           </div>
         </div>
       )}

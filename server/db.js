@@ -1346,9 +1346,13 @@ export function listAudit({ limit = 50 } = {}) {
   })
 }
 
-// Helper for the server.js setup endpoint: returns the account row by id,
-// used to look up password_hash for password-confirmation flows.
-const _getAccountFull = db.prepare(`SELECT * FROM accounts WHERE id = ?`)
+// Helper for the server.js setup endpoint: returns a narrow subset of account
+// columns, used by the password-confirmation flow for ownership transfer.
+// We intentionally avoid `SELECT *` to ensure the password hash is only
+// surfaced through this named accessor.
+const _getAccountFull = db.prepare(
+  `SELECT id, username, display_name, password_hash, role FROM accounts WHERE id = ?`,
+)
 export function getAccountById(accountId) {
   if (!accountId) return null
   return _getAccountFull.get(accountId) ?? null
@@ -1580,7 +1584,10 @@ export function acceptTrade(accepterAccountId, tradeId) {
     _setOwnedCards.run(JSON.stringify(toAfter), accepterAccountId)
     const updated = _updateTradeStatus.run('accepted', row.id)
     if (updated.changes === 0) {
-      // Another transaction accepted/cancelled first. Roll back implicitly by throwing.
+      // Another transaction already moved this trade out of 'pending'.
+      // Throw to roll back the better-sqlite3 transaction (which runs BEGIN/
+      // COMMIT around the callback); we catch the sentinel error below and
+      // convert it into a structured {ok:false} result for the caller.
       throw new Error('concurrent_trade_update')
     }
     return { ok: true, tradeId: row.id }

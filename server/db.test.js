@@ -2,7 +2,7 @@
 // Integration tests for the server DB layer. Uses a throwaway SQLite database
 // under a temporary DATA_DIR so production data is not touched.
 
-import { describe, it, expect, beforeAll } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -14,9 +14,10 @@ beforeAll(async () => {
   tmpDir = mkdtempSync(path.join(tmpdir(), 'fa-db-test-'))
   process.env.DATA_DIR = tmpDir
   db = await import('./db.js')
-  return () => {
-    try { rmSync(tmpDir, { recursive: true, force: true }) } catch { /* ignore */ }
-  }
+})
+
+afterAll(() => {
+  try { rmSync(tmpDir, { recursive: true, force: true }) } catch { /* ignore */ }
 })
 
 function makeAccount(username) {

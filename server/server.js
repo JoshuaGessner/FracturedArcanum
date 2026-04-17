@@ -1205,8 +1205,8 @@ app.post('/api/trades/propose', requireAuth, (request, response) => {
   }
   const toAccountId = String(request.body?.toAccountId ?? '')
   const offer = Array.isArray(request.body?.offer) ? request.body.offer : []
-  const request_ = Array.isArray(request.body?.request) ? request.body.request : []
-  const result = proposeTrade(request.accountId, toAccountId, offer, request_)
+  const requestedCards = Array.isArray(request.body?.request) ? request.body.request : []
+  const result = proposeTrade(request.accountId, toAccountId, offer, requestedCards)
   if (!result.ok) {
     response.status(result.status ?? 400).json(result)
     return
@@ -1911,11 +1911,25 @@ io.on('connection', (socket) => {
       return
     }
 
-    // Make sure the challenger is still connected with a socket.
+    // Make sure the challenger is still connected with at least one socket.
     const challengerSocketIds = presence.get(challenge.fromAccountId)
-    const challengerSocketId = challengerSocketIds ? challengerSocketIds.values().next().value : null
-    const challengerSocket = challengerSocketId ? io.sockets.sockets.get(challengerSocketId) : null
-    if (!challengerSocket?.connected) {
+    if (!challengerSocketIds || challengerSocketIds.size === 0) {
+      challenge.status = 'cancelled'
+      socket.emit('challenge:error', { error: 'Challenger disconnected.' })
+      return
+    }
+    // Pick the first still-connected socket as the "room owner" for the
+    // challenger's side. If there are multiple tabs, all of them will be
+    // notified via emitToAccount below so every tab's UI stays in sync.
+    let challengerSocket = null
+    for (const socketId of challengerSocketIds) {
+      const candidate = io.sockets.sockets.get(socketId)
+      if (candidate?.connected) {
+        challengerSocket = candidate
+        break
+      }
+    }
+    if (!challengerSocket) {
       challenge.status = 'cancelled'
       socket.emit('challenge:error', { error: 'Challenger disconnected.' })
       return
