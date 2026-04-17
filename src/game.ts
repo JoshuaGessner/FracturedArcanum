@@ -28,6 +28,25 @@ export type Unit = CardInstance & {
   uid: string
   currentHealth: number
   exhausted: boolean
+  /**
+   * Extra keywords granted to this unit at summon time on top of `effect`.
+   * Used so a card whose primary keyword is e.g. `'frostbite'` can also
+   * behave like a `'guard'` (Glacial Colossus, Zephyr) without losing its
+   * primary on-play effect classification.
+   */
+  keywords?: CardEffect[]
+}
+
+/**
+ * Returns true if a unit has the given keyword either as its primary
+ * `effect` or in its summon-time `keywords` list. Use this everywhere
+ * combat behaviour or board-state checks need to match a keyword instead
+ * of comparing `unit.effect` directly — that way cards with multiple
+ * keywords (Charge + Lifesteal, Frostbite + Guard, …) work correctly.
+ */
+export function hasKeyword(unit: Unit, kind: CardEffect): boolean {
+  if (unit.effect === kind) return true
+  return Boolean(unit.keywords?.includes(kind))
 }
 
 export type PlayerState = {
@@ -227,28 +246,127 @@ export const AI_DIFFICULTY_DECKS: Record<AIDifficulty, DeckConfig> = {
   },
 }
 
-const RALLY_GAIN_BY_CARD: Record<string, number> = {
-  'arcane-golem': 3,
+// ─── Card effect data tables ────────────────────────────────────────
+//
+// Per-card overrides for on-play effect amounts, secondary effects,
+// summon-time bonus keywords, and deathrattle behaviours. This is the
+// single source of truth for everything that varies card-to-card; the
+// resolver in `playCard` reads from here instead of using ad-hoc
+// `card.id === '...'` checks. Add a new card override here rather than
+// touching the resolver itself.
+
+type DeathrattleSpec =
+  | { kind: 'damage-hero'; amount: number }
+  | { kind: 'damage-all-enemy-units'; amount: number }
+
+type SummonSpec = {
+  id: string
+  name: string
+  icon: string
+  attack: number
+  health: number
 }
 
-const BLAST_DAMAGE_BY_CARD: Record<string, number> = {
-  'fire-imp': 1,
-  'storm-shaman': 3,
+type CardParams = {
+  /** Override the default amount of the card's primary effect keyword. */
+  amount?: number
+  /** Additional on-play keyword effects (resolved after the primary). */
+  extras?: Array<{ kind: CardEffect; amount?: number }>
+  /** Heal-to-full instead of healing for `amount` (only meaningful for `heal`). */
+  healToFull?: boolean
+  /** Bolster every friendly unit by 1 instead of a single random one. */
+  bolsterAll?: boolean
+  /** Freeze every enemy unit instead of just one (used by epic/legendary frostbite). */
+  freezeAll?: boolean
+  /** Summon one of these in the next empty lane (default `summon` keyword). */
+  summonOne?: SummonSpec
+  /** Summon one of these in *every* empty lane (replaces summonOne if present). */
+  summonAll?: SummonSpec
+  /** Add this keyword to the summoned unit (alongside its primary `effect`). */
+  grantsKeyword?: CardEffect
+  /** Deathrattle behaviour, evaluated when this unit dies in combat. */
+  deathrattle?: DeathrattleSpec
 }
 
-const HEAL_AMOUNT_BY_CARD: Record<string, number> = {
-  'field-medic': 3,
-  'druid-elder': 4,
+const DEFAULT_EFFECT_AMOUNT: Partial<Record<CardEffect, number>> = {
+  blast: 2,
+  heal: 2,
+  draw: 1,
+  rally: 1,
+  empower: 1,
+  drain: 1,
+  poison: 1,
+  shield: 3,
+  siphon: 2,
+  bolster: 1,
 }
 
-const DRAW_COUNT_BY_CARD: Record<string, number> = {
-  'runebound-oracle': 2,
-  'aethon-runekeeper': 3,
+const DEFAULT_TOKEN: SummonSpec = {
+  id: 'token-spark',
+  name: 'Spark',
+  icon: '⚡',
+  attack: 1,
+  health: 1,
 }
 
-const EMPOWER_AMOUNT_BY_CARD: Record<string, number> = {
-  'void-empress': 2,
-  'kronos-the-forgemaster': 3,
+const CARD_PARAMS: Record<string, CardParams> = {
+  // ── Common overrides
+  'fire-imp':            { amount: 1 }, // Blast 1 (under-rarity)
+  'field-medic':         { amount: 3 }, // Heal 3
+  'coral-guardian':      { amount: 2 }, // Shield 2 (under-rarity)
+
+  // ── Rare overrides
+  'runebound-oracle':    { amount: 2 }, // Draw 2
+  'vine-lasher':         { amount: 2 }, // Poison 2
+  'storm-shaman':        { amount: 3 }, // Blast 3
+  'bone-collector':      { amount: 2 }, // Drain 2
+  'iron-clad':           { extras: [{ kind: 'shield', amount: 2 }] }, // Guard + Shield 2
+  'arcane-artificer':    { summonOne: { id: 'token-wisp', name: 'Wisp', icon: '✨', attack: 1, health: 1 } },
+  'ghost-knight':        { deathrattle: { kind: 'damage-hero', amount: 2 } },
+  'lava-hound':          { deathrattle: { kind: 'damage-all-enemy-units', amount: 3 } },
+
+  // ── Epic overrides
+  'nether-witch':        { extras: [{ kind: 'draw' }] },                      // Blast 2 + Draw
+  'storm-titan':         { amount: 3, extras: [{ kind: 'draw' }] },           // Blast 3 + Draw (was bugged at 2)
+  'abyssal-tyrant':      { extras: [{ kind: 'blast', amount: 2 }] },          // Silence + Blast 2
+  'phoenix-ascendant':   { deathrattle: { kind: 'damage-hero', amount: 3 } },
+  'glacial-colossus':    { freezeAll: true, grantsKeyword: 'guard' },
+  'blood-queen':         { amount: 3, grantsKeyword: 'lifesteal' },           // Siphon 3 + Lifesteal
+  'ancient-hydra':       { extras: [{ kind: 'cleave' }], grantsKeyword: 'fury' },
+  'void-empress':        { amount: 2 },                                       // Empower 2
+  'necro-sage':          { summonAll: { id: 'token-ghoul', name: 'Ghoul', icon: '💀', attack: 2, health: 2 } },
+  'druid-elder':         { amount: 4, bolsterAll: true },                     // Heal 4 + Bolster all
+  'shadow-assassin':     { grantsKeyword: 'lifesteal' },                      // Charge + Lifesteal
+  'arcane-golem':        { amount: 3, extras: [{ kind: 'draw' }] },           // Rally 3 + Draw
+
+  // ── Legendary overrides
+  'drakarion-the-eternal':   { extras: [{ kind: 'cleave' }] },                                             // Charge + Cleave
+  'zephyr-world-breaker':    { freezeAll: true, grantsKeyword: 'guard', extras: [{ kind: 'blast', amount: 4 }] },
+  'velara-the-lifebinder':   { healToFull: true, extras: [{ kind: 'empower', amount: 2 }] },
+  'malachar-the-undying':    { summonAll: { id: 'token-wraith', name: 'Wraith', icon: '👻', attack: 3, health: 3 } },
+  'kronos-the-forgemaster':  { amount: 3, extras: [{ kind: 'shield', amount: 5 }] },                       // Empower 3 + Shield 5
+  'aethon-runekeeper':       { amount: 3, extras: [{ kind: 'rally', amount: 3 }] },                        // Draw 3 + Rally 3
+}
+
+function getCardParams(cardId: string): CardParams {
+  return CARD_PARAMS[cardId] ?? {}
+}
+
+function getEffectAmount(card: CardInstance, kind?: CardEffect, override?: number): number {
+  if (override !== undefined) return override
+  const params = getCardParams(card.id)
+  if (params.amount !== undefined && (kind === undefined || kind === card.effect)) {
+    return params.amount
+  }
+  return DEFAULT_EFFECT_AMOUNT[kind ?? card.effect ?? 'blast'] ?? 0
+}
+
+/**
+ * Returns the deathrattle definition for a card if any. Uses the
+ * data-driven CARD_PARAMS table — no hard-coded id checks elsewhere.
+ */
+export function getDeathrattle(cardId: string): DeathrattleSpec | undefined {
+  return CARD_PARAMS[cardId]?.deathrattle
 }
 
 export function getRecommendedAIDifficulty(rating: number): AIDifficulty {
@@ -328,11 +446,17 @@ export function resetBoard(board: Array<Unit | null>): Array<Unit | null> {
 }
 
 export function summonUnit(card: CardInstance): Unit {
+  const params = getCardParams(card.id)
+  const keywords = params.grantsKeyword ? [params.grantsKeyword] : undefined
+  // A unit gets to act on summon if it has Charge as either its primary
+  // effect or as a granted keyword.
+  const isCharger = card.effect === 'charge' || keywords?.includes('charge') === true
   return {
     ...card,
     uid: `${card.instanceId}-${Math.random().toString(36).slice(2, 9)}`,
     currentHealth: card.health,
-    exhausted: card.effect !== 'charge',
+    exhausted: !isCharger,
+    keywords,
   }
 }
 
@@ -341,7 +465,7 @@ export function pushLog(log: string[], entry: string): string[] {
 }
 
 export function boardHasGuard(board: Array<Unit | null>): boolean {
-  return board.some((unit) => unit?.effect === 'guard')
+  return board.some((unit) => Boolean(unit) && hasKeyword(unit as Unit, 'guard'))
 }
 
 export function beginTurn(player: PlayerState): PlayerState {
@@ -582,6 +706,8 @@ export function playCard(base: GameState, side: BattleSide, handIndex: number): 
     return base
   }
 
+  const params = getCardParams(card.id)
+
   const nextBoard = [...actor.board]
   nextBoard[firstOpenLane] = summonUnit(card)
 
@@ -594,319 +720,235 @@ export function playCard(base: GameState, side: BattleSide, handIndex: number): 
   let nextRival = rival
   let nextLog = pushLog(base.log, `${actor.name} played ${card.icon} ${card.name}.`)
 
-  if (card.effect === 'rally') {
-    const rallyGain = RALLY_GAIN_BY_CARD[card.id] ?? 1
-    nextActor = {
-      ...nextActor,
-      momentum: Math.min(10, nextActor.momentum + rallyGain),
+  // Resolve a single keyword "step" (used both for the primary effect and
+  // any extras listed in CARD_PARAMS). Returns the updated tuple.
+  function resolveKeyword(kind: CardEffect, override?: number): void {
+    const amount = getEffectAmount(card, kind, override)
+
+    if (kind === 'rally') {
+      nextActor = { ...nextActor, momentum: Math.min(10, nextActor.momentum + amount) }
+      nextLog = pushLog(nextLog, `${card.name} rallies the crowd for +${amount} Momentum.`)
+      return
     }
-    nextLog = pushLog(nextLog, `${card.name} rallies the crowd for +${rallyGain} Momentum.`)
-  }
 
-  if (card.effect === 'blast') {
-    const blastDamage = BLAST_DAMAGE_BY_CARD[card.id] ?? 2
-    nextRival = {
-      ...nextRival,
-      health: nextRival.health - blastDamage,
+    if (kind === 'blast') {
+      nextRival = { ...nextRival, health: nextRival.health - amount }
+      nextLog = pushLog(nextLog, `${card.name} blasts the opposing hero for ${amount}.`)
+      return
     }
-    nextLog = pushLog(nextLog, `${card.name} blasts the opposing hero for ${blastDamage}.`)
-  }
 
-  if (card.effect === 'heal') {
-    const healAmount = HEAL_AMOUNT_BY_CARD[card.id] ?? 2
-    nextActor = {
-      ...nextActor,
-      health: Math.min(STARTING_HEALTH, nextActor.health + healAmount),
+    if (kind === 'heal') {
+      if (params.healToFull) {
+        nextActor = { ...nextActor, health: STARTING_HEALTH }
+        nextLog = pushLog(nextLog, `${card.name} restores the hero to full health.`)
+      } else {
+        nextActor = { ...nextActor, health: Math.min(STARTING_HEALTH, nextActor.health + amount) }
+        nextLog = pushLog(nextLog, `${card.name} restores ${amount} health.`)
+      }
+      return
     }
-    nextLog = pushLog(nextLog, `${card.name} restores ${healAmount} health.`)
-  }
 
-  if (card.effect === 'draw') {
-    const drawCount = DRAW_COUNT_BY_CARD[card.id] ?? 1
-    nextActor = drawCards(nextActor, drawCount)
-    const drawLabel = drawCount === 1 ? 'a fresh omen' : `${drawCount} omens`
-    nextLog = pushLog(nextLog, `${card.name} draws ${drawLabel} from the deck.`)
-  }
-
-  if (card.effect === 'drain') {
-    const stolen = Math.min(nextRival.momentum, 1)
-    nextRival = { ...nextRival, momentum: nextRival.momentum - stolen }
-    nextActor = { ...nextActor, momentum: Math.min(10, nextActor.momentum + stolen) }
-    nextLog = pushLog(nextLog, `${card.name} drains ${stolen} Momentum from the enemy.`)
-  }
-
-  if (card.effect === 'empower') {
-    const empowerAmount = EMPOWER_AMOUNT_BY_CARD[card.id] ?? 1
-    nextActor = {
-      ...nextActor,
-      board: nextActor.board.map((unit) =>
-        unit ? { ...unit, attack: unit.attack + empowerAmount } : null,
-      ),
+    if (kind === 'draw') {
+      nextActor = drawCards(nextActor, amount)
+      const drawLabel = amount === 1 ? 'a fresh omen' : `${amount} omens`
+      nextLog = pushLog(nextLog, `${card.name} draws ${drawLabel} from the deck.`)
+      return
     }
-    nextLog = pushLog(nextLog, `${card.name} empowers all friendly units with +${empowerAmount} attack.`)
-  }
 
-  if (card.effect === 'poison') {
-    const poisonDmg = card.rarity === 'rare' && card.id === 'vine-lasher' ? 2 : 1
-    nextRival = {
-      ...nextRival,
-      board: nextRival.board.map((unit) => {
-        if (!unit) return null
-        const damaged = { ...unit, currentHealth: unit.currentHealth - poisonDmg }
-        return damaged.currentHealth > 0 ? damaged : null
-      }),
+    if (kind === 'drain') {
+      const stolen = Math.min(nextRival.momentum, amount)
+      nextRival = { ...nextRival, momentum: nextRival.momentum - stolen }
+      nextActor = { ...nextActor, momentum: Math.min(10, nextActor.momentum + stolen) }
+      nextLog = pushLog(nextLog, `${card.name} drains ${stolen} Momentum from the enemy.`)
+      return
     }
-    nextLog = pushLog(nextLog, `${card.name} poisons all enemy units for ${poisonDmg} damage.`)
-  }
 
-  if (card.effect === 'shield') {
-    const shieldAmt = card.id === 'coral-guardian' ? 2 : 3
-    nextActor = {
-      ...nextActor,
-      health: nextActor.health + shieldAmt,
-    }
-    nextLog = pushLog(nextLog, `${card.name} shields the hero for +${shieldAmt} armor.`)
-  }
-
-  if (card.effect === 'siphon') {
-    const siphonAmt = card.rarity === 'epic' ? 3 : 2
-    nextRival = { ...nextRival, health: nextRival.health - siphonAmt }
-    nextActor = { ...nextActor, health: Math.min(STARTING_HEALTH, nextActor.health + siphonAmt) }
-    nextLog = pushLog(nextLog, `${card.name} siphons ${siphonAmt} life from the enemy hero.`)
-  }
-
-  if (card.effect === 'bolster') {
-    const friendlyUnits = nextActor.board
-      .map((unit, idx) => (unit ? idx : -1))
-      .filter((idx) => idx !== -1)
-    if (friendlyUnits.length > 0) {
-      const target = friendlyUnits[Math.floor(Math.random() * friendlyUnits.length)]
+    if (kind === 'empower') {
       nextActor = {
         ...nextActor,
-        board: nextActor.board.map((unit, idx) =>
-          idx === target && unit ? { ...unit, currentHealth: unit.currentHealth + 1, health: unit.health + 1 } : unit,
+        board: nextActor.board.map((unit) =>
+          unit ? { ...unit, attack: unit.attack + amount } : null,
         ),
       }
-      const boostedUnit = nextActor.board[target]
-      nextLog = pushLog(nextLog, `${card.name} bolsters ${boostedUnit?.name ?? 'a unit'} with +1 health.`)
+      nextLog = pushLog(nextLog, `${card.name} empowers all friendly units with +${amount} attack.`)
+      return
     }
-  }
 
-  // ─── New effects ────────────────────────────────────────────────────
+    if (kind === 'poison') {
+      nextRival = {
+        ...nextRival,
+        board: nextRival.board.map((unit) => {
+          if (!unit) return null
+          const damaged = { ...unit, currentHealth: unit.currentHealth - amount }
+          return damaged.currentHealth > 0 ? damaged : null
+        }),
+      }
+      nextLog = pushLog(nextLog, `${card.name} poisons all enemy units for ${amount} damage.`)
+      return
+    }
 
-  if (card.effect === 'frostbite') {
-    if (card.rarity === 'legendary' || card.rarity === 'epic') {
+    if (kind === 'shield') {
+      nextActor = { ...nextActor, health: nextActor.health + amount }
+      nextLog = pushLog(nextLog, `${card.name} shields the hero for +${amount} armor.`)
+      return
+    }
+
+    if (kind === 'siphon') {
+      nextRival = { ...nextRival, health: nextRival.health - amount }
+      nextActor = { ...nextActor, health: Math.min(STARTING_HEALTH, nextActor.health + amount) }
+      nextLog = pushLog(nextLog, `${card.name} siphons ${amount} life from the enemy hero.`)
+      return
+    }
+
+    if (kind === 'bolster') {
+      if (params.bolsterAll) {
+        nextActor = {
+          ...nextActor,
+          board: nextActor.board.map((unit) =>
+            unit ? { ...unit, currentHealth: unit.currentHealth + amount, health: unit.health + amount } : null,
+          ),
+        }
+        nextLog = pushLog(nextLog, `${card.name} bolsters every friendly unit with +${amount} health.`)
+      } else {
+        const friendlyUnits = nextActor.board
+          .map((unit, idx) => (unit ? idx : -1))
+          .filter((idx) => idx !== -1)
+        if (friendlyUnits.length > 0) {
+          const target = friendlyUnits[Math.floor(Math.random() * friendlyUnits.length)]
+          nextActor = {
+            ...nextActor,
+            board: nextActor.board.map((unit, idx) =>
+              idx === target && unit
+                ? { ...unit, currentHealth: unit.currentHealth + amount, health: unit.health + amount }
+                : unit,
+            ),
+          }
+          const boostedUnit = nextActor.board[target]
+          nextLog = pushLog(nextLog, `${card.name} bolsters ${boostedUnit?.name ?? 'a unit'} with +${amount} health.`)
+        }
+      }
+      return
+    }
+
+    if (kind === 'frostbite') {
+      if (params.freezeAll) {
+        nextRival = {
+          ...nextRival,
+          board: nextRival.board.map((unit) => (unit ? { ...unit, exhausted: true } : null)),
+        }
+        nextLog = pushLog(nextLog, `${card.name} freezes all enemy units solid.`)
+      } else {
+        const enemyUnits = nextRival.board.map((u, i) => (u ? i : -1)).filter((i) => i !== -1)
+        if (enemyUnits.length > 0) {
+          const target = enemyUnits[Math.floor(Math.random() * enemyUnits.length)]
+          nextRival = {
+            ...nextRival,
+            board: nextRival.board.map((unit, idx) =>
+              idx === target && unit ? { ...unit, exhausted: true } : unit,
+            ),
+          }
+          const frozen = nextRival.board[target]
+          nextLog = pushLog(nextLog, `${card.name} freezes ${frozen?.name ?? 'a unit'}.`)
+        }
+      }
+      return
+    }
+
+    if (kind === 'silence') {
       nextRival = {
         ...nextRival,
         board: nextRival.board.map((unit) =>
-          unit ? { ...unit, exhausted: true } : null,
+          unit ? { ...unit, effect: undefined, keywords: undefined } : null,
         ),
       }
-      nextLog = pushLog(nextLog, `${card.name} freezes all enemy units solid.`)
-    } else {
-      const enemyUnits = nextRival.board.map((u, i) => (u ? i : -1)).filter((i) => i !== -1)
-      if (enemyUnits.length > 0) {
-        const target = enemyUnits[Math.floor(Math.random() * enemyUnits.length)]
-        nextRival = {
-          ...nextRival,
-          board: nextRival.board.map((unit, idx) =>
-            idx === target && unit ? { ...unit, exhausted: true } : unit,
-          ),
+      nextLog = pushLog(nextLog, `${card.name} silences all enemy units.`)
+      return
+    }
+
+    if (kind === 'summon') {
+      const summonAll = params.summonAll
+      const summonOne = params.summonOne ?? DEFAULT_TOKEN
+      const emptyLanes = nextActor.board
+        .map((u, i) => (u === null ? i : -1))
+        .filter((i) => i !== -1)
+      if (summonAll) {
+        for (const lane of emptyLanes) {
+          nextActor = {
+            ...nextActor,
+            board: nextActor.board.map((unit, idx) =>
+              idx === lane
+                ? summonUnit({
+                    ...card,
+                    id: summonAll.id,
+                    name: summonAll.name,
+                    icon: summonAll.icon,
+                    cost: 0,
+                    attack: summonAll.attack,
+                    health: summonAll.health,
+                    text: 'Summoned token.',
+                    effect: undefined,
+                    instanceId: `${summonAll.id}-${lane}-${Math.random().toString(36).slice(2, 8)}`,
+                  })
+                : unit,
+            ),
+          }
         }
-        const frozen = nextRival.board[target]
-        nextLog = pushLog(nextLog, `${card.name} freezes ${frozen?.name ?? 'a unit'}.`)
-      }
-    }
-  }
-
-  if (card.effect === 'silence') {
-    nextRival = {
-      ...nextRival,
-      board: nextRival.board.map((unit) =>
-        unit ? { ...unit, effect: undefined } : null,
-      ),
-    }
-    nextLog = pushLog(nextLog, `${card.name} silences all enemy units.`)
-    if (card.id === 'abyssal-tyrant') {
-      nextRival = { ...nextRival, health: nextRival.health - 2 }
-      nextLog = pushLog(nextLog, `${card.name} blasts the enemy hero for 2.`)
-    }
-  }
-
-  if (card.effect === 'summon') {
-    const emptyLanes = nextActor.board.map((u, i) => (u === null ? i : -1)).filter((i) => i !== -1)
-    if (card.id === 'necro-sage') {
-      for (const lane of emptyLanes) {
+        nextLog = pushLog(nextLog, `${card.name} summons ${summonAll.name}s in every empty lane.`)
+      } else if (emptyLanes.length > 0) {
+        const lane = emptyLanes[0]
         nextActor = {
           ...nextActor,
           board: nextActor.board.map((unit, idx) =>
-            idx === lane ? summonUnit({ ...card, id: 'token-ghoul', name: 'Ghoul', cost: 0, attack: 2, health: 2, icon: '💀', text: 'Summoned token.', effect: undefined, instanceId: `token-ghoul-${lane}-${Math.random().toString(36).slice(2, 8)}` }) : unit,
+            idx === lane
+              ? summonUnit({
+                  ...card,
+                  id: summonOne.id,
+                  name: summonOne.name,
+                  icon: summonOne.icon,
+                  cost: 0,
+                  attack: summonOne.attack,
+                  health: summonOne.health,
+                  text: 'Summoned token.',
+                  effect: undefined,
+                  instanceId: `${summonOne.id}-${lane}-${Math.random().toString(36).slice(2, 8)}`,
+                })
+              : unit,
           ),
         }
+        nextLog = pushLog(nextLog, `${card.name} conjures a ${summonOne.name}.`)
       }
-      nextLog = pushLog(nextLog, `${card.name} raises ghouls from the grave.`)
-    } else if (emptyLanes.length > 0) {
-      const lane = emptyLanes[0]
-      nextActor = {
-        ...nextActor,
-        board: nextActor.board.map((unit, idx) =>
-          idx === lane ? summonUnit({ ...card, id: 'token-spark', name: 'Spark', cost: 0, attack: 1, health: 1, icon: '⚡', text: 'Summoned token.', effect: undefined, instanceId: `token-spark-${lane}-${Math.random().toString(36).slice(2, 8)}` }) : unit,
-        ),
+      return
+    }
+
+    if (kind === 'cleave') {
+      // Cleave-on-summon: deal damage equal to this card's attack to every
+      // enemy unit. (Cleave keyword on combat is handled in `attack`.)
+      const cleaveAmount = override ?? card.attack
+      nextRival = {
+        ...nextRival,
+        board: nextRival.board.map((unit) => {
+          if (!unit) return null
+          const damaged = { ...unit, currentHealth: unit.currentHealth - cleaveAmount }
+          return damaged.currentHealth > 0 ? damaged : null
+        }),
       }
-      nextLog = pushLog(nextLog, `${card.name} conjures a Spark.`)
+      nextLog = pushLog(nextLog, `${card.name} cleaves all enemy units for ${cleaveAmount}.`)
+      return
     }
+
+    // No-op for keywords resolved at combat time (charge / guard / fury /
+    // lifesteal / enrage / overwhelm / deathrattle): they are reflected by
+    // the unit's keyword/effect and applied in `attack()`.
   }
 
-  // ─── Legendary special effects ────────────────────────────────────
-
-  if (card.id === 'nether-witch' || card.id === 'storm-titan') {
-    nextActor = drawCards(nextActor, 1)
-    nextLog = pushLog(nextLog, `${card.name} also draws a card from the blast impact.`)
+  if (card.effect) {
+    resolveKeyword(card.effect)
   }
 
-  if (card.id === 'iron-clad') {
-    nextActor = { ...nextActor, health: nextActor.health + 2 }
-    nextLog = pushLog(nextLog, `${card.name} reinforces the hero with +2 armor.`)
-  }
-
-  if (card.id === 'phoenix-ascendant') {
-    // Charge already handled. Deathrattle logged for info.
-    nextLog = pushLog(nextLog, `${card.name} rises — deathrattle: 3 damage to enemy hero.`)
-  }
-
-  if (card.id === 'shadow-assassin') {
-    // Lifesteal noted — actual lifesteal happens in combat
-    nextLog = pushLog(nextLog, `${card.name} lurks — lifesteal active.`)
-  }
-
-  if (card.id === 'glacial-colossus') {
-    // Also has guard
-    const unit = nextActor.board[firstOpenLane]
-    if (unit) {
-      nextActor = {
-        ...nextActor,
-        board: nextActor.board.map((u, i) =>
-          i === firstOpenLane && u ? { ...u, effect: 'guard' as CardEffect } : u,
-        ),
-      }
+  if (params.extras) {
+    for (const extra of params.extras) {
+      resolveKeyword(extra.kind, extra.amount)
     }
-    nextLog = pushLog(nextLog, `${card.name} stands as an immovable guardian of ice.`)
-  }
-
-  if (card.id === 'velara-the-lifebinder') {
-    nextActor = { ...nextActor, health: STARTING_HEALTH }
-    nextActor = {
-      ...nextActor,
-      board: nextActor.board.map((unit) =>
-        unit ? { ...unit, attack: unit.attack + 2 } : null,
-      ),
-    }
-    nextLog = pushLog(nextLog, `${card.name} restores the hero and empowers all allies.`)
-  }
-
-  if (card.id === 'malachar-the-undying') {
-    const emptyLanes = nextActor.board.map((u, i) => (u === null ? i : -1)).filter((i) => i !== -1)
-    for (const lane of emptyLanes) {
-      nextActor = {
-        ...nextActor,
-        board: nextActor.board.map((unit, idx) =>
-          idx === lane ? summonUnit({ ...card, id: 'token-wraith', name: 'Wraith', cost: 0, attack: 3, health: 3, icon: '👻', text: 'Summoned by Malachar.', effect: undefined, instanceId: `token-wraith-${lane}-${Math.random().toString(36).slice(2, 8)}` }) : unit,
-        ),
-      }
-    }
-    nextLog = pushLog(nextLog, `${card.name} summons spectral wraiths from the void.`)
-  }
-
-  if (card.id === 'kronos-the-forgemaster') {
-    nextActor = {
-      ...nextActor,
-      health: nextActor.health + 5,
-    }
-    nextLog = pushLog(nextLog, `${card.name} forges +3 attack for allies and +5 armor for the hero.`)
-  }
-
-  if (card.id === 'aethon-runekeeper') {
-    nextActor = { ...nextActor, momentum: Math.min(10, nextActor.momentum + 3) }
-    nextLog = pushLog(nextLog, `${card.name} unleashes the starless litany: 3 draws, +3 Momentum.`)
-  }
-
-  if (card.id === 'drakarion-the-eternal') {
-    // Cleave: damage all enemy units
-    nextRival = {
-      ...nextRival,
-      board: nextRival.board.map((unit) => {
-        if (!unit) return null
-        const damaged = { ...unit, currentHealth: unit.currentHealth - card.attack }
-        return damaged.currentHealth > 0 ? damaged : null
-      }),
-    }
-    nextLog = pushLog(nextLog, `${card.name} cleaves all enemy units with dragonfire.`)
-  }
-
-  if (card.id === 'zephyr-world-breaker') {
-    nextRival = { ...nextRival, health: nextRival.health - 4 }
-    nextLog = pushLog(nextLog, `${card.name} shatters the world: 4 damage to enemy hero.`)
-    // Guard set via the guard effect override
-    const unit = nextActor.board[firstOpenLane]
-    if (unit) {
-      nextActor = {
-        ...nextActor,
-        board: nextActor.board.map((u, i) =>
-          i === firstOpenLane && u ? { ...u, effect: 'guard' as CardEffect } : u,
-        ),
-      }
-    }
-  }
-
-  if (card.id === 'druid-elder') {
-    nextActor = {
-      ...nextActor,
-      board: nextActor.board.map((unit) =>
-        unit ? { ...unit, currentHealth: unit.currentHealth + 1, health: unit.health + 1 } : null,
-      ),
-    }
-    nextLog = pushLog(nextLog, `${card.name} heals the hero and bolsters all allies.`)
-  }
-
-  if (card.id === 'arcane-golem') {
-    nextActor = drawCards(nextActor, 1)
-    nextLog = pushLog(nextLog, `${card.name} surges with +3 Momentum and also draws a card.`)
-  }
-
-  if (card.id === 'ancient-hydra') {
-    // Cleave all enemies + fury on the unit
-    nextRival = {
-      ...nextRival,
-      board: nextRival.board.map((unit) => {
-        if (!unit) return null
-        const damaged = { ...unit, currentHealth: unit.currentHealth - card.attack }
-        return damaged.currentHealth > 0 ? damaged : null
-      }),
-    }
-    const unit = nextActor.board[firstOpenLane]
-    if (unit) {
-      nextActor = {
-        ...nextActor,
-        board: nextActor.board.map((u, i) =>
-          i === firstOpenLane && u ? { ...u, effect: 'fury' as CardEffect } : u,
-        ),
-      }
-    }
-    nextLog = pushLog(nextLog, `${card.name} cleaves all lanes and grows with fury.`)
-  }
-
-  if (card.id === 'storm-shaman') {
-    // Blast already handled at 2; add 1 more for total 3
-    nextRival = { ...nextRival, health: nextRival.health - 1 }
-    nextLog = pushLog(nextLog, `${card.name}'s storm rages for 3 total.`)
-  }
-
-  if (card.id === 'bone-collector') {
-    // Drain already handled at 1; steal 1 more for total 2
-    const stolen = Math.min(nextRival.momentum, 1)
-    nextRival = { ...nextRival, momentum: nextRival.momentum - stolen }
-    nextActor = { ...nextActor, momentum: Math.min(10, nextActor.momentum + stolen) }
-    nextLog = pushLog(nextLog, `${card.name} drains 2 total Momentum.`)
   }
 
   return applySides(base, side, nextActor, nextRival, nextLog)
@@ -964,7 +1006,7 @@ export function attack(
   }
 
   const guardLock = boardHasGuard(rival.board)
-  if (guardLock && (target === 'hero' || rival.board[target]?.effect !== 'guard')) {
+  if (guardLock && (target === 'hero' || (rival.board[target] && !hasKeyword(rival.board[target] as Unit, 'guard')))) {
     return base
   }
 
@@ -984,7 +1026,7 @@ export function attack(
   if (target === 'hero') {
     const updatedAttacker: Unit = { ...attacker, exhausted: true }
     actorBoard[attackerIndex] =
-      updatedAttacker.effect === 'fury'
+      hasKeyword(updatedAttacker, 'fury')
         ? { ...updatedAttacker, attack: updatedAttacker.attack + 1 }
         : updatedAttacker
 
@@ -994,7 +1036,7 @@ export function attack(
     }
 
     // Lifesteal: heal hero for damage dealt
-    if (updatedAttacker.effect === 'lifesteal' || updatedAttacker.id === 'shadow-assassin') {
+    if (hasKeyword(updatedAttacker, 'lifesteal')) {
       nextActor = { ...nextActor, health: Math.min(STARTING_HEALTH, nextActor.health + updatedAttacker.attack) }
       nextLog = pushLog(nextLog, `${updatedAttacker.name} steals ${updatedAttacker.attack} life.`)
     }
@@ -1004,7 +1046,7 @@ export function attack(
       `${actor.name}'s ${updatedAttacker.name} hits ${nextRival.name} for ${updatedAttacker.attack}.`,
     )
 
-    if (updatedAttacker.effect === 'fury') {
+    if (hasKeyword(updatedAttacker, 'fury')) {
       nextLog = pushLog(nextLog, `${updatedAttacker.name} grows stronger from Fury.`)
     }
   } else {
@@ -1025,12 +1067,12 @@ export function attack(
     }
 
     // Enrage: if damaged but alive, gain +2 attack
-    if (damagedAttacker.currentHealth > 0 && damagedAttacker.currentHealth < attacker.currentHealth && damagedAttacker.effect === 'enrage') {
+    if (damagedAttacker.currentHealth > 0 && damagedAttacker.currentHealth < attacker.currentHealth && hasKeyword(damagedAttacker, 'enrage')) {
       damagedAttacker = { ...damagedAttacker, attack: damagedAttacker.attack + 2 }
       nextLog = pushLog(nextLog, `${damagedAttacker.name} enters a furious enrage! +2 attack.`)
     }
 
-    if (damagedAttacker.currentHealth > 0 && damagedAttacker.effect === 'fury') {
+    if (damagedAttacker.currentHealth > 0 && hasKeyword(damagedAttacker, 'fury')) {
       damagedAttacker = {
         ...damagedAttacker,
         attack: damagedAttacker.attack + 1,
@@ -1039,14 +1081,14 @@ export function attack(
     }
 
     // Lifesteal: heal hero for damage dealt in combat
-    if ((attacker.effect === 'lifesteal' || attacker.id === 'shadow-assassin') && damagedDefender.currentHealth < defender.currentHealth) {
+    if (hasKeyword(attacker, 'lifesteal') && damagedDefender.currentHealth < defender.currentHealth) {
       const healAmt = Math.min(attacker.attack, defender.currentHealth)
       nextActor = { ...nextActor, health: Math.min(STARTING_HEALTH, nextActor.health + healAmt) }
       nextLog = pushLog(nextLog, `${attacker.name} steals ${healAmt} life.`)
     }
 
     // Overwhelm: excess damage hits the enemy hero
-    if ((attacker.effect === 'overwhelm' || attacker.id === 'iron-juggernaut') && damagedDefender.currentHealth <= 0) {
+    if (hasKeyword(attacker, 'overwhelm') && damagedDefender.currentHealth <= 0) {
       const excess = Math.abs(damagedDefender.currentHealth)
       if (excess > 0) {
         nextRival = { ...nextRival, health: nextRival.health - excess }
@@ -1054,45 +1096,47 @@ export function attack(
       }
     }
 
-    // Deathrattle triggers
-    if (damagedDefender.currentHealth <= 0 && defender.effect === 'deathrattle') {
-      if (defender.id === 'ghost-knight') {
-        nextActor = { ...nextActor, health: nextActor.health - 2 }
-        nextLog = pushLog(nextLog, `${defender.name}'s spirit lashes out for 2 damage.`)
-      }
-      if (defender.id === 'lava-hound') {
-        nextActor = {
-          ...nextActor,
-          board: actorBoard.map((unit) => {
-            if (!unit) return null
-            const damaged = { ...unit, currentHealth: unit.currentHealth - 3 }
-            return damaged.currentHealth > 0 ? damaged : null
-          }),
+    // Deathrattle triggers — data-driven via getDeathrattle()
+    function applyDeathrattle(deadUnit: Unit, friendlySide: 'attacker' | 'defender'): void {
+      const dr = getDeathrattle(deadUnit.id)
+      if (!dr) return
+      if (dr.kind === 'damage-hero') {
+        if (friendlySide === 'defender') {
+          // The dying unit is on the defender (rival) side; their deathrattle damages our hero.
+          nextActor = { ...nextActor, health: nextActor.health - dr.amount }
+          nextLog = pushLog(nextLog, `${deadUnit.name}'s spirit lashes out for ${dr.amount} damage.`)
+        } else {
+          nextRival = { ...nextRival, health: nextRival.health - dr.amount }
+          nextLog = pushLog(nextLog, `${deadUnit.name} erupts in flame: ${dr.amount} to the enemy hero.`)
         }
-        nextLog = pushLog(nextLog, `${defender.name} erupts, dealing 3 to all enemy units.`)
+      } else if (dr.kind === 'damage-all-enemy-units') {
+        if (friendlySide === 'defender') {
+          // dying defender — its deathrattle hits attacker's board
+          nextActor = {
+            ...nextActor,
+            board: actorBoard.map((unit) => {
+              if (!unit) return null
+              const damaged = { ...unit, currentHealth: unit.currentHealth - dr.amount }
+              return damaged.currentHealth > 0 ? damaged : null
+            }),
+          }
+          nextLog = pushLog(nextLog, `${deadUnit.name} erupts, dealing ${dr.amount} to all units.`)
+        } else {
+          nextRival = {
+            ...nextRival,
+            board: rivalBoard.map((unit) => {
+              if (!unit) return null
+              const damaged = { ...unit, currentHealth: unit.currentHealth - dr.amount }
+              return damaged.currentHealth > 0 ? damaged : null
+            }),
+          }
+          nextLog = pushLog(nextLog, `${deadUnit.name} erupts, dealing ${dr.amount} to all enemy units.`)
+        }
       }
     }
-    if (damagedAttacker.currentHealth <= 0 && attacker.effect === 'deathrattle') {
-      if (attacker.id === 'ghost-knight') {
-        nextRival = { ...nextRival, health: nextRival.health - 2 }
-        nextLog = pushLog(nextLog, `${attacker.name}'s spirit lashes out for 2 damage.`)
-      }
-      if (attacker.id === 'lava-hound') {
-        nextRival = {
-          ...nextRival,
-          board: rivalBoard.map((unit) => {
-            if (!unit) return null
-            const damaged = { ...unit, currentHealth: unit.currentHealth - 3 }
-            return damaged.currentHealth > 0 ? damaged : null
-          }),
-        }
-        nextLog = pushLog(nextLog, `${attacker.name} erupts, dealing 3 to all enemy units.`)
-      }
-      if (attacker.id === 'phoenix-ascendant') {
-        nextRival = { ...nextRival, health: nextRival.health - 3 }
-        nextLog = pushLog(nextLog, `${attacker.name} erupts in flame: 3 to the enemy hero.`)
-      }
-    }
+
+    if (damagedDefender.currentHealth <= 0) applyDeathrattle(defender, 'defender')
+    if (damagedAttacker.currentHealth <= 0) applyDeathrattle(attacker, 'attacker')
 
     actorBoard[attackerIndex] = damagedAttacker.currentHealth > 0 ? damagedAttacker : null
     rivalBoard[target] = damagedDefender.currentHealth > 0 ? damagedDefender : null
@@ -1179,7 +1223,7 @@ export function chooseEnemyTarget(
   attacker: Unit,
   difficulty: AIDifficulty = game.aiDifficulty ?? 'adept',
 ): number | 'hero' {
-  const guardLane = game.player.board.findIndex((unit) => unit?.effect === 'guard')
+  const guardLane = game.player.board.findIndex((unit) => unit !== null && hasKeyword(unit, 'guard'))
   if (guardLane !== -1) {
     return guardLane
   }
@@ -1209,8 +1253,8 @@ export function chooseEnemyTarget(
     if (unit.currentHealth <= attacker.attack) score += 8
     if (attacker.currentHealth > unit.attack) score += 5
     if (unit.attack >= attacker.currentHealth) score -= difficulty === 'legend' ? 1 : 3
-    if (unit.effect === 'guard') score += 6
-    if (unit.effect === 'poison' || unit.effect === 'lifesteal' || unit.effect === 'cleave') score += 4
+    if (hasKeyword(unit, 'guard')) score += 6
+    if (hasKeyword(unit, 'poison') || hasKeyword(unit, 'lifesteal') || hasKeyword(unit, 'cleave')) score += 4
     if (difficulty === 'legend' && unit.attack >= 4) score += 4
 
     if (score > bestScore) {
