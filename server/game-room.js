@@ -26,9 +26,11 @@ const accountToRoom = new Map()
 class GameRoom {
   /**
    * @param {string} roomId
+   * @param {'duel'|'unranked'} [mode]
    */
-  constructor(roomId) {
+  constructor(roomId, mode = 'duel') {
     this.roomId = roomId
+    this.mode = mode
     /** @type {{ player: string | null, enemy: string | null }} */
     this.sockets = { player: null, enemy: null }
     /** @type {{ player: number | null, enemy: number | null }} */
@@ -266,16 +268,17 @@ class GameRoom {
 
 /**
  * @param {string} roomId
+ * @param {'duel'|'unranked'} [mode]
  * @returns {GameRoom}
  */
-export function createRoom(roomId) {
+export function createRoom(roomId, mode = 'duel') {
   if (rooms.size >= MAX_ROOMS) {
     pruneExpiredRooms()
     if (rooms.size >= MAX_ROOMS) {
       throw new Error('Maximum active rooms reached.')
     }
   }
-  const room = new GameRoom(roomId)
+  const room = new GameRoom(roomId, mode)
   rooms.set(roomId, room)
   return room
 }

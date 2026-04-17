@@ -36,6 +36,7 @@ import {
   createClan,
   joinClanByInvite,
   leaveClan,
+  isFriendOf,
   getAccountRole,
   hasRoleAtLeast,
   findOwnerAccountId,
@@ -166,6 +167,97 @@ io.use((socket, next) => {
 })
 
 let waitingPlayers = []
+
+// ─── Presence tracking ──────────────────────────────────────────────────────
+// accountId → Set<socketId>. Used for friend online indicators and to deliver
+// direct challenge events. A single account may have multiple concurrent
+// sockets (e.g. tabs, mobile + web); they share presence.
+
+/** @type {Map<string, Set<string>>} */
+const presence = new Map()
+
+function trackPresence(accountId, socketId) {
+  if (!accountId) return
+  let set = presence.get(accountId)
+  if (!set) {
+    set = new Set()
+    presence.set(accountId, set)
+  }
+  set.add(socketId)
+}
+
+function untrackPresence(accountId, socketId) {
+  if (!accountId) return
+  const set = presence.get(accountId)
+  if (!set) return
+  set.delete(socketId)
+  if (set.size === 0) presence.delete(accountId)
+}
+
+function isOnline(accountId) {
+  return presence.has(accountId)
+}
+
+function emitToAccount(accountId, event, payload) {
+  const sockets = presence.get(accountId)
+  if (!sockets) return 0
+  let sent = 0
+  for (const socketId of sockets) {
+    const s = io.sockets.sockets.get(socketId)
+    if (s) {
+      s.emit(event, payload)
+      sent += 1
+    }
+  }
+  return sent
+}
+
+// ─── Friend challenges (unranked duels) ─────────────────────────────────────
+// In-memory state machine: pending → accepted → active → completed/declined/
+// expired. Challenges live for 60s; an interval reaper cleans stale ones.
+
+const CHALLENGE_TTL_MS = 60 * 1000
+
+/**
+ * @typedef {Object} Challenge
+ * @property {string} id
+ * @property {string} fromAccountId
+ * @property {string} toAccountId
+ * @property {string} fromName
+ * @property {string} toName
+ * @property {Record<string, number>} fromDeck
+ * @property {number} createdAt
+ * @property {'pending'|'accepted'|'declined'|'expired'|'cancelled'} status
+ */
+
+/** @type {Map<string, Challenge>} */
+const pendingChallenges = new Map()
+
+function findChallengeForAccount(accountId, direction) {
+  for (const c of pendingChallenges.values()) {
+    if (c.status !== 'pending') continue
+    if (direction === 'from' && c.fromAccountId === accountId) return c
+    if (direction === 'to' && c.toAccountId === accountId) return c
+  }
+  return null
+}
+
+function reapChallenges() {
+  const now = Date.now()
+  for (const [id, c] of pendingChallenges) {
+    if (c.status !== 'pending') {
+      // Drop terminal entries after 2× TTL so we don't leak memory.
+      if (now - c.createdAt > CHALLENGE_TTL_MS * 2) pendingChallenges.delete(id)
+      continue
+    }
+    if (now - c.createdAt > CHALLENGE_TTL_MS) {
+      c.status = 'expired'
+      emitToAccount(c.fromAccountId, 'challenge:expired', { challengeId: c.id, reason: 'timeout' })
+      emitToAccount(c.toAccountId, 'challenge:expired', { challengeId: c.id, reason: 'timeout' })
+    }
+  }
+}
+setInterval(reapChallenges, 10 * 1000).unref?.()
 
 function createDefaultAdminStore() {
   return {
@@ -1515,6 +1607,28 @@ io.on('connection', (socket) => {
   })
   emitLiveArenaState(socket)
 
+  // ─── Presence tracking: announce this account's online friends ────────
+  trackPresence(socket.data.accountId, socket.id)
+  try {
+    const social = getSocialOverview(socket.data.accountId)
+    const online = (social.friends ?? [])
+      .filter((friend) => isOnline(friend.accountId))
+      .map((friend) => friend.accountId)
+    socket.emit('presence:snapshot', { onlineFriendIds: online })
+
+    // Notify any friend already online that we came online.
+    for (const friend of social.friends ?? []) {
+      if (isOnline(friend.accountId)) {
+        emitToAccount(friend.accountId, 'presence:update', {
+          accountId: socket.data.accountId,
+          online: true,
+        })
+      }
+    }
+  } catch {
+    /* non-fatal */
+  }
+
   // ─── Auto-rejoin: check if this account has an active ranked game ────
   const existingRoom = getRoomByAccount(socket.data.accountId)
   if (existingRoom && existingRoom.state && !existingRoom.state.winner) {
@@ -1627,6 +1741,185 @@ io.on('connection', (socket) => {
     emitLiveArenaState()
   })
 
+  // ─── Friend challenges (unranked duels) ─────────────────────────────────
+
+  socket.on('challenge:send', (payload = {}) => {
+    if (!checkSocketRate(socket.id, 'challenge:send', 10)) return
+    const fromAccountId = socket.data.accountId
+    if (!fromAccountId) {
+      socket.emit('challenge:error', { error: 'Sign in to challenge friends.' })
+      return
+    }
+    const toAccountId = String(payload?.targetAccountId ?? '')
+    const deckConfig = payload?.deckConfig
+    if (!toAccountId || toAccountId === fromAccountId) {
+      socket.emit('challenge:error', { error: 'Invalid challenge target.' })
+      return
+    }
+
+    // Friends-only for v1.
+    if (!isFriendOf(fromAccountId, toAccountId)) {
+      socket.emit('challenge:error', { error: 'You can only challenge accounts on your friends list.' })
+      return
+    }
+
+    // Must be online.
+    if (!isOnline(toAccountId)) {
+      socket.emit('challenge:error', { error: 'That friend is offline.' })
+      return
+    }
+
+    // Only one outgoing challenge at a time per account.
+    if (findChallengeForAccount(fromAccountId, 'from')) {
+      socket.emit('challenge:error', { error: 'You already have a pending challenge.' })
+      return
+    }
+
+    // Validate the challenger's deck (server-side safety net).
+    const deckCheck = validateDeckConfig(deckConfig ?? {})
+    if (!deckCheck.ok) {
+      socket.emit('challenge:error', { error: deckCheck.error ?? 'Invalid deck.' })
+      return
+    }
+
+    const fromProfile = getProfile(fromAccountId)
+    const toProfile = getProfile(toAccountId)
+    if (!fromProfile || !toProfile) {
+      socket.emit('challenge:error', { error: 'Account profile not found.' })
+      return
+    }
+
+    const challenge = {
+      id: `chal-${randomBytes(8).toString('hex')}`,
+      fromAccountId,
+      toAccountId,
+      fromName: fromProfile.display_name || socket.data.displayName || 'Challenger',
+      toName: toProfile.display_name || 'Friend',
+      fromDeck: deckConfig,
+      createdAt: Date.now(),
+      status: 'pending',
+    }
+    pendingChallenges.set(challenge.id, challenge)
+
+    socket.emit('challenge:sent', {
+      challengeId: challenge.id,
+      toAccountId,
+      toName: challenge.toName,
+      expiresAt: challenge.createdAt + CHALLENGE_TTL_MS,
+    })
+    emitToAccount(toAccountId, 'challenge:incoming', {
+      challengeId: challenge.id,
+      fromAccountId,
+      fromName: challenge.fromName,
+      expiresAt: challenge.createdAt + CHALLENGE_TTL_MS,
+    })
+  })
+
+  socket.on('challenge:accept', (payload = {}) => {
+    if (!checkSocketRate(socket.id, 'challenge:accept', 10)) return
+    const accountId = socket.data.accountId
+    const challengeId = String(payload?.challengeId ?? '')
+    const deckConfig = payload?.deckConfig
+    const challenge = pendingChallenges.get(challengeId)
+    if (!challenge || challenge.status !== 'pending' || challenge.toAccountId !== accountId) {
+      socket.emit('challenge:error', { error: 'Challenge not found or already closed.' })
+      return
+    }
+    if (Date.now() - challenge.createdAt > CHALLENGE_TTL_MS) {
+      challenge.status = 'expired'
+      emitToAccount(challenge.fromAccountId, 'challenge:expired', { challengeId: challenge.id })
+      socket.emit('challenge:expired', { challengeId: challenge.id })
+      return
+    }
+    const deckCheck = validateDeckConfig(deckConfig ?? {})
+    if (!deckCheck.ok) {
+      socket.emit('challenge:error', { error: deckCheck.error ?? 'Invalid deck.' })
+      return
+    }
+
+    // Make sure the challenger is still connected with a socket.
+    const challengerSocketIds = presence.get(challenge.fromAccountId)
+    const challengerSocketId = challengerSocketIds ? challengerSocketIds.values().next().value : null
+    const challengerSocket = challengerSocketId ? io.sockets.sockets.get(challengerSocketId) : null
+    if (!challengerSocket?.connected) {
+      challenge.status = 'cancelled'
+      socket.emit('challenge:error', { error: 'Challenger disconnected.' })
+      return
+    }
+
+    // Make sure neither player is currently in a ranked game.
+    const challengerActive = getRoomByAccount(challenge.fromAccountId)
+    const accepterActive = getRoomByAccount(accountId)
+    if ((challengerActive && !challengerActive.state?.winner) || (accepterActive && !accepterActive.state?.winner)) {
+      socket.emit('challenge:error', { error: 'One of the players is in a live match.' })
+      return
+    }
+
+    challenge.status = 'accepted'
+
+    // Start an unranked duel room. Both players must be hydrated into the
+    // room and emitted their starting views.
+    const roomId = `room-${randomUUID().slice(0, 8)}`
+    try {
+      const room = createRoom(roomId, 'unranked')
+      challengerSocket.join(roomId)
+      socket.join(roomId)
+      room.start(
+        {
+          socketId: challengerSocket.id,
+          accountId: challenge.fromAccountId,
+          name: challenge.fromName,
+          deckConfig: challenge.fromDeck,
+        },
+        {
+          socketId: socket.id,
+          accountId: accountId,
+          name: challenge.toName,
+          deckConfig,
+        },
+      )
+      const challengerView = room.getViewForSocket(challengerSocket.id)
+      const accepterView = room.getViewForSocket(socket.id)
+      challengerSocket.emit('challenge:matched', {
+        roomId,
+        opponent: { name: challenge.toName, accountId: accountId, isBot: false, rank: 'Friend', style: 'Unranked', ping: 0 },
+        mode: 'unranked',
+      })
+      socket.emit('challenge:matched', {
+        roomId,
+        opponent: { name: challenge.fromName, accountId: challenge.fromAccountId, isBot: false, rank: 'Friend', style: 'Unranked', ping: 0 },
+        mode: 'unranked',
+      })
+      challengerSocket.emit('game:start', challengerView)
+      socket.emit('game:start', accepterView)
+    } catch (err) {
+      challenge.status = 'cancelled'
+      socket.emit('challenge:error', { error: 'Could not create the duel room.' })
+      emitToAccount(challenge.fromAccountId, 'challenge:error', { error: 'Could not create the duel room.' })
+      console.warn('challenge:accept room start failed', err?.message ?? err)
+    }
+  })
+
+  socket.on('challenge:decline', (payload = {}) => {
+    if (!checkSocketRate(socket.id, 'challenge:decline', 20)) return
+    const challenge = pendingChallenges.get(String(payload?.challengeId ?? ''))
+    if (!challenge || challenge.status !== 'pending') return
+    if (challenge.toAccountId !== socket.data.accountId) return
+    challenge.status = 'declined'
+    emitToAccount(challenge.fromAccountId, 'challenge:declined', { challengeId: challenge.id })
+    socket.emit('challenge:declined', { challengeId: challenge.id })
+  })
+
+  socket.on('challenge:cancel', (payload = {}) => {
+    if (!checkSocketRate(socket.id, 'challenge:cancel', 20)) return
+    const challenge = pendingChallenges.get(String(payload?.challengeId ?? ''))
+    if (!challenge || challenge.status !== 'pending') return
+    if (challenge.fromAccountId !== socket.data.accountId) return
+    challenge.status = 'cancelled'
+    emitToAccount(challenge.toAccountId, 'challenge:cancelled', { challengeId: challenge.id, reason: 'cancelled_by_sender' })
+    socket.emit('challenge:cancelled', { challengeId: challenge.id, reason: 'cancelled_by_sender' })
+  })
+
   socket.on('room:emote', ({ roomId, emote, from } = {}) => {
     if (!checkSocketRate(socket.id, 'room:emote', 20)) return
     if (!roomId || typeof roomId !== 'string') return
@@ -1677,9 +1970,10 @@ io.on('connection', (socket) => {
       const turns = room.state.turnNumber
 
       // Resolve match results for both players
+      const mode = room.mode ?? 'duel'
       if (winner === 'draw') {
-        if (playerAccountId) resolveMatchResult(playerAccountId, room.names.enemy, 'duel', 'draw', turns)
-        if (enemyAccountId) resolveMatchResult(enemyAccountId, room.names.player, 'duel', 'draw', turns)
+        if (playerAccountId) resolveMatchResult(playerAccountId, room.names.enemy, mode, 'draw', turns)
+        if (enemyAccountId) resolveMatchResult(enemyAccountId, room.names.player, mode, 'draw', turns)
         playerSocket?.emit('game:over', { winner: 'draw', result: 'draw' })
         enemySocket?.emit('game:over', { winner: 'draw', result: 'draw' })
       } else {
@@ -1687,8 +1981,8 @@ io.on('connection', (socket) => {
         const loserSide = winner === 'player' ? 'enemy' : 'player'
         const loserAccountId = room.accounts[loserSide]
 
-        if (winnerAccountId) resolveMatchResult(winnerAccountId, room.names[loserSide], 'duel', 'win', turns)
-        if (loserAccountId) resolveMatchResult(loserAccountId, room.names[winner], 'duel', 'loss', turns)
+        if (winnerAccountId) resolveMatchResult(winnerAccountId, room.names[loserSide], mode, 'win', turns)
+        if (loserAccountId) resolveMatchResult(loserAccountId, room.names[winner], mode, 'loss', turns)
 
         playerSocket?.emit('game:over', {
           winner,
@@ -1700,7 +1994,7 @@ io.on('connection', (socket) => {
         })
       }
 
-      trackAnalyticsEvent({ type: 'match_complete', route: 'battle', meta: { winner, mode: 'duel' } })
+      trackAnalyticsEvent({ type: 'match_complete', route: 'battle', meta: { winner, mode } })
       emitLiveArenaState()
 
       // Clean up room after a delay to let clients process the result
@@ -1711,6 +2005,36 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     removeWaitingPlayer(socket.id, socket.data.accountId)
     socketRateLimits.delete(socket.id)
+
+    // Presence: drop this socket; if it was the last one for the account,
+    // notify online friends so their UI can grey out the challenge button.
+    const accountId = socket.data.accountId
+    if (accountId) {
+      untrackPresence(accountId, socket.id)
+      if (!isOnline(accountId)) {
+        try {
+          const social = getSocialOverview(accountId)
+          for (const friend of social.friends ?? []) {
+            if (isOnline(friend.accountId)) {
+              emitToAccount(friend.accountId, 'presence:update', {
+                accountId,
+                online: false,
+              })
+            }
+          }
+        } catch { /* non-fatal */ }
+      }
+      // Cancel any outstanding outgoing/incoming challenges for this account.
+      for (const challenge of pendingChallenges.values()) {
+        if (challenge.status !== 'pending') continue
+        if (challenge.fromAccountId === accountId || challenge.toAccountId === accountId) {
+          challenge.status = 'cancelled'
+          const other = challenge.fromAccountId === accountId ? challenge.toAccountId : challenge.fromAccountId
+          emitToAccount(other, 'challenge:cancelled', { challengeId: challenge.id, reason: 'disconnected' })
+        }
+      }
+    }
+
     emitLiveArenaState()
 
     // Handle in-progress game disconnection with reconnect grace period
@@ -1749,8 +2073,8 @@ io.on('connection', (socket) => {
         const loserAccountId = room.accounts[disconnectedSide]
         const turns = room.state.turnNumber
 
-        if (winnerAccountId) resolveMatchResult(winnerAccountId, room.names[disconnectedSide], 'duel', 'win', turns)
-        if (loserAccountId) resolveMatchResult(loserAccountId, room.names[remainingSide], 'duel', 'loss', turns)
+        if (winnerAccountId) resolveMatchResult(winnerAccountId, room.names[disconnectedSide], room.mode ?? 'duel', 'win', turns)
+        if (loserAccountId) resolveMatchResult(loserAccountId, room.names[remainingSide], room.mode ?? 'duel', 'loss', turns)
 
         destroyRoom(room.roomId)
       }, RECONNECT_GRACE_MS)

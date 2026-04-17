@@ -128,3 +128,45 @@ describe('single-owner DB constraint', () => {
     }).toThrow(/UNIQUE/i)
   })
 })
+
+describe('friend gating', () => {
+  it('isFriendOf returns true only for reciprocal friend edges', () => {
+    const a = makeAccount('friendhelpera')
+    const b = makeAccount('friendhelperb')
+    expect(db.isFriendOf(a, b)).toBe(false)
+    // Accept via addFriend (creates bidirectional edges per existing behaviour).
+    const added = db.addFriend(a, 'friendhelperb')
+    expect(added.ok).toBe(true)
+    expect(db.isFriendOf(a, b)).toBe(true)
+    expect(db.isFriendOf(b, a)).toBe(true)
+    // Removing one direction de-links that direction.
+    db.removeFriend(a, b)
+    expect(db.isFriendOf(a, b)).toBe(false)
+  })
+
+  it('isFriendOf rejects self and empty inputs', () => {
+    const a = makeAccount('selffriend')
+    expect(db.isFriendOf(a, a)).toBe(false)
+    expect(db.isFriendOf('', a)).toBe(false)
+    expect(db.isFriendOf(a, '')).toBe(false)
+  })
+})
+
+describe('resolveMatchResult mode gating', () => {
+  it('unranked mode grants runes but does not change season rating', () => {
+    const a = makeAccount('unrankedplayer')
+    const before = db.getProfile(a)
+    const result = db.resolveMatchResult(a, 'opponent', 'unranked', 'win', 5)
+    expect(result.ok).toBe(true)
+    expect(result.ratingDelta).toBe(0)
+    expect(result.seasonRating).toBe(before.season_rating)
+    expect(result.runesEarned).toBeGreaterThan(0)
+  })
+
+  it('duel mode adjusts season rating', () => {
+    const a = makeAccount('rankedplayer')
+    const result = db.resolveMatchResult(a, 'opponent', 'duel', 'win', 5)
+    expect(result.ok).toBe(true)
+    expect(result.ratingDelta).toBeGreaterThan(0)
+  })
+})

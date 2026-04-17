@@ -733,6 +733,12 @@ const _hasFriendEdge = db.prepare(`
   SELECT 1 as linked FROM social_friends WHERE account_id = ? AND friend_account_id = ? LIMIT 1
 `)
 
+export function isFriendOf(accountId, otherAccountId) {
+  if (!accountId || !otherAccountId || accountId === otherAccountId) return false
+  const row = _hasFriendEdge.get(accountId, otherAccountId)
+  return Boolean(row?.linked)
+}
+
 const _insertFriendEdge = db.prepare(`
   INSERT OR IGNORE INTO social_friends (account_id, friend_account_id) VALUES (?, ?)
 `)

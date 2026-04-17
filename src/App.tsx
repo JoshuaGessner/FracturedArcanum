@@ -551,6 +551,10 @@ function App() {
   const [openedPackCards, setOpenedPackCards] = useState<OpenedPackCard[]>([])
   const [packOpening, setPackOpening] = useState<string | null>(null)
   const [friends, setFriends] = useState<SocialFriend[]>([])
+  const [onlineFriendIds, setOnlineFriendIds] = useState<Set<string>>(new Set())
+  const [outgoingChallenge, setOutgoingChallenge] = useState<{ challengeId: string; toAccountId: string; toName: string; expiresAt: number } | null>(null)
+  const [incomingChallenge, setIncomingChallenge] = useState<{ challengeId: string; fromAccountId: string; fromName: string; expiresAt: number } | null>(null)
+  const [challengeStatus, setChallengeStatus] = useState('')
   const [clan, setClan] = useState<SocialClan | null>(null)
   const [socialLoading, setSocialLoading] = useState(false)
   const [socialStatus, setSocialStatus] = useState('Social hub ready.')
@@ -920,6 +924,63 @@ function App() {
       } else if (payload.role === 'owner') {
         setToastMessage('You are now the server owner.')
       }
+    })
+
+    socket.on('presence:snapshot', (payload: { onlineFriendIds?: string[] }) => {
+      setOnlineFriendIds(new Set(payload?.onlineFriendIds ?? []))
+    })
+
+    socket.on('presence:update', (payload: { accountId?: string; online?: boolean }) => {
+      if (!payload?.accountId) return
+      setOnlineFriendIds((current) => {
+        const next = new Set(current)
+        if (payload.online) next.add(payload.accountId!)
+        else next.delete(payload.accountId!)
+        return next
+      })
+    })
+
+    socket.on('challenge:incoming', (payload: { challengeId: string; fromAccountId: string; fromName: string; expiresAt: number }) => {
+      setIncomingChallenge(payload)
+      setToastMessage(`${payload.fromName} challenged you to an unranked duel.`)
+    })
+
+    socket.on('challenge:sent', (payload: { challengeId: string; toAccountId: string; toName: string; expiresAt: number }) => {
+      setOutgoingChallenge(payload)
+      setChallengeStatus(`Waiting for ${payload.toName} to accept…`)
+    })
+
+    socket.on('challenge:declined', (payload: { challengeId: string }) => {
+      setOutgoingChallenge((current) => (current?.challengeId === payload.challengeId ? null : current))
+      setIncomingChallenge((current) => (current?.challengeId === payload.challengeId ? null : current))
+      setChallengeStatus('Challenge declined.')
+    })
+
+    socket.on('challenge:cancelled', (payload: { challengeId: string; reason?: string }) => {
+      setOutgoingChallenge((current) => (current?.challengeId === payload.challengeId ? null : current))
+      setIncomingChallenge((current) => (current?.challengeId === payload.challengeId ? null : current))
+      setChallengeStatus(payload?.reason === 'disconnected' ? 'Challenge cancelled — player disconnected.' : 'Challenge cancelled.')
+    })
+
+    socket.on('challenge:expired', (payload: { challengeId: string }) => {
+      setOutgoingChallenge((current) => (current?.challengeId === payload.challengeId ? null : current))
+      setIncomingChallenge((current) => (current?.challengeId === payload.challengeId ? null : current))
+      setChallengeStatus('Challenge expired.')
+    })
+
+    socket.on('challenge:error', (payload: { error?: string }) => {
+      setChallengeStatus(payload?.error ?? 'Challenge failed.')
+    })
+
+    socket.on('challenge:matched', (payload: { roomId: string; opponent: OpponentProfile; mode: string }) => {
+      setOutgoingChallenge(null)
+      setIncomingChallenge(null)
+      setChallengeStatus('')
+      setQueuedOpponent(payload.opponent)
+      setQueueState('found')
+      setLobbyCode(payload.roomId.toUpperCase())
+      setBattleKind('ranked') // reuse ranked-style server-authoritative flow
+      setToastMessage(`Unranked duel ready against ${payload.opponent.name}.`)
     })
 
     socket.on(
@@ -1956,6 +2017,54 @@ function App() {
     }
   }
 
+  function handleChallengeFriend(friend: SocialFriend) {
+    const socket = socketClientRef.current
+    if (!socket?.connected) {
+      setChallengeStatus('Not connected to arena server.')
+      return
+    }
+    if (!deckReady) {
+      setChallengeStatus('Finish your deck before challenging friends.')
+      return
+    }
+    if (outgoingChallenge) {
+      setChallengeStatus('Cancel your pending challenge first.')
+      return
+    }
+    setChallengeStatus(`Inviting ${friend.displayName}…`)
+    socket.emit('challenge:send', {
+      targetAccountId: friend.accountId,
+      deckConfig,
+    })
+  }
+
+  function handleAcceptChallenge() {
+    const socket = socketClientRef.current
+    if (!socket?.connected || !incomingChallenge) return
+    if (!deckReady) {
+      setChallengeStatus('Build a deck before accepting challenges.')
+      return
+    }
+    socket.emit('challenge:accept', {
+      challengeId: incomingChallenge.challengeId,
+      deckConfig,
+    })
+  }
+
+  function handleDeclineChallenge() {
+    const socket = socketClientRef.current
+    if (!socket?.connected || !incomingChallenge) return
+    socket.emit('challenge:decline', { challengeId: incomingChallenge.challengeId })
+    setIncomingChallenge(null)
+  }
+
+  function handleCancelOutgoingChallenge() {
+    const socket = socketClientRef.current
+    if (!socket?.connected || !outgoingChallenge) return
+    socket.emit('challenge:cancel', { challengeId: outgoingChallenge.challengeId })
+    setOutgoingChallenge(null)
+  }
+
   async function handleCreateClan(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!authToken) {
@@ -2408,6 +2517,19 @@ function App() {
         </div>
       )}
 
+      {/* ─── Incoming friend challenge ────────────────────────────── */}
+      {incomingChallenge && (
+        <div className="challenge-banner incoming update-banner">
+          <span>
+            <strong>{incomingChallenge.fromName}</strong> is challenging you to an unranked duel.
+          </span>
+          <div className="update-banner-actions">
+            <button className="primary small" onClick={handleAcceptChallenge}>Accept</button>
+            <button className="ghost small" onClick={handleDeclineChallenge}>Decline</button>
+          </div>
+        </div>
+      )}
+
       {/* ─── Auth gate ─────────────────────────────────────────────── */}
       {!setupRequired && !loggedIn && (
         <div className="auth-gate">
@@ -2791,18 +2913,48 @@ function App() {
             </form>
 
             <div className="social-list">
-              {friends.slice(0, 5).map((friend) => (
-                <div className="social-row" key={friend.accountId}>
-                  <div className="leaderboard-meta">
-                    <strong>{friend.displayName}</strong>
-                    <span className="note">@{friend.username}</span>
+              {friends.slice(0, 8).map((friend) => {
+                const online = onlineFriendIds.has(friend.accountId)
+                const canChallenge = online && !outgoingChallenge && !incomingChallenge
+                return (
+                  <div className="social-row" key={friend.accountId}>
+                    <div className="leaderboard-meta">
+                      <strong>
+                        <span
+                          className={`presence-dot ${online ? 'online' : 'offline'}`}
+                          aria-label={online ? 'online' : 'offline'}
+                          title={online ? 'Online' : 'Offline'}
+                        />
+                        {friend.displayName}
+                      </strong>
+                      <span className="note">@{friend.username}</span>
+                    </div>
+                    <div className="controls">
+                      <button
+                        className="primary mini"
+                        disabled={!canChallenge}
+                        title={online ? 'Challenge to an unranked duel' : 'Friend is offline'}
+                        onClick={() => handleChallengeFriend(friend)}
+                      >
+                        ⚔ Challenge
+                      </button>
+                      <button className="ghost mini" disabled={socialLoading} onClick={() => void handleRemoveFriend(friend.accountId, friend.displayName)}>
+                        Remove
+                      </button>
+                    </div>
                   </div>
-                  <button className="ghost mini" disabled={socialLoading} onClick={() => void handleRemoveFriend(friend.accountId, friend.displayName)}>
-                    Remove
-                  </button>
-                </div>
-              ))}
+                )
+              })}
               {!friends.length && <p className="note">No friends yet. Add players by username to build your roster.</p>}
+              {challengeStatus && <p className="note toast-line">{challengeStatus}</p>}
+              {outgoingChallenge && (
+                <div className="challenge-banner outgoing">
+                  <span>
+                    Waiting for <strong>{outgoingChallenge.toName}</strong>…
+                  </span>
+                  <button className="ghost mini" onClick={handleCancelOutgoingChallenge}>Cancel</button>
+                </div>
+              )}
             </div>
 
             {clan ? (
