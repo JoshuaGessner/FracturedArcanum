@@ -227,6 +227,30 @@ export const AI_DIFFICULTY_DECKS: Record<AIDifficulty, DeckConfig> = {
   },
 }
 
+const RALLY_GAIN_BY_CARD: Record<string, number> = {
+  'arcane-golem': 3,
+}
+
+const BLAST_DAMAGE_BY_CARD: Record<string, number> = {
+  'fire-imp': 1,
+  'storm-shaman': 3,
+}
+
+const HEAL_AMOUNT_BY_CARD: Record<string, number> = {
+  'field-medic': 3,
+  'druid-elder': 4,
+}
+
+const DRAW_COUNT_BY_CARD: Record<string, number> = {
+  'runebound-oracle': 2,
+  'aethon-runekeeper': 3,
+}
+
+const EMPOWER_AMOUNT_BY_CARD: Record<string, number> = {
+  'void-empress': 2,
+  'kronos-the-forgemaster': 3,
+}
+
 export function getRecommendedAIDifficulty(rating: number): AIDifficulty {
   if (rating >= 1500) {
     return 'legend'
@@ -571,7 +595,7 @@ export function playCard(base: GameState, side: BattleSide, handIndex: number): 
   let nextLog = pushLog(base.log, `${actor.name} played ${card.icon} ${card.name}.`)
 
   if (card.effect === 'rally') {
-    const rallyGain = card.id === 'arcane-golem' ? 3 : 1
+    const rallyGain = RALLY_GAIN_BY_CARD[card.id] ?? 1
     nextActor = {
       ...nextActor,
       momentum: Math.min(10, nextActor.momentum + rallyGain),
@@ -580,11 +604,7 @@ export function playCard(base: GameState, side: BattleSide, handIndex: number): 
   }
 
   if (card.effect === 'blast') {
-    const blastDamage = card.id === 'fire-imp'
-      ? 1
-      : card.id === 'storm-shaman'
-        ? 3
-        : 2
+    const blastDamage = BLAST_DAMAGE_BY_CARD[card.id] ?? 2
     nextRival = {
       ...nextRival,
       health: nextRival.health - blastDamage,
@@ -593,11 +613,7 @@ export function playCard(base: GameState, side: BattleSide, handIndex: number): 
   }
 
   if (card.effect === 'heal') {
-    const healAmount = card.id === 'field-medic'
-      ? 3
-      : card.id === 'druid-elder'
-        ? 4
-        : 2
+    const healAmount = HEAL_AMOUNT_BY_CARD[card.id] ?? 2
     nextActor = {
       ...nextActor,
       health: Math.min(STARTING_HEALTH, nextActor.health + healAmount),
@@ -606,11 +622,7 @@ export function playCard(base: GameState, side: BattleSide, handIndex: number): 
   }
 
   if (card.effect === 'draw') {
-    const drawCount = card.id === 'runebound-oracle'
-      ? 2
-      : card.id === 'aethon-runekeeper'
-        ? 3
-        : 1
+    const drawCount = DRAW_COUNT_BY_CARD[card.id] ?? 1
     nextActor = drawCards(nextActor, drawCount)
     const drawLabel = drawCount === 1 ? 'a fresh omen' : `${drawCount} omens`
     nextLog = pushLog(nextLog, `${card.name} draws ${drawLabel} from the deck.`)
@@ -624,11 +636,7 @@ export function playCard(base: GameState, side: BattleSide, handIndex: number): 
   }
 
   if (card.effect === 'empower') {
-    const empowerAmount = card.id === 'void-empress'
-      ? 2
-      : card.id === 'kronos-the-forgemaster'
-        ? 3
-        : 1
+    const empowerAmount = EMPOWER_AMOUNT_BY_CARD[card.id] ?? 1
     nextActor = {
       ...nextActor,
       board: nextActor.board.map((unit) =>
@@ -814,12 +822,12 @@ export function playCard(base: GameState, side: BattleSide, handIndex: number): 
       ...nextActor,
       health: nextActor.health + 5,
     }
-    nextLog = pushLog(nextLog, `${card.name} forges +5 armor for the hero.`)
+    nextLog = pushLog(nextLog, `${card.name} forges +3 attack for allies and +5 armor for the hero.`)
   }
 
   if (card.id === 'aethon-runekeeper') {
     nextActor = { ...nextActor, momentum: Math.min(10, nextActor.momentum + 3) }
-    nextLog = pushLog(nextLog, `${card.name} unleashes the starless litany: +3 Momentum.`)
+    nextLog = pushLog(nextLog, `${card.name} unleashes the starless litany: 3 draws, +3 Momentum.`)
   }
 
   if (card.id === 'drakarion-the-eternal') {
@@ -862,7 +870,7 @@ export function playCard(base: GameState, side: BattleSide, handIndex: number): 
 
   if (card.id === 'arcane-golem') {
     nextActor = drawCards(nextActor, 1)
-    nextLog = pushLog(nextLog, `${card.name} also draws a card from charged runes.`)
+    nextLog = pushLog(nextLog, `${card.name} surges with +3 Momentum and also draws a card.`)
   }
 
   if (card.id === 'ancient-hydra') {

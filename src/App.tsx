@@ -330,44 +330,44 @@ function formatTimestamp(value: string) {
   })
 }
 
-function cardArtPath(cardId: string) {
-  const CARD_ART_ALIASES: Record<string, string> = {
-    'cave-bat': 'plague-rat',
-    'copper-automaton': 'clay-soldier',
-    'bog-lurker': 'swamp-lurker',
-    'militia-recruit': 'war-grunt',
-    'rust-golem': 'stone-golem',
-    'thornback-boar': 'wild-boar',
-    'granite-sentinel': 'stone-wall',
-    'field-medic': 'spirit-healer',
-    'sand-elemental': 'dust-devil',
-    'pack-wolf': 'thunder-wolf',
-    'clockwork-knight': 'iron-sentry',
-    'siege-turtle': 'moss-troll',
-    'flame-juggler': 'flame-dancer',
-    'highland-archer': 'elven-archer',
-    'moss-treant': 'thorn-bush',
-    'coral-guardian': 'coral-golem',
-    'frost-weaver': 'frost-archer',
-    'crimson-berserker': 'bone-knight',
-    'war-mammoth': 'sunforged-giant',
-    'thunder-hawk': 'tempest-eagle',
-    'hex-spider': 'shadow-fiend',
-    'shadow-dancer': 'shadow-fiend',
-    'vine-lasher': 'nature-sprite',
-    'bronze-drake': 'fire-drake',
-    'blood-queen': 'crimson-witch',
-    'iron-juggernaut': 'iron-sentry',
-    'void-empress': 'void-stalker',
-    'storm-titan': 'thunder-titan',
-    'drakarion-the-eternal': 'drakarion',
-    'zephyr-world-breaker': 'zephyr',
-    'velara-the-lifebinder': 'velara',
-    'malachar-the-undying': 'malachar',
-    'kronos-the-forgemaster': 'kronos',
-    'aethon-runekeeper': 'aethon',
-  }
+const CARD_ART_ALIASES: Record<string, string> = {
+  'cave-bat': 'plague-rat',
+  'copper-automaton': 'clay-soldier',
+  'bog-lurker': 'swamp-lurker',
+  'militia-recruit': 'war-grunt',
+  'rust-golem': 'stone-golem',
+  'thornback-boar': 'wild-boar',
+  'granite-sentinel': 'stone-wall',
+  'field-medic': 'spirit-healer',
+  'sand-elemental': 'dust-devil',
+  'pack-wolf': 'thunder-wolf',
+  'clockwork-knight': 'iron-sentry',
+  'siege-turtle': 'moss-troll',
+  'flame-juggler': 'flame-dancer',
+  'highland-archer': 'elven-archer',
+  'moss-treant': 'thorn-bush',
+  'coral-guardian': 'coral-golem',
+  'frost-weaver': 'frost-archer',
+  'crimson-berserker': 'bone-knight',
+  'war-mammoth': 'sunforged-giant',
+  'thunder-hawk': 'tempest-eagle',
+  'hex-spider': 'shadow-fiend',
+  'shadow-dancer': 'shadow-fiend',
+  'vine-lasher': 'nature-sprite',
+  'bronze-drake': 'fire-drake',
+  'blood-queen': 'crimson-witch',
+  'iron-juggernaut': 'iron-sentry',
+  'void-empress': 'void-stalker',
+  'storm-titan': 'thunder-titan',
+  'drakarion-the-eternal': 'drakarion',
+  'zephyr-world-breaker': 'zephyr',
+  'velara-the-lifebinder': 'velara',
+  'malachar-the-undying': 'malachar',
+  'kronos-the-forgemaster': 'kronos',
+  'aethon-runekeeper': 'aethon',
+}
 
+function cardArtPath(cardId: string) {
   const mappedCardId = CARD_ART_ALIASES[cardId] ?? cardId
   return `/generated/cards/${mappedCardId}.svg`
 }
@@ -407,22 +407,22 @@ const EFFECT_LABELS: Record<string, string> = {
 const EFFECT_DESCRIPTIONS: Record<string, string> = {
   charge: 'Can attack immediately when played — does not wait a turn.',
   guard: 'Enemies must attack this unit before they can target your hero or other units.',
-  rally: 'Grants Momentum when played (usually +1, with higher values on specific cards).',
-  blast: 'Deals direct damage to the enemy hero when played.',
-  heal: 'Restores hero health when played (amount depends on the card).',
+  rally: 'Grants +1 Momentum when played (some cards grant more).',
+  blast: 'Deals 2 damage to the enemy hero when played (some cards deal more or less).',
+  heal: 'Restores 2 health to your hero when played (some cards heal more).',
   draw: 'Draw an extra card when played.',
   fury: 'Gains +1 attack after surviving combat.',
   drain: 'Steals enemy Momentum when played.',
-  empower: 'Buffs your friendly board attack when played.',
+  empower: 'Gives all friendly units +1 attack when played (some cards grant more).',
   poison: 'Deals damage to all enemy units when played.',
   shield: 'Grants bonus armor (extra hero health) when played.',
   siphon: 'Damages the enemy hero and heals your hero for the same amount.',
-  bolster: 'Buffs friendly health when played.',
+  bolster: 'Boosts friendly health when played (usually +1, with stronger card-specific variants).',
   cleave: 'Attacks all enemy lanes at once instead of just one.',
   lifesteal: 'Heals your hero for the amount of damage dealt.',
   summon: 'Creates a 1/1 token unit in an empty lane when played.',
-  silence: 'Removes effects from enemy units when played.',
-  frostbite: 'Exhausts enemy units (single target by default, all enemies on stronger cards).',
+  silence: 'Removes effects from all enemy units when played.',
+  frostbite: 'Exhausts a random enemy unit when played; stronger cards can freeze all enemies.',
   enrage: 'Gains +2 attack when damaged.',
   deathrattle: 'Triggers a special effect when this unit is destroyed.',
   overwhelm: 'Excess damage to a unit carries over to the enemy hero.',
@@ -1802,7 +1802,7 @@ function App() {
         return
       }
       setFriendUsernameInput('')
-      setSocialStatus(`Friend request accepted by @${username.toLowerCase()}.`)
+      setSocialStatus(`Friend added: @${username}.`)
       await refreshSocialHub()
     } catch {
       setSocialStatus('Could not add friend right now.')
