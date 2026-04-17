@@ -391,8 +391,8 @@ function App() {
   const [queueState, setQueueState] = useState<QueueState>('idle')
   const [queueSeconds, setQueueSeconds] = useState(0)
   const [queuedOpponent, setQueuedOpponent] = useState<OpponentProfile | null>(null)
-  const [resolvedMatchKey, setResolvedMatchKey] = useState('')
-  const [socketClient, setSocketClient] = useState<Socket | null>(null)
+  const resolvedMatchKeyRef = useRef('')
+  const socketClientRef = useRef<Socket | null>(null)
   const [enemyTurnActive, setEnemyTurnActive] = useState(false)
   const [enemyTurnLabel, setEnemyTurnLabel] = useState('')
   const [backendOnline, setBackendOnline] = useState(false)
@@ -428,6 +428,7 @@ function App() {
   const [damagedSlots, setDamagedSlots] = useState<Set<string>>(new Set())
   const [inspectedCard, setInspectedCard] = useState<InspectedCard | null>(null)
   const battleStartedRef = useRef(false)
+  const battleIntroTimerRef = useRef<number | null>(null)
   const enemyTurnTimers = useRef<number[]>([])
   const prevBoardRef = useRef<{ player: Array<Unit | null>; enemy: Array<Unit | null> } | null>(null)
   const [adminSettings, setAdminSettings] = useState({
@@ -463,6 +464,18 @@ function App() {
     },
     [analyticsConsent, sessionId, visitorId],
   )
+
+  const triggerBattleIntro = useCallback(() => {
+    battleStartedRef.current = true
+    if (battleIntroTimerRef.current) {
+      window.clearTimeout(battleIntroTimerRef.current)
+    }
+    setBattleIntroVisible(true)
+    battleIntroTimerRef.current = window.setTimeout(() => {
+      setBattleIntroVisible(false)
+      battleIntroTimerRef.current = null
+    }, 1600)
+  }, [])
 
   // ─── Auth: restore session on mount ──────────────────────────────────────
   useEffect(() => {
@@ -584,6 +597,9 @@ function App() {
     if (authToken) {
       void authFetch('/api/auth/logout', authToken, { method: 'POST' }).catch(() => {})
     }
+    socketClientRef.current?.disconnect()
+    socketClientRef.current = null
+    setBackendOnline(false)
     setAuthToken('')
     setServerProfile(null)
     setLoggedIn(false)
@@ -592,8 +608,8 @@ function App() {
 
   useEffect(() => {
     if (!authToken) {
-      setSocketClient(null)
-      setBackendOnline(false)
+      socketClientRef.current?.disconnect()
+      socketClientRef.current = null
       return
     }
 
@@ -601,7 +617,7 @@ function App() {
       autoConnect: true,
       auth: { token: authToken },
     })
-    setSocketClient(socket)
+    socketClientRef.current = socket
 
     socket.on('connect', () => {
       setBackendOnline(true)
@@ -654,6 +670,7 @@ function App() {
       setQueueState('idle')
       setQueueSeconds(0)
       setQueuedOpponent(null)
+      triggerBattleIntro()
       playSound('summon', soundEnabled)
     })
 
@@ -693,6 +710,7 @@ function App() {
       setQueueSeconds(0)
       setQueuedOpponent(null)
       setOpponentDisconnected(payload.opponentDisconnected)
+      triggerBattleIntro()
       setToastMessage('Reconnected to your ranked match.')
       playSound('summon', soundEnabled)
     })
@@ -748,9 +766,12 @@ function App() {
       })
 
     return () => {
+      if (socketClientRef.current === socket) {
+        socketClientRef.current = null
+      }
       socket.disconnect()
     }
-  }, [authToken]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [authToken, triggerBattleIntro]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (queueState !== 'searching') {
@@ -847,22 +868,22 @@ function App() {
   }, [queueState, soundEnabled])
 
   useEffect(() => {
-    if (activeScreen !== 'battle') {
-      setBattleIntroVisible(false)
-      battleStartedRef.current = false
+    if (activeScreen === 'battle') {
       return
     }
 
-    if (battleStartedRef.current) return
-    battleStartedRef.current = true
+    battleStartedRef.current = false
+    if (battleIntroTimerRef.current) {
+      window.clearTimeout(battleIntroTimerRef.current)
+      battleIntroTimerRef.current = null
+    }
 
-    setBattleIntroVisible(true)
-    const timer = window.setTimeout(() => {
+    const hideTimer = window.setTimeout(() => {
       setBattleIntroVisible(false)
-    }, 1600)
+    }, 0)
 
     return () => {
-      window.clearTimeout(timer)
+      window.clearTimeout(hideTimer)
     }
   }, [activeScreen])
 
@@ -903,9 +924,14 @@ function App() {
     prevBoardRef.current = { player: playerBoard, enemy: enemyBoard }
 
     if (damaged.size > 0) {
-      setDamagedSlots(damaged)
-      const t = window.setTimeout(() => setDamagedSlots(new Set()), 400)
-      return () => window.clearTimeout(t)
+      const showTimer = window.setTimeout(() => {
+        setDamagedSlots(new Set(damaged))
+      }, 0)
+      const clearTimer = window.setTimeout(() => setDamagedSlots(new Set()), 400)
+      return () => {
+        window.clearTimeout(showTimer)
+        window.clearTimeout(clearTimer)
+      }
     }
   }, [game.player.board, game.enemy.board])
 
@@ -913,12 +939,16 @@ function App() {
     if (enemyTurnActive) return
     if (game.winner === 'player') {
       playSound('win', soundEnabled)
-      setRewardOverlayVisible(true)
     } else if (game.winner === 'enemy') {
       playSound('lose', soundEnabled)
-      setRewardOverlayVisible(false)
-    } else if (!game.winner) {
-      setRewardOverlayVisible(false)
+    }
+
+    const overlayTimer = window.setTimeout(() => {
+      setRewardOverlayVisible(game.winner === 'player')
+    }, 0)
+
+    return () => {
+      window.clearTimeout(overlayTimer)
     }
   }, [game.winner, soundEnabled, enemyTurnActive])
 
@@ -928,11 +958,11 @@ function App() {
     }
 
     const matchKey = `${game.enemy.name}-${game.turnNumber}-${game.winner}`
-    if (matchKey === resolvedMatchKey) {
+    if (matchKey === resolvedMatchKeyRef.current) {
       return
     }
 
-    setResolvedMatchKey(matchKey)
+    resolvedMatchKeyRef.current = matchKey
     void sendAnalytics(
       'match_complete',
       {
@@ -977,7 +1007,7 @@ function App() {
         })
         .catch(() => {})
     }
-  }, [game, resolvedMatchKey, sendAnalytics, authToken])
+  }, [game, sendAnalytics, authToken])
 
   const activeSide = game.turn
   const defendingSide = otherSide(activeSide)
@@ -1241,7 +1271,7 @@ function App() {
 
     setPreferredMode(mode)
     setSelectedAttacker(null)
-    setResolvedMatchKey('')
+    resolvedMatchKeyRef.current = ''
     clearEnemyTurnTimers()
     setEnemyTurnActive(false)
     setEnemyTurnLabel('')
@@ -1311,8 +1341,8 @@ function App() {
     }))
     void sendAnalytics('emote', { emote }, 'social')
 
-    if (backendOnline && socketClient?.connected) {
-      socketClient.emit('room:emote', {
+    if (backendOnline && socketClientRef.current?.connected) {
+      socketClientRef.current.emit('room:emote', {
         roomId: lobbyCode,
         emote,
         from: activePlayer.name,
@@ -1327,7 +1357,7 @@ function App() {
       return
     }
 
-    const isDuel = preferredMode === 'duel' && backendOnline && socketClient?.connected
+    const isDuel = preferredMode === 'duel' && backendOnline && socketClientRef.current?.connected
     if (!isDuel) {
       setPreferredMode('ai')
     }
@@ -1345,8 +1375,8 @@ function App() {
       'queue',
     )
 
-    if (backendOnline && socketClient?.connected) {
-      socketClient.emit('queue:join', {
+    if (backendOnline && socketClientRef.current?.connected) {
+      socketClientRef.current.emit('queue:join', {
         name: 'Rune Captain',
         rank: `${rankLabel} Division`,
         deckConfig,
@@ -1355,8 +1385,8 @@ function App() {
   }
 
   function handleCancelQueue() {
-    if (backendOnline && socketClient?.connected) {
-      socketClient.emit('queue:leave')
+    if (backendOnline && socketClientRef.current?.connected) {
+      socketClientRef.current.emit('queue:leave')
     }
 
     setQueueState('idle')
@@ -1404,8 +1434,8 @@ function App() {
   }
 
   function emitAction(action: Record<string, unknown>) {
-    if (game.mode === 'duel' && socketClient?.connected) {
-      socketClient.emit('game:action', { action })
+    if (game.mode === 'duel' && socketClientRef.current?.connected) {
+      socketClientRef.current.emit('game:action', { action })
     }
   }
 
@@ -2114,7 +2144,7 @@ function App() {
                   onClick={() => (isSelectable ? handleSelectAttacker(index) : handleAttackTarget(index))}
                   onDoubleClick={(e) => {
                     e.preventDefault()
-                    setInspectedCard({ name: unit.name, icon: unit.icon, id: unit.id, cost: unit.cost, attack: unit.attack, health: unit.health, currentHealth: unit.currentHealth, rarity: unit.rarity, tribe: unit.tribe, text: unit.text, effect: unit.effect })
+                    setInspectedCard({ name: unit.name, icon: unit.icon, id: unit.id, cost: unit.cost, attack: unit.attack, health: unit.health, currentHealth: unit.currentHealth, rarity: unit.rarity, tribe: unit.tribe, text: unit.text, effect: unit.effect ?? null })
                   }}
                   disabled={Boolean(game.winner) || (isSelectable ? unit.exhausted : selectedAttacker === null)}
                 >
@@ -2169,7 +2199,7 @@ function App() {
                   onClick={() => (isSelectable ? handleSelectAttacker(index) : handleAttackTarget(index))}
                   onDoubleClick={(e) => {
                     e.preventDefault()
-                    setInspectedCard({ name: unit.name, icon: unit.icon, id: unit.id, cost: unit.cost, attack: unit.attack, health: unit.health, currentHealth: unit.currentHealth, rarity: unit.rarity, tribe: unit.tribe, text: unit.text, effect: unit.effect })
+                    setInspectedCard({ name: unit.name, icon: unit.icon, id: unit.id, cost: unit.cost, attack: unit.attack, health: unit.health, currentHealth: unit.currentHealth, rarity: unit.rarity, tribe: unit.tribe, text: unit.text, effect: unit.effect ?? null })
                   }}
                   disabled={Boolean(game.winner) || (isSelectable ? unit.exhausted : selectedAttacker === null)}
                 >
@@ -2663,7 +2693,7 @@ function App() {
                   onClick={() => handlePlayCard(index)}
                   onDoubleClick={(e) => {
                     e.preventDefault()
-                    setInspectedCard({ name: card.name, icon: card.icon, id: card.id, cost: card.cost, attack: card.attack, health: card.health, rarity: card.rarity, tribe: card.tribe, text: card.text, effect: card.effect })
+                    setInspectedCard({ name: card.name, icon: card.icon, id: card.id, cost: card.cost, attack: card.attack, health: card.health, rarity: card.rarity, tribe: card.tribe, text: card.text, effect: card.effect ?? null })
                   }}
                   disabled={!canPlay}
                   style={{ '--rarity-color': RARITY_COLORS[card.rarity] } as React.CSSProperties}

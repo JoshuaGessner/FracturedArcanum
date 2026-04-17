@@ -26,6 +26,8 @@ db.exec(`
     created_at    TEXT NOT NULL DEFAULT (datetime('now')),
     last_login    TEXT,
     device_fp     TEXT,
+    created_ip_hash TEXT,
+    created_ua_hash TEXT,
     flags         TEXT NOT NULL DEFAULT ''
   );
 
@@ -74,7 +76,22 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires_at);
   CREATE INDEX IF NOT EXISTS idx_match_log_account ON match_log(account_id);
   CREATE INDEX IF NOT EXISTS idx_rate_limits_window ON rate_limits(window_start);
+  CREATE INDEX IF NOT EXISTS idx_accounts_device_fp ON accounts(device_fp);
+  CREATE INDEX IF NOT EXISTS idx_accounts_created_ip ON accounts(created_ip_hash);
+  CREATE INDEX IF NOT EXISTS idx_accounts_created_ip_ua_created_at ON accounts(created_ip_hash, created_ua_hash, created_at);
 `)
+
+function ensureColumn(tableName, columnName, definition) {
+  const columns = db.prepare(`PRAGMA table_info(${tableName})`).all()
+  if (columns.some((column) => column.name === columnName)) {
+    return
+  }
+
+  db.exec(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${definition}`)
+}
+
+ensureColumn('accounts', 'created_ip_hash', 'TEXT')
+ensureColumn('accounts', 'created_ua_hash', 'TEXT')
 
 // ─── Password hashing (scrypt — no native addon needed) ──────────────────────
 
@@ -101,6 +118,11 @@ export function verifyPassword(plain, stored) {
 export function hashFingerprint(fp) {
   if (!fp) return null
   return createHash('sha256').update(`rc-fp:${fp}`).digest('hex').slice(0, 32)
+}
+
+export function hashUserAgent(userAgent) {
+  if (!userAgent) return null
+  return createHash('sha256').update(`rc-ua:${userAgent}`).digest('hex').slice(0, 24)
 }
 
 // ─── Rate limiting ────────────────────────────────────────────────────────────
@@ -142,10 +164,14 @@ export function checkRateLimit(key, maxAttempts) {
 const USERNAME_RE = /^[a-zA-Z0-9_]{3,20}$/
 const DISPLAY_RE = /^.{1,24}$/
 const PASSWORD_MIN = 8
+const MAX_ACCOUNTS_PER_DEVICE = 2
+const MAX_ACCOUNTS_PER_IP = 4
+const MAX_ACCOUNTS_PER_IP_PER_DAY = 2
+const MAX_ACCOUNTS_PER_IP_AND_AGENT_PER_WEEK = 3
 
 const _insertAccount = db.prepare(`
-  INSERT INTO accounts (id, username, password_hash, display_name, device_fp)
-  VALUES (?, ?, ?, ?, ?)
+  INSERT INTO accounts (id, username, password_hash, display_name, device_fp, created_ip_hash, created_ua_hash, flags)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 `)
 
 const _insertProfile = db.prepare(`
@@ -160,7 +186,43 @@ const _countByFp = db.prepare(`
   SELECT COUNT(*) as cnt FROM accounts WHERE device_fp = ? AND device_fp IS NOT NULL
 `)
 
-export function createAccount(username, password, displayName, deviceFp) {
+const _countByCreatedIp = db.prepare(`
+  SELECT COUNT(*) as cnt FROM accounts WHERE created_ip_hash = ? AND created_ip_hash IS NOT NULL
+`)
+
+const _countByCreatedIpPerDay = db.prepare(`
+  SELECT COUNT(*) as cnt
+  FROM accounts
+  WHERE created_ip_hash = ?
+    AND created_ip_hash IS NOT NULL
+    AND created_at >= datetime('now', '-1 day')
+`)
+
+const _countByCreatedIpAndAgentPerWeek = db.prepare(`
+  SELECT COUNT(*) as cnt
+  FROM accounts
+  WHERE created_ip_hash = ?
+    AND created_ua_hash = ?
+    AND created_ip_hash IS NOT NULL
+    AND created_ua_hash IS NOT NULL
+    AND created_at >= datetime('now', '-7 day')
+`)
+
+function getCount(row) {
+  return Number(row?.cnt ?? 0)
+}
+
+function buildAccountFlags({ deviceCount, ipCount, ipDayCount, ipAgentWeekCount }) {
+  const flags = []
+
+  if (deviceCount > 0) flags.push('shared-device')
+  if (ipCount > 0) flags.push('shared-ip')
+  if (ipDayCount > 0 || ipAgentWeekCount > 0) flags.push('signup-cluster')
+
+  return flags.join(',')
+}
+
+export function createAccount(username, password, displayName, deviceFp, ip, userAgent) {
   if (!USERNAME_RE.test(username)) {
     return { ok: false, error: 'Username must be 3-20 characters: letters, numbers, underscore only.' }
   }
@@ -180,19 +242,65 @@ export function createAccount(username, password, displayName, deviceFp) {
 
   // Anti-sybil: limit accounts per device fingerprint
   const fpHash = hashFingerprint(deviceFp)
+  const ipHash = hashIp(ip)
+  const userAgentHash = hashUserAgent(userAgent)
+  const deviceCount = fpHash ? getCount(_countByFp.get(fpHash)) : 0
+  const ipCount = ipHash ? getCount(_countByCreatedIp.get(ipHash)) : 0
+  const ipDayCount = ipHash ? getCount(_countByCreatedIpPerDay.get(ipHash)) : 0
+  const ipAgentWeekCount = ipHash && userAgentHash
+    ? getCount(_countByCreatedIpAndAgentPerWeek.get(ipHash, userAgentHash))
+    : 0
+
   if (fpHash) {
-    const fpCount = _countByFp.get(fpHash)
-    if (fpCount && fpCount.cnt >= 3) {
-      return { ok: false, error: 'Account limit reached for this device. Contact support if you need help.' }
+    if (deviceCount >= MAX_ACCOUNTS_PER_DEVICE) {
+      return {
+        ok: false,
+        status: 403,
+        error: 'This device has reached the account creation limit. Use an existing account or contact support if you need help.',
+      }
+    }
+  }
+
+  if (ipHash && ipDayCount >= MAX_ACCOUNTS_PER_IP_PER_DAY) {
+    return {
+      ok: false,
+      status: 429,
+      error: 'This network has created too many accounts recently. Please wait and try again later.',
+    }
+  }
+
+  if (ipHash && ipCount >= MAX_ACCOUNTS_PER_IP) {
+    return {
+      ok: false,
+      status: 403,
+      error: 'This network has reached the account creation limit. Use an existing account or contact support if you need help.',
+    }
+  }
+
+  if (ipHash && userAgentHash && ipAgentWeekCount >= MAX_ACCOUNTS_PER_IP_AND_AGENT_PER_WEEK) {
+    return {
+      ok: false,
+      status: 403,
+      error: 'Too many similar account registrations were detected from this connection. Please use an existing account or contact support.',
     }
   }
 
   const id = `acct-${randomBytes(12).toString('hex')}`
   const hash = hashPassword(password)
+  const flags = buildAccountFlags({ deviceCount, ipCount, ipDayCount, ipAgentWeekCount })
 
   try {
     const tx = db.transaction(() => {
-      _insertAccount.run(id, username.toLowerCase(), hash, displayName || username, fpHash)
+      _insertAccount.run(
+        id,
+        username.toLowerCase(),
+        hash,
+        displayName || username,
+        fpHash,
+        ipHash,
+        userAgentHash,
+        flags,
+      )
       _insertProfile.run(id, '{}')
     })
     tx()

@@ -472,29 +472,46 @@ function requireAuth(request, response, next) {
 }
 
 function clientIp(request) {
-  return request.get('x-forwarded-for')?.split(',')[0]?.trim() ?? request.ip ?? '0.0.0.0'
+  const ip = request.ip ?? request.socket?.remoteAddress ?? '0.0.0.0'
+  return ip.startsWith('::ffff:') ? ip.slice(7) : ip
+}
+
+function clientUserAgent(request) {
+  return String(request.get('user-agent') ?? '').slice(0, 512)
 }
 
 // ─── Account endpoints ─────────────────────────────────────────────────────
 
 app.post('/api/auth/signup', (request, response) => {
   const ip = clientIp(request)
+  const userAgent = clientUserAgent(request)
+  const { username, password, displayName, deviceFingerprint } = request.body ?? {}
+  const fingerprintHash = hashFingerprint(String(deviceFingerprint ?? ''))
   const rl = checkRateLimit(`signup:${hashIp(ip)}`, 5)
   if (!rl.allowed) {
     response.status(429).json({ ok: false, error: 'Too many signup attempts. Try again later.' })
     return
   }
 
-  const { username, password, displayName, deviceFingerprint } = request.body ?? {}
+  if (fingerprintHash) {
+    const fingerprintRateLimit = checkRateLimit(`signup-fp:${fingerprintHash}`, 3)
+    if (!fingerprintRateLimit.allowed) {
+      response.status(429).json({ ok: false, error: 'Too many signup attempts from this device. Try again later.' })
+      return
+    }
+  }
+
   const result = createAccount(
     String(username ?? ''),
     String(password ?? ''),
     String(displayName ?? username ?? ''),
     String(deviceFingerprint ?? ''),
+    ip,
+    userAgent,
   )
 
   if (!result.ok) {
-    response.status(400).json(result)
+    response.status(result.status ?? 400).json({ ok: false, error: result.error })
     return
   }
 
@@ -569,9 +586,9 @@ app.post(
     }
 
     const ip = clientIp(request)
-    const result = createAccount(uname, pass, dname, '')
+    const result = createAccount(uname, pass, dname, '', ip, clientUserAgent(request))
     if (!result.ok) {
-      response.status(400).json(result)
+      response.status(result.status ?? 400).json({ ok: false, error: result.error })
       return
     }
 
