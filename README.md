@@ -127,7 +127,7 @@ A `render.yaml` is included for one-click deployment on [Render](https://render.
 | Variable | Default | Description |
 |---|---|---|
 | `PORT` | `43173` | Server port |
-| `ADMIN_KEY` | `rune-admin-demo` | Admin console access key |
+| `ADMIN_KEY` | none — set this yourself | Admin console access key |
 | `CLIENT_ORIGIN` | `*` | Comma-separated allowed CORS origins |
 | `VITE_ARENA_URL` | (same origin) | Arena WebSocket URL for split deploys |
 

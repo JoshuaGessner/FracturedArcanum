@@ -40,10 +40,10 @@ const CLIENT_ORIGINS = process.env.CLIENT_ORIGIN?.split(',').map((value) => valu
 
 const DEFAULT_PORT = 43173
 const PORT = Number(process.env.PORT ?? DEFAULT_PORT)
-const ADMIN_KEY = process.env.ADMIN_KEY ?? 'rune-admin-demo'
+const ADMIN_KEY = (process.env.ADMIN_KEY ?? '').trim()
 
-if (process.env.NODE_ENV === 'production' && ADMIN_KEY === 'rune-admin-demo') {
-  console.warn('WARNING: Using default ADMIN_KEY in production. Set ADMIN_KEY env var to a secure value.')
+if (process.env.NODE_ENV === 'production' && !ADMIN_KEY) {
+  console.warn('WARNING: ADMIN_KEY is not set. Admin console access is disabled until a secure value is configured.')
 }
 
 const isProduction = process.env.NODE_ENV === 'production'
