@@ -159,6 +159,7 @@ type ServerProfile = {
   accountId?: string
   displayName?: string
   username: string
+  role?: 'user' | 'admin' | 'owner'
   runes: number
   seasonRating: number
   wins: number
@@ -169,6 +170,24 @@ type ServerProfile = {
   selectedTheme: CosmeticTheme
   lastDaily: string
   totalEarned: number
+}
+
+type AdminUser = {
+  accountId: string
+  username: string
+  displayName: string
+  role: 'user' | 'admin' | 'owner'
+  createdAt: string
+  lastLogin: string | null
+}
+
+type AdminAuditEntry = {
+  id: string
+  action: string
+  actor: { accountId: string; username: string; displayName: string } | null
+  target: { accountId: string; username: string; displayName: string } | null
+  metadata: Record<string, unknown>
+  createdAt: string
 }
 
 type InstallPromptEvent = Event & {
@@ -487,7 +506,7 @@ function App() {
   const [setupForm, setSetupForm] = useState({ username: '', password: '', displayName: '' })
   const [setupError, setSetupError] = useState('')
   const [setupLoading, setSetupLoading] = useState(false)
-  const [setupAdminKey, setSetupAdminKey] = useState('')
+  const [setupAdminKey] = useState('') // deprecated: previously displayed the recovery key after setup; the owner now uses their account session for admin access.
 
   // ─── Server-authoritative player state ────────────────────────────────
   const [serverProfile, setServerProfile] = useState<ServerProfile | null>(null)
@@ -497,6 +516,9 @@ function App() {
   const ownedThemes = serverProfile?.ownedThemes ?? ['royal'] as CosmeticTheme[]
   const selectedTheme = (serverProfile?.selectedTheme ?? 'royal') as CosmeticTheme
   const lastDailyClaim = serverProfile?.lastDaily ?? ''
+  const accountRole = serverProfile?.role ?? 'user'
+  const isAdminRole = accountRole === 'admin' || accountRole === 'owner'
+  const isOwnerRole = accountRole === 'owner'
 
   // ─── Local game/UI state ──────────────────────────────────────────────
   const [deckConfig, setDeckConfig] = useState<DeckConfig>(savedDeckConfig)
@@ -565,10 +587,15 @@ function App() {
     details: '',
   })
   const [complaintStatus, setComplaintStatus] = useState('No issue reports submitted in this session.')
-  const [adminKey, setAdminKey] = useState('')
   const [adminOverview, setAdminOverview] = useState<AdminOverview | null>(null)
   const [adminLoading, setAdminLoading] = useState(false)
   const [adminError, setAdminError] = useState('')
+  const [adminUsers, setAdminUsers] = useState<AdminUser[]>([])
+  const [adminUsersLoading, setAdminUsersLoading] = useState(false)
+  const [adminUserSearch, setAdminUserSearch] = useState('')
+  const [adminAudit, setAdminAudit] = useState<AdminAuditEntry[]>([])
+  const [transferForm, setTransferForm] = useState({ targetAccountId: '', password: '' })
+  const [transferStatus, setTransferStatus] = useState('')
   const [battleIntroVisible, setBattleIntroVisible] = useState(false)
   const [rewardOverlayVisible, setRewardOverlayVisible] = useState(false)
   const [damagedSlots, setDamagedSlots] = useState<Set<string>>(new Set())
@@ -738,7 +765,7 @@ function App() {
         }),
       })
       const data = await response.json() as {
-        ok: boolean; error?: string; adminKey?: string;
+        ok: boolean; error?: string;
         token?: string; profile?: ServerProfile
       }
 
@@ -748,7 +775,6 @@ function App() {
         return
       }
 
-      setSetupAdminKey(data.adminKey ?? '')
       setAuthToken(data.token ?? '')
       setServerProfile(data.profile ?? null)
       setLoggedIn(true)
@@ -882,6 +908,18 @@ function App() {
 
     socket.on('server:hello', (payload: { message: string }) => {
       setMotd(payload.message)
+    })
+
+    socket.on('server:role_changed', (payload: { role: 'user' | 'admin' | 'owner' }) => {
+      setServerProfile((profile) => (profile ? { ...profile, role: payload.role } : profile))
+      if (payload.role === 'user') {
+        setToastMessage('Your admin privileges were revoked.')
+        setActiveScreen((current) => (current === 'ops' ? 'home' : current))
+      } else if (payload.role === 'admin') {
+        setToastMessage('You are now an admin.')
+      } else if (payload.role === 'owner') {
+        setToastMessage('You are now the server owner.')
+      }
     })
 
     socket.on(
@@ -1562,20 +1600,20 @@ function App() {
     void sendAnalytics('cosmetic_equip', { themeId }, 'vault')
   }
 
-  async function refreshAdminOverview(key = adminKey) {
-    if (!key.trim()) {
-      setAdminError('Enter the admin key to open the operations console.')
+  async function refreshAdminOverview() {
+    if (!authToken) {
+      setAdminError('Sign in with your owner or admin account to open the operations console.')
+      return
+    }
+    if (!isAdminRole) {
+      setAdminError('Your account does not have admin privileges.')
       return
     }
 
     setAdminLoading(true)
 
     try {
-      const response = await fetch(`${ARENA_URL}/api/admin/overview`, {
-        headers: {
-          'x-admin-key': key.trim(),
-        },
-      })
+      const response = await authFetch('/api/admin/overview', authToken)
 
       if (!response.ok) {
         throw new Error('Admin access denied')
@@ -1585,11 +1623,104 @@ function App() {
       setAdminOverview(data)
       setAdminSettings(data.settings)
       setAdminError('')
+      // Also refresh users + audit for owner UI
+      if (isOwnerRole) {
+        void refreshAdminUsers()
+        void refreshAdminAudit()
+      }
     } catch {
       setAdminOverview(null)
-      setAdminError('Admin access failed. Check the key and try again.')
+      setAdminError('Admin access failed. Your session may have expired.')
     } finally {
       setAdminLoading(false)
+    }
+  }
+
+  async function refreshAdminUsers(searchTerm = adminUserSearch) {
+    if (!authToken || !isAdminRole) return
+    setAdminUsersLoading(true)
+    try {
+      const q = searchTerm.trim()
+      const path = q ? `/api/admin/users?search=${encodeURIComponent(q)}` : '/api/admin/users'
+      const response = await authFetch(path, authToken)
+      if (!response.ok) throw new Error('users fetch failed')
+      const data = (await response.json()) as { ok: boolean; users: AdminUser[] }
+      setAdminUsers(data.users ?? [])
+    } catch {
+      // non-fatal
+    } finally {
+      setAdminUsersLoading(false)
+    }
+  }
+
+  async function refreshAdminAudit() {
+    if (!authToken || !isAdminRole) return
+    try {
+      const response = await authFetch('/api/admin/audit', authToken)
+      if (!response.ok) return
+      const data = (await response.json()) as { ok: boolean; audit: AdminAuditEntry[] }
+      setAdminAudit(data.audit ?? [])
+    } catch { /* non-fatal */ }
+  }
+
+  async function handleSetUserRole(target: AdminUser, newRole: 'admin' | 'user') {
+    if (!authToken || !isOwnerRole) return
+    if (target.accountId === (serverProfile?.accountId ?? '')) {
+      setAdminError('You cannot change your own role.')
+      return
+    }
+    try {
+      const response = await authFetch(
+        `/api/admin/users/${encodeURIComponent(target.accountId)}/role`,
+        authToken,
+        { method: 'POST', body: { role: newRole } },
+      )
+      const data = (await response.json()) as { ok: boolean; error?: string }
+      if (!response.ok || !data.ok) {
+        setAdminError(data.error ?? 'Role change failed.')
+        return
+      }
+      setAdminError('')
+      setToastMessage(`${target.displayName || target.username} is now ${newRole === 'admin' ? 'an admin' : 'a regular user'}.`)
+      await refreshAdminUsers()
+      await refreshAdminAudit()
+    } catch {
+      setAdminError('Could not change that role right now.')
+    }
+  }
+
+  async function handleTransferOwnership(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!authToken || !isOwnerRole) return
+    const targetAccountId = transferForm.targetAccountId.trim()
+    const password = transferForm.password
+    if (!targetAccountId || !password) {
+      setTransferStatus('Choose a target account and confirm your password.')
+      return
+    }
+    if (targetAccountId === (serverProfile?.accountId ?? '')) {
+      setTransferStatus('Target must be a different account.')
+      return
+    }
+    if (!window.confirm('Transfer ownership? You will be demoted to admin.')) return
+    try {
+      const response = await authFetch('/api/admin/owner/transfer', authToken, {
+        method: 'POST',
+        body: { targetAccountId, password },
+      })
+      const data = (await response.json()) as { ok: boolean; error?: string }
+      if (!response.ok || !data.ok) {
+        setTransferStatus(data.error ?? 'Ownership transfer failed.')
+        return
+      }
+      setTransferStatus('Ownership transferred. You are now an admin on this server.')
+      setTransferForm({ targetAccountId: '', password: '' })
+      setServerProfile((profile) => (profile ? { ...profile, role: 'admin' } : profile))
+      await refreshAdminUsers()
+      await refreshAdminAudit()
+      await refreshAdminOverview()
+    } catch {
+      setTransferStatus('Could not reach the server. Try again.')
     }
   }
 
@@ -1635,19 +1766,15 @@ function App() {
   }
 
   async function handleSaveAdminSettings() {
-    if (!adminKey.trim()) {
-      setAdminError('Enter the admin key before saving live settings.')
+    if (!authToken || !isAdminRole) {
+      setAdminError('Sign in with an admin account to save live settings.')
       return
     }
 
     try {
-      const response = await fetch(`${ARENA_URL}/api/admin/settings`, {
+      const response = await authFetch('/api/admin/settings', authToken, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-admin-key': adminKey.trim(),
-        },
-        body: JSON.stringify(adminSettings),
+        body: adminSettings,
       })
 
       if (!response.ok) {
@@ -1659,32 +1786,28 @@ function App() {
       setFeaturedMode(adminSettings.featuredMode)
       setMaintenanceMode(adminSettings.maintenanceMode)
       setToastMessage('Admin live settings updated.')
-      await refreshAdminOverview(adminKey)
+      await refreshAdminOverview()
     } catch {
       setAdminError('The live settings could not be saved.')
     }
   }
 
   async function handleUpdateComplaintStatus(id: string, status: string) {
-    if (!adminKey.trim()) {
-      setAdminError('Enter the admin key before updating tickets.')
+    if (!authToken || !isAdminRole) {
+      setAdminError('Sign in with an admin account to update tickets.')
       return
     }
 
     try {
-      const response = await fetch(`${ARENA_URL}/api/admin/complaints/${id}`, {
+      const response = await authFetch(`/api/admin/complaints/${id}`, authToken, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-admin-key': adminKey.trim(),
-        },
-        body: JSON.stringify({
+        body: {
           status,
           note:
             status === 'resolved'
               ? 'Marked resolved from the in-app admin console.'
               : 'Marked investigating from the in-app admin console.',
-        }),
+        },
       })
 
       if (!response.ok) {
@@ -1692,7 +1815,7 @@ function App() {
       }
 
       setToastMessage(`Complaint ${id} updated to ${status}.`)
-      await refreshAdminOverview(adminKey)
+      await refreshAdminOverview()
     } catch {
       setAdminError('The complaint status could not be updated.')
     }
@@ -3184,7 +3307,7 @@ function App() {
         </article>
       </section>
 
-      <section className={`ops-grid screen-panel ${activeScreen === 'ops' ? 'active' : 'hidden'}`}>
+      <section className={`ops-grid screen-panel ${activeScreen === 'ops' && isAdminRole ? 'active' : 'hidden'}`}>
         <article className="section-card utility-card">
           <div className="section-head">
             <div>
@@ -3331,23 +3454,28 @@ function App() {
           <div className="section-head">
             <div>
               <h2>Admin Operations Console</h2>
-              <p className="note">Monitor traffic, review complaints, and control live service messaging.</p>
+              <p className="note">
+                {isAdminRole
+                  ? 'Monitor traffic, review complaints, and control live service messaging.'
+                  : 'This console is only available to owner and admin accounts.'}
+              </p>
             </div>
-            <span className="badge">Admin</span>
+            <span className={`badge role-badge role-${accountRole}`}>
+              {accountRole === 'owner' ? 'Owner' : accountRole === 'admin' ? 'Admin' : 'Player'}
+            </span>
           </div>
 
-          <div className="admin-auth-row">
-            <input
-              className="text-input"
-              type="password"
-              value={adminKey}
-              placeholder="Enter admin key"
-              onChange={(event) => setAdminKey(event.target.value)}
-            />
-            <button className="secondary" onClick={() => void refreshAdminOverview()}>
-              {adminLoading ? 'Loading…' : 'Open Console'}
-            </button>
-          </div>
+          {isAdminRole ? (
+            <div className="admin-auth-row">
+              <button className="secondary" onClick={() => void refreshAdminOverview()}>
+                {adminLoading ? 'Loading…' : adminOverview ? 'Refresh Console' : 'Open Console'}
+              </button>
+            </div>
+          ) : (
+            <p className="note toast-line">
+              Your account does not have admin privileges. Contact the server owner if you believe this is a mistake.
+            </p>
+          )}
 
           {adminError && <p className="note toast-line">{adminError}</p>}
 
@@ -3517,6 +3645,121 @@ function App() {
                   )}
                 </div>
               </div>
+
+              {isOwnerRole && (
+                <div className="admin-panel-block admin-role-block">
+                  <div className="section-head log-heading">
+                    <h3>Account Roles</h3>
+                    <span className="badge">Owner</span>
+                  </div>
+
+                  <div className="admin-auth-row">
+                    <input
+                      className="text-input"
+                      value={adminUserSearch}
+                      placeholder="Search users by username, name, or id"
+                      onChange={(event) => setAdminUserSearch(event.target.value)}
+                    />
+                    <button className="secondary" onClick={() => void refreshAdminUsers(adminUserSearch)}>
+                      {adminUsersLoading ? 'Loading…' : 'Search'}
+                    </button>
+                  </div>
+
+                  <ul className="role-list">
+                    {adminUsers.length === 0 ? (
+                      <li className="note">No users loaded. Click search to list accounts.</li>
+                    ) : (
+                      adminUsers.map((user) => {
+                        const isSelf = user.accountId === (serverProfile?.accountId ?? '')
+                        const isRoleOwner = user.role === 'owner'
+                        return (
+                          <li className="role-row" key={user.accountId}>
+                            <div className="role-identity">
+                              <strong>{user.displayName || user.username}</strong>
+                              <span className="mini-text">@{user.username}</span>
+                              <span className={`badge role-badge role-${user.role}`}>
+                                {user.role === 'owner' ? 'Owner' : user.role === 'admin' ? 'Admin' : 'Player'}
+                              </span>
+                            </div>
+                            <div className="controls">
+                              {isRoleOwner || isSelf ? (
+                                <span className="mini-text">
+                                  {isSelf ? 'You' : 'Cannot modify the owner'}
+                                </span>
+                              ) : user.role === 'admin' ? (
+                                <button className="ghost" onClick={() => void handleSetUserRole(user, 'user')}>
+                                  Demote to Player
+                                </button>
+                              ) : (
+                                <button className="primary" onClick={() => void handleSetUserRole(user, 'admin')}>
+                                  Promote to Admin
+                                </button>
+                              )}
+                            </div>
+                          </li>
+                        )
+                      })
+                    )}
+                  </ul>
+
+                  <div className="section-head log-heading">
+                    <h3>Transfer Ownership</h3>
+                    <span className="badge">Irreversible</span>
+                  </div>
+                  <form className="form-stack" onSubmit={handleTransferOwnership}>
+                    <label className="form-field">
+                      <span>Target account id</span>
+                      <input
+                        className="text-input"
+                        value={transferForm.targetAccountId}
+                        placeholder="acct-…"
+                        onChange={(event) => setTransferForm((f) => ({ ...f, targetAccountId: event.target.value }))}
+                      />
+                    </label>
+                    <label className="form-field">
+                      <span>Confirm your password</span>
+                      <input
+                        className="text-input"
+                        type="password"
+                        autoComplete="current-password"
+                        value={transferForm.password}
+                        onChange={(event) => setTransferForm((f) => ({ ...f, password: event.target.value }))}
+                      />
+                    </label>
+                    {transferStatus && <p className="note toast-line">{transferStatus}</p>}
+                    <div className="controls">
+                      <button className="danger" type="submit">
+                        Transfer ownership
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              )}
+
+              {isAdminRole && (
+                <div className="admin-panel-block">
+                  <div className="section-head log-heading">
+                    <h3>Admin Audit Log</h3>
+                    <button className="ghost" onClick={() => void refreshAdminAudit()}>Refresh</button>
+                  </div>
+                  <ul className="audit-list">
+                    {adminAudit.length === 0 ? (
+                      <li className="note">No audit entries yet.</li>
+                    ) : (
+                      adminAudit.slice(0, 20).map((entry) => (
+                        <li key={entry.id} className="audit-row">
+                          <span className="badge">{entry.action}</span>
+                          <span className="mini-text">
+                            {entry.actor ? `@${entry.actor.username}` : 'system'}
+                            {entry.target ? ` → @${entry.target.username}` : ''}
+                          </span>
+                          <span className="mini-text">{formatTimestamp(entry.createdAt)}</span>
+                        </li>
+                      ))
+                    )}
+                  </ul>
+                </div>
+              )}
             </>
           )}
         </article>
@@ -3581,9 +3824,11 @@ function App() {
         <button className={activeScreen === 'vault' ? 'nav-chip active' : 'nav-chip'} onClick={() => openScreen('vault')}>
           💎 Vault
         </button>
-        <button className={activeScreen === 'ops' ? 'nav-chip active' : 'nav-chip'} onClick={() => openScreen('ops')}>
-          📊 Ops
-        </button>
+        {isAdminRole && (
+          <button className={activeScreen === 'ops' ? 'nav-chip active' : 'nav-chip'} onClick={() => openScreen('ops')}>
+            📊 Ops
+          </button>
+        )}
       </nav>
       </>)}
     </main>

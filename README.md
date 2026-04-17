@@ -173,6 +173,28 @@ Backups are written to `backups/update-YYYYMMDD-HHMMSS/` so admins can restore d
 | `PORT` | `43173` | Server listen port |
 | `CLIENT_ORIGIN` | `*` (dev) / none (prod) | Comma-separated allowed CORS origins for production (e.g. `https://yourdomain.com`) |
 | `VITE_ARENA_URL` | (same origin) | Override the backend URL if frontend and backend are hosted separately |
+| `ADMIN_KEY` | auto-generated | **Recovery-only** key for the owner-recovery endpoint. Not used for day-to-day admin access. See [Admin roles](#admin-roles). |
+
+### Admin roles
+
+The server uses an **account-bound role model**. Every account has a `role` of
+`user`, `admin`, or `owner`:
+
+- On first launch, `/api/setup` creates the initial administrator and records
+  their account as the **owner**.
+- The owner may promote or demote other accounts to/from `admin` from the
+  in-app Operations console — the UI uses the normal session token, there is
+  no key to paste.
+- `admin` can view the operations console and change live-ops settings;
+  `owner` can additionally manage roles, transfer ownership (password
+  confirmation required), and audit all privileged actions.
+- `user` accounts never see the Operations entry point.
+
+The legacy `ADMIN_KEY` header is retained only as a **break-glass recovery
+mechanism**. It grants access to a single endpoint — `POST /api/admin/owner/recover` —
+which lets an operator with filesystem access to `arena-server-config.json`
+(where the key is stored) restore ownership if the owner account is lost. It
+does **not** grant access to the rest of the admin console.
 
 ### Reverse Proxy with Caddy
 
