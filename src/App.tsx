@@ -606,7 +606,7 @@ function App() {
   const [visitorId] = useState(() => readStoredValue(STORAGE_KEYS.visitor, createAnonymousId()))
   const [sessionId] = useState(() => `session-${Math.random().toString(36).slice(2, 10)}`)
   const [installPromptEvent, setInstallPromptEvent] = useState<InstallPromptEvent | null>(null)
-  const [toastMessage, _setToastMessage] = useState('Ready your deck and enter the arena.')
+  const [toastMessage, setToastMessageRaw] = useState('Ready your deck and enter the arena.')
   const [toastSeverity, setToastSeverity] = useState<'info' | 'success' | 'warning' | 'error'>('info')
   type ToastEntry = { id: string; message: string; severity: 'info' | 'success' | 'warning' | 'error' }
   const [toastStack, setToastStack] = useState<ToastEntry[]>([])
@@ -625,7 +625,7 @@ function App() {
   const setToastMessage = useCallback(
     (message: string, severityOverride?: 'info' | 'success' | 'warning' | 'error') => {
       const severity = severityOverride ?? inferToastSeverity(message)
-      _setToastMessage(message)
+      setToastMessageRaw(message)
       setToastSeverity(severity)
       const id = `t-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
       setToastStack((current) => [...current.slice(-3), { id, message, severity }])
@@ -1001,14 +1001,16 @@ function App() {
       setMotd(payload.message)
     })
 
-    socket.on('server:role_changed', (payload: { role: 'user' | 'admin' | 'owner' }) => {
-      setServerProfile((profile) => (profile ? { ...profile, role: payload.role } : profile))
-      if (payload.role === 'user') {
+    socket.on('server:role_changed', (payload: { role?: unknown }) => {
+      const nextRole = payload?.role
+      if (nextRole !== 'user' && nextRole !== 'admin' && nextRole !== 'owner') return
+      setServerProfile((profile) => (profile ? { ...profile, role: nextRole } : profile))
+      if (nextRole === 'user') {
         setToastMessage('Your admin privileges were revoked.')
         setActiveScreen((current) => (current === 'ops' ? 'home' : current))
-      } else if (payload.role === 'admin') {
+      } else if (nextRole === 'admin') {
         setToastMessage('You are now an admin.')
-      } else if (payload.role === 'owner') {
+      } else if (nextRole === 'owner') {
         setToastMessage('You are now the server owner.')
       }
     })
@@ -3283,6 +3285,7 @@ function App() {
                       <strong>
                         <span
                           className={`presence-dot ${online ? 'online' : 'offline'}`}
+                          role="img"
                           aria-label={online ? 'online' : 'offline'}
                           title={online ? 'Online' : 'Offline'}
                         />
