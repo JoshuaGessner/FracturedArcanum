@@ -30,6 +30,12 @@ import {
   getCollection,
   openPack,
   PACK_DEFS,
+  getSocialOverview,
+  addFriend,
+  removeFriend,
+  createClan,
+  joinClanByInvite,
+  leaveClan,
 } from './db.js'
 import {
   createRoom,
@@ -920,6 +926,85 @@ app.post('/api/shop/pack', requireAuth, (request, response) => {
 app.get('/api/me/collection', requireAuth, (request, response) => {
   const collection = getCollection(request.accountId)
   response.json({ ok: true, collection: collection ?? {} })
+})
+
+app.get('/api/social', requireAuth, (request, response) => {
+  response.json(getSocialOverview(request.accountId))
+})
+
+app.post('/api/social/friends', requireAuth, (request, response) => {
+  const rl = checkRateLimit(`social:friend:add:${request.accountId}`, 20)
+  if (!rl.allowed) {
+    response.status(429).json({ ok: false, error: 'Too many friend actions. Please try again shortly.' })
+    return
+  }
+
+  const result = addFriend(request.accountId, request.body?.username)
+  if (!result.ok) {
+    response.status(400).json(result)
+    return
+  }
+  response.json(result)
+})
+
+app.delete('/api/social/friends/:friendAccountId', requireAuth, (request, response) => {
+  const rl = checkRateLimit(`social:friend:remove:${request.accountId}`, 30)
+  if (!rl.allowed) {
+    response.status(429).json({ ok: false, error: 'Too many friend actions. Please try again shortly.' })
+    return
+  }
+
+  const result = removeFriend(request.accountId, request.params.friendAccountId)
+  if (!result.ok) {
+    response.status(400).json(result)
+    return
+  }
+  response.json(result)
+})
+
+app.post('/api/social/clan/create', requireAuth, (request, response) => {
+  const rl = checkRateLimit(`social:clan:create:${request.accountId}`, 8)
+  if (!rl.allowed) {
+    response.status(429).json({ ok: false, error: 'Too many clan actions. Please try again later.' })
+    return
+  }
+
+  const result = createClan(request.accountId, request.body?.name, request.body?.tag)
+  if (!result.ok) {
+    response.status(400).json(result)
+    return
+  }
+  response.json(result)
+})
+
+app.post('/api/social/clan/join', requireAuth, (request, response) => {
+  const rl = checkRateLimit(`social:clan:join:${request.accountId}`, 12)
+  if (!rl.allowed) {
+    response.status(429).json({ ok: false, error: 'Too many clan actions. Please try again later.' })
+    return
+  }
+
+  const result = joinClanByInvite(request.accountId, request.body?.inviteCode)
+  if (!result.ok) {
+    response.status(400).json(result)
+    return
+  }
+  response.json(result)
+})
+
+app.post('/api/social/clan/leave', requireAuth, (request, response) => {
+  const rl = checkRateLimit(`social:clan:leave:${request.accountId}`, 12)
+  if (!rl.allowed) {
+    response.status(429).json({ ok: false, error: 'Too many clan actions. Please try again later.' })
+    return
+  }
+
+  const result = leaveClan(request.accountId)
+  if (!result.ok) {
+    response.status(400).json(result)
+    return
+  }
+  response.json(result)
 })
 
 app.get('/api/health', (_request, response) => {

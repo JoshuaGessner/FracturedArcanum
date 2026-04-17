@@ -74,6 +74,30 @@ db.exec(`
     played_at  TEXT NOT NULL DEFAULT (datetime('now'))
   );
 
+  CREATE TABLE IF NOT EXISTS social_friends (
+    account_id       TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    friend_account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    created_at       TEXT NOT NULL DEFAULT (datetime('now')),
+    PRIMARY KEY (account_id, friend_account_id),
+    CHECK (account_id <> friend_account_id)
+  );
+
+  CREATE TABLE IF NOT EXISTS clans (
+    id               TEXT PRIMARY KEY,
+    name             TEXT NOT NULL UNIQUE COLLATE NOCASE,
+    tag              TEXT NOT NULL UNIQUE COLLATE NOCASE,
+    invite_code      TEXT NOT NULL UNIQUE,
+    owner_account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    created_at       TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS clan_members (
+    clan_id     TEXT NOT NULL REFERENCES clans(id) ON DELETE CASCADE,
+    account_id  TEXT NOT NULL PRIMARY KEY REFERENCES accounts(id) ON DELETE CASCADE,
+    role        TEXT NOT NULL DEFAULT 'member',
+    joined_at   TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
   CREATE TABLE IF NOT EXISTS rate_limits (
     key        TEXT PRIMARY KEY,
     count      INTEGER NOT NULL DEFAULT 1,
@@ -83,6 +107,8 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_sessions_account ON sessions(account_id);
   CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires_at);
   CREATE INDEX IF NOT EXISTS idx_match_log_account ON match_log(account_id);
+  CREATE INDEX IF NOT EXISTS idx_social_friends_friend ON social_friends(friend_account_id);
+  CREATE INDEX IF NOT EXISTS idx_clan_members_clan ON clan_members(clan_id);
   CREATE INDEX IF NOT EXISTS idx_rate_limits_window ON rate_limits(window_start);
   CREATE INDEX IF NOT EXISTS idx_accounts_device_fp ON accounts(device_fp);
   CREATE INDEX IF NOT EXISTS idx_accounts_created_ip ON accounts(created_ip_hash);
@@ -662,6 +688,266 @@ const _getLeaderboard = db.prepare(`
 
 export function getLeaderboard() {
   return _getLeaderboard.all()
+}
+
+// ─── Social (friends + clans) ───────────────────────────────────────────────
+
+const CLAN_NAME_RE = /^[a-zA-Z0-9][a-zA-Z0-9 '\-]{2,31}$/
+const CLAN_TAG_RE = /^[A-Z0-9]{2,6}$/
+
+const _getFriends = db.prepare(`
+  SELECT sf.friend_account_id as accountId, a.username, a.display_name as displayName, sf.created_at as since
+  FROM social_friends sf
+  JOIN accounts a ON a.id = sf.friend_account_id
+  WHERE sf.account_id = ?
+  ORDER BY a.display_name COLLATE NOCASE ASC
+`)
+
+const _hasFriendEdge = db.prepare(`
+  SELECT 1 as linked FROM social_friends WHERE account_id = ? AND friend_account_id = ? LIMIT 1
+`)
+
+const _insertFriendEdge = db.prepare(`
+  INSERT OR IGNORE INTO social_friends (account_id, friend_account_id) VALUES (?, ?)
+`)
+
+const _deleteFriendEdge = db.prepare(`
+  DELETE FROM social_friends WHERE account_id = ? AND friend_account_id = ?
+`)
+
+const _getClanMembership = db.prepare(`
+  SELECT cm.clan_id as clanId, cm.role, c.name, c.tag, c.invite_code as inviteCode, c.owner_account_id as ownerAccountId, c.created_at as createdAt
+  FROM clan_members cm
+  JOIN clans c ON c.id = cm.clan_id
+  WHERE cm.account_id = ?
+`)
+
+const _getClanMembers = db.prepare(`
+  SELECT
+    cm.account_id as accountId,
+    cm.role,
+    cm.joined_at as joinedAt,
+    a.username,
+    a.display_name as displayName
+  FROM clan_members cm
+  JOIN accounts a ON a.id = cm.account_id
+  WHERE cm.clan_id = ?
+  ORDER BY
+    CASE WHEN cm.role = 'owner' THEN 0 ELSE 1 END,
+    a.display_name COLLATE NOCASE ASC
+`)
+
+const _createClan = db.prepare(`
+  INSERT INTO clans (id, name, tag, invite_code, owner_account_id)
+  VALUES (?, ?, ?, ?, ?)
+`)
+
+const _addClanMember = db.prepare(`
+  INSERT INTO clan_members (clan_id, account_id, role) VALUES (?, ?, ?)
+`)
+
+const _removeClanMember = db.prepare(`
+  DELETE FROM clan_members WHERE clan_id = ? AND account_id = ?
+`)
+
+const _setClanOwner = db.prepare(`
+  UPDATE clans SET owner_account_id = ? WHERE id = ?
+`)
+
+const _setClanMemberRole = db.prepare(`
+  UPDATE clan_members SET role = ? WHERE clan_id = ? AND account_id = ?
+`)
+
+const _deleteClan = db.prepare(`
+  DELETE FROM clans WHERE id = ?
+`)
+
+const _findClanByInvite = db.prepare(`
+  SELECT id, name, tag, invite_code as inviteCode, owner_account_id as ownerAccountId, created_at as createdAt
+  FROM clans
+  WHERE invite_code = ?
+`)
+
+const _findFallbackOwner = db.prepare(`
+  SELECT account_id as accountId
+  FROM clan_members
+  WHERE clan_id = ? AND account_id != ?
+  ORDER BY joined_at ASC
+  LIMIT 1
+`)
+
+function normalizeClanTag(rawTag) {
+  return String(rawTag ?? '').trim().toUpperCase()
+}
+
+function normalizeClanName(rawName) {
+  return String(rawName ?? '').trim().replace(/\s+/g, ' ')
+}
+
+function normalizeInviteCode(rawInviteCode) {
+  return String(rawInviteCode ?? '').trim().toUpperCase()
+}
+
+function mapClanPayload(clanInfo, members, yourAccountId) {
+  if (!clanInfo) {
+    return null
+  }
+
+  return {
+    id: clanInfo.clanId ?? clanInfo.id,
+    name: clanInfo.name,
+    tag: clanInfo.tag,
+    inviteCode: clanInfo.inviteCode,
+    ownerAccountId: clanInfo.ownerAccountId,
+    createdAt: clanInfo.createdAt,
+    members: members.map((member) => ({
+      ...member,
+      isYou: member.accountId === yourAccountId,
+    })),
+  }
+}
+
+export function getSocialOverview(accountId) {
+  const friends = _getFriends.all(accountId)
+  const membership = _getClanMembership.get(accountId)
+  const members = membership ? _getClanMembers.all(membership.clanId) : []
+
+  return {
+    ok: true,
+    friends,
+    clan: mapClanPayload(membership, members, accountId),
+  }
+}
+
+export function addFriend(accountId, username) {
+  const normalizedUsername = String(username ?? '').trim().toLowerCase()
+
+  if (!USERNAME_RE.test(normalizedUsername)) {
+    return { ok: false, error: 'Enter a valid username (3-20 letters, numbers, or underscore).' }
+  }
+
+  const friend = _getByUsername.get(normalizedUsername)
+  if (!friend) {
+    return { ok: false, error: 'No account found for that username.' }
+  }
+
+  if (friend.id === accountId) {
+    return { ok: false, error: 'You cannot add yourself as a friend.' }
+  }
+
+  if (_hasFriendEdge.get(accountId, friend.id)) {
+    return { ok: false, error: 'That player is already on your friends list.' }
+  }
+
+  const tx = db.transaction(() => {
+    _insertFriendEdge.run(accountId, friend.id)
+    _insertFriendEdge.run(friend.id, accountId)
+  })
+  tx()
+
+  return {
+    ok: true,
+    friend: {
+      accountId: friend.id,
+      username: friend.username,
+      displayName: friend.display_name,
+    },
+  }
+}
+
+export function removeFriend(accountId, friendAccountId) {
+  const normalizedFriendId = String(friendAccountId ?? '').trim()
+  if (!/^acct-[a-f0-9]{24}$/.test(normalizedFriendId)) {
+    return { ok: false, error: 'Invalid friend id.' }
+  }
+
+  const tx = db.transaction(() => {
+    _deleteFriendEdge.run(accountId, normalizedFriendId)
+    _deleteFriendEdge.run(normalizedFriendId, accountId)
+  })
+  tx()
+  return { ok: true }
+}
+
+export function createClan(accountId, name, tag) {
+  const normalizedName = normalizeClanName(name)
+  const normalizedTag = normalizeClanTag(tag)
+
+  if (!CLAN_NAME_RE.test(normalizedName)) {
+    return { ok: false, error: 'Clan name must be 3-32 characters and use letters, numbers, spaces, apostrophes, or hyphens.' }
+  }
+
+  if (!CLAN_TAG_RE.test(normalizedTag)) {
+    return { ok: false, error: 'Clan tag must be 2-6 uppercase letters or numbers.' }
+  }
+
+  if (_getClanMembership.get(accountId)) {
+    return { ok: false, error: 'Leave your current clan before creating a new one.' }
+  }
+
+  const clanId = `clan-${randomBytes(8).toString('hex')}`
+  const inviteCode = `CLN-${randomBytes(4).toString('hex').toUpperCase()}`
+
+  try {
+    const tx = db.transaction(() => {
+      _createClan.run(clanId, normalizedName, normalizedTag, inviteCode, accountId)
+      _addClanMember.run(clanId, accountId, 'owner')
+    })
+    tx()
+  } catch (error) {
+    if (error?.code === 'SQLITE_CONSTRAINT_UNIQUE') {
+      return { ok: false, error: 'That clan name or tag is already in use.' }
+    }
+    throw error
+  }
+
+  return { ok: true, clanId }
+}
+
+export function joinClanByInvite(accountId, inviteCode) {
+  if (_getClanMembership.get(accountId)) {
+    return { ok: false, error: 'Leave your current clan before joining another one.' }
+  }
+
+  const normalizedInviteCode = normalizeInviteCode(inviteCode)
+  if (!/^CLN-[A-F0-9]{8}$/.test(normalizedInviteCode)) {
+    return { ok: false, error: 'Invite code format is invalid.' }
+  }
+
+  const clan = _findClanByInvite.get(normalizedInviteCode)
+  if (!clan) {
+    return { ok: false, error: 'Invite code not found.' }
+  }
+
+  _addClanMember.run(clan.id, accountId, 'member')
+  return { ok: true, clanId: clan.id }
+}
+
+export function leaveClan(accountId) {
+  const membership = _getClanMembership.get(accountId)
+  if (!membership) {
+    return { ok: false, error: 'You are not currently in a clan.' }
+  }
+
+  const tx = db.transaction(() => {
+    _removeClanMember.run(membership.clanId, accountId)
+
+    if (membership.role !== 'owner') {
+      return
+    }
+
+    const fallbackOwner = _findFallbackOwner.get(membership.clanId, accountId)
+    if (!fallbackOwner) {
+      _deleteClan.run(membership.clanId)
+      return
+    }
+
+    _setClanOwner.run(fallbackOwner.accountId, membership.clanId)
+    _setClanMemberRole.run('owner', membership.clanId, fallbackOwner.accountId)
+  })
+
+  tx()
+  return { ok: true }
 }
 
 // ─── Card Pack System ────────────────────────────────────────────────────────
