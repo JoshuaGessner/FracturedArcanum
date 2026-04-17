@@ -123,11 +123,6 @@ io.use((socket, next) => {
   next()
 })
 
-const botProfiles = [
-  { name: 'Arena Bot', rank: 'Silver II', style: 'Adaptive Tempo', ping: 12 },
-  { name: 'Rune Sentinel', rank: 'Gold IV', style: 'Guard Control', ping: 15 },
-]
-
 let waitingPlayers = []
 
 function createDefaultAdminStore() {
@@ -211,42 +206,54 @@ function debouncedSaveAdminStore() {
   }, 2000)
 }
 
-function getBotProfile() {
-  return {
-    ...botProfiles[Math.floor(Math.random() * botProfiles.length)],
-    isBot: true,
-  }
+function getAllowedMatchDelta(queuedAt) {
+  const waitSeconds = Math.max(0, Math.floor((Date.now() - queuedAt) / 1000))
+  return Math.min(800, 150 + waitSeconds * 35)
 }
 
 function getLiveArenaSnapshot() {
   return {
     queueSize: waitingPlayers.length,
     connectedPlayers: io.engine.clientsCount,
-    rankedAvailable: io.engine.clientsCount >= 2 || waitingPlayers.length > 0,
+    rankedAvailable: io.engine.clientsCount >= 2 || waitingPlayers.length >= 2,
     updatedAt: new Date().toISOString(),
   }
+}
+
+function emitWaitingQueueState() {
+  waitingPlayers = waitingPlayers
+    .filter((entry) => io.sockets.sockets.get(entry.id)?.connected)
+    .sort((left, right) => left.queuedAt - right.queuedAt)
+
+  waitingPlayers.forEach((entry, index) => {
+    const socket = io.sockets.sockets.get(entry.id)
+    if (!socket) {
+      return
+    }
+
+    const waitSeconds = Math.max(0, Math.floor((Date.now() - entry.queuedAt) / 1000))
+    socket.emit('queue:searching', {
+      ok: true,
+      position: index + 1,
+      queueSize: waitingPlayers.length,
+      connectedPlayers: io.engine.clientsCount,
+      waitSeconds,
+      estimatedWaitSeconds: Math.max(10, index * 12 + 10),
+      ratingWindow: getAllowedMatchDelta(entry.queuedAt),
+    })
+  })
 }
 
 function emitLiveArenaState(target = io) {
   target.emit('queue:status', getLiveArenaSnapshot())
   target.emit('leaderboard:update', { entries: getLeaderboard() })
+  if (target === io) {
+    emitWaitingQueueState()
+  }
 }
 
-function removeWaitingPlayer(socketId) {
-  const nextQueue = []
-
-  waitingPlayers.forEach((entry) => {
-    if (entry.id === socketId) {
-      if (entry.timer) {
-        clearTimeout(entry.timer)
-      }
-      return
-    }
-
-    nextQueue.push(entry)
-  })
-
-  waitingPlayers = nextQueue
+function removeWaitingPlayer(socketId, accountId = '') {
+  waitingPlayers = waitingPlayers.filter((entry) => entry.id !== socketId && (!accountId || entry.accountId !== accountId))
 }
 
 function getMatchmakingRating(value) {
@@ -257,12 +264,12 @@ function getMatchmakingRating(value) {
   return 1200
 }
 
-function findBestWaitingPlayer(socketId, rating) {
+function findBestWaitingPlayer(socketId, rating, queuedAt = Date.now()) {
   if (!waitingPlayers.length) {
     return null
   }
 
-  const now = Date.now()
+  const currentAllowedDelta = getAllowedMatchDelta(queuedAt)
   let bestIndex = -1
   let bestDelta = Number.POSITIVE_INFINITY
 
@@ -271,8 +278,7 @@ function findBestWaitingPlayer(socketId, rating) {
       return
     }
 
-    const waitSeconds = Math.max(0, Math.floor((now - entry.queuedAt) / 1000))
-    const allowedDelta = Math.min(800, 150 + waitSeconds * 35)
+    const allowedDelta = Math.max(currentAllowedDelta, getAllowedMatchDelta(entry.queuedAt))
     const delta = Math.abs(entry.rating - rating)
 
     if (delta <= allowedDelta && delta < bestDelta) {
@@ -288,6 +294,95 @@ function findBestWaitingPlayer(socketId, rating) {
   const [matched] = waitingPlayers.splice(bestIndex, 1)
   return matched ?? null
 }
+
+function startRankedMatch(playerEntry, matchedPlayer) {
+  const playerSocket = io.sockets.sockets.get(playerEntry.id)
+  const otherSocket = io.sockets.sockets.get(matchedPlayer.id)
+
+  if (!playerSocket?.connected || !otherSocket?.connected) {
+    return false
+  }
+
+  const roomId = `room-${randomUUID().slice(0, 8)}`
+
+  try {
+    const room = createRoom(roomId)
+
+    playerSocket.join(roomId)
+    otherSocket.join(roomId)
+
+    room.start(
+      {
+        socketId: playerEntry.id,
+        accountId: playerEntry.accountId,
+        name: playerEntry.profile.name,
+        deckConfig: playerEntry.deckConfig,
+      },
+      {
+        socketId: matchedPlayer.id,
+        accountId: matchedPlayer.accountId,
+        name: matchedPlayer.profile.name,
+        deckConfig: matchedPlayer.deckConfig,
+      },
+    )
+
+    const playerView = room.getViewForSocket(playerEntry.id)
+    const enemyView = room.getViewForSocket(matchedPlayer.id)
+
+    playerSocket.emit('queue:matched', { roomId, opponent: matchedPlayer.profile })
+    otherSocket.emit('queue:matched', { roomId, opponent: playerEntry.profile })
+
+    playerSocket.emit('game:start', playerView)
+    otherSocket.emit('game:start', enemyView)
+    return true
+  } catch {
+    playerSocket.emit('queue:error', { error: 'Could not create a live match. Please keep waiting.' })
+    otherSocket.emit('queue:error', { error: 'Could not create a live match. Please keep waiting.' })
+    return false
+  }
+}
+
+function sweepWaitingPlayers() {
+  if (waitingPlayers.length < 2) {
+    emitWaitingQueueState()
+    return
+  }
+
+  const orderedPlayers = [...waitingPlayers].sort((left, right) => left.queuedAt - right.queuedAt)
+  let matchedAny = false
+
+  orderedPlayers.forEach((entry) => {
+    const stillQueued = waitingPlayers.some((candidate) => candidate.id === entry.id)
+    if (!stillQueued) {
+      return
+    }
+
+    const matchedPlayer = findBestWaitingPlayer(entry.id, entry.rating, entry.queuedAt)
+    if (!matchedPlayer || matchedPlayer.id === entry.id) {
+      return
+    }
+
+    removeWaitingPlayer(entry.id, entry.accountId)
+
+    if (!startRankedMatch(entry, matchedPlayer)) {
+      waitingPlayers.push(entry, matchedPlayer)
+      return
+    }
+
+    matchedAny = true
+  })
+
+  if (matchedAny) {
+    emitLiveArenaState()
+    return
+  }
+
+  emitWaitingQueueState()
+}
+
+setInterval(() => {
+  sweepWaitingPlayers()
+}, 3000)
 
 function anonymizeVisitorId(visitorId = 'guest') {
   return createHash('sha256').update(`fractured-arcanum:${visitorId}`).digest('hex').slice(0, 16)
@@ -1128,16 +1223,20 @@ io.on('connection', (socket) => {
   socket.on('queue:join', (payload = {}) => {
     if (!checkSocketRate(socket.id, 'queue:join', 10)) return
 
+    const activeRoom = getRoomByAccount(socket.data.accountId)
+    if (activeRoom && activeRoom.state && !activeRoom.state.winner) {
+      socket.emit('queue:error', { error: 'You already have an active live match.' })
+      return
+    }
+
     const name = socket.data.displayName || socket.data.username || 'Rune Captain'
     const rank = typeof payload.rank === 'string' ? payload.rank.slice(0, 20) : 'Bronze I'
     const rating = getMatchmakingRating(payload.rating)
 
-    // Validate and store deck config for server-authoritative game creation
     const rawDeck = payload.deckConfig
     const deckValidation = rawDeck && typeof rawDeck === 'object' ? validateDeckConfig(rawDeck) : { ok: false }
     const deckConfig = deckValidation.ok ? rawDeck : null
 
-    // Fall back to the player's saved deck if no valid deck was sent
     let finalDeck = deckConfig
     if (!finalDeck) {
       const profile = getProfile(socket.data.accountId)
@@ -1159,70 +1258,7 @@ io.on('connection', (socket) => {
       isBot: false,
     }
 
-    removeWaitingPlayer(socket.id)
-
-    const matchedPlayer = findBestWaitingPlayer(socket.id, rating)
-
-    if (matchedPlayer && matchedPlayer.id !== socket.id) {
-      const roomId = `room-${randomUUID().slice(0, 8)}`
-      const otherSocket = io.sockets.sockets.get(matchedPlayer.id)
-
-      try {
-        const room = createRoom(roomId)
-
-        socket.join(roomId)
-        otherSocket?.join(roomId)
-
-        room.start(
-          {
-            socketId: socket.id,
-            accountId: socket.data.accountId,
-            name,
-            deckConfig: finalDeck,
-          },
-          {
-            socketId: matchedPlayer.id,
-            accountId: matchedPlayer.accountId,
-            name: matchedPlayer.profile.name,
-            deckConfig: matchedPlayer.deckConfig,
-          },
-        )
-
-        // Send match-found + initial game state to both players
-        const playerView = room.getViewForSocket(socket.id)
-        const enemyView = room.getViewForSocket(matchedPlayer.id)
-
-        socket.emit('queue:matched', { roomId, opponent: matchedPlayer.profile })
-        otherSocket?.emit('queue:matched', { roomId, opponent: profile })
-
-        socket.emit('game:start', playerView)
-        otherSocket?.emit('game:start', enemyView)
-      } catch {
-        socket.emit('queue:error', { error: 'Could not create game room. Try again.' })
-      }
-
-      if (matchedPlayer.timer) {
-        clearTimeout(matchedPlayer.timer)
-      }
-      emitLiveArenaState()
-      return
-    }
-
-    const timer = setTimeout(() => {
-      const stillQueued = waitingPlayers.some((entry) => entry.id === socket.id)
-      if (!stillQueued) {
-        return
-      }
-
-      socket.emit('queue:matched', {
-        roomId: `bot-${randomUUID().slice(0, 6)}`,
-        opponent: getBotProfile(),
-      })
-
-      removeWaitingPlayer(socket.id)
-      emitLiveArenaState()
-    }, 12000)
-
+    removeWaitingPlayer(socket.id, socket.data.accountId)
     waitingPlayers.push({
       id: socket.id,
       accountId: socket.data.accountId,
@@ -1230,15 +1266,18 @@ io.on('connection', (socket) => {
       queuedAt: Date.now(),
       profile,
       deckConfig: finalDeck,
-      timer,
     })
 
-    socket.emit('queue:searching', { ok: true })
+    adminStore.totals.queueJoins += 1
+    pushActivity('queue_join', { accountId: socket.data.accountId, rank, rating })
+    debouncedSaveAdminStore()
+
     emitLiveArenaState()
+    sweepWaitingPlayers()
   })
 
   socket.on('queue:leave', () => {
-    removeWaitingPlayer(socket.id)
+    removeWaitingPlayer(socket.id, socket.data.accountId)
     emitLiveArenaState()
   })
 
@@ -1324,7 +1363,7 @@ io.on('connection', (socket) => {
   })
 
   socket.on('disconnect', () => {
-    removeWaitingPlayer(socket.id)
+    removeWaitingPlayer(socket.id, socket.data.accountId)
     socketRateLimits.delete(socket.id)
     emitLiveArenaState()
 

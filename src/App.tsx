@@ -56,6 +56,15 @@ type QueuePresence = {
   updatedAt: string
 }
 
+type QueueSearchStatus = {
+  position: number
+  queueSize: number
+  connectedPlayers: number
+  waitSeconds: number
+  estimatedWaitSeconds: number
+  ratingWindow: number
+}
+
 type CardCollection = Record<string, number>
 
 type PackOffer = {
@@ -147,13 +156,6 @@ const ARENA_URL =
   (['5173', '4173'].includes(window.location.port)
     ? `${window.location.protocol}//${window.location.hostname}:${DEFAULT_ARENA_PORT}`
     : window.location.origin)
-
-const OPPONENT_POOL: OpponentProfile[] = [
-  { name: 'Nyra Gale', rank: 'Silver I', style: 'Sky Tempo', ping: 28 },
-  { name: 'Bront Ember', rank: 'Gold III', style: 'Blast Midrange', ping: 34 },
-  { name: 'Suri Vale', rank: 'Gold I', style: 'Moonwell Value', ping: 19 },
-  { name: 'Kael Thorn', rank: 'Platinum V', style: 'Guard Control', ping: 42 },
-]
 
 const DECK_PRESETS: Array<{ name: string; config: DeckConfig }> = [
   { name: 'Balanced', config: DEFAULT_DECK_CONFIG },
@@ -394,13 +396,6 @@ function getRankLabel(rating: number): string {
   return 'Bronze'
 }
 
-function pickOpponent(): OpponentProfile {
-  return {
-    ...OPPONENT_POOL[Math.floor(Math.random() * OPPONENT_POOL.length)],
-    isBot: true,
-  }
-}
-
 function App() {
   const savedDeckConfig = readStoredValue<DeckConfig>(STORAGE_KEYS.deck, DEFAULT_DECK_CONFIG)
   const savedMode = readStoredValue<GameMode>(STORAGE_KEYS.mode, 'ai')
@@ -448,6 +443,14 @@ function App() {
     connectedPlayers: 0,
     rankedAvailable: false,
     updatedAt: '',
+  })
+  const [queueSearchStatus, setQueueSearchStatus] = useState<QueueSearchStatus>({
+    position: 1,
+    queueSize: 0,
+    connectedPlayers: 0,
+    waitSeconds: 0,
+    estimatedWaitSeconds: 10,
+    ratingWindow: 150,
   })
   const [collection, setCollection] = useState<CardCollection>({})
   const [packOffers, setPackOffers] = useState<PackOffer[]>([])
@@ -740,16 +743,33 @@ function App() {
       setQueuePresence(payload)
     })
 
+    socket.on('queue:searching', (payload: Partial<QueueSearchStatus>) => {
+      setQueueState('searching')
+      setQueueSearchStatus((current) => ({
+        ...current,
+        position: payload.position ?? current.position,
+        queueSize: payload.queueSize ?? current.queueSize,
+        connectedPlayers: payload.connectedPlayers ?? current.connectedPlayers,
+        waitSeconds: payload.waitSeconds ?? current.waitSeconds,
+        estimatedWaitSeconds: payload.estimatedWaitSeconds ?? current.estimatedWaitSeconds,
+        ratingWindow: payload.ratingWindow ?? current.ratingWindow,
+      }))
+    })
+
     socket.on('leaderboard:update', (payload: { entries: LeaderboardEntry[] }) => {
       setLeaderboardEntries(payload.entries ?? [])
     })
 
     socket.on('disconnect', () => {
       setBackendOnline(false)
+      setQueueState('idle')
+      setQueuedOpponent(null)
     })
 
     socket.on('connect_error', () => {
       setBackendOnline(false)
+      setQueueState('idle')
+      setQueuedOpponent(null)
     })
 
     socket.on('server:hello', (payload: { message: string }) => {
@@ -814,6 +834,12 @@ function App() {
       } else {
         setToastMessage('The match ended in a draw.')
       }
+    })
+
+    socket.on('queue:error', (payload: { error: string }) => {
+      setQueueState('idle')
+      setQueuedOpponent(null)
+      setToastMessage(payload.error)
     })
 
     socket.on('game:error', (payload: { error: string }) => {
@@ -985,22 +1011,10 @@ function App() {
       setQueueSeconds((seconds) => seconds + 1)
     }, 1000)
 
-    let resolve: number | undefined
-
-    if (!backendOnline) {
-      resolve = window.setTimeout(() => {
-        setQueuedOpponent(pickOpponent())
-        setQueueState('found')
-      }, 2600)
-    }
-
     return () => {
       window.clearInterval(tick)
-      if (resolve) {
-        window.clearTimeout(resolve)
-      }
     }
-  }, [queueState, backendOnline])
+  }, [queueState])
 
   useEffect(() => {
     return () => {
@@ -1242,7 +1256,7 @@ function App() {
   const defenderHasGuard = boardHasGuard(defendingPlayer.board)
   const rankLabel = getRankLabel(seasonRating)
   const resolvedAIDifficulty = aiDifficultySetting === 'auto' ? getRecommendedAIDifficulty(seasonRating) : aiDifficultySetting
-  const liveQueueLabel = queuePresence.rankedAvailable ? 'Ranked live' : 'Warming up'
+  const liveQueueLabel = queuePresence.rankedAvailable ? 'Live opponents ready' : 'Waiting for challengers'
   const totalOwnedCards = Object.values(collection).reduce((sum, count) => sum + count, 0)
   const totalGames = record.wins + record.losses
   const winRate = totalGames > 0 ? Math.round((record.wins / totalGames) * 100) : 0
@@ -1696,11 +1710,24 @@ function App() {
       return
     }
 
+    if (!backendOnline || !socketClientRef.current?.connected) {
+      setToastMessage('Live matchmaking is unavailable right now. Please reconnect and try again.')
+      return
+    }
+
     setActiveScreen('home')
     setQueueState('searching')
     setQueueSeconds(0)
     setQueuedOpponent(null)
-    setToastMessage(backendOnline ? `Searching the live ladder. ${queuePresence.connectedPlayers} players online.` : 'Backend unavailable. Falling back to a practice opponent if needed.')
+    setQueueSearchStatus({
+      position: Math.max(1, queuePresence.queueSize + 1),
+      queueSize: queuePresence.queueSize + 1,
+      connectedPlayers: queuePresence.connectedPlayers,
+      waitSeconds: 0,
+      estimatedWaitSeconds: Math.max(10, queuePresence.queueSize * 12 + 10),
+      ratingWindow: 150,
+    })
+    setToastMessage(`Searching the live ladder for a real opponent. ${Math.max(queuePresence.connectedPlayers - 1, 0)} other players online.`)
     void sendAnalytics(
       'queue_join',
       {
@@ -1711,14 +1738,12 @@ function App() {
       'queue',
     )
 
-    if (backendOnline && socketClientRef.current?.connected) {
-      socketClientRef.current.emit('queue:join', {
-        name: 'Rune Captain',
-        rank: `${rankLabel} Division`,
-        rating: seasonRating,
-        deckConfig,
-      })
-    }
+    socketClientRef.current.emit('queue:join', {
+      name: 'Rune Captain',
+      rank: `${rankLabel} Division`,
+      rating: seasonRating,
+      deckConfig,
+    })
   }
 
   function handleCancelQueue() {
@@ -1729,6 +1754,15 @@ function App() {
     setQueueState('idle')
     setQueueSeconds(0)
     setQueuedOpponent(null)
+    setQueueSearchStatus({
+      position: 1,
+      queueSize: 0,
+      connectedPlayers: queuePresence.connectedPlayers,
+      waitSeconds: 0,
+      estimatedWaitSeconds: 10,
+      ratingWindow: 150,
+    })
+    setToastMessage('Ranked matchmaking canceled.')
     if (activeScreen === 'battle' && !gameInProgress) {
       setActiveScreen('home')
     }
@@ -1739,16 +1773,7 @@ function App() {
       return
     }
 
-    if (!queuedOpponent.isBot) {
-      setToastMessage(`Preparing your live match against ${queuedOpponent.name}.`)
-      return
-    }
-
-    const opponentName = queuedOpponent.name
-    setQueueState('idle')
-    setQueueSeconds(0)
-    setQueuedOpponent(null)
-    startMatch('ai', opponentName)
+    setToastMessage(`Live match found against ${queuedOpponent.name}. Joining now.`)
   }
 
   function handleDeckCount(cardId: string, delta: number) {
@@ -2263,8 +2288,19 @@ function App() {
 
           {queueState === 'searching' && (
             <div className="queue-searching-block">
-              <p className="card-text">Searching for an opponent... {queueSeconds}s</p>
-              <p className="note">Live players online: {queuePresence.connectedPlayers} • In queue: {queuePresence.queueSize}. You can keep waiting or cancel.</p>
+              <p className="card-text">Searching for a real opponent... {queueSeconds}s</p>
+              <div className="live-status-grid">
+                <div>
+                  <strong>#{queueSearchStatus.position}</strong>
+                  <p className="note">your queue spot</p>
+                </div>
+                <div>
+                  <strong>{Math.max(0, queueSearchStatus.connectedPlayers - 1)}</strong>
+                  <p className="note">other players online</p>
+                </div>
+              </div>
+              <p className="note">Queue size: {queueSearchStatus.queueSize || queuePresence.queueSize} • Rating window: ±{queueSearchStatus.ratingWindow} • Estimated wait: {queueSearchStatus.estimatedWaitSeconds}s</p>
+              <p className="note">Ranked only starts with another live player. No bot fallback is used.</p>
               <button className="ghost" onClick={handleCancelQueue}>Cancel Matchmaking</button>
             </div>
           )}
@@ -2273,11 +2309,10 @@ function App() {
             <div className="opponent-preview">
               <strong>{queuedOpponent.name}</strong>
               <span className="note">
-                {queuedOpponent.rank} • {queuedOpponent.style} • {queuedOpponent.ping}ms {queuedOpponent.isBot ? '• Practice AI' : '• Live player'}
+                {queuedOpponent.rank} • {queuedOpponent.style} • {queuedOpponent.ping}ms • Live player
               </span>
               <div className="controls">
-                <button className="primary" onClick={handleAcceptQueue} disabled={!queuedOpponent.isBot}>{queuedOpponent.isBot ? 'Accept Match' : 'Live Match Starting…'}</button>
-                <button className="ghost" onClick={handleCancelQueue}>Decline</button>
+                <button className="primary" onClick={handleAcceptQueue} disabled>Starting Live Match…</button>
               </div>
             </div>
           )}

@@ -57,6 +57,8 @@ await new Promise((resolve, reject) => {
   const sockets = []
   let starts = 0
   let settled = false
+  let sawWaitingState = false
+  let secondPlayerJoined = false
 
   const finish = (error) => {
     if (settled) return
@@ -76,6 +78,23 @@ await new Promise((resolve, reject) => {
         rating,
         deckConfig,
       })
+    })
+
+    socket.on('queue:searching', (payload) => {
+      if (label === 'playerA' && payload.position === 1 && payload.queueSize >= 1) {
+        sawWaitingState = true
+      }
+    })
+
+    socket.on('queue:matched', (payload) => {
+      if (payload.opponent?.isBot) {
+        finish(new Error('ranked queue incorrectly matched a bot opponent'))
+        return
+      }
+
+      if (label === 'playerA' && !secondPlayerJoined) {
+        finish(new Error('ranked queue matched a player before a second real account joined'))
+      }
     })
 
     socket.on('game:start', (payload) => {
@@ -99,8 +118,18 @@ await new Promise((resolve, reject) => {
   }
 
   makeSocket(tokenA, 1200, 'playerA')
-  makeSocket(tokenB, 1210, 'playerB', true)
-  setTimeout(() => finish(new Error('timed out waiting for the live ranked match to resolve')), 10000)
+
+  setTimeout(() => {
+    if (!sawWaitingState) {
+      finish(new Error('single-player ranked queue never entered a waiting state'))
+      return
+    }
+
+    secondPlayerJoined = true
+    makeSocket(tokenB, 1210, 'playerB', true)
+  }, 2500)
+
+  setTimeout(() => finish(new Error('timed out waiting for the live ranked match to resolve')), 12000)
 })
 
 const profileA = await fetch(base + '/api/me', {
