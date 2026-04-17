@@ -17,6 +17,8 @@ SYSTEM_SERVICE_NAME="${SYSTEM_SERVICE_NAME:-fractured-arcanum}"
 DOCKER_VOLUME_NAME="${DOCKER_VOLUME_NAME:-fractured-arcanum-data}"
 PORT="${PORT:-43173}"
 HEALTH_URL="${HEALTH_URL:-http://127.0.0.1:${PORT}/api/health}"
+HEALTH_WAIT_SECONDS="${HEALTH_WAIT_SECONDS:-90}"
+HEALTH_POLL_INTERVAL="${HEALTH_POLL_INTERVAL:-3}"
 BACKUP_ROOT="${BACKUP_ROOT:-$REPO_ROOT/backups}"
 CURRENT_BACKUP_DIR=""
 COMPOSE_CMD=()
@@ -40,7 +42,8 @@ Options:
 
 Environment overrides:
   UPDATE_MODE, UPDATE_BRANCH, COMPOSE_SERVICE, DOCKER_VOLUME_NAME,
-  SYSTEM_SERVICE_NAME, BACKUP_ROOT, PORT, HEALTH_URL
+  SYSTEM_SERVICE_NAME, BACKUP_ROOT, PORT, HEALTH_URL,
+  HEALTH_WAIT_SECONDS, HEALTH_POLL_INTERVAL
 EOF
 }
 
@@ -316,6 +319,36 @@ run_docker_update() {
   DID_RESTART=1
 }
 
+probe_health_once() {
+  if command_exists curl; then
+    curl --fail --silent --show-error --connect-timeout 5 --max-time 10 "$HEALTH_URL" >/dev/null
+    return 0
+  fi
+
+  if command_exists wget; then
+    wget -qO- --timeout=10 "$HEALTH_URL" >/dev/null
+    return 0
+  fi
+
+  return 2
+}
+
+dump_runtime_diagnostics() {
+  if [[ "$MODE" == "docker" ]] && detect_compose; then
+    warn "Docker service status:"
+    "${COMPOSE_CMD[@]}" ps || true
+    warn "Recent Docker logs (last 80 lines):"
+    "${COMPOSE_CMD[@]}" logs --tail=80 || true
+    return 0
+  fi
+
+  if command_exists pm2 && pm2 describe "$SYSTEM_SERVICE_NAME" >/dev/null 2>&1; then
+    warn "PM2 service status:"
+    pm2 status "$SYSTEM_SERVICE_NAME" || true
+    return 0
+  fi
+}
+
 run_health_check() {
   if [[ "$DRY_RUN" -eq 1 ]]; then
     return 0
@@ -326,17 +359,33 @@ run_health_check() {
     return 0
   fi
 
-  if command_exists curl; then
-    run curl --fail --silent --show-error --retry 8 --retry-delay 2 --retry-connrefused "$HEALTH_URL"
+  if ! command_exists curl && ! command_exists wget; then
+    warn "Neither curl nor wget is installed, so the health check was skipped."
     return 0
   fi
 
-  if command_exists wget; then
-    run wget -qO- "$HEALTH_URL"
-    return 0
-  fi
+  local started_at
+  started_at=$(date +%s)
+  local attempt=1
 
-  warn "Neither curl nor wget is installed, so the health check was skipped."
+  while true; do
+    if probe_health_once; then
+      log "Health check passed at $HEALTH_URL"
+      return 0
+    fi
+
+    local now
+    now=$(date +%s)
+    if (( now - started_at >= HEALTH_WAIT_SECONDS )); then
+      warn "Health endpoint stayed unavailable for ${HEALTH_WAIT_SECONDS}s."
+      dump_runtime_diagnostics
+      return 1
+    fi
+
+    warn "Service is still starting (attempt ${attempt}); retrying in ${HEALTH_POLL_INTERVAL}s..."
+    attempt=$((attempt + 1))
+    sleep "$HEALTH_POLL_INTERVAL"
+  done
 }
 
 main() {
