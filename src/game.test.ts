@@ -5,6 +5,7 @@ import {
   castMomentumBurst,
   createGame,
   getDeckSize,
+  getRecommendedAIDifficulty,
   playCard,
   surrenderGame,
 } from './game'
@@ -51,5 +52,19 @@ describe('Fractured Arcanum core rules', () => {
 
     expect(result.winner).toBe('enemy')
     expect(result.log[0]).toContain('wins by forfeit')
+  })
+
+  it('recommends AI difficulty from player rating bands', () => {
+    expect(getRecommendedAIDifficulty(1025)).toBe('novice')
+    expect(getRecommendedAIDifficulty(1200)).toBe('adept')
+    expect(getRecommendedAIDifficulty(1400)).toBe('veteran')
+    expect(getRecommendedAIDifficulty(1600)).toBe('legend')
+  })
+
+  it('creates AI matches with the requested difficulty', () => {
+    const game = createGame('ai', DEFAULT_DECK_CONFIG, 'Nemesis AI', 'veteran')
+
+    expect(game.aiDifficulty).toBe('veteran')
+    expect(game.enemy.name).toBe('Nemesis AI')
   })
 })

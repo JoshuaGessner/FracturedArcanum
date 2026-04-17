@@ -1,4 +1,5 @@
 export type GameMode = 'ai' | 'duel'
+export type AIDifficulty = 'novice' | 'adept' | 'veteran' | 'legend'
 export type BattleSide = 'player' | 'enemy'
 export type CardEffect = 'charge' | 'guard' | 'rally' | 'blast' | 'heal' | 'draw' | 'fury' | 'drain' | 'empower' | 'poison' | 'shield' | 'siphon' | 'bolster' | 'cleave' | 'lifesteal' | 'summon' | 'silence' | 'frostbite' | 'enrage' | 'deathrattle' | 'overwhelm'
 export type CardRarity = 'common' | 'rare' | 'epic' | 'legendary'
@@ -42,6 +43,7 @@ export type PlayerState = {
 
 export type GameState = {
   mode: GameMode
+  aiDifficulty: AIDifficulty
   player: PlayerState
   enemy: PlayerState
   turn: BattleSide
@@ -182,6 +184,65 @@ export const AI_DECK_CONFIG: DeckConfig = {
   'storm-brute': 1,
 }
 
+export const AI_DIFFICULTY_DECKS: Record<AIDifficulty, DeckConfig> = {
+  novice: {
+    'spark-imp': 2,
+    'copper-automaton': 2,
+    'bog-lurker': 2,
+    'militia-recruit': 2,
+    'rust-golem': 1,
+    'fire-imp': 1,
+    'storm-brute': 1,
+  },
+  adept: AI_DECK_CONFIG,
+  veteran: {
+    'spark-imp': 2,
+    'shade-fox': 2,
+    'ironbark-guard': 1,
+    'warcry-sentinel': 1,
+    'ember-witch': 1,
+    'moonwell-sage': 1,
+    'venom-drake': 1,
+    'soul-reaver': 1,
+    'frost-weaver': 1,
+    'storm-shaman': 1,
+    'war-mammoth': 1,
+    'pack-wolf': 1,
+  },
+  legend: {
+    'spark-imp': 1,
+    'shade-fox': 1,
+    'ironbark-guard': 1,
+    'warcry-sentinel': 1,
+    'ember-witch': 1,
+    'soul-reaver': 1,
+    'venom-drake': 1,
+    'storm-shaman': 1,
+    'war-mammoth': 1,
+    'shadow-assassin': 1,
+    'ancient-hydra': 1,
+    'void-empress': 1,
+    'storm-titan': 1,
+    'arcane-golem': 1,
+  },
+}
+
+export function getRecommendedAIDifficulty(rating: number): AIDifficulty {
+  if (rating >= 1500) {
+    return 'legend'
+  }
+
+  if (rating >= 1325) {
+    return 'veteran'
+  }
+
+  if (rating >= 1150) {
+    return 'adept'
+  }
+
+  return 'novice'
+}
+
 export function shuffle<T>(items: T[]): T[] {
   const deck = [...items]
 
@@ -317,20 +378,23 @@ export function createPlayer(name: string, deckConfig: DeckConfig): PlayerState 
   return ensurePlayableOpeningHand(drawCards(basePlayer, STARTING_HAND))
 }
 
-export function createGame(mode: GameMode, deckConfig: DeckConfig, enemyName?: string): GameState {
+export function createGame(mode: GameMode, deckConfig: DeckConfig, enemyName?: string, aiDifficulty: AIDifficulty = 'adept'): GameState {
+  const resolvedDifficulty = mode === 'ai' ? aiDifficulty : 'legend'
+
   return {
     mode,
+    aiDifficulty: resolvedDifficulty,
     player: beginTurn(createPlayer(mode === 'duel' ? 'Player One' : 'You', deckConfig)),
     enemy: createPlayer(
       enemyName ?? (mode === 'duel' ? 'Player Two' : 'Nemesis AI'),
-      mode === 'duel' ? deckConfig : AI_DECK_CONFIG,
+      mode === 'duel' ? deckConfig : AI_DIFFICULTY_DECKS[resolvedDifficulty],
     ),
     turn: 'player',
     turnNumber: 1,
     log: [
       mode === 'duel'
         ? 'Local duel ready. Build decks and pass the device between turns.'
-        : 'Battle ready. Build momentum and dominate the lanes.',
+        : `${resolvedDifficulty.charAt(0).toUpperCase() + resolvedDifficulty.slice(1)} AI battle ready. Build momentum and dominate the lanes.`,
     ],
     winner: null,
   }
@@ -344,6 +408,7 @@ export function createDuelGame(
 ): GameState {
   return {
     mode: 'duel',
+    aiDifficulty: 'legend',
     player: beginTurn(createPlayer(player1Name, player1Deck)),
     enemy: createPlayer(player2Name, player2Deck),
     turn: 'player',
@@ -368,6 +433,7 @@ export type RedactedPlayerState = {
 
 export type RedactedGameState = {
   mode: GameMode
+  aiDifficulty: AIDifficulty
   player: RedactedPlayerState
   enemy: RedactedPlayerState
   turn: BattleSide
@@ -409,6 +475,7 @@ export function redactGameState(state: GameState, forSide: BattleSide): Redacted
 
   return {
     mode: state.mode,
+    aiDifficulty: state.aiDifficulty,
     player: ownRedacted,
     enemy: oppRedacted,
     turn: remapSide(state.turn),
@@ -1039,19 +1106,73 @@ export function attack(
   return applySides(base, side, nextActor, nextRival, nextLog)
 }
 
-export function highestPlayableIndex(hand: CardInstance[], mana: number): number {
-  let bestIndex = -1
+function scorePlayableCard(card: CardInstance, difficulty: AIDifficulty, needsGuard: boolean, lowOnCards: boolean): number {
+  let score = card.cost * 1.25 + card.attack * 2 + card.health
 
-  hand.forEach((card, index) => {
-    if (card.cost <= mana && (bestIndex === -1 || card.cost > hand[bestIndex].cost)) {
+  if (card.effect === 'guard') score += needsGuard ? 7 : 2
+  if (card.effect === 'charge') score += difficulty === 'legend' ? 5 : 3
+  if (card.effect === 'draw') score += lowOnCards ? 5 : 2
+  if (card.effect === 'blast' || card.effect === 'poison' || card.effect === 'siphon') score += 4
+  if (card.effect === 'summon' || card.effect === 'empower' || card.effect === 'rally') score += 3
+  if (card.rarity === 'legendary') score += difficulty === 'legend' ? 4 : 2
+  if (difficulty === 'novice') score -= card.cost * 0.35
+
+  return score
+}
+
+export function highestPlayableIndex(
+  hand: CardInstance[],
+  mana: number,
+  difficulty: AIDifficulty = 'adept',
+  game?: GameState,
+  side: BattleSide = 'enemy',
+): number {
+  const affordable = hand
+    .map((card, index) => ({ card, index }))
+    .filter(({ card }) => card.cost <= mana)
+
+  if (!affordable.length) {
+    return -1
+  }
+
+  if (difficulty === 'novice') {
+    affordable.sort((left, right) => left.card.cost - right.card.cost)
+    return affordable[0].index
+  }
+
+  const actor = game?.[side]
+  const needsGuard = actor ? actor.health <= 12 && !boardHasGuard(actor.board) : false
+  const lowOnCards = actor ? actor.hand.length <= 2 : false
+
+  let bestIndex = affordable[0].index
+  let bestScore = -Infinity
+
+  affordable.forEach(({ card, index }) => {
+    let score = scorePlayableCard(card, difficulty, needsGuard, lowOnCards)
+
+    if (game) {
+      if ((game.player.health <= 8 || game.player.board.filter(Boolean).length >= 2) && (card.effect === 'blast' || card.effect === 'poison')) {
+        score += 4
+      }
+      if (game.enemy.board.filter(Boolean).length === 0 && card.effect === 'guard') {
+        score += 2
+      }
+    }
+
+    if (score > bestScore || (score === bestScore && card.cost > hand[bestIndex].cost)) {
       bestIndex = index
+      bestScore = score
     }
   })
 
   return bestIndex
 }
 
-export function chooseEnemyTarget(game: GameState, attacker: Unit): number | 'hero' {
+export function chooseEnemyTarget(
+  game: GameState,
+  attacker: Unit,
+  difficulty: AIDifficulty = game.aiDifficulty ?? 'adept',
+): number | 'hero' {
   const guardLane = game.player.board.findIndex((unit) => unit?.effect === 'guard')
   if (guardLane !== -1) {
     return guardLane
@@ -1061,11 +1182,42 @@ export function chooseEnemyTarget(game: GameState, attacker: Unit): number | 'he
     return 'hero'
   }
 
-  const easyTrade = game.player.board.findIndex(
-    (unit) => unit !== null && unit.currentHealth <= attacker.attack,
-  )
+  const heroPressure = game.enemy.board.reduce((total, unit) => total + (unit && !unit.exhausted ? unit.attack : 0), 0)
+  let heroScore = attacker.attack + (game.player.health <= heroPressure ? 6 : 0)
 
-  return easyTrade !== -1 ? easyTrade : 'hero'
+  if (difficulty === 'novice') {
+    const easyTrade = game.player.board.findIndex((unit) => unit !== null && unit.currentHealth <= attacker.attack)
+    return easyTrade !== -1 && Math.random() < 0.7 ? easyTrade : 'hero'
+  }
+
+  let bestLane = -1
+  let bestScore = -Infinity
+
+  game.player.board.forEach((unit, index) => {
+    if (!unit) {
+      return
+    }
+
+    let score = unit.attack * 2 + unit.currentHealth
+
+    if (unit.currentHealth <= attacker.attack) score += 8
+    if (attacker.currentHealth > unit.attack) score += 5
+    if (unit.attack >= attacker.currentHealth) score -= difficulty === 'legend' ? 1 : 3
+    if (unit.effect === 'guard') score += 6
+    if (unit.effect === 'poison' || unit.effect === 'lifesteal' || unit.effect === 'cleave') score += 4
+    if (difficulty === 'legend' && unit.attack >= 4) score += 4
+
+    if (score > bestScore) {
+      bestLane = index
+      bestScore = score
+    }
+  })
+
+  if (difficulty === 'legend' && game.enemy.health < game.player.health) {
+    heroScore += 3
+  }
+
+  return bestLane !== -1 && bestScore >= heroScore ? bestLane : 'hero'
 }
 
 export function passTurn(base: GameState): GameState {
@@ -1095,23 +1247,46 @@ export function passTurn(base: GameState): GameState {
   }
 }
 
+function shouldEnemyUseBurst(game: GameState, difficulty: AIDifficulty): boolean {
+  if (game.enemy.momentum < 3) {
+    return false
+  }
+
+  if (game.player.health <= 2) {
+    return true
+  }
+
+  if (difficulty === 'novice') {
+    return game.player.health <= 6
+  }
+
+  if (difficulty === 'adept') {
+    return game.player.health <= 12 || game.enemy.hand.length === 0
+  }
+
+  const enemyBoardCount = game.enemy.board.filter(Boolean).length
+  const playerBoardCount = game.player.board.filter(Boolean).length
+  return game.player.health <= 10 || game.enemy.hand.length === 0 || enemyBoardCount < playerBoardCount
+}
+
 export function runEnemyTurn(base: GameState): GameState {
   if (base.winner) {
     return base
   }
 
+  const difficulty = base.aiDifficulty ?? 'adept'
   let game = passTurn(base)
 
   if (game.turn !== 'enemy' || game.winner) {
     return game
   }
 
-  if (game.enemy.momentum >= 3 && (game.player.health <= 12 || game.enemy.hand.length === 0)) {
+  if (shouldEnemyUseBurst(game, difficulty)) {
     game = castMomentumBurst(game, 'enemy')
   }
 
   while (true) {
-    const playableIndex = highestPlayableIndex(game.enemy.hand, game.enemy.mana)
+    const playableIndex = highestPlayableIndex(game.enemy.hand, game.enemy.mana, difficulty, game, 'enemy')
     const boardFull = game.enemy.board.every((slot) => slot !== null)
 
     if (playableIndex === -1 || boardFull || game.winner) {
@@ -1128,7 +1303,7 @@ export function runEnemyTurn(base: GameState): GameState {
       continue
     }
 
-    game = attack(game, 'enemy', index, chooseEnemyTarget(game, attacker))
+    game = attack(game, 'enemy', index, chooseEnemyTarget(game, attacker, difficulty))
   }
 
   return game.winner ? game : passTurn(game)
@@ -1139,19 +1314,20 @@ export type EnemyStep = { state: GameState; label: string }
 export function generateEnemyTurnSteps(base: GameState): EnemyStep[] {
   if (base.winner) return [{ state: base, label: 'Game over' }]
 
+  const difficulty = base.aiDifficulty ?? 'adept'
   const steps: EnemyStep[] = []
   let game = passTurn(base)
   steps.push({ state: game, label: `${game.enemy.name} begins their turn.` })
 
   if (game.turn !== 'enemy' || game.winner) return steps
 
-  if (game.enemy.momentum >= 3 && (game.player.health <= 12 || game.enemy.hand.length === 0)) {
+  if (shouldEnemyUseBurst(game, difficulty)) {
     game = castMomentumBurst(game, 'enemy')
     steps.push({ state: game, label: `${game.enemy.name} unleashes Momentum Burst!` })
   }
 
   while (true) {
-    const playableIndex = highestPlayableIndex(game.enemy.hand, game.enemy.mana)
+    const playableIndex = highestPlayableIndex(game.enemy.hand, game.enemy.mana, difficulty, game, 'enemy')
     const boardFull = game.enemy.board.every((slot) => slot !== null)
     if (playableIndex === -1 || boardFull || game.winner) break
     const card = game.enemy.hand[playableIndex]
@@ -1162,7 +1338,7 @@ export function generateEnemyTurnSteps(base: GameState): EnemyStep[] {
   for (let index = 0; index < BOARD_SIZE; index += 1) {
     const attacker = game.enemy.board[index]
     if (!attacker || attacker.exhausted || game.winner) continue
-    const target = chooseEnemyTarget(game, attacker)
+    const target = chooseEnemyTarget(game, attacker, difficulty)
     game = attack(game, 'enemy', index, target)
     const targetLabel = target === 'hero' ? 'your hero' : `lane ${target + 1}`
     steps.push({ state: game, label: `${attacker.name} attacks ${targetLabel}!` })

@@ -128,7 +128,7 @@ const botProfiles = [
   { name: 'Rune Sentinel', rank: 'Gold IV', style: 'Guard Control', ping: 15 },
 ]
 
-let waitingPlayer = null
+let waitingPlayers = []
 
 function createDefaultAdminStore() {
   return {
@@ -212,19 +212,81 @@ function debouncedSaveAdminStore() {
 }
 
 function getBotProfile() {
-  return botProfiles[Math.floor(Math.random() * botProfiles.length)]
+  return {
+    ...botProfiles[Math.floor(Math.random() * botProfiles.length)],
+    isBot: true,
+  }
+}
+
+function getLiveArenaSnapshot() {
+  return {
+    queueSize: waitingPlayers.length,
+    connectedPlayers: io.engine.clientsCount,
+    rankedAvailable: io.engine.clientsCount >= 2 || waitingPlayers.length > 0,
+    updatedAt: new Date().toISOString(),
+  }
+}
+
+function emitLiveArenaState(target = io) {
+  target.emit('queue:status', getLiveArenaSnapshot())
+  target.emit('leaderboard:update', { entries: getLeaderboard() })
 }
 
 function removeWaitingPlayer(socketId) {
-  if (!waitingPlayer || waitingPlayer.id !== socketId) {
-    return
+  const nextQueue = []
+
+  waitingPlayers.forEach((entry) => {
+    if (entry.id === socketId) {
+      if (entry.timer) {
+        clearTimeout(entry.timer)
+      }
+      return
+    }
+
+    nextQueue.push(entry)
+  })
+
+  waitingPlayers = nextQueue
+}
+
+function getMatchmakingRating(value) {
+  const numeric = Number(value)
+  if (Number.isFinite(numeric)) {
+    return Math.max(800, Math.min(2200, Math.round(numeric)))
+  }
+  return 1200
+}
+
+function findBestWaitingPlayer(socketId, rating) {
+  if (!waitingPlayers.length) {
+    return null
   }
 
-  if (waitingPlayer.timer) {
-    clearTimeout(waitingPlayer.timer)
+  const now = Date.now()
+  let bestIndex = -1
+  let bestDelta = Number.POSITIVE_INFINITY
+
+  waitingPlayers.forEach((entry, index) => {
+    if (entry.id === socketId) {
+      return
+    }
+
+    const waitSeconds = Math.max(0, Math.floor((now - entry.queuedAt) / 1000))
+    const allowedDelta = Math.min(800, 150 + waitSeconds * 35)
+    const delta = Math.abs(entry.rating - rating)
+
+    if (delta <= allowedDelta && delta < bestDelta) {
+      bestIndex = index
+      bestDelta = delta
+    }
+  })
+
+  if (bestIndex === -1) {
+    return null
   }
 
-  waitingPlayer = null
+  const [matched] = waitingPlayers.splice(bestIndex, 1)
+  return matched ?? null
 }
 
 function anonymizeVisitorId(visitorId = 'guest') {
@@ -365,7 +427,7 @@ function buildAdminOverview() {
   return {
     ok: true,
     service: {
-      queueSize: waitingPlayer ? 1 : 0,
+      queueSize: waitingPlayers.length,
       connectedPlayers: io.engine.clientsCount,
       maintenanceMode: adminStore.settings.maintenanceMode,
       port: PORT,
@@ -765,12 +827,14 @@ app.get('/api/me/collection', requireAuth, (request, response) => {
 
 app.get('/api/health', (_request, response) => {
   const complaintCounts = getComplaintCounts()
+  const liveSnapshot = getLiveArenaSnapshot()
 
   response.json({
     ok: true,
     service: 'Fractured Arcanum Arena Service',
-    queueSize: waitingPlayer ? 1 : 0,
-    connectedPlayers: io.engine.clientsCount,
+    queueSize: liveSnapshot.queueSize,
+    connectedPlayers: liveSnapshot.connectedPlayers,
+    rankedAvailable: liveSnapshot.rankedAvailable,
     complaintsOpen: complaintCounts.open,
     uniqueVisitors: adminStore.totals.uniqueVisitors,
   })
@@ -1006,6 +1070,7 @@ io.on('connection', (socket) => {
       ? 'Arena maintenance is active. You can still test local matches.'
       : 'Live arena service connected.',
   })
+  emitLiveArenaState(socket)
 
   // ─── Auto-rejoin: check if this account has an active ranked game ────
   const existingRoom = getRoomByAccount(socket.data.accountId)
@@ -1063,6 +1128,7 @@ io.on('connection', (socket) => {
 
     const name = socket.data.displayName || socket.data.username || 'Rune Captain'
     const rank = typeof payload.rank === 'string' ? payload.rank.slice(0, 20) : 'Bronze I'
+    const rating = getMatchmakingRating(payload.rating)
 
     // Validate and store deck config for server-authoritative game creation
     const rawDeck = payload.deckConfig
@@ -1088,13 +1154,16 @@ io.on('connection', (socket) => {
       rank,
       style: 'Custom Deck',
       ping: Math.floor(Math.random() * 40) + 12,
+      isBot: false,
     }
 
     removeWaitingPlayer(socket.id)
 
-    if (waitingPlayer && waitingPlayer.id !== socket.id) {
+    const matchedPlayer = findBestWaitingPlayer(socket.id, rating)
+
+    if (matchedPlayer && matchedPlayer.id !== socket.id) {
       const roomId = `room-${randomUUID().slice(0, 8)}`
-      const otherSocket = io.sockets.sockets.get(waitingPlayer.id)
+      const otherSocket = io.sockets.sockets.get(matchedPlayer.id)
 
       try {
         const room = createRoom(roomId)
@@ -1110,18 +1179,18 @@ io.on('connection', (socket) => {
             deckConfig: finalDeck,
           },
           {
-            socketId: waitingPlayer.id,
-            accountId: waitingPlayer.accountId,
-            name: waitingPlayer.profile.name,
-            deckConfig: waitingPlayer.deckConfig,
+            socketId: matchedPlayer.id,
+            accountId: matchedPlayer.accountId,
+            name: matchedPlayer.profile.name,
+            deckConfig: matchedPlayer.deckConfig,
           },
         )
 
         // Send match-found + initial game state to both players
         const playerView = room.getViewForSocket(socket.id)
-        const enemyView = room.getViewForSocket(waitingPlayer.id)
+        const enemyView = room.getViewForSocket(matchedPlayer.id)
 
-        socket.emit('queue:matched', { roomId, opponent: waitingPlayer.profile })
+        socket.emit('queue:matched', { roomId, opponent: matchedPlayer.profile })
         otherSocket?.emit('queue:matched', { roomId, opponent: profile })
 
         socket.emit('game:start', playerView)
@@ -1130,13 +1199,16 @@ io.on('connection', (socket) => {
         socket.emit('queue:error', { error: 'Could not create game room. Try again.' })
       }
 
-      clearTimeout(waitingPlayer.timer)
-      waitingPlayer = null
+      if (matchedPlayer.timer) {
+        clearTimeout(matchedPlayer.timer)
+      }
+      emitLiveArenaState()
       return
     }
 
     const timer = setTimeout(() => {
-      if (!waitingPlayer || waitingPlayer.id !== socket.id) {
+      const stillQueued = waitingPlayers.some((entry) => entry.id === socket.id)
+      if (!stillQueued) {
         return
       }
 
@@ -1145,22 +1217,27 @@ io.on('connection', (socket) => {
         opponent: getBotProfile(),
       })
 
-      waitingPlayer = null
+      removeWaitingPlayer(socket.id)
+      emitLiveArenaState()
     }, 12000)
 
-    waitingPlayer = {
+    waitingPlayers.push({
       id: socket.id,
       accountId: socket.data.accountId,
+      rating,
+      queuedAt: Date.now(),
       profile,
       deckConfig: finalDeck,
       timer,
-    }
+    })
 
     socket.emit('queue:searching', { ok: true })
+    emitLiveArenaState()
   })
 
   socket.on('queue:leave', () => {
     removeWaitingPlayer(socket.id)
+    emitLiveArenaState()
   })
 
   socket.on('room:emote', ({ roomId, emote, from } = {}) => {
@@ -1237,6 +1314,7 @@ io.on('connection', (socket) => {
       }
 
       trackAnalyticsEvent({ type: 'match_complete', route: 'battle', meta: { winner, mode: 'duel' } })
+      emitLiveArenaState()
 
       // Clean up room after a delay to let clients process the result
       setTimeout(() => destroyRoom(room.roomId), 10000)
@@ -1246,6 +1324,7 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     removeWaitingPlayer(socket.id)
     socketRateLimits.delete(socket.id)
+    emitLiveArenaState()
 
     // Handle in-progress game disconnection with reconnect grace period
     const room = handleDisconnect(socket.id)

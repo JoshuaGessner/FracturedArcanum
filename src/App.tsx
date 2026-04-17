@@ -3,6 +3,7 @@ import { io, type Socket } from 'socket.io-client'
 import { playSound } from './audio'
 import {
   type GameMode,
+  type AIDifficulty,
   type BattleSide,
   type DeckConfig,
   type GameState,
@@ -22,6 +23,7 @@ import {
   castMomentumBurst,
   createGame,
   generateEnemyTurnSteps,
+  getRecommendedAIDifficulty,
 } from './game'
 import './App.css'
 
@@ -35,6 +37,22 @@ type OpponentProfile = {
   rank: string
   style: string
   ping: number
+  isBot?: boolean
+}
+
+type LeaderboardEntry = {
+  account_id: string
+  display_name: string
+  season_rating: number
+  wins: number
+  losses: number
+}
+
+type QueuePresence = {
+  queueSize: number
+  connectedPlayers: number
+  rankedAvailable: boolean
+  updatedAt: string
 }
 
 type ComplaintFormState = {
@@ -174,6 +192,7 @@ const STORAGE_KEYS = {
   rating: 'fractured-arcanum.rating',
   record: 'fractured-arcanum.record',
   mode: 'fractured-arcanum.mode',
+  aiDifficulty: 'fractured-arcanum.ai-difficulty',
   visitor: 'fractured-arcanum.visitor',
   analyticsConsent: 'fractured-arcanum.analytics-consent',
   runes: 'fractured-arcanum.shards',
@@ -184,6 +203,13 @@ const STORAGE_KEYS = {
 }
 
 const QUICK_EMOTES = ['⚡', '🔥', '✨', '🛡️', '😈']
+const AI_DIFFICULTY_OPTIONS: Array<{ id: 'auto' | AIDifficulty; label: string }> = [
+  { id: 'auto', label: 'Auto' },
+  { id: 'novice', label: 'Novice' },
+  { id: 'adept', label: 'Adept' },
+  { id: 'veteran', label: 'Veteran' },
+  { id: 'legend', label: 'Legend' },
+]
 
 function readStoredValue<T>(key: string, fallback: T): T {
   if (typeof window === 'undefined') {
@@ -350,12 +376,17 @@ function getRankLabel(rating: number): string {
 }
 
 function pickOpponent(): OpponentProfile {
-  return OPPONENT_POOL[Math.floor(Math.random() * OPPONENT_POOL.length)]
+  return {
+    ...OPPONENT_POOL[Math.floor(Math.random() * OPPONENT_POOL.length)],
+    isBot: true,
+  }
 }
 
 function App() {
   const savedDeckConfig = readStoredValue<DeckConfig>(STORAGE_KEYS.deck, DEFAULT_DECK_CONFIG)
   const savedMode = readStoredValue<GameMode>(STORAGE_KEYS.mode, 'ai')
+  const savedAIDifficulty = readStoredValue<'auto' | AIDifficulty>(STORAGE_KEYS.aiDifficulty, 'auto')
+  const initialAIDifficulty = savedAIDifficulty === 'auto' ? 'adept' : savedAIDifficulty
 
   // ─── Auth state ───────────────────────────────────────────────────────
   const [authToken, setAuthToken] = useState(() => readStoredValue(STORAGE_KEYS.authToken, ''))
@@ -385,12 +416,20 @@ function App() {
   const [deckConfig, setDeckConfig] = useState<DeckConfig>(savedDeckConfig)
   const [activeScreen, setActiveScreen] = useState<AppScreen>('home')
   const [preferredMode, setPreferredMode] = useState<GameMode>(savedMode)
+  const [aiDifficultySetting, setAiDifficultySetting] = useState<'auto' | AIDifficulty>(savedAIDifficulty)
   const [lobbyCode, setLobbyCode] = useState(() => makeLobbyCode())
-  const [game, setGame] = useState<GameState>(() => createGame(savedMode, savedDeckConfig))
+  const [game, setGame] = useState<GameState>(() => createGame(savedMode, savedDeckConfig, undefined, savedMode === 'ai' ? initialAIDifficulty : 'legend'))
   const [selectedAttacker, setSelectedAttacker] = useState<number | null>(null)
   const [queueState, setQueueState] = useState<QueueState>('idle')
   const [queueSeconds, setQueueSeconds] = useState(0)
   const [queuedOpponent, setQueuedOpponent] = useState<OpponentProfile | null>(null)
+  const [leaderboardEntries, setLeaderboardEntries] = useState<LeaderboardEntry[]>([])
+  const [queuePresence, setQueuePresence] = useState<QueuePresence>({
+    queueSize: 0,
+    connectedPlayers: 0,
+    rankedAvailable: false,
+    updatedAt: '',
+  })
   const [battleSessionActive, setBattleSessionActive] = useState(false)
   const [serverBattleActive, setServerBattleActive] = useState(false)
   const resolvedMatchKeyRef = useRef('')
@@ -670,6 +709,14 @@ function App() {
       setBackendOnline(true)
     })
 
+    socket.on('queue:status', (payload: QueuePresence) => {
+      setQueuePresence(payload)
+    })
+
+    socket.on('leaderboard:update', (payload: { entries: LeaderboardEntry[] }) => {
+      setLeaderboardEntries(payload.entries ?? [])
+    })
+
     socket.on('disconnect', () => {
       setBackendOnline(false)
     })
@@ -827,6 +874,53 @@ function App() {
   }, [authToken, triggerBattleIntro]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
+    if (!loggedIn) {
+      return undefined
+    }
+
+    let cancelled = false
+
+    const refreshLiveArena = async () => {
+      try {
+        const [healthResponse, leaderboardResponse] = await Promise.all([
+          fetch(`${ARENA_URL}/api/health`),
+          fetch(`${ARENA_URL}/api/leaderboard`),
+        ])
+
+        const healthData = (await healthResponse.json()) as QueuePresence & { ok?: boolean }
+        const leaderboardData = (await leaderboardResponse.json()) as { ok?: boolean; entries?: LeaderboardEntry[] }
+
+        if (cancelled) {
+          return
+        }
+
+        setQueuePresence((current) => ({
+          ...current,
+          queueSize: healthData.queueSize ?? current.queueSize,
+          connectedPlayers: healthData.connectedPlayers ?? current.connectedPlayers,
+          rankedAvailable: Boolean(healthData.rankedAvailable),
+          updatedAt: new Date().toISOString(),
+        }))
+        setLeaderboardEntries(leaderboardData.entries ?? [])
+      } catch {
+        if (!cancelled) {
+          setQueuePresence((current) => ({ ...current, updatedAt: new Date().toISOString() }))
+        }
+      }
+    }
+
+    void refreshLiveArena()
+    const refreshTimer = window.setInterval(() => {
+      void refreshLiveArena()
+    }, 30000)
+
+    return () => {
+      cancelled = true
+      window.clearInterval(refreshTimer)
+    }
+  }, [loggedIn])
+
+  useEffect(() => {
     if (queueState !== 'searching') {
       return undefined
     }
@@ -866,6 +960,7 @@ function App() {
     window.localStorage.setItem(STORAGE_KEYS.deck, JSON.stringify(deckConfig))
     window.localStorage.setItem(STORAGE_KEYS.sound, JSON.stringify(soundEnabled))
     window.localStorage.setItem(STORAGE_KEYS.mode, JSON.stringify(preferredMode))
+    window.localStorage.setItem(STORAGE_KEYS.aiDifficulty, JSON.stringify(aiDifficultySetting))
     window.localStorage.setItem(STORAGE_KEYS.visitor, JSON.stringify(visitorId))
     window.localStorage.setItem(STORAGE_KEYS.analyticsConsent, JSON.stringify(analyticsConsent))
     window.localStorage.setItem(STORAGE_KEYS.authToken, JSON.stringify(authToken))
@@ -873,6 +968,7 @@ function App() {
     deckConfig,
     soundEnabled,
     preferredMode,
+    aiDifficultySetting,
     visitorId,
     analyticsConsent,
     authToken,
@@ -1080,6 +1176,8 @@ function App() {
   const deckReady = selectedDeckSize >= MIN_DECK_SIZE
   const defenderHasGuard = boardHasGuard(defendingPlayer.board)
   const rankLabel = getRankLabel(seasonRating)
+  const resolvedAIDifficulty = aiDifficultySetting === 'auto' ? getRecommendedAIDifficulty(seasonRating) : aiDifficultySetting
+  const liveQueueLabel = queuePresence.rankedAvailable ? 'Ranked live' : 'Warming up'
   const totalGames = record.wins + record.losses
   const winRate = totalGames > 0 ? Math.round((record.wins / totalGames) * 100) : 0
   const previousRankTarget =
@@ -1113,6 +1211,7 @@ function App() {
   }
 
   function resetBattleState(mode: GameMode = preferredMode, toast = 'Battle reset. Ready when you are.', nextScreen: AppScreen = 'home') {
+    const nextDifficulty = mode === 'ai' ? resolvedAIDifficulty : 'legend'
     clearEnemyTurnTimers()
     battleStartedRef.current = false
     if (battleIntroTimerRef.current) {
@@ -1134,7 +1233,7 @@ function App() {
     setQueueState('idle')
     setQueueSeconds(0)
     setQueuedOpponent(null)
-    setGame(createGame(mode, deckConfig))
+    setGame(createGame(mode, deckConfig, undefined, nextDifficulty))
     setActiveScreen(nextScreen)
     setToastMessage(toast)
   }
@@ -1396,6 +1495,8 @@ function App() {
       return
     }
 
+    const aiDifficulty = mode === 'ai' ? resolvedAIDifficulty : 'legend'
+
     setPreferredMode(mode)
     setBattleSessionActive(true)
     setServerBattleActive(false)
@@ -1407,12 +1508,13 @@ function App() {
     prevBoardRef.current = null
     setDamagedSlots(new Set())
     setActiveScreen('battle')
-    setGame(createGame(mode, deckConfig, enemyName))
+    setGame(createGame(mode, deckConfig, enemyName, aiDifficulty))
     void sendAnalytics(
       'match_start',
       {
         mode,
         opponent: enemyName ?? 'Arena Bot',
+        aiDifficulty,
         screen: getScreenBucket(),
       },
       'match',
@@ -1425,7 +1527,13 @@ function App() {
     setQueueState('idle')
     setQueueSeconds(0)
     setQueuedOpponent(null)
-    setToastMessage(mode === 'ai' ? 'AI skirmish ready. Tap Enter Arena to begin.' : 'Online duel ready. Tap Enter Arena to queue.')
+    setToastMessage(mode === 'ai' ? 'AI skirmish ready. Choose a difficulty and enter the arena.' : 'Pass-and-play duel ready. Ranked matchmaking stays available below.')
+  }
+
+  function handleAIDifficultyChange(level: 'auto' | AIDifficulty) {
+    playSound('tap', soundEnabled)
+    setAiDifficultySetting(level)
+    setToastMessage(level === 'auto' ? `AI difficulty set to Auto. Recommended tier: ${getRecommendedAIDifficulty(seasonRating)}.` : `${level.charAt(0).toUpperCase() + level.slice(1)} AI selected.`)
   }
 
   async function handleInstallApp() {
@@ -1486,14 +1594,11 @@ function App() {
       return
     }
 
-    const isDuel = preferredMode === 'duel' && backendOnline && socketClientRef.current?.connected
-    if (!isDuel) {
-      setPreferredMode('ai')
-    }
-    setActiveScreen('battle')
+    setActiveScreen('home')
     setQueueState('searching')
     setQueueSeconds(0)
     setQueuedOpponent(null)
+    setToastMessage(backendOnline ? `Searching the live ladder. ${queuePresence.connectedPlayers} players online.` : 'Backend unavailable. Falling back to a practice opponent if needed.')
     void sendAnalytics(
       'queue_join',
       {
@@ -1508,6 +1613,7 @@ function App() {
       socketClientRef.current.emit('queue:join', {
         name: 'Rune Captain',
         rank: `${rankLabel} Division`,
+        rating: seasonRating,
         deckConfig,
       })
     }
@@ -1528,6 +1634,11 @@ function App() {
 
   function handleAcceptQueue() {
     if (!queuedOpponent) {
+      return
+    }
+
+    if (!queuedOpponent.isBot) {
+      setToastMessage(`Preparing your live match against ${queuedOpponent.name}.`)
       return
     }
 
@@ -1996,9 +2107,26 @@ function App() {
               className={preferredMode === 'duel' ? 'primary' : 'ghost'}
               onClick={() => handleModeChange('duel')}
             >
-              Local Duel
+              Pass &amp; Play
             </button>
           </div>
+
+          {preferredMode === 'ai' && (
+            <div className="difficulty-panel">
+              <p className="note">AI difficulty: <strong>{resolvedAIDifficulty.charAt(0).toUpperCase() + resolvedAIDifficulty.slice(1)}</strong>{aiDifficultySetting === 'auto' ? ` recommended from your ${seasonRating} rating.` : ' selected manually.'}</p>
+              <div className="controls difficulty-row">
+                {AI_DIFFICULTY_OPTIONS.map((option) => (
+                  <button
+                    key={option.id}
+                    className={aiDifficultySetting === option.id ? 'primary' : 'ghost'}
+                    onClick={() => handleAIDifficultyChange(option.id)}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="controls">
             <button className="primary" onClick={() => startMatch()} disabled={!deckReady}>
@@ -2016,7 +2144,7 @@ function App() {
           {queueState === 'searching' && (
             <div className="queue-searching-block">
               <p className="card-text">Searching for an opponent... {queueSeconds}s</p>
-              <p className="note">Waiting for a challenger to join. You can keep waiting or cancel.</p>
+              <p className="note">Live players online: {queuePresence.connectedPlayers} • In queue: {queuePresence.queueSize}. You can keep waiting or cancel.</p>
               <button className="ghost" onClick={handleCancelQueue}>Cancel Matchmaking</button>
             </div>
           )}
@@ -2025,10 +2153,10 @@ function App() {
             <div className="opponent-preview">
               <strong>{queuedOpponent.name}</strong>
               <span className="note">
-                {queuedOpponent.rank} • {queuedOpponent.style} • {queuedOpponent.ping}ms
+                {queuedOpponent.rank} • {queuedOpponent.style} • {queuedOpponent.ping}ms {queuedOpponent.isBot ? '• Practice AI' : '• Live player'}
               </span>
               <div className="controls">
-                <button className="primary" onClick={handleAcceptQueue}>Accept Match</button>
+                <button className="primary" onClick={handleAcceptQueue}>{queuedOpponent.isBot ? 'Accept Match' : 'Match Ready'}</button>
                 <button className="ghost" onClick={handleCancelQueue}>Decline</button>
               </div>
             </div>
@@ -2060,6 +2188,47 @@ function App() {
               <span className="badge">{totalGames} games</span>
               <span className="badge">{winRate}% WR</span>
               <span className="badge">{runes} 💎</span>
+            </div>
+          </article>
+
+          <article className="section-card utility-card">
+            <div className="section-head">
+              <h2>Live Arena</h2>
+              <span className="deck-status ready">{liveQueueLabel}</span>
+            </div>
+            <div className="live-status-grid">
+              <div>
+                <strong>{queuePresence.connectedPlayers}</strong>
+                <p className="note">players online</p>
+              </div>
+              <div>
+                <strong>{queuePresence.queueSize}</strong>
+                <p className="note">currently queued</p>
+              </div>
+            </div>
+            <p className="note">{queuePresence.updatedAt ? `Live updated ${formatTimestamp(queuePresence.updatedAt)}.` : 'Waiting for live service data.'}</p>
+          </article>
+
+          <article className="section-card utility-card">
+            <div className="section-head">
+              <h2>Leaderboard</h2>
+              <span className="badge">Top 5</span>
+            </div>
+            <div className="leaderboard-list">
+              {leaderboardEntries.slice(0, 5).map((entry, index) => {
+                const entryGames = Math.max(1, entry.wins + entry.losses)
+                const entryWinRate = Math.round((entry.wins / entryGames) * 100)
+                return (
+                  <div className="leaderboard-row" key={`${entry.account_id}-${index}`}>
+                    <span className="badge">#{index + 1}</span>
+                    <div className="leaderboard-meta">
+                      <strong>{entry.display_name}</strong>
+                      <span className="note">{entry.season_rating} rating • {entryWinRate}% WR</span>
+                    </div>
+                  </div>
+                )
+              })}
+              {!leaderboardEntries.length && <p className="note">No ladder data yet. Win ranked matches to claim the top spot.</p>}
             </div>
           </article>
         </div>
