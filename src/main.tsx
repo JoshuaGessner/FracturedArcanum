@@ -36,7 +36,10 @@ if ('serviceWorker' in navigator) {
 
           newWorker.addEventListener('statechange', () => {
             if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-              newWorker.postMessage({ type: 'SKIP_WAITING' })
+              // A new version is ready — notify the app so it can show a prompt
+              window.dispatchEvent(
+                new CustomEvent('sw-update-available', { detail: { registration } }),
+              )
             }
           })
         })

@@ -35,8 +35,10 @@ import {
   createRoom,
   getRoom,
   getRoomBySocket,
+  getRoomByAccount,
   handleDisconnect,
   destroyRoom,
+  RECONNECT_GRACE_MS,
 } from './game-room.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -988,6 +990,57 @@ io.on('connection', (socket) => {
       : 'Live arena service connected.',
   })
 
+  // ─── Auto-rejoin: check if this account has an active ranked game ────
+  const existingRoom = getRoomByAccount(socket.data.accountId)
+  if (existingRoom && existingRoom.state && !existingRoom.state.winner) {
+    const side = existingRoom.reconnect(socket.data.accountId, socket.id)
+    if (side) {
+      socket.join(existingRoom.roomId)
+      const view = existingRoom.getViewForSocket(socket.id)
+      const opponentSide = side === 'player' ? 'enemy' : 'player'
+      const opponentDisconnected = existingRoom.isDisconnected(opponentSide)
+      socket.emit('game:rejoin', {
+        ...view,
+        roomId: existingRoom.roomId,
+        opponentDisconnected,
+      })
+      // Notify the opponent that this player reconnected
+      const opponentSocketId = existingRoom.sockets[opponentSide]
+      if (opponentSocketId) {
+        const opponentSocket = io.sockets.sockets.get(opponentSocketId)
+        opponentSocket?.emit('game:opponent_reconnected')
+      }
+    }
+  }
+
+  // ─── Manual rejoin request ───────────────────────────────────────────
+  socket.on('game:rejoin', () => {
+    const room = getRoomByAccount(socket.data.accountId)
+    if (!room || !room.state || room.state.winner) {
+      socket.emit('game:rejoin_failed', { error: 'No active game to rejoin.' })
+      return
+    }
+    const side = room.reconnect(socket.data.accountId, socket.id)
+    if (!side) {
+      socket.emit('game:rejoin_failed', { error: 'Could not rejoin game.' })
+      return
+    }
+    socket.join(room.roomId)
+    const view = room.getViewForSocket(socket.id)
+    const opponentSide = side === 'player' ? 'enemy' : 'player'
+    const opponentDisconnected = room.isDisconnected(opponentSide)
+    socket.emit('game:rejoin', {
+      ...view,
+      roomId: room.roomId,
+      opponentDisconnected,
+    })
+    const opponentSocketId = room.sockets[opponentSide]
+    if (opponentSocketId) {
+      const opponentSocket = io.sockets.sockets.get(opponentSocketId)
+      opponentSocket?.emit('game:opponent_reconnected')
+    }
+  })
+
   socket.on('queue:join', (payload = {}) => {
     if (!checkSocketRate(socket.id, 'queue:join', 10)) return
 
@@ -1177,19 +1230,36 @@ io.on('connection', (socket) => {
     removeWaitingPlayer(socket.id)
     socketRateLimits.delete(socket.id)
 
-    // Handle in-progress game disconnection
+    // Handle in-progress game disconnection with reconnect grace period
     const room = handleDisconnect(socket.id)
     if (room && room.state && !room.state.winner) {
-      const disconnectedSide = room.sockets.player === socket.id ? 'player' : 'enemy'
+      const disconnectedSide = room.getSideForAccount(socket.data.accountId)
+      if (!disconnectedSide) return
       const remainingSide = disconnectedSide === 'player' ? 'enemy' : 'player'
 
-      if (remainingSide) {
-        const remainingSocket = io.sockets.sockets.get(room.sockets[remainingSide])
-        remainingSocket?.emit('game:over', {
-          winner: remainingSide,
-          result: 'win',
-          reason: 'opponent_disconnected',
+      // Notify remaining player that opponent disconnected
+      const remainingSocketId = room.sockets[remainingSide]
+      if (remainingSocketId) {
+        const remainingSocket = io.sockets.sockets.get(remainingSocketId)
+        remainingSocket?.emit('game:opponent_disconnected', {
+          gracePeriodMs: RECONNECT_GRACE_MS,
         })
+      }
+
+      // Start forfeit timer — if disconnected player doesn't reconnect in time, they lose
+      room.forfeitTimers[disconnectedSide] = setTimeout(() => {
+        // Double-check: still disconnected and game not over
+        if (!room.isDisconnected(disconnectedSide) || room.state?.winner) return
+
+        const remainingSocketId2 = room.sockets[remainingSide]
+        if (remainingSocketId2) {
+          const remainingSocket = io.sockets.sockets.get(remainingSocketId2)
+          remainingSocket?.emit('game:over', {
+            winner: remainingSide,
+            result: 'win',
+            reason: 'opponent_disconnected',
+          })
+        }
 
         // Award win to remaining player, loss to disconnected player
         const winnerAccountId = room.accounts[remainingSide]
@@ -1198,9 +1268,9 @@ io.on('connection', (socket) => {
 
         if (winnerAccountId) resolveMatchResult(winnerAccountId, room.names[disconnectedSide], 'duel', 'win', turns)
         if (loserAccountId) resolveMatchResult(loserAccountId, room.names[remainingSide], 'duel', 'loss', turns)
-      }
 
-      destroyRoom(room.roomId)
+        destroyRoom(room.roomId)
+      }, RECONNECT_GRACE_MS)
     }
   })
 })

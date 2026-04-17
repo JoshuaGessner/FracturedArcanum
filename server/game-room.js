@@ -11,12 +11,16 @@ import {
 
 const MAX_ROOM_AGE_MS = 30 * 60 * 1000 // 30 minutes
 const MAX_ROOMS = 200
+const RECONNECT_GRACE_MS = 60 * 1000 // 60 seconds to reconnect
 
 /** @type {Map<string, GameRoom>} */
 const rooms = new Map()
 
 /** @type {Map<string, string>} socketId → roomId */
 const socketToRoom = new Map()
+
+/** @type {Map<number, string>} accountId → roomId */
+const accountToRoom = new Map()
 
 class GameRoom {
   /**
@@ -32,6 +36,10 @@ class GameRoom {
     this.names = { player: '', enemy: '' }
     this.state = null
     this.createdAt = Date.now()
+    /** @type {{ player: number | null, enemy: number | null }} disconnectedAt timestamps */
+    this.disconnectedAt = { player: null, enemy: null }
+    /** @type {{ player: ReturnType<typeof setTimeout> | null, enemy: ReturnType<typeof setTimeout> | null }} */
+    this.forfeitTimers = { player: null, enemy: null }
   }
 
   /**
@@ -50,6 +58,8 @@ class GameRoom {
     )
     socketToRoom.set(player1.socketId, this.roomId)
     socketToRoom.set(player2.socketId, this.roomId)
+    accountToRoom.set(player1.accountId, this.roomId)
+    accountToRoom.set(player2.accountId, this.roomId)
   }
 
   /**
@@ -63,12 +73,69 @@ class GameRoom {
   }
 
   /**
+   * @param {number} accountId
+   * @returns {'player' | 'enemy' | null}
+   */
+  getSideForAccount(accountId) {
+    if (this.accounts.player === accountId) return 'player'
+    if (this.accounts.enemy === accountId) return 'enemy'
+    return null
+  }
+
+  /**
    * @param {string} socketId
    * @returns {number | null}
    */
   getAccountForSocket(socketId) {
     const side = this.getSideForSocket(socketId)
     return side ? this.accounts[side] : null
+  }
+
+  /**
+   * Mark a side as disconnected (does not forfeit immediately).
+   * @param {string} socketId
+   * @returns {'player' | 'enemy' | null} the side that disconnected
+   */
+  markDisconnected(socketId) {
+    const side = this.getSideForSocket(socketId)
+    if (!side) return null
+    this.disconnectedAt[side] = Date.now()
+    // Remove old socket mapping but keep account mapping
+    socketToRoom.delete(socketId)
+    this.sockets[side] = null
+    return side
+  }
+
+  /**
+   * Reconnect a player with a new socket.
+   * @param {number} accountId
+   * @param {string} newSocketId
+   * @returns {'player' | 'enemy' | null} the side that reconnected
+   */
+  reconnect(accountId, newSocketId) {
+    const side = this.getSideForAccount(accountId)
+    if (!side) return null
+    // Clear old socket mapping if it still exists
+    if (this.sockets[side]) {
+      socketToRoom.delete(this.sockets[side])
+    }
+    this.sockets[side] = newSocketId
+    this.disconnectedAt[side] = null
+    if (this.forfeitTimers[side]) {
+      clearTimeout(this.forfeitTimers[side])
+      this.forfeitTimers[side] = null
+    }
+    socketToRoom.set(newSocketId, this.roomId)
+    return side
+  }
+
+  /**
+   * Check if a side is currently disconnected.
+   * @param {'player' | 'enemy'} side
+   * @returns {boolean}
+   */
+  isDisconnected(side) {
+    return this.disconnectedAt[side] !== null
   }
 
   /**
@@ -159,6 +226,20 @@ class GameRoom {
   }
 
   /**
+   * Get redacted game state for a specific account (used for reconnect).
+   * @param {number} accountId
+   * @returns {object | null}
+   */
+  getViewForAccount(accountId) {
+    const side = this.getSideForAccount(accountId)
+    if (!side || !this.state) return null
+    return {
+      yourSide: side,
+      state: redactGameState(this.state, side),
+    }
+  }
+
+  /**
    * @returns {{ playerSide: 'player' | 'enemy', winner: string } | null}
    */
   getWinnerResult() {
@@ -170,6 +251,11 @@ class GameRoom {
 
   isExpired() {
     return Date.now() - this.createdAt > MAX_ROOM_AGE_MS
+  }
+
+  cleanup() {
+    if (this.forfeitTimers.player) clearTimeout(this.forfeitTimers.player)
+    if (this.forfeitTimers.enemy) clearTimeout(this.forfeitTimers.enemy)
   }
 }
 
@@ -207,13 +293,25 @@ export function getRoomBySocket(socketId) {
 }
 
 /**
+ * @param {number} accountId
+ * @returns {GameRoom | undefined}
+ */
+export function getRoomByAccount(accountId) {
+  const roomId = accountToRoom.get(accountId)
+  return roomId ? rooms.get(roomId) : undefined
+}
+
+/**
  * @param {string} roomId
  */
 export function destroyRoom(roomId) {
   const room = rooms.get(roomId)
   if (room) {
+    room.cleanup()
     if (room.sockets.player) socketToRoom.delete(room.sockets.player)
     if (room.sockets.enemy) socketToRoom.delete(room.sockets.enemy)
+    if (room.accounts.player) accountToRoom.delete(room.accounts.player)
+    if (room.accounts.enemy) accountToRoom.delete(room.accounts.enemy)
     rooms.delete(roomId)
   }
 }
@@ -224,7 +322,7 @@ export function destroyRoom(roomId) {
 export function handleDisconnect(socketId) {
   const room = getRoomBySocket(socketId)
   if (!room) return null
-  socketToRoom.delete(socketId)
+  room.markDisconnected(socketId)
   return room
 }
 
@@ -239,4 +337,4 @@ function pruneExpiredRooms() {
 // Periodic cleanup every 5 minutes
 setInterval(pruneExpiredRooms, 5 * 60 * 1000)
 
-export { rooms, socketToRoom }
+export { rooms, socketToRoom, accountToRoom, RECONNECT_GRACE_MS }

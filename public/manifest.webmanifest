@@ -1,23 +1,52 @@
 {
+  "id": "/",
   "name": "Fractured Arcanum",
-  "short_name": "FracturedArcanum",
+  "short_name": "Fractured Arcanum",
   "description": "A mobile-first cosmic-horror card battler with deck building, ranked play, and live arena features.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "orientation": "portrait",
+  "lang": "en",
+  "categories": ["games", "entertainment"],
   "background_color": "#0b1020",
   "theme_color": "#0b1020",
   "icons": [
     {
-      "src": "/fractured-arcanum-crest.svg",
+      "src": "/fractured-arcanum-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/fractured-arcanum-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/fractured-arcanum-icon-maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/fractured-arcanum-icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/fractured-arcanum-icon-512.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"
     },
     {
-      "src": "/fractured-arcanum-logo.svg",
+      "src": "/fractured-arcanum-icon-maskable.svg",
       "sizes": "any",
       "type": "image/svg+xml",
-      "purpose": "any"
+      "purpose": "maskable"
     }
   ]
 }

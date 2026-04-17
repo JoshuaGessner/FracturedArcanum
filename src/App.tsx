@@ -285,6 +285,44 @@ const EFFECT_LABELS: Record<string, string> = {
   overwhelm: '🦣 Overwhelm',
 }
 
+const EFFECT_DESCRIPTIONS: Record<string, string> = {
+  charge: 'Can attack immediately when played — does not wait a turn.',
+  guard: 'Enemies must attack this unit before they can target your hero or other units.',
+  rally: 'Gives +1 attack to all friendly units on the board when played.',
+  blast: 'Deals 2 damage to a random enemy unit when played.',
+  heal: 'Restores 3 health to your hero when played.',
+  draw: 'Draw an extra card when played.',
+  fury: 'Attacks twice each turn.',
+  drain: 'Deals 1 damage to the enemy hero when played.',
+  empower: 'Gives +1/+1 to an adjacent friendly unit when played.',
+  poison: 'Destroys any unit it damages, regardless of remaining health.',
+  shield: 'Takes 2 less damage from attacks (minimum 1).',
+  siphon: 'Deals 2 damage to the enemy hero and heals your hero for 2 when played.',
+  bolster: 'Gives +0/+2 health to all friendly units when played.',
+  cleave: 'Attacks all enemy lanes at once instead of just one.',
+  lifesteal: 'Heals your hero for the amount of damage dealt.',
+  summon: 'Creates a 1/1 token unit in an empty lane when played.',
+  silence: 'Removes the effect from a random enemy unit when played.',
+  frostbite: 'Exhausts a random enemy unit for an extra turn when played.',
+  enrage: 'Gains +2 attack when damaged.',
+  deathrattle: 'Triggers a special effect when this unit is destroyed.',
+  overwhelm: 'Excess damage to a unit carries over to the enemy hero.',
+}
+
+type InspectedCard = {
+  name: string
+  icon: string
+  id: string
+  cost: number
+  attack: number
+  health: number
+  currentHealth?: number
+  rarity: string
+  tribe: string
+  text: string
+  effect: string | null
+}
+
 function pulseFeedback(duration = 14) {
   if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
     navigator.vibrate(duration)
@@ -370,6 +408,10 @@ function App() {
   const [sessionId] = useState(() => `session-${Math.random().toString(36).slice(2, 10)}`)
   const [installPromptEvent, setInstallPromptEvent] = useState<InstallPromptEvent | null>(null)
   const [toastMessage, setToastMessage] = useState('Ready your deck and enter the arena.')
+  const [opponentDisconnected, setOpponentDisconnected] = useState(false)
+  const [disconnectGraceMs, setDisconnectGraceMs] = useState(0)
+  const [swUpdateAvailable, setSwUpdateAvailable] = useState(false)
+  const swRegistrationRef = useRef<ServiceWorkerRegistration | null>(null)
   const [complaintForm, setComplaintForm] = useState<ComplaintFormState>({
     category: 'gameplay',
     severity: 'normal',
@@ -384,6 +426,7 @@ function App() {
   const [battleIntroVisible, setBattleIntroVisible] = useState(false)
   const [rewardOverlayVisible, setRewardOverlayVisible] = useState(false)
   const [damagedSlots, setDamagedSlots] = useState<Set<string>>(new Set())
+  const [inspectedCard, setInspectedCard] = useState<InspectedCard | null>(null)
   const battleStartedRef = useRef(false)
   const enemyTurnTimers = useRef<number[]>([])
   const prevBoardRef = useRef<{ player: Array<Unit | null>; enemy: Array<Unit | null> } | null>(null)
@@ -619,6 +662,8 @@ function App() {
     })
 
     socket.on('game:over', (payload: { result: string }) => {
+      setOpponentDisconnected(false)
+      setDisconnectGraceMs(0)
       if (payload.result === 'win') {
         setToastMessage('Victory! You won the match.')
       } else if (payload.result === 'loss') {
@@ -638,6 +683,34 @@ function App() {
         ...current,
         log: [`${payload.from} reacts ${payload.emote}`, ...current.log].slice(0, 10),
       }))
+    })
+
+    // ─── Reconnect / disconnect events ──────────────────────────────
+    socket.on('game:rejoin', (payload: { yourSide: BattleSide; state: GameState; roomId: string; opponentDisconnected: boolean }) => {
+      setGame(payload.state)
+      setActiveScreen('battle')
+      setQueueState('idle')
+      setQueueSeconds(0)
+      setQueuedOpponent(null)
+      setOpponentDisconnected(payload.opponentDisconnected)
+      setToastMessage('Reconnected to your ranked match.')
+      playSound('summon', soundEnabled)
+    })
+
+    socket.on('game:rejoin_failed', () => {
+      setOpponentDisconnected(false)
+    })
+
+    socket.on('game:opponent_disconnected', (payload: { gracePeriodMs: number }) => {
+      setOpponentDisconnected(true)
+      setDisconnectGraceMs(payload.gracePeriodMs)
+      setToastMessage('Opponent disconnected. Waiting for them to reconnect...')
+    })
+
+    socket.on('game:opponent_reconnected', () => {
+      setOpponentDisconnected(false)
+      setDisconnectGraceMs(0)
+      setToastMessage('Opponent reconnected!')
     })
 
     void fetch(`${ARENA_URL}/api/profile`)
@@ -753,6 +826,17 @@ function App() {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstall)
       window.removeEventListener('appinstalled', handleInstalled)
     }
+  }, [])
+
+  useEffect(() => {
+    function handleSwUpdate(event: Event) {
+      const detail = (event as CustomEvent).detail as { registration: ServiceWorkerRegistration }
+      swRegistrationRef.current = detail.registration
+      setSwUpdateAvailable(true)
+    }
+
+    window.addEventListener('sw-update-available', handleSwUpdate)
+    return () => window.removeEventListener('sw-update-available', handleSwUpdate)
   }, [])
 
   useEffect(() => {
@@ -900,6 +984,7 @@ function App() {
   const activePlayer = game[activeSide]
   const defendingPlayer = game[defendingSide]
   const isMyTurn = game.turn === 'player' && !enemyTurnActive
+  const gameInProgress = activeScreen === 'battle' ? false : (game.turnNumber > 1 || game.player.hand.length !== game.enemy.hand.length || game.player.board.some(Boolean) || game.enemy.board.some(Boolean)) && !game.winner
   const activeBoardHasOpenLane = activePlayer.board.some((slot) => slot === null)
   const selectedDeckSize = getDeckSize(deckConfig)
   const deckReady = selectedDeckSize >= MIN_DECK_SIZE
@@ -1204,6 +1289,18 @@ function App() {
     setInstallPromptEvent(null)
   }
 
+  function handleAcceptUpdate() {
+    const reg = swRegistrationRef.current
+    if (reg?.waiting) {
+      reg.waiting.postMessage({ type: 'SKIP_WAITING' })
+    }
+    setSwUpdateAvailable(false)
+  }
+
+  function handleDismissUpdate() {
+    setSwUpdateAvailable(false)
+  }
+
   function handleSendEmote(emote: string) {
     playSound('tap', soundEnabled)
     pulseFeedback(10)
@@ -1265,6 +1362,9 @@ function App() {
     setQueueState('idle')
     setQueueSeconds(0)
     setQueuedOpponent(null)
+    if (activeScreen === 'battle' && !gameInProgress) {
+      setActiveScreen('home')
+    }
   }
 
   function handleAcceptQueue() {
@@ -1498,6 +1598,17 @@ function App() {
         </div>
       )}
 
+      {/* ─── App update banner ────────────────────────────────────── */}
+      {swUpdateAvailable && (
+        <div className="update-banner">
+          <span>A new version of Fractured Arcanum is available!</span>
+          <div className="update-banner-actions">
+            <button className="primary small" onClick={handleAcceptUpdate}>Update Now</button>
+            <button className="ghost small" onClick={handleDismissUpdate}>Later</button>
+          </div>
+        </div>
+      )}
+
       {/* ─── Auth gate ─────────────────────────────────────────────── */}
       {!setupRequired && !loggedIn && (
         <div className="auth-gate">
@@ -1564,6 +1675,11 @@ function App() {
                 </>
               )}
             </p>
+            {installPromptEvent && (
+              <button className="pwa-install-btn" onClick={handleInstallApp}>
+                Install App
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -1653,45 +1769,98 @@ function App() {
         </section>
       )}
 
+      {inspectedCard && (
+        <section className="queue-overlay card-inspect-overlay" onClick={() => setInspectedCard(null)}>
+          <div className="queue-modal card-inspect-modal section-card" onClick={(e) => e.stopPropagation()}>
+            <div className="card-inspect-header">
+              <span className="cost-pill">{inspectedCard.cost}</span>
+              <div>
+                <h2>{inspectedCard.icon} {inspectedCard.name}</h2>
+                <span className="badges">
+                  <span className="badge">{inspectedCard.rarity}</span>
+                  <span className="badge">{inspectedCard.tribe}</span>
+                </span>
+              </div>
+            </div>
+            <div className="card-art-shell large">
+              <img className="card-illustration" src={cardArtPath(inspectedCard.id)} alt={inspectedCard.name} />
+            </div>
+            <div className="card-inspect-stats">
+              <span>⚔️ Attack: {inspectedCard.attack}</span>
+              <span>❤️ Health: {inspectedCard.currentHealth ?? inspectedCard.health}</span>
+              {inspectedCard.currentHealth !== undefined && inspectedCard.currentHealth !== inspectedCard.health && (
+                <span className="note">(Base: {inspectedCard.health})</span>
+              )}
+            </div>
+            <p className="card-text">{inspectedCard.text}</p>
+            {inspectedCard.effect && (
+              <div className="card-inspect-effect">
+                <span className="effect-badge">{EFFECT_LABELS[inspectedCard.effect] ?? inspectedCard.effect}</span>
+                <p className="note">{EFFECT_DESCRIPTIONS[inspectedCard.effect] ?? ''}</p>
+              </div>
+            )}
+            <button className="ghost" onClick={() => setInspectedCard(null)}>Close</button>
+          </div>
+        </section>
+      )}
+
 
       {loggedIn && (<>
       <section className={`home-screen screen-panel ${activeScreen === 'home' ? 'active' : 'hidden'}`}>
         <article className="section-card utility-card spotlight-card">
-          <img
-            className="spotlight-banner"
-            src="/generated/ui/asset-forge-banner.svg"
-            alt="Fractured Arcanum spotlight banner"
-          />
-
-          <div className="mode-switch">
-            <button
-              className={preferredMode === 'ai' ? 'primary' : 'ghost'}
-              onClick={() => handleModeChange('ai')}
-            >
-              AI Skirmish
-            </button>
-            <button
-              className={preferredMode === 'duel' ? 'primary' : 'ghost'}
-              onClick={() => handleModeChange('duel')}
-            >
-              Local Duel
-            </button>
+          <div className="arena-title-block">
+            <p className="eyebrow">Season of Whispers</p>
+            <h2>The Arena Awaits</h2>
+            <p className="note">Choose your mode and enter battle.</p>
           </div>
 
-          <div className="controls">
-            <button className="primary" onClick={() => startMatch()} disabled={!deckReady}>
-              Enter Arena
-            </button>
-            <button className="secondary" onClick={handleStartQueue} disabled={!deckReady || queueState !== 'idle'}>
-              Find Ranked Match
-            </button>
-            <button className="ghost" onClick={() => openScreen('deck')}>
-              Deck Forge
-            </button>
-          </div>
+          {gameInProgress && (
+            <div className="game-resume-block">
+              <p className="note">You have a battle in progress vs <strong>{game.enemy.name}</strong> (Turn {game.turnNumber})</p>
+              <div className="controls">
+                <button className="primary" onClick={() => openScreen('battle')}>Resume Battle</button>
+                <button className="ghost" onClick={() => setGame(createGame(preferredMode, deckConfig))}>Abandon &amp; Reset</button>
+              </div>
+            </div>
+          )}
+
+          {!gameInProgress && (
+            <>
+            <div className="mode-switch">
+              <button
+                className={preferredMode === 'ai' ? 'primary' : 'ghost'}
+                onClick={() => handleModeChange('ai')}
+              >
+                AI Skirmish
+              </button>
+              <button
+                className={preferredMode === 'duel' ? 'primary' : 'ghost'}
+                onClick={() => handleModeChange('duel')}
+              >
+                Local Duel
+              </button>
+            </div>
+
+            <div className="controls">
+              <button className="primary" onClick={() => startMatch()} disabled={!deckReady}>
+                Enter Arena
+              </button>
+              <button className="secondary" onClick={handleStartQueue} disabled={!deckReady || queueState !== 'idle'}>
+                Find Ranked Match
+              </button>
+              <button className="ghost" onClick={() => openScreen('deck')}>
+                Deck Forge
+              </button>
+            </div>
+            </>
+          )}
 
           {queueState === 'searching' && (
-            <p className="card-text">Searching for an opponent... {queueSeconds}s</p>
+            <div className="queue-searching-block">
+              <p className="card-text">Searching for an opponent... {queueSeconds}s</p>
+              <p className="note">Waiting for a challenger to join. You can keep waiting or cancel.</p>
+              <button className="ghost" onClick={handleCancelQueue}>Cancel Matchmaking</button>
+            </div>
           )}
 
           {queueState === 'found' && queuedOpponent && (
@@ -1789,12 +1958,17 @@ function App() {
                     <strong>
                       {card.icon} {card.name}
                     </strong>
-                    <span className="stats">{card.cost}</span>
+                    <span className="stats">{card.cost} 💧</span>
                   </div>
                   <div className="card-meta-row">
                     <span className="rarity-gem" style={{ color: RARITY_COLORS[card.rarity] }}>{card.rarity === 'legendary' ? '★' : card.rarity === 'epic' ? '◆' : card.rarity === 'rare' ? '◈' : '●'} {card.rarity}</span>
                     <span className="tribe-badge">{card.tribe}</span>
                   </div>
+                  <div className="card-stats">
+                    <span>⚔️ {card.attack}</span>
+                    <span>❤️ {card.health}</span>
+                  </div>
+                  {card.effect && <span className="effect-badge small">{EFFECT_LABELS[card.effect] ?? card.effect}</span>}
                   <p className="card-text">{card.text}</p>
                 </div>
 
@@ -1829,6 +2003,18 @@ function App() {
       {enemyTurnActive && (
         <div className={`enemy-turn-banner screen-panel ${activeScreen === 'battle' ? 'active' : 'hidden'}`}>
           <span className="enemy-turn-label">{enemyTurnLabel}</span>
+        </div>
+      )}
+
+      {activeScreen === 'battle' && !backendOnline && game.mode === 'duel' && (
+        <div className="connection-banner reconnecting">
+          <span>Connection lost — reconnecting...</span>
+        </div>
+      )}
+
+      {activeScreen === 'battle' && opponentDisconnected && game.mode === 'duel' && (
+        <div className="connection-banner opponent-disconnected">
+          <span>Opponent disconnected — waiting for reconnect ({Math.round(disconnectGraceMs / 1000)}s window)...</span>
         </div>
       )}
 
@@ -1926,6 +2112,10 @@ function App() {
                   key={unit.uid}
                   style={{ '--rarity-color': RARITY_COLORS[unit.rarity] } as React.CSSProperties}
                   onClick={() => (isSelectable ? handleSelectAttacker(index) : handleAttackTarget(index))}
+                  onDoubleClick={(e) => {
+                    e.preventDefault()
+                    setInspectedCard({ name: unit.name, icon: unit.icon, id: unit.id, cost: unit.cost, attack: unit.attack, health: unit.health, currentHealth: unit.currentHealth, rarity: unit.rarity, tribe: unit.tribe, text: unit.text, effect: unit.effect })
+                  }}
                   disabled={Boolean(game.winner) || (isSelectable ? unit.exhausted : selectedAttacker === null)}
                 >
                   <div className="slot-head">
@@ -1933,18 +2123,10 @@ function App() {
                       {unit.icon} {unit.name}
                     </strong>
                     <span className="stats">
-                      {unit.attack}/{unit.currentHealth}
+                      ⚔️{unit.attack} ❤️{unit.currentHealth}
                     </span>
                   </div>
                   {unit.effect && <span className="effect-badge small">{EFFECT_LABELS[unit.effect] ?? unit.effect}</span>}
-                  <img
-                    className="unit-portrait"
-                    src={cardArtPath(unit.id)}
-                    alt={`${unit.name} artwork`}
-                    loading="lazy"
-                  />
-                  <span className="note">{isSelectable ? 'Tap to attack' : 'Target this lane'}</span>
-                  <span className="mini-text">{unit.text}</span>
                 </button>
               )
             })}
@@ -1985,6 +2167,10 @@ function App() {
                   key={unit.uid}
                   style={{ '--rarity-color': RARITY_COLORS[unit.rarity] } as React.CSSProperties}
                   onClick={() => (isSelectable ? handleSelectAttacker(index) : handleAttackTarget(index))}
+                  onDoubleClick={(e) => {
+                    e.preventDefault()
+                    setInspectedCard({ name: unit.name, icon: unit.icon, id: unit.id, cost: unit.cost, attack: unit.attack, health: unit.health, currentHealth: unit.currentHealth, rarity: unit.rarity, tribe: unit.tribe, text: unit.text, effect: unit.effect })
+                  }}
                   disabled={Boolean(game.winner) || (isSelectable ? unit.exhausted : selectedAttacker === null)}
                 >
                   <div className="slot-head">
@@ -1992,18 +2178,10 @@ function App() {
                       {unit.icon} {unit.name}
                     </strong>
                     <span className="stats">
-                      {unit.attack}/{unit.currentHealth}
+                      ⚔️{unit.attack} ❤️{unit.currentHealth}
                     </span>
                   </div>
                   {unit.effect && <span className="effect-badge small">{EFFECT_LABELS[unit.effect] ?? unit.effect}</span>}
-                  <img
-                    className="unit-portrait"
-                    src={cardArtPath(unit.id)}
-                    alt={`${unit.name} artwork`}
-                    loading="lazy"
-                  />
-                  <span className="note">{isSelectable ? 'Tap to attack' : 'Target this lane'}</span>
-                  <span className="mini-text">{unit.text}</span>
                 </button>
               )
             })}
@@ -2483,6 +2661,10 @@ function App() {
                   className={['hand-card', `rarity-${card.rarity}`, canPlay ? '' : 'unplayable'].filter(Boolean).join(' ')}
                   key={card.instanceId}
                   onClick={() => handlePlayCard(index)}
+                  onDoubleClick={(e) => {
+                    e.preventDefault()
+                    setInspectedCard({ name: card.name, icon: card.icon, id: card.id, cost: card.cost, attack: card.attack, health: card.health, rarity: card.rarity, tribe: card.tribe, text: card.text, effect: card.effect })
+                  }}
                   disabled={!canPlay}
                   style={{ '--rarity-color': RARITY_COLORS[card.rarity] } as React.CSSProperties}
                 >
@@ -2490,19 +2672,9 @@ function App() {
                     <span className="cost-pill">{card.cost}</span>
                     <span className="hero-label">{card.icon}</span>
                   </div>
-                  <div className="card-art-shell large">
-                    <img
-                      className="card-illustration"
-                      src={cardArtPath(card.id)}
-                      alt={`${card.name} illustration`}
-                      loading="lazy"
-                    />
-                  </div>
                   <div>
                     <strong className="card-name">{card.name}</strong>
-                    <span className="rarity-gem" style={{ color: RARITY_COLORS[card.rarity] }}>{card.rarity === 'legendary' ? '★' : card.rarity === 'epic' ? '◆' : card.rarity === 'rare' ? '◈' : '●'}</span>
                     {card.effect && <span className="effect-badge">{EFFECT_LABELS[card.effect] ?? card.effect}</span>}
-                    <p className="card-text">{card.text}</p>
                   </div>
                   <div className="card-stats">
                     <span>⚔️ {card.attack}</span>

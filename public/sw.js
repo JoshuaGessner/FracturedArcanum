@@ -1,9 +1,16 @@
-const STATIC_CACHE = 'fractured-arcanum-static-v4'
-const CORE_ASSETS = ['/', '/manifest.webmanifest', '/fractured-arcanum-crest.svg']
+const STATIC_CACHE = 'fractured-arcanum-static-v6'
+const CORE_ASSETS = [
+  '/',
+  '/manifest.webmanifest',
+  '/fractured-arcanum-icon-512.svg',
+  '/fractured-arcanum-icon-192.png',
+  '/fractured-arcanum-icon-512.png',
+  '/apple-touch-icon.png',
+]
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(STATIC_CACHE).then((cache) => cache.addAll(CORE_ASSETS)))
-  self.skipWaiting()
+  // Do NOT call skipWaiting here — wait for user to accept the update
 })
 
 self.addEventListener('activate', (event) => {
