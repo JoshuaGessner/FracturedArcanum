@@ -6,7 +6,7 @@ import helmet from 'helmet'
 import { createServer } from 'node:http'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
-import { createHash, randomBytes, randomUUID } from 'node:crypto'
+import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto'
 import { fileURLToPath } from 'node:url'
 import { Server } from 'socket.io'
 import {
@@ -36,6 +36,17 @@ import {
   createClan,
   joinClanByInvite,
   leaveClan,
+  getAccountRole,
+  hasRoleAtLeast,
+  findOwnerAccountId,
+  setAccountRole,
+  transferOwnership,
+  assignInitialOwner,
+  listAccounts,
+  listAudit,
+  recordAudit,
+  getAccountById,
+  verifyPassword,
 } from './db.js'
 import {
   createRoom,
@@ -83,7 +94,10 @@ function saveServerConfig(config) {
 const serverConfig = loadServerConfig()
 let setupComplete = Boolean(serverConfig?.setupComplete)
 
-// Priority: env var > persisted config > auto-generate on first launch
+// Priority: env var > persisted config > auto-generate on first launch.
+// NOTE: the admin key is now a break-glass recovery mechanism only. Regular
+// admin and owner access uses session-bound roles; the key only grants access
+// to /api/admin/owner/recover.
 let ADMIN_KEY = (process.env.ADMIN_KEY ?? '').trim()
 if (!ADMIN_KEY && serverConfig?.adminKey) {
   ADMIN_KEY = serverConfig.adminKey
@@ -91,9 +105,31 @@ if (!ADMIN_KEY && serverConfig?.adminKey) {
   ADMIN_KEY = randomBytes(32).toString('hex')
   saveServerConfig({ adminKey: ADMIN_KEY, setupComplete: false, createdAt: new Date().toISOString() })
   console.log('─────────────────────────────────────────────────────')
-  console.log('First launch detected. Admin key auto-generated.')
+  console.log('First launch detected. Recovery key auto-generated.')
   console.log('Visit the app to complete server setup.')
   console.log('─────────────────────────────────────────────────────')
+}
+
+// ─── Migration: ensure the bootstrap account is marked as owner ─────────────
+// Older installs stored only serverConfig.adminAccountId and relied on the
+// shared ADMIN_KEY. Migrate those accounts to role='owner' so they can sign in
+// to the new admin console without the key.
+try {
+  const existingOwner = findOwnerAccountId()
+  if (!existingOwner && serverConfig?.adminAccountId) {
+    const result = assignInitialOwner(serverConfig.adminAccountId, { reason: 'migration' })
+    if (result.ok) {
+      console.log('Migration: promoted configured admin account to owner role.')
+    } else {
+      console.warn(`Migration: could not promote configured admin account (${result.error}).`)
+    }
+  } else if (!existingOwner && setupComplete) {
+    console.warn(
+      'WARNING: setup was marked complete but no owner account exists. Use the /api/admin/owner/recover endpoint with ADMIN_KEY to restore access.',
+    )
+  }
+} catch (err) {
+  console.warn('Owner migration check failed:', err?.message ?? err)
 }
 
 const isProduction = process.env.NODE_ENV === 'production'
@@ -567,18 +603,52 @@ function buildAdminOverview() {
   }
 }
 
-function requireAdmin(request, response, next) {
-  const providedKey = request.get('x-admin-key')
+function requireRoleMiddleware(minRole) {
+  return function requireRole(request, response, next) {
+    const token = request.get('authorization')?.replace('Bearer ', '')
+    if (!token) {
+      response.status(401).json({ ok: false, error: 'Authentication required.' })
+      return
+    }
+    const session = validateSession(token)
+    if (!session) {
+      response.status(401).json({ ok: false, error: 'Session expired. Please log in again.' })
+      return
+    }
+    const role = getAccountRole(session.account_id)
+    if (!hasRoleAtLeast(role, minRole)) {
+      response.status(403).json({ ok: false, error: 'Insufficient privileges.' })
+      return
+    }
+    request.accountId = session.account_id
+    request.displayName = session.display_name
+    request.username = session.username
+    request.role = role
+    next()
+  }
+}
 
-  if (!providedKey || providedKey !== ADMIN_KEY) {
-    response.status(401).json({
-      ok: false,
-      message: 'A valid admin key is required for the operations console.',
-    })
+const requireAdminRole = requireRoleMiddleware('admin')
+const requireOwnerRole = requireRoleMiddleware('owner')
+
+function requireOwnerRecoveryKey(request, response, next) {
+  const providedKey = request.get('x-admin-key')
+  if (!providedKey || typeof providedKey !== 'string') {
+    response.status(401).json({ ok: false, error: 'Recovery key required.' })
     return
   }
-
+  const expected = Buffer.from(ADMIN_KEY, 'utf8')
+  const provided = Buffer.from(providedKey, 'utf8')
+  if (expected.length !== provided.length || !timingSafeEqualBuffers(expected, provided)) {
+    response.status(401).json({ ok: false, error: 'Invalid recovery key.' })
+    return
+  }
   next()
+}
+
+function timingSafeEqualBuffers(a, b) {
+  if (a.length !== b.length) return false
+  return timingSafeEqual(a, b)
 }
 
 app.use(
@@ -766,24 +836,40 @@ app.post(
     config.adminAccountId = result.accountId
     saveServerConfig(config)
 
-    console.log('Server setup completed. Admin account created.')
+    // Bootstrap: the setup account becomes the owner. Role is the source of
+    // truth going forward; the ADMIN_KEY is retained only for recovery.
+    const ownerResult = assignInitialOwner(result.accountId, {
+      ipHash: hashIp(ip),
+      reason: 'setup',
+    })
+    if (!ownerResult.ok) {
+      console.warn(`Setup: could not assign owner role (${ownerResult.error}).`)
+    }
+
+    console.log('Server setup completed. Owner account created.')
+
+    const role = getAccountRole(result.accountId)
 
     response.status(201).json({
       ok: true,
-      adminKey: ADMIN_KEY,
+      // Intentionally no longer returning adminKey in the setup response.
+      // The owner authenticates to the admin console with their session token.
       token: session.token,
       expiresAt: session.expiresAt,
-      profile: sanitizeProfile(profile, uname, result.accountId),
+      profile: sanitizeProfile(profile, uname, result.accountId, role),
     })
   },
 )
 
-function sanitizeProfile(profile, username, accountId) {
+function sanitizeProfile(profile, username, accountId, role) {
   if (!profile) return null
+  const resolvedAccountId = accountId ?? profile.account_id
+  const resolvedRole = role ?? (resolvedAccountId ? getAccountRole(resolvedAccountId) : 'user')
   return {
-    accountId: accountId ?? profile.account_id,
+    accountId: resolvedAccountId,
     displayName: profile.display_name ?? username ?? '',
     username: username ?? '',
+    role: resolvedRole,
     runes: profile.runes,
     seasonRating: profile.season_rating,
     wins: profile.wins,
@@ -1115,11 +1201,14 @@ app.post('/api/complaints', (request, response) => {
   })
 })
 
-app.get('/api/admin/overview', requireAdmin, (_request, response) => {
-  response.json(buildAdminOverview())
+app.get('/api/admin/overview', requireAdminRole, (request, response) => {
+  response.json({
+    ...buildAdminOverview(),
+    viewer: { accountId: request.accountId, role: request.role, displayName: request.displayName },
+  })
 })
 
-app.post('/api/admin/settings', requireAdmin, (request, response) => {
+app.post('/api/admin/settings', requireAdminRole, (request, response) => {
   adminStore.settings = {
     motd: String(request.body?.motd ?? adminStore.settings.motd).slice(0, 160),
     quest: String(request.body?.quest ?? adminStore.settings.quest).slice(0, 120),
@@ -1129,12 +1218,17 @@ app.post('/api/admin/settings', requireAdmin, (request, response) => {
 
   pushActivity('admin_settings_updated', {
     route: 'admin',
-    anonymousUser: 'admin',
+    anonymousUser: request.accountId ?? 'admin',
     meta: {
       maintenanceMode: adminStore.settings.maintenanceMode,
       featuredMode: adminStore.settings.featuredMode,
     },
   })
+  recordAudit(request.accountId, null, 'settings_updated', {
+    maintenanceMode: adminStore.settings.maintenanceMode,
+    featuredMode: adminStore.settings.featuredMode,
+    motd: adminStore.settings.motd.slice(0, 60),
+  }, hashIp(clientIp(request)))
   saveAdminStore()
   io.emit('server:profileUpdated', adminStore.settings)
   debouncedSaveAdminStore()
@@ -1145,7 +1239,7 @@ app.post('/api/admin/settings', requireAdmin, (request, response) => {
   })
 })
 
-app.post('/api/admin/complaints/:id', requireAdmin, (request, response) => {
+app.post('/api/admin/complaints/:id', requireAdminRole, (request, response) => {
   const complaint = adminStore.complaints.find((item) => item.id === request.params.id)
 
   if (!complaint) {
@@ -1182,6 +1276,173 @@ app.post('/api/admin/complaints/:id', requireAdmin, (request, response) => {
     ok: true,
     complaint,
   })
+})
+
+// ─── Role management (admin + owner) ────────────────────────────────────────
+
+const adminWriteLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 20,
+  standardHeaders: false,
+  legacyHeaders: false,
+})
+const ownerTransferLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 3,
+  standardHeaders: false,
+  legacyHeaders: false,
+})
+
+// Any admin-or-owner may list accounts (for moderation search / audit UI).
+app.get('/api/admin/users', requireAdminRole, (request, response) => {
+  const users = listAccounts({
+    search: String(request.query?.search ?? ''),
+    limit: Number(request.query?.limit ?? 25),
+    offset: Number(request.query?.offset ?? 0),
+  })
+  response.json({ ok: true, users })
+})
+
+// Only the owner can promote/demote admins.
+app.post('/api/admin/users/:accountId/role', requireOwnerRole, adminWriteLimiter, (request, response) => {
+  const targetAccountId = String(request.params?.accountId ?? '')
+  const newRole = String(request.body?.role ?? '')
+  const result = setAccountRole(request.accountId, targetAccountId, newRole, {
+    ipHash: hashIp(clientIp(request)),
+  })
+  if (!result.ok) {
+    response.status(result.status ?? 400).json({ ok: false, error: result.error })
+    return
+  }
+
+  pushActivity('admin_role_change', {
+    route: 'admin',
+    anonymousUser: request.accountId,
+    meta: { targetAccountId, newRole, previousRole: result.previousRole },
+  })
+
+  // Notify the affected user (if online) so their UI refreshes privileges.
+  try {
+    io.sockets.sockets.forEach((socket) => {
+      if (socket.data?.accountId === targetAccountId) {
+        socket.emit('server:role_changed', { role: newRole })
+      }
+    })
+  } catch { /* non-fatal */ }
+
+  response.json(result)
+})
+
+// Owner-only, rate-limited (3/hour), password-gated ownership transfer.
+app.post('/api/admin/owner/transfer', requireOwnerRole, ownerTransferLimiter, (request, response) => {
+  const targetAccountId = String(request.body?.targetAccountId ?? '')
+  const password = String(request.body?.password ?? '')
+  if (!password) {
+    response.status(400).json({ ok: false, error: 'Password confirmation required.' })
+    return
+  }
+  const actor = getAccountById(request.accountId)
+  if (!actor || !verifyPassword(password, actor.password_hash)) {
+    // Audit even on failure to surface brute-force attempts.
+    recordAudit(request.accountId, targetAccountId || null, 'ownership_transfer_failed', { reason: 'bad_password' }, hashIp(clientIp(request)))
+    response.status(401).json({ ok: false, error: 'Password is incorrect.' })
+    return
+  }
+  const result = transferOwnership(request.accountId, targetAccountId, {
+    ipHash: hashIp(clientIp(request)),
+  })
+  if (!result.ok) {
+    response.status(result.status ?? 400).json({ ok: false, error: result.error })
+    return
+  }
+
+  // Persist the new owner in server config for future recovery reference.
+  try {
+    const config = loadServerConfig() ?? {}
+    config.adminAccountId = targetAccountId
+    saveServerConfig(config)
+  } catch (err) {
+    console.warn('Failed to persist new owner in server config:', err?.message ?? err)
+  }
+
+  pushActivity('admin_owner_transfer', {
+    route: 'admin',
+    anonymousUser: request.accountId,
+    meta: { previousOwnerId: request.accountId, newOwnerId: targetAccountId },
+  })
+
+  try {
+    io.sockets.sockets.forEach((socket) => {
+      if (socket.data?.accountId === request.accountId) {
+        socket.emit('server:role_changed', { role: 'admin' })
+      } else if (socket.data?.accountId === targetAccountId) {
+        socket.emit('server:role_changed', { role: 'owner' })
+      }
+    })
+  } catch { /* non-fatal */ }
+
+  response.json(result)
+})
+
+app.get('/api/admin/audit', requireAdminRole, (request, response) => {
+  const limit = Number(request.query?.limit ?? 50)
+  response.json({ ok: true, audit: listAudit({ limit }) })
+})
+
+// Break-glass: recover owner access by promoting any account via ADMIN_KEY.
+// Intended for operators who have filesystem access to the server's config
+// file (where the recovery key is stored). Rate-limited and audit-logged.
+const ownerRecoveryLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  standardHeaders: false,
+  legacyHeaders: false,
+})
+
+app.post('/api/admin/owner/recover', ownerRecoveryLimiter, requireOwnerRecoveryKey, (request, response) => {
+  const targetAccountId = String(request.body?.targetAccountId ?? '')
+  if (!targetAccountId) {
+    response.status(400).json({ ok: false, error: 'targetAccountId is required.' })
+    return
+  }
+  const target = getAccountById(targetAccountId)
+  if (!target) {
+    response.status(404).json({ ok: false, error: 'Target account not found.' })
+    return
+  }
+
+  const existingOwner = findOwnerAccountId()
+  const ipHash = hashIp(clientIp(request))
+
+  // If someone else is currently the owner, demote them first — the recovery
+  // key is explicitly documented as override-capable.
+  let previousOwnerId = null
+  if (existingOwner && existingOwner !== targetAccountId) {
+    previousOwnerId = existingOwner
+    const transfer = transferOwnership(existingOwner, targetAccountId, { ipHash })
+    if (!transfer.ok) {
+      response.status(transfer.status ?? 400).json({ ok: false, error: transfer.error })
+      return
+    }
+  } else {
+    const result = assignInitialOwner(targetAccountId, { ipHash, reason: 'recovery' })
+    if (!result.ok) {
+      response.status(result.status ?? 400).json({ ok: false, error: result.error })
+      return
+    }
+  }
+
+  recordAudit(null, targetAccountId, 'owner_recovered', { previousOwnerId }, ipHash)
+
+  try {
+    const config = loadServerConfig() ?? {}
+    config.adminAccountId = targetAccountId
+    saveServerConfig(config)
+  } catch (err) {
+    console.warn('Failed to persist recovered owner in server config:', err?.message ?? err)
+  }
+
+  response.json({ ok: true, newOwnerId: targetAccountId, previousOwnerId })
 })
 
 if (existsSync(DIST_DIR)) {

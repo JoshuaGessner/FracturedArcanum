@@ -126,7 +126,33 @@ function ensureColumn(tableName, columnName, definition) {
 
 ensureColumn('accounts', 'created_ip_hash', 'TEXT')
 ensureColumn('accounts', 'created_ua_hash', 'TEXT')
+ensureColumn('accounts', 'role', "TEXT NOT NULL DEFAULT 'user'")
 ensureColumn('player_profiles', 'owned_cards', "TEXT NOT NULL DEFAULT '{}' ")
+
+// ─── Admin role schema ───────────────────────────────────────────────────────
+// Exactly one account may have role='owner'. Enforced at the DB layer via a
+// partial unique index, and at the application layer via setAccountRole /
+// transferOwnership. Roles are re-read from the DB on every privileged request
+// so that demotion takes effect immediately without session invalidation.
+
+db.exec(`
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_accounts_single_owner
+    ON accounts(role) WHERE role = 'owner';
+
+  CREATE TABLE IF NOT EXISTS admin_audit (
+    id                 TEXT PRIMARY KEY,
+    actor_account_id   TEXT REFERENCES accounts(id) ON DELETE SET NULL,
+    target_account_id  TEXT REFERENCES accounts(id) ON DELETE SET NULL,
+    action             TEXT NOT NULL,
+    metadata           TEXT NOT NULL DEFAULT '{}',
+    ip_hash            TEXT,
+    created_at         TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_admin_audit_created_at ON admin_audit(created_at DESC);
+  CREATE INDEX IF NOT EXISTS idx_admin_audit_actor ON admin_audit(actor_account_id);
+  CREATE INDEX IF NOT EXISTS idx_admin_audit_target ON admin_audit(target_account_id);
+`)
 
 // ─── Password hashing (scrypt — no native addon needed) ──────────────────────
 
@@ -1063,5 +1089,263 @@ export function openPack(accountId, packType) {
 }
 
 export { PACK_DEFS, ALL_CARDS }
+
+// ─── Admin role management ──────────────────────────────────────────────────
+// Role is the source of truth for privileged access. Sessions are NOT
+// role-stamped; every privileged request re-reads the role so demotion takes
+// effect on the next request.
+
+const ROLE_VALUES = new Set(['user', 'admin', 'owner'])
+const ROLE_RANK = { user: 0, admin: 1, owner: 2 }
+
+const _getRole = db.prepare(`SELECT role FROM accounts WHERE id = ?`)
+const _setRole = db.prepare(`UPDATE accounts SET role = ? WHERE id = ?`)
+const _findOwnerId = db.prepare(`SELECT id FROM accounts WHERE role = 'owner' LIMIT 1`)
+const _searchAccounts = db.prepare(`
+  SELECT id, username, display_name as displayName, role, created_at as createdAt, last_login as lastLogin
+  FROM accounts
+  WHERE (? = '' OR username LIKE ? OR display_name LIKE ? OR id = ?)
+  ORDER BY
+    CASE role WHEN 'owner' THEN 0 WHEN 'admin' THEN 1 ELSE 2 END,
+    last_login DESC NULLS LAST,
+    username COLLATE NOCASE ASC
+  LIMIT ? OFFSET ?
+`)
+
+const _insertAudit = db.prepare(`
+  INSERT INTO admin_audit (id, actor_account_id, target_account_id, action, metadata, ip_hash)
+  VALUES (?, ?, ?, ?, ?, ?)
+`)
+
+const _listAudit = db.prepare(`
+  SELECT
+    a.id,
+    a.actor_account_id   as actorAccountId,
+    actor.username       as actorUsername,
+    actor.display_name   as actorDisplayName,
+    a.target_account_id  as targetAccountId,
+    target.username      as targetUsername,
+    target.display_name  as targetDisplayName,
+    a.action,
+    a.metadata,
+    a.created_at         as createdAt
+  FROM admin_audit a
+  LEFT JOIN accounts actor  ON actor.id  = a.actor_account_id
+  LEFT JOIN accounts target ON target.id = a.target_account_id
+  ORDER BY a.created_at DESC
+  LIMIT ?
+`)
+
+export function getAccountRole(accountId) {
+  if (!accountId) return 'user'
+  const row = _getRole.get(accountId)
+  return row?.role && ROLE_VALUES.has(row.role) ? row.role : 'user'
+}
+
+export function hasRoleAtLeast(role, minRole) {
+  return (ROLE_RANK[role] ?? 0) >= (ROLE_RANK[minRole] ?? 0)
+}
+
+export function findOwnerAccountId() {
+  const row = _findOwnerId.get()
+  return row?.id ?? null
+}
+
+/**
+ * Promote or demote another account. Owner-only. Cannot create or overwrite
+ * the owner role — use transferOwnership for that.
+ *
+ * @param {string} actorAccountId  The account performing the action (must be owner).
+ * @param {string} targetAccountId The account whose role is changing.
+ * @param {'admin'|'user'} newRole The desired role.
+ * @param {{ ipHash?: string | null }} [options]
+ */
+export function setAccountRole(actorAccountId, targetAccountId, newRole, { ipHash = null } = {}) {
+  if (!actorAccountId || !targetAccountId) {
+    return { ok: false, status: 400, error: 'Actor and target are required.' }
+  }
+  if (actorAccountId === targetAccountId) {
+    return { ok: false, status: 400, error: 'You cannot change your own role.' }
+  }
+  if (newRole !== 'admin' && newRole !== 'user') {
+    return { ok: false, status: 400, error: 'Role must be "admin" or "user".' }
+  }
+  const actorRole = getAccountRole(actorAccountId)
+  if (actorRole !== 'owner') {
+    return { ok: false, status: 403, error: 'Only the owner can change roles.' }
+  }
+  const targetRow = _getById.get(targetAccountId)
+  if (!targetRow) {
+    return { ok: false, status: 404, error: 'Target account not found.' }
+  }
+  if (targetRow.role === 'owner') {
+    return { ok: false, status: 403, error: 'The owner role cannot be changed here. Use ownership transfer.' }
+  }
+  if (targetRow.role === newRole) {
+    return { ok: true, role: newRole, unchanged: true, target: sanitizeAdminAccount(targetRow) }
+  }
+
+  const previousRole = targetRow.role
+  const metadata = JSON.stringify({ previousRole, newRole })
+  const auditId = `aud-${randomBytes(10).toString('hex')}`
+
+  const tx = db.transaction(() => {
+    _setRole.run(newRole, targetAccountId)
+    _insertAudit.run(auditId, actorAccountId, targetAccountId, 'role_change', metadata, ipHash)
+  })
+  tx()
+
+  return {
+    ok: true,
+    role: newRole,
+    previousRole,
+    auditId,
+    target: sanitizeAdminAccount({ ...targetRow, role: newRole }),
+  }
+}
+
+/**
+ * Transfer ownership from the current owner to another account.
+ * Demotes the current owner to 'admin' and promotes the target to 'owner'
+ * atomically. The caller must verify the owner's password before calling.
+ *
+ * @param {string} currentOwnerId
+ * @param {string} targetAccountId
+ * @param {{ ipHash?: string | null }} [options]
+ */
+export function transferOwnership(currentOwnerId, targetAccountId, { ipHash = null } = {}) {
+  if (!currentOwnerId || !targetAccountId) {
+    return { ok: false, status: 400, error: 'Current owner and target are required.' }
+  }
+  if (currentOwnerId === targetAccountId) {
+    return { ok: false, status: 400, error: 'Target must be a different account.' }
+  }
+  if (getAccountRole(currentOwnerId) !== 'owner') {
+    return { ok: false, status: 403, error: 'Only the current owner can transfer ownership.' }
+  }
+  const target = _getById.get(targetAccountId)
+  if (!target) {
+    return { ok: false, status: 404, error: 'Target account not found.' }
+  }
+
+  const metadata = JSON.stringify({ previousOwnerId: currentOwnerId, newOwnerId: targetAccountId })
+  const auditId = `aud-${randomBytes(10).toString('hex')}`
+
+  // SQLite can't do a swap in a single UPDATE because of the unique partial
+  // index; demote first, then promote, inside a transaction.
+  const tx = db.transaction(() => {
+    _setRole.run('admin', currentOwnerId)
+    _setRole.run('owner', targetAccountId)
+    _insertAudit.run(auditId, currentOwnerId, targetAccountId, 'ownership_transfer', metadata, ipHash)
+  })
+  tx()
+
+  return { ok: true, auditId, previousOwnerId: currentOwnerId, newOwnerId: targetAccountId }
+}
+
+/**
+ * Bootstrap or recover the owner role. Used by the setup flow on first launch
+ * and by the ADMIN_KEY-gated recovery endpoint. Refuses to run if an owner
+ * already exists (use transferOwnership for that path).
+ *
+ * @param {string} targetAccountId
+ * @param {{ ipHash?: string | null, actorAccountId?: string | null, reason?: string }} [options]
+ */
+export function assignInitialOwner(targetAccountId, { ipHash = null, actorAccountId = null, reason = 'bootstrap' } = {}) {
+  if (!targetAccountId) {
+    return { ok: false, status: 400, error: 'Target is required.' }
+  }
+  const target = _getById.get(targetAccountId)
+  if (!target) {
+    return { ok: false, status: 404, error: 'Target account not found.' }
+  }
+  const existingOwner = findOwnerAccountId()
+  if (existingOwner && existingOwner !== targetAccountId) {
+    return { ok: false, status: 409, error: 'An owner already exists. Use ownership transfer instead.' }
+  }
+
+  const auditId = `aud-${randomBytes(10).toString('hex')}`
+  const metadata = JSON.stringify({ reason })
+
+  const tx = db.transaction(() => {
+    _setRole.run('owner', targetAccountId)
+    _insertAudit.run(auditId, actorAccountId, targetAccountId, 'owner_assigned', metadata, ipHash)
+  })
+  tx()
+
+  return { ok: true, auditId }
+}
+
+function sanitizeAdminAccount(row) {
+  if (!row) return null
+  return {
+    accountId: row.id ?? row.accountId,
+    username: row.username,
+    displayName: row.display_name ?? row.displayName,
+    role: row.role,
+    createdAt: row.created_at ?? row.createdAt,
+    lastLogin: row.last_login ?? row.lastLogin,
+  }
+}
+
+export function listAccounts({ search = '', limit = 25, offset = 0 } = {}) {
+  const normalized = String(search ?? '').trim().toLowerCase().slice(0, 60)
+  const like = normalized ? `%${normalized}%` : ''
+  const safeLimit = Math.min(100, Math.max(1, Number(limit) || 25))
+  const safeOffset = Math.max(0, Number(offset) || 0)
+  const rows = _searchAccounts.all(normalized, like, like, normalized, safeLimit, safeOffset)
+  return rows.map((row) => ({
+    accountId: row.id,
+    username: row.username,
+    displayName: row.displayName,
+    role: row.role,
+    createdAt: row.createdAt,
+    lastLogin: row.lastLogin,
+  }))
+}
+
+/**
+ * @param {string|null} actorAccountId
+ * @param {string|null} targetAccountId
+ * @param {string} action
+ * @param {Record<string, unknown>} [metadata]
+ * @param {string|null} [ipHash]
+ */
+export function recordAudit(actorAccountId, targetAccountId, action, metadata = {}, ipHash = null) {
+  const safeAction = String(action ?? '').slice(0, 60) || 'unknown'
+  const safeMeta = JSON.stringify(metadata ?? {}).slice(0, 2000)
+  const id = `aud-${randomBytes(10).toString('hex')}`
+  _insertAudit.run(id, actorAccountId ?? null, targetAccountId ?? null, safeAction, safeMeta, ipHash ?? null)
+  return id
+}
+
+export function listAudit({ limit = 50 } = {}) {
+  const safeLimit = Math.min(200, Math.max(1, Number(limit) || 50))
+  const rows = _listAudit.all(safeLimit)
+  return rows.map((row) => {
+    let metadata = {}
+    try { metadata = JSON.parse(row.metadata) } catch { /* ignore */ }
+    return {
+      id: row.id,
+      action: row.action,
+      actor: row.actorAccountId
+        ? { accountId: row.actorAccountId, username: row.actorUsername, displayName: row.actorDisplayName }
+        : null,
+      target: row.targetAccountId
+        ? { accountId: row.targetAccountId, username: row.targetUsername, displayName: row.targetDisplayName }
+        : null,
+      metadata,
+      createdAt: row.createdAt,
+    }
+  })
+}
+
+// Helper for the server.js setup endpoint: returns the account row by id,
+// used to look up password_hash for password-confirmation flows.
+const _getAccountFull = db.prepare(`SELECT * FROM accounts WHERE id = ?`)
+export function getAccountById(accountId) {
+  if (!accountId) return null
+  return _getAccountFull.get(accountId) ?? null
+}
 
 export default db
