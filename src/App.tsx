@@ -737,6 +737,7 @@ function App() {
 
     socket.on('connect', () => {
       setBackendOnline(true)
+      socket.emit('game:rejoin')
     })
 
     socket.on('queue:status', (payload: QueuePresence) => {
@@ -764,6 +765,7 @@ function App() {
       setBackendOnline(false)
       setQueueState('idle')
       setQueuedOpponent(null)
+      setToastMessage('Connection lost. Reconnecting to live services...')
     })
 
     socket.on('connect_error', () => {
@@ -1322,6 +1324,17 @@ function App() {
   function handleResumeBattle() {
     playSound('tap', soundEnabled)
     setActiveScreen('battle')
+
+    if (battleKind === 'ranked') {
+      if (socketClientRef.current?.connected) {
+        socketClientRef.current.emit('game:rejoin')
+        setToastMessage(`Rejoining your live battle against ${game.enemy.name}.`)
+      } else {
+        setToastMessage('Reconnecting to your live battle...')
+      }
+      return
+    }
+
     setToastMessage(`Resuming your battle against ${game.enemy.name}.`)
   }
 

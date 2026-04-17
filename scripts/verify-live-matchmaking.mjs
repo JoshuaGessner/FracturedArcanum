@@ -59,6 +59,8 @@ await new Promise((resolve, reject) => {
   let settled = false
   let sawWaitingState = false
   let secondPlayerJoined = false
+  let rejoinVerified = false
+  let playerAReplacementConnected = false
 
   const finish = (error) => {
     if (settled) return
@@ -68,11 +70,17 @@ await new Promise((resolve, reject) => {
     else resolve()
   }
 
-  const makeSocket = (token, rating, label, surrenderOnStart = false) => {
+  const makeSocket = (token, rating, label, surrenderOnStart = false, rejoinOnly = false) => {
     const socket = io(base, { auth: { token }, transports: ['websocket'] })
     sockets.push(socket)
 
     socket.on('connect', () => {
+      if (rejoinOnly) {
+        playerAReplacementConnected = true
+        socket.emit('game:rejoin')
+        return
+      }
+
       socket.emit('queue:join', {
         rank: 'Silver Division',
         rating,
@@ -97,24 +105,38 @@ await new Promise((resolve, reject) => {
       }
     })
 
+    socket.on('game:rejoin', (payload) => {
+      rejoinVerified = true
+      results.push(`${label}:rejoin:${payload.state.player.name} vs ${payload.state.enemy.name}`)
+    })
+
     socket.on('game:start', (payload) => {
       results.push(`${label}:${payload.state.mode}:${payload.state.player.name} vs ${payload.state.enemy.name}`)
       starts += 1
+
+      if (label === 'playerA' && !rejoinOnly) {
+        setTimeout(() => {
+          socket.disconnect()
+          makeSocket(token, rating, 'playerA-return', false, true)
+        }, 300)
+      }
+
       if (surrenderOnStart) {
         setTimeout(() => {
           socket.emit('game:action', { action: { type: 'surrender' } })
-        }, 300)
+        }, 1200)
       }
     })
 
     socket.on('game:over', () => {
-      if (starts >= 2) {
+      if (starts >= 2 && rejoinVerified && playerAReplacementConnected) {
         finish()
       }
     })
 
     socket.on('connect_error', (error) => finish(error))
     socket.on('game:error', (error) => finish(new Error(JSON.stringify(error))))
+    socket.on('game:rejoin_failed', (error) => finish(new Error(`rejoin failed for ${label}: ${JSON.stringify(error)}`)))
   }
 
   makeSocket(tokenA, 1200, 'playerA')
@@ -129,7 +151,7 @@ await new Promise((resolve, reject) => {
     makeSocket(tokenB, 1210, 'playerB', true)
   }, 2500)
 
-  setTimeout(() => finish(new Error('timed out waiting for the live ranked match to resolve')), 12000)
+  setTimeout(() => finish(new Error('timed out waiting for the live ranked match to resolve')), 15000)
 })
 
 const profileA = await fetch(base + '/api/me', {
