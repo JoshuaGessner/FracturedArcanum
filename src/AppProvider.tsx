@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+  type FormEvent,
+} from 'react'
 import { io, type Socket } from 'socket.io-client'
 import { playSound } from './audio'
 import {
@@ -25,37 +33,22 @@ import {
   generateEnemyTurnSteps,
   getRecommendedAIDifficulty,
 } from './game'
-import {
-  ARENA_URL,
-  CARD_BORDER_OFFERS,
-  STORAGE_KEYS,
-  THEME_OFFERS,
-} from './constants'
+import { ARENA_URL, CARD_BORDER_OFFERS, STORAGE_KEYS, THEME_OFFERS } from './constants'
 import {
   authFetch,
   createAnonymousId,
   getDeviceFingerprint,
   getRankLabel,
   getScreenBucket,
-  makeLobbyCode,
+  inferToastSeverity as inferSeverityImpl,
   pulseFeedback,
   readStoredValue,
 } from './utils'
-import { ToastStack } from './components/ToastStack'
-import { ConfirmModal } from './components/ConfirmModal'
-import { CardInspectModal } from './components/CardInspectModal'
-import { NavBar } from './components/NavBar'
-import { TopBar } from './components/TopBar'
-import { BattleIntroOverlay } from './components/BattleIntroOverlay'
-import { RewardOverlay } from './components/RewardOverlay'
-import { OpsScreen } from './screens/OpsScreen'
-import { VaultScreen } from './screens/VaultScreen'
-import { DeckScreen } from './screens/DeckScreen'
-import { HomeScreen } from './screens/HomeScreen'
-import { BattleScreen } from './screens/BattleScreen'
+import { AppContext, type AppContextValue } from './AppContext'
 import type {
   AdminAuditEntry,
   AdminOverview,
+  AdminSettings,
   AdminUser,
   AppScreen,
   AuthScreen,
@@ -63,26 +56,33 @@ import type {
   CardBorder,
   CardCollection,
   ComplaintFormState,
+  ConfirmOptions,
+  ConfirmRequest,
   CosmeticTheme,
+  IncomingChallenge,
   InspectedCard,
   InstallPromptEvent,
   LeaderboardEntry,
   OpenedPackCard,
   OpponentProfile,
+  OutgoingChallenge,
   PackOffer,
   QueuePresence,
   QueueSearchStatus,
   QueueState,
-  SavedDeck,
   ServerProfile,
+  SavedDeck,
   SocialClan,
   SocialFriend,
+  ToastEntry,
+  ToastSeverity,
   Trade,
   TradeItem,
 } from './types'
-import './App.css'
 
-function App() {
+// useApp() lives in ./useApp.ts to satisfy Fast Refresh (only-export-components).
+
+export function AppProvider({ children }: { children: ReactNode }) {
   const savedDeckConfig = readStoredValue<DeckConfig>(STORAGE_KEYS.deck, DEFAULT_DECK_CONFIG)
   const savedMode = readStoredValue<GameMode>(STORAGE_KEYS.mode, 'ai')
   const savedAIDifficulty = readStoredValue<'auto' | AIDifficulty>(STORAGE_KEYS.aiDifficulty, 'auto')
@@ -107,7 +107,7 @@ function App() {
   const runes = serverProfile?.runes ?? 0
   const seasonRating = serverProfile?.seasonRating ?? 1200
   const record = { wins: serverProfile?.wins ?? 0, losses: serverProfile?.losses ?? 0, streak: serverProfile?.streak ?? 0 }
-  const ownedThemes = serverProfile?.ownedThemes ?? ['royal'] as CosmeticTheme[]
+  const ownedThemes = serverProfile?.ownedThemes ?? (['royal'] as CosmeticTheme[])
   const selectedTheme = (serverProfile?.selectedTheme ?? 'royal') as CosmeticTheme
   const ownedCardBorders: CardBorder[] = serverProfile?.ownedCardBorders ?? ['default']
   const selectedCardBorder: CardBorder = serverProfile?.selectedCardBorder ?? 'default'
@@ -119,25 +119,34 @@ function App() {
   // ─── Multi-deck state ─────────────────────────────────────────────────
   const [savedDecks, setSavedDecks] = useState<SavedDeck[]>([])
   const [activeDeckId, setActiveDeckId] = useState<string | null>(null)
-  // Deck-builder UI filters.
   const [builderFilter, setBuilderFilter] = useState<{
     ownedOnly: boolean
     search: string
     rarity: 'all' | 'common' | 'rare' | 'epic' | 'legendary'
   }>({ ownedOnly: false, search: '', rarity: 'all' })
-  // Pending shard breakdown confirmation. `null` when nothing is pending.
-  const [pendingBreakdown, setPendingBreakdown] = useState<{
-    cardId: string
-    qty: number
-  } | null>(null)
+  const [pendingBreakdown, setPendingBreakdown] = useState<{ cardId: string; qty: number } | null>(null)
 
   // ─── Local game/UI state ──────────────────────────────────────────────
   const [deckConfig, setDeckConfig] = useState<DeckConfig>(savedDeckConfig)
-  const [activeScreen, setActiveScreen] = useState<AppScreen>('home')
+  const [activeScreen, setActiveScreenRaw] = useState<AppScreen>('home')
+  const previousScreenRef = useRef<AppScreen>('home')
+  const [previousScreen, setPreviousScreen] = useState<AppScreen>('home')
+  const setActiveScreen = useCallback((next: AppScreen | ((prev: AppScreen) => AppScreen)) => {
+    setActiveScreenRaw((current) => {
+      const resolved = typeof next === 'function' ? (next as (p: AppScreen) => AppScreen)(current) : next
+      if (resolved !== current) {
+        previousScreenRef.current = current
+        setPreviousScreen(current)
+      }
+      return resolved
+    })
+  }, [])
   const [preferredMode, setPreferredMode] = useState<GameMode>(savedMode)
   const [aiDifficultySetting, setAiDifficultySetting] = useState<'auto' | AIDifficulty>(savedAIDifficulty)
-  const [lobbyCode, setLobbyCode] = useState(() => makeLobbyCode())
-  const [game, setGame] = useState<GameState>(() => createGame(savedMode, savedDeckConfig, undefined, savedMode === 'ai' ? initialAIDifficulty : 'legend'))
+  const [lobbyCode, setLobbyCode] = useState(() => `RUNE-${Math.random().toString(36).slice(2, 6).toUpperCase()}`)
+  const [game, setGame] = useState<GameState>(() =>
+    createGame(savedMode, savedDeckConfig, undefined, savedMode === 'ai' ? initialAIDifficulty : 'legend'),
+  )
   const [selectedAttacker, setSelectedAttacker] = useState<number | null>(null)
   const [queueState, setQueueState] = useState<QueueState>('idle')
   const [queueSeconds, setQueueSeconds] = useState(0)
@@ -163,8 +172,8 @@ function App() {
   const [packOpening, setPackOpening] = useState<string | null>(null)
   const [friends, setFriends] = useState<SocialFriend[]>([])
   const [onlineFriendIds, setOnlineFriendIds] = useState<Set<string>>(new Set())
-  const [outgoingChallenge, setOutgoingChallenge] = useState<{ challengeId: string; toAccountId: string; toName: string; expiresAt: number } | null>(null)
-  const [incomingChallenge, setIncomingChallenge] = useState<{ challengeId: string; fromAccountId: string; fromName: string; expiresAt: number } | null>(null)
+  const [outgoingChallenge, setOutgoingChallenge] = useState<OutgoingChallenge | null>(null)
+  const [incomingChallenge, setIncomingChallenge] = useState<IncomingChallenge | null>(null)
   const [challengeStatus, setChallengeStatus] = useState('')
   const [trades, setTrades] = useState<Trade[]>([])
   const [tradesTick, setTradesTick] = useState(0)
@@ -194,7 +203,7 @@ function App() {
   const [enemyTurnActive, setEnemyTurnActive] = useState(false)
   const [enemyTurnLabel, setEnemyTurnLabel] = useState('')
   const [backendOnline, setBackendOnline] = useState(false)
-  const [, setMotd] = useState('Queue up for ranked arena play.')
+  const [motd, setMotd] = useState('Queue up for ranked arena play.')
   const [dailyQuest, setDailyQuest] = useState('Win 1 ranked arena match')
   const [featuredMode, setFeaturedMode] = useState('Ranked Blitz')
   const [, setMaintenanceMode] = useState(false)
@@ -206,23 +215,11 @@ function App() {
   const [sessionId] = useState(() => `session-${Math.random().toString(36).slice(2, 10)}`)
   const [installPromptEvent, setInstallPromptEvent] = useState<InstallPromptEvent | null>(null)
   const [toastMessage, setToastMessageRaw] = useState('Ready your deck and enter the arena.')
-  const [toastSeverity, setToastSeverity] = useState<'info' | 'success' | 'warning' | 'error'>('info')
-  type ToastEntry = { id: string; message: string; severity: 'info' | 'success' | 'warning' | 'error' }
+  const [toastSeverity, setToastSeverity] = useState<ToastSeverity>('info')
   const [toastStack, setToastStack] = useState<ToastEntry[]>([])
-  const inferToastSeverity = useCallback(
-    (text: string): 'info' | 'success' | 'warning' | 'error' => {
-      const lc = text.toLowerCase()
-      if (/(error|fail|could not|cannot|denied|invalid|wrong|disconnect|lost|revok|too short|too long|already|forbid|unavailable|not enough)/.test(lc))
-        return 'error'
-      if (/(warning|caution|expired|reconnect|waiting|slow|delay)/.test(lc)) return 'warning'
-      if (/(welcome|claimed|unlocked|equipped|victory|won|saved|added|matched|ready|reconnected|installed|now an admin|server owner)/.test(lc))
-        return 'success'
-      return 'info'
-    },
-    [],
-  )
+  const inferToastSeverity = useCallback((text: string): ToastSeverity => inferSeverityImpl(text), [])
   const setToastMessage = useCallback(
-    (message: string, severityOverride?: 'info' | 'success' | 'warning' | 'error') => {
+    (message: string, severityOverride?: ToastSeverity) => {
       const severity = severityOverride ?? inferToastSeverity(message)
       setToastMessageRaw(message)
       setToastSeverity(severity)
@@ -234,16 +231,6 @@ function App() {
     },
     [inferToastSeverity],
   )
-  type ConfirmOptions = {
-    title: string
-    body: React.ReactNode
-    confirmLabel?: string
-    cancelLabel?: string
-    danger?: boolean
-    requireText?: string
-    requireTextLabel?: string
-  }
-  type ConfirmRequest = ConfirmOptions & { resolve: (ok: boolean) => void }
   const [confirmRequest, setConfirmRequest] = useState<ConfirmRequest | null>(null)
   const [confirmTextInput, setConfirmTextInput] = useState('')
   const askConfirm = useCallback(
@@ -254,16 +241,13 @@ function App() {
       }),
     [],
   )
-  const closeConfirm = useCallback(
-    (ok: boolean) => {
-      setConfirmRequest((current) => {
-        if (current) current.resolve(ok)
-        return null
-      })
-      setConfirmTextInput('')
-    },
-    [],
-  )
+  const closeConfirm = useCallback((ok: boolean) => {
+    setConfirmRequest((current) => {
+      if (current) current.resolve(ok)
+      return null
+    })
+    setConfirmTextInput('')
+  }, [])
   const [opponentDisconnected, setOpponentDisconnected] = useState(false)
   const [disconnectGraceMs, setDisconnectGraceMs] = useState(0)
   const [swUpdateAvailable, setSwUpdateAvailable] = useState(false)
@@ -296,7 +280,7 @@ function App() {
   const battleIntroTimerRef = useRef<number | null>(null)
   const enemyTurnTimers = useRef<number[]>([])
   const prevBoardRef = useRef<{ player: Array<Unit | null>; enemy: Array<Unit | null> } | null>(null)
-  const [adminSettings, setAdminSettings] = useState({
+  const [adminSettings, setAdminSettings] = useState<AdminSettings>({
     motd: 'Queue up for ranked arena play.',
     quest: 'Win 1 ranked arena match',
     featuredMode: 'Ranked Blitz',
@@ -305,36 +289,22 @@ function App() {
 
   const sendAnalytics = useCallback(
     async (type: string, meta: Record<string, unknown> = {}, route = 'home') => {
-      if (!analyticsConsent) {
-        return
-      }
-
+      if (!analyticsConsent) return
       try {
         await fetch(`${ARENA_URL}/api/analytics/track`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            visitorId,
-            sessionId,
-            type,
-            route,
-            meta,
-          }),
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ visitorId, sessionId, type, route, meta }),
         })
       } catch {
-        // analytics is best-effort only
+        // analytics best-effort
       }
     },
     [analyticsConsent, sessionId, visitorId],
   )
 
   const refreshSocialHub = useCallback(async () => {
-    if (!authToken || !loggedIn) {
-      return
-    }
-
+    if (!authToken || !loggedIn) return
     setSocialLoading(true)
     try {
       const response = await authFetch('/api/social', authToken)
@@ -343,7 +313,6 @@ function App() {
         setSocialStatus(data.error ?? 'Unable to load social hub right now.')
         return
       }
-
       setFriends(data.friends ?? [])
       setClan(data.clan ?? null)
       setSocialStatus(data.clan ? 'Clan and friend roster synced.' : 'No clan joined yet. Create one or join with an invite code.')
@@ -361,39 +330,34 @@ function App() {
     }
   }
 
-  function consumeLongPressAction() {
-    if (!longPressTriggeredRef.current) {
-      return false
-    }
-
+  const consumeLongPressAction = useCallback(() => {
+    if (!longPressTriggeredRef.current) return false
     longPressTriggeredRef.current = false
     return true
-  }
+  }, [])
 
-  function inspectCard(card: InspectedCard) {
+  const inspectCardImpl = useCallback((card: InspectedCard) => {
     clearLongPressTimer()
     longPressTriggeredRef.current = true
     pulseFeedback(12)
     setInspectedCard(card)
-  }
+  }, [])
 
-  function getLongPressProps(card: InspectedCard) {
-    return {
+  const getLongPressProps = useCallback(
+    (card: InspectedCard) => ({
       onPointerDown: (event: React.PointerEvent<HTMLElement>) => {
-        if (event.pointerType === 'mouse' && event.button !== 0) {
-          return
-        }
-
+        if (event.pointerType === 'mouse' && event.button !== 0) return
         clearLongPressTimer()
         longPressTriggeredRef.current = false
-        longPressTimerRef.current = window.setTimeout(() => inspectCard(card), 420)
+        longPressTimerRef.current = window.setTimeout(() => inspectCardImpl(card), 420)
       },
       onPointerUp: () => clearLongPressTimer(),
       onPointerLeave: () => clearLongPressTimer(),
       onPointerCancel: () => clearLongPressTimer(),
       onContextMenu: (event: React.MouseEvent<HTMLElement>) => event.preventDefault(),
-    }
-  }
+    }),
+    [inspectCardImpl],
+  )
 
   const triggerBattleIntro = useCallback(() => {
     battleStartedRef.current = true
@@ -406,6 +370,11 @@ function App() {
       battleIntroTimerRef.current = null
     }, 1600)
   }, [])
+
+  function clearEnemyTurnTimers() {
+    enemyTurnTimers.current.forEach((id) => window.clearTimeout(id))
+    enemyTurnTimers.current = []
+  }
 
   // ─── Auth: restore session on mount ──────────────────────────────────────
   useEffect(() => {
@@ -427,7 +396,8 @@ function App() {
         }
       })
       .catch(() => setAuthToken(''))
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // ─── Check if first-launch setup is needed ────────────────────────────
   useEffect(() => {
@@ -443,7 +413,6 @@ function App() {
     event.preventDefault()
     setSetupError('')
     setSetupLoading(true)
-
     try {
       const response = await fetch(`${ARENA_URL}/api/setup`, {
         method: 'POST',
@@ -454,17 +423,12 @@ function App() {
           displayName: setupForm.displayName.trim() || setupForm.username.trim(),
         }),
       })
-      const data = await response.json() as {
-        ok: boolean; error?: string;
-        token?: string; profile?: ServerProfile
-      }
-
+      const data = (await response.json()) as { ok: boolean; error?: string; token?: string; profile?: ServerProfile }
       if (!data.ok) {
         setSetupError(data.error ?? 'Setup failed.')
         setSetupLoading(false)
         return
       }
-
       setAuthToken(data.token ?? '')
       setServerProfile(data.profile ?? null)
       setLoggedIn(true)
@@ -482,7 +446,6 @@ function App() {
     event.preventDefault()
     setAuthError('')
     setAuthLoading(true)
-
     const endpoint = authScreen === 'signup' ? '/api/auth/signup' : '/api/auth/login'
     const body: Record<string, string> = {
       username: authForm.username.trim(),
@@ -492,21 +455,18 @@ function App() {
       body.displayName = authForm.displayName.trim() || authForm.username.trim()
       body.deviceFingerprint = getDeviceFingerprint()
     }
-
     try {
       const response = await fetch(`${ARENA_URL}${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       })
-      const data = await response.json() as { ok: boolean; error?: string; token?: string; profile?: ServerProfile }
-
+      const data = (await response.json()) as { ok: boolean; error?: string; token?: string; profile?: ServerProfile }
       if (!data.ok) {
         setAuthError(data.error ?? 'Authentication failed.')
         setAuthLoading(false)
         return
       }
-
       setAuthToken(data.token ?? '')
       setServerProfile(data.profile ?? null)
       setLoggedIn(true)
@@ -518,7 +478,6 @@ function App() {
     } catch {
       setAuthError('Network error. Please try again.')
     }
-
     setAuthLoading(false)
   }
 
@@ -544,6 +503,7 @@ function App() {
     setToastMessage('Logged out.')
   }
 
+  // ─── Socket.IO setup ────────────────────────────────────────────────────
   useEffect(() => {
     if (!authToken) {
       socketClientRef.current?.disconnect()
@@ -551,21 +511,14 @@ function App() {
       return
     }
 
-    const socket = io(ARENA_URL, {
-      autoConnect: true,
-      auth: { token: authToken },
-    })
+    const socket = io(ARENA_URL, { autoConnect: true, auth: { token: authToken } })
     socketClientRef.current = socket
 
     socket.on('connect', () => {
       setBackendOnline(true)
       socket.emit('game:rejoin')
     })
-
-    socket.on('queue:status', (payload: QueuePresence) => {
-      setQueuePresence(payload)
-    })
-
+    socket.on('queue:status', (payload: QueuePresence) => setQueuePresence(payload))
     socket.on('queue:searching', (payload: Partial<QueueSearchStatus>) => {
       setQueueState('searching')
       setQueueSearchStatus((current) => ({
@@ -578,28 +531,21 @@ function App() {
         ratingWindow: payload.ratingWindow ?? current.ratingWindow,
       }))
     })
-
     socket.on('leaderboard:update', (payload: { entries: LeaderboardEntry[] }) => {
       setLeaderboardEntries(payload.entries ?? [])
     })
-
     socket.on('disconnect', () => {
       setBackendOnline(false)
       setQueueState('idle')
       setQueuedOpponent(null)
       setToastMessage('Connection lost. Reconnecting to live services...')
     })
-
     socket.on('connect_error', () => {
       setBackendOnline(false)
       setQueueState('idle')
       setQueuedOpponent(null)
     })
-
-    socket.on('server:hello', (payload: { message: string }) => {
-      setMotd(payload.message)
-    })
-
+    socket.on('server:hello', (payload: { message: string }) => setMotd(payload.message))
     socket.on('server:role_changed', (payload: { role?: unknown }) => {
       const nextRole = payload?.role
       if (nextRole !== 'user' && nextRole !== 'admin' && nextRole !== 'owner') return
@@ -613,11 +559,9 @@ function App() {
         setToastMessage('You are now the server owner.')
       }
     })
-
     socket.on('presence:snapshot', (payload: { onlineFriendIds?: string[] }) => {
       setOnlineFriendIds(new Set(payload?.onlineFriendIds ?? []))
     })
-
     socket.on('presence:update', (payload: { accountId?: string; online?: boolean }) => {
       if (!payload?.accountId) return
       setOnlineFriendIds((current) => {
@@ -627,39 +571,32 @@ function App() {
         return next
       })
     })
-
-    socket.on('challenge:incoming', (payload: { challengeId: string; fromAccountId: string; fromName: string; expiresAt: number }) => {
+    socket.on('challenge:incoming', (payload: IncomingChallenge) => {
       setIncomingChallenge(payload)
       setToastMessage(`${payload.fromName} challenged you to an unranked duel.`)
     })
-
-    socket.on('challenge:sent', (payload: { challengeId: string; toAccountId: string; toName: string; expiresAt: number }) => {
+    socket.on('challenge:sent', (payload: OutgoingChallenge) => {
       setOutgoingChallenge(payload)
       setChallengeStatus(`Waiting for ${payload.toName} to accept…`)
     })
-
     socket.on('challenge:declined', (payload: { challengeId: string }) => {
       setOutgoingChallenge((current) => (current?.challengeId === payload.challengeId ? null : current))
       setIncomingChallenge((current) => (current?.challengeId === payload.challengeId ? null : current))
       setChallengeStatus('Challenge declined.')
     })
-
     socket.on('challenge:cancelled', (payload: { challengeId: string; reason?: string }) => {
       setOutgoingChallenge((current) => (current?.challengeId === payload.challengeId ? null : current))
       setIncomingChallenge((current) => (current?.challengeId === payload.challengeId ? null : current))
       setChallengeStatus(payload?.reason === 'disconnected' ? 'Challenge cancelled — player disconnected.' : 'Challenge cancelled.')
     })
-
     socket.on('challenge:expired', (payload: { challengeId: string }) => {
       setOutgoingChallenge((current) => (current?.challengeId === payload.challengeId ? null : current))
       setIncomingChallenge((current) => (current?.challengeId === payload.challengeId ? null : current))
       setChallengeStatus('Challenge expired.')
     })
-
     socket.on('challenge:error', (payload: { error?: string }) => {
       setChallengeStatus(payload?.error ?? 'Challenge failed.')
     })
-
     socket.on('challenge:matched', (payload: { roomId: string; opponent: OpponentProfile; mode: string }) => {
       setOutgoingChallenge(null)
       setIncomingChallenge(null)
@@ -667,47 +604,26 @@ function App() {
       setQueuedOpponent(payload.opponent)
       setQueueState('found')
       setLobbyCode(payload.roomId.toUpperCase())
-      setBattleKind('ranked') // reuse ranked-style server-authoritative flow
+      setBattleKind('ranked')
       setToastMessage(`Unranked duel ready against ${payload.opponent.name}.`)
     })
-
     socket.on('trade:incoming', () => {
       setToastMessage('You have a new trade proposal.')
       setTradesTick((n) => n + 1)
     })
-    socket.on('trade:updated', () => {
-      setTradesTick((n) => n + 1)
+    socket.on('trade:updated', () => setTradesTick((n) => n + 1))
+    socket.on('server:profileUpdated', (payload: { motd?: string; quest?: string; featuredMode?: string; maintenanceMode?: boolean }) => {
+      if (payload.motd) setMotd(payload.motd)
+      if (payload.quest) setDailyQuest(payload.quest)
+      if (payload.featuredMode) setFeaturedMode(payload.featuredMode)
+      setMaintenanceMode(Boolean(payload.maintenanceMode))
     })
-
-    socket.on(
-      'server:profileUpdated',
-      (payload: { motd?: string; quest?: string; featuredMode?: string; maintenanceMode?: boolean }) => {
-        if (payload.motd) {
-          setMotd(payload.motd)
-        }
-
-        if (payload.quest) {
-          setDailyQuest(payload.quest)
-        }
-
-        if (payload.featuredMode) {
-          setFeaturedMode(payload.featuredMode)
-        }
-
-        setMaintenanceMode(Boolean(payload.maintenanceMode))
-      },
-    )
-
-    socket.on(
-      'queue:matched',
-      (payload: { roomId: string; opponent: OpponentProfile }) => {
-        setQueuedOpponent(payload.opponent)
-        setQueueState('found')
-        setLobbyCode(payload.roomId.toUpperCase())
-        setToastMessage(`Match found against ${payload.opponent.name}.`)
-      },
-    )
-
+    socket.on('queue:matched', (payload: { roomId: string; opponent: OpponentProfile }) => {
+      setQueuedOpponent(payload.opponent)
+      setQueueState('found')
+      setLobbyCode(payload.roomId.toUpperCase())
+      setToastMessage(`Match found against ${payload.opponent.name}.`)
+    })
     socket.on('game:start', (payload: { yourSide: BattleSide; state: GameState }) => {
       setGame(payload.state)
       setBattleKind('ranked')
@@ -720,35 +636,22 @@ function App() {
       triggerBattleIntro()
       playSound('summon', soundEnabled)
     })
-
-    socket.on('game:state', (payload: { state: GameState }) => {
-      setGame(payload.state)
-    })
-
+    socket.on('game:state', (payload: { state: GameState }) => setGame(payload.state))
     socket.on('game:over', (payload: { result: string }) => {
       setOpponentDisconnected(false)
       setDisconnectGraceMs(0)
       setBattleSessionActive(false)
       setServerBattleActive(false)
-      if (payload.result === 'win') {
-        setToastMessage('Victory! You won the match.')
-      } else if (payload.result === 'loss') {
-        setToastMessage('Defeat. Better luck next time.')
-      } else {
-        setToastMessage('The match ended in a draw.')
-      }
+      if (payload.result === 'win') setToastMessage('Victory! You won the match.')
+      else if (payload.result === 'loss') setToastMessage('Defeat. Better luck next time.')
+      else setToastMessage('The match ended in a draw.')
     })
-
     socket.on('queue:error', (payload: { error: string }) => {
       setQueueState('idle')
       setQueuedOpponent(null)
       setToastMessage(payload.error)
     })
-
-    socket.on('game:error', (payload: { error: string }) => {
-      setToastMessage(payload.error)
-    })
-
+    socket.on('game:error', (payload: { error: string }) => setToastMessage(payload.error))
     socket.on('room:emote', (payload: { emote: string; from: string }) => {
       setToastMessage(`${payload.from} reacts ${payload.emote}`)
       setGame((current) => ({
@@ -756,8 +659,6 @@ function App() {
         log: [`${payload.from} reacts ${payload.emote}`, ...current.log].slice(0, 10),
       }))
     })
-
-    // ─── Reconnect / disconnect events ──────────────────────────────
     socket.on('game:rejoin', (payload: { yourSide: BattleSide; state: GameState; roomId: string; opponentDisconnected: boolean }) => {
       setGame(payload.state)
       setBattleKind('ranked')
@@ -772,17 +673,12 @@ function App() {
       setToastMessage('Reconnected to your ranked match.')
       playSound('summon', soundEnabled)
     })
-
-    socket.on('game:rejoin_failed', () => {
-      setOpponentDisconnected(false)
-    })
-
+    socket.on('game:rejoin_failed', () => setOpponentDisconnected(false))
     socket.on('game:opponent_disconnected', (payload: { gracePeriodMs: number }) => {
       setOpponentDisconnected(true)
       setDisconnectGraceMs(payload.gracePeriodMs)
       setToastMessage('Opponent disconnected. Waiting for them to reconnect...')
     })
-
     socket.on('game:opponent_reconnected', () => {
       setOpponentDisconnected(false)
       setDisconnectGraceMs(0)
@@ -790,68 +686,41 @@ function App() {
     })
 
     void fetch(`${ARENA_URL}/api/profile`)
-      .then((response) => response.json())
-      .then(
-        (data: {
-          motd?: string
-          quest?: string
-          featuredMode?: string
-          maintenanceMode?: boolean
-        }) => {
-          if (data.motd) {
-            setMotd(data.motd)
-          }
-
-          if (data.quest) {
-            setDailyQuest(data.quest)
-          }
-
-          if (data.featuredMode) {
-            setFeaturedMode(data.featuredMode)
-          }
-
-          setMaintenanceMode(Boolean(data.maintenanceMode))
-          setAdminSettings({
-            motd: data.motd ?? 'Queue up for ranked arena play.',
-            quest: data.quest ?? 'Win 1 ranked arena match',
-            featuredMode: data.featuredMode ?? 'Ranked Blitz',
-            maintenanceMode: Boolean(data.maintenanceMode),
-          })
-        },
-      )
-      .catch(() => {
-        setBackendOnline(false)
+      .then((r) => r.json())
+      .then((data: { motd?: string; quest?: string; featuredMode?: string; maintenanceMode?: boolean }) => {
+        if (data.motd) setMotd(data.motd)
+        if (data.quest) setDailyQuest(data.quest)
+        if (data.featuredMode) setFeaturedMode(data.featuredMode)
+        setMaintenanceMode(Boolean(data.maintenanceMode))
+        setAdminSettings({
+          motd: data.motd ?? 'Queue up for ranked arena play.',
+          quest: data.quest ?? 'Win 1 ranked arena match',
+          featuredMode: data.featuredMode ?? 'Ranked Blitz',
+          maintenanceMode: Boolean(data.maintenanceMode),
+        })
       })
+      .catch(() => setBackendOnline(false))
 
     return () => {
-      if (socketClientRef.current === socket) {
-        socketClientRef.current = null
-      }
+      if (socketClientRef.current === socket) socketClientRef.current = null
       socket.disconnect()
     }
-  }, [authToken, triggerBattleIntro]) // eslint-disable-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authToken, triggerBattleIntro])
 
+  // ─── Live arena heartbeat ──────────────────────────────────────────────
   useEffect(() => {
-    if (!loggedIn) {
-      return undefined
-    }
-
+    if (!loggedIn) return undefined
     let cancelled = false
-
     const refreshLiveArena = async () => {
       try {
         const [healthResponse, leaderboardResponse] = await Promise.all([
           fetch(`${ARENA_URL}/api/health`),
           fetch(`${ARENA_URL}/api/leaderboard`),
         ])
-
         const healthData = (await healthResponse.json()) as QueuePresence & { ok?: boolean }
         const leaderboardData = (await leaderboardResponse.json()) as { ok?: boolean; entries?: LeaderboardEntry[] }
-
-        if (cancelled) {
-          return
-        }
-
+        if (cancelled) return
         setQueuePresence((current) => ({
           ...current,
           queueSize: healthData.queueSize ?? current.queueSize,
@@ -866,23 +735,17 @@ function App() {
         }
       }
     }
-
     void refreshLiveArena()
-    const refreshTimer = window.setInterval(() => {
-      void refreshLiveArena()
-    }, 30000)
-
+    const refreshTimer = window.setInterval(() => void refreshLiveArena(), 30000)
     return () => {
       cancelled = true
       window.clearInterval(refreshTimer)
     }
   }, [loggedIn])
 
+  // ─── Initial fetch of collection/packs/social ──────────────────────────
   useEffect(() => {
-    if (!authToken || !loggedIn) {
-      return
-    }
-
+    if (!authToken || !loggedIn) return
     void Promise.all([
       authFetch('/api/me/collection', authToken).then((r) => r.json()),
       authFetch('/api/shop/packs', authToken).then((r) => r.json()),
@@ -898,9 +761,7 @@ function App() {
         setPackOffers(packData.packs ?? [])
         setFriends(socialData.friends ?? [])
         setClan(socialData.clan ?? null)
-        if (!socialData.ok && socialData.error) {
-          setSocialStatus(socialData.error)
-        }
+        if (!socialData.ok && socialData.error) setSocialStatus(socialData.error)
         setDeckConfig((current) => {
           const clampedDeck = Object.fromEntries(
             Object.entries(current).map(([cardId, count]) => {
@@ -915,31 +776,19 @@ function App() {
       .catch(() => {})
   }, [authToken, loggedIn])
 
+  // ─── Queue tick ────────────────────────────────────────────────────────
   useEffect(() => {
-    if (queueState !== 'searching') {
-      return undefined
-    }
-
-    const tick = window.setInterval(() => {
-      setQueueSeconds((seconds) => seconds + 1)
-    }, 1000)
-
-    return () => {
-      window.clearInterval(tick)
-    }
+    if (queueState !== 'searching') return undefined
+    const tick = window.setInterval(() => setQueueSeconds((s) => s + 1), 1000)
+    return () => window.clearInterval(tick)
   }, [queueState])
 
-  useEffect(() => {
-    return () => {
-      clearLongPressTimer()
-    }
-  }, [])
+  // Cleanup long press timer on unmount
+  useEffect(() => () => clearLongPressTimer(), [])
 
+  // Persist preferences
   useEffect(() => {
-    if (typeof window === 'undefined') {
-      return
-    }
-
+    if (typeof window === 'undefined') return
     window.localStorage.setItem(STORAGE_KEYS.deck, JSON.stringify(deckConfig))
     window.localStorage.setItem(STORAGE_KEYS.sound, JSON.stringify(soundEnabled))
     window.localStorage.setItem(STORAGE_KEYS.mode, JSON.stringify(preferredMode))
@@ -947,42 +796,26 @@ function App() {
     window.localStorage.setItem(STORAGE_KEYS.visitor, JSON.stringify(visitorId))
     window.localStorage.setItem(STORAGE_KEYS.analyticsConsent, JSON.stringify(analyticsConsent))
     window.localStorage.setItem(STORAGE_KEYS.authToken, JSON.stringify(authToken))
-  }, [
-    deckConfig,
-    soundEnabled,
-    preferredMode,
-    aiDifficultySetting,
-    visitorId,
-    analyticsConsent,
-    authToken,
-  ])
+  }, [deckConfig, soundEnabled, preferredMode, aiDifficultySetting, visitorId, analyticsConsent, authToken])
 
-  // Sync deck config to server when changed (debounced)
+  // Sync deck config to server
   useEffect(() => {
     if (!authToken || !loggedIn) return
     const timer = window.setTimeout(() => {
       void authFetch('/api/me/deck', authToken, { method: 'POST', body: { deckConfig } })
-        .then((response) => response.json())
+        .then((r) => r.json())
         .then((data: { ok?: boolean; error?: string }) => {
-          if (data.ok === false && data.error) {
-            setToastMessage(data.error)
-          }
+          if (data.ok === false && data.error) setToastMessage(data.error)
         })
         .catch(() => {})
     }, 1500)
     return () => window.clearTimeout(timer)
-    // setToastMessage is a stable useCallback; only deck/auth changes should retrigger this debounce.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deckConfig, authToken, loggedIn])
 
-  // Load saved decks on login. Server is the source of truth; the
-  // setSavedDecks call inside the fetch is async and is exempt from the
-  // react-hooks/set-state-in-effect rule. The early-clear branch happens
-  // when authToken/loggedIn are unset (logout).
+  // Load saved decks on login
   useEffect(() => {
     if (!authToken || !loggedIn) {
-      // Defer to next tick so the rule about synchronous setState in
-      // effects is respected. (Logout-triggered cleanup, not derived state.)
       const handle = window.setTimeout(() => {
         setSavedDecks([])
         setActiveDeckId(null)
@@ -990,39 +823,32 @@ function App() {
       return () => window.clearTimeout(handle)
     }
     void authFetch('/api/me/decks', authToken)
-      .then((response) => response.json())
+      .then((r) => r.json())
       .then((data: { ok: boolean; decks?: SavedDeck[] }) => {
         if (data.ok && data.decks) {
           setSavedDecks(data.decks)
-          const active = data.decks.find((deck) => deck.isActive)
-          if (active) {
-            setActiveDeckId(active.id)
-          } else if (data.decks[0]) {
-            setActiveDeckId(data.decks[0].id)
-          }
+          const active = data.decks.find((d) => d.isActive)
+          if (active) setActiveDeckId(active.id)
+          else if (data.decks[0]) setActiveDeckId(data.decks[0].id)
         }
       })
       .catch(() => {})
   }, [authToken, loggedIn])
 
-  // Reload deck list helper used after every CRUD mutation.
-  const reloadDecks = useCallback(
-    async function reloadDecks(): Promise<SavedDeck[] | null> {
-      if (!authToken) return null
-      try {
-        const r = await authFetch('/api/me/decks', authToken)
-        const data = (await r.json()) as { ok: boolean; decks?: SavedDeck[] }
-        if (data.ok && data.decks) {
-          setSavedDecks(data.decks)
-          const active = data.decks.find((d) => d.isActive)
-          if (active) setActiveDeckId(active.id)
-          return data.decks
-        }
-      } catch { /* ignore */ }
-      return null
-    },
-    [authToken],
-  )
+  const reloadDecks = useCallback(async (): Promise<SavedDeck[] | null> => {
+    if (!authToken) return null
+    try {
+      const r = await authFetch('/api/me/decks', authToken)
+      const data = (await r.json()) as { ok: boolean; decks?: SavedDeck[] }
+      if (data.ok && data.decks) {
+        setSavedDecks(data.decks)
+        const active = data.decks.find((d) => d.isActive)
+        if (active) setActiveDeckId(active.id)
+        return data.decks
+      }
+    } catch { /* ignore */ }
+    return null
+  }, [authToken])
 
   function handleCreateDeck() {
     if (!authToken) {
@@ -1031,10 +857,7 @@ function App() {
     }
     const name = window.prompt('Name your new deck (1-30 characters):', `Deck ${savedDecks.length + 1}`)?.trim()
     if (!name) return
-    void authFetch('/api/me/decks', authToken, {
-      method: 'POST',
-      body: { name, deckConfig: {} },
-    })
+    void authFetch('/api/me/decks', authToken, { method: 'POST', body: { name, deckConfig: {} } })
       .then((r) => r.json())
       .then(async (data: { ok: boolean; error?: string; deck?: SavedDeck }) => {
         if (!data.ok) {
@@ -1042,12 +865,7 @@ function App() {
           return
         }
         await reloadDecks()
-        if (data.deck) {
-          // Switching active to the newly-created deck would discard the
-          // current builder state; instead, just update the list and let
-          // the player select it explicitly.
-          setToastMessage(`Deck "${data.deck.name}" created.`)
-        }
+        if (data.deck) setToastMessage(`Deck "${data.deck.name}" created.`)
       })
       .catch(() => setToastMessage('Could not create deck.'))
   }
@@ -1056,10 +874,7 @@ function App() {
     if (!authToken) return
     const name = window.prompt('Rename deck:', deck.name)?.trim()
     if (!name || name === deck.name) return
-    void authFetch(`/api/me/decks/${deck.id}/rename`, authToken, {
-      method: 'POST',
-      body: { name },
-    })
+    void authFetch(`/api/me/decks/${deck.id}/rename`, authToken, { method: 'POST', body: { name } })
       .then((r) => r.json())
       .then(async (data: { ok: boolean; error?: string }) => {
         if (!data.ok) {
@@ -1117,30 +932,14 @@ function App() {
       setToastMessage('Sign in to break down cards into Shards.')
       return
     }
-    void authFetch('/api/cards/breakdown', authToken, {
-      method: 'POST',
-      body: { cardId, qty },
-    })
+    void authFetch('/api/cards/breakdown', authToken, { method: 'POST', body: { cardId, qty } })
       .then((r) => r.json())
-      .then((data: {
-        ok: boolean
-        error?: string
-        refunded?: number
-        runes?: number
-        owned?: Record<string, number>
-      }) => {
+      .then((data: { ok: boolean; error?: string; refunded?: number; runes?: number; owned?: Record<string, number> }) => {
         if (!data.ok) {
           setToastMessage(data.error ?? 'Could not break down card.')
           return
         }
-        setServerProfile((prev) =>
-          prev
-            ? {
-                ...prev,
-                runes: data.runes ?? prev.runes,
-              }
-            : prev,
-        )
+        setServerProfile((prev) => (prev ? { ...prev, runes: data.runes ?? prev.runes } : prev))
         setCollection(data.owned ?? {})
         setToastMessage(`Refunded ${data.refunded ?? 0} Shards.`)
         playSound('tap', soundEnabled)
@@ -1149,32 +948,39 @@ function App() {
       .finally(() => setPendingBreakdown(null))
   }
 
+  function handleSelectBorder(borderId: CardBorder) {
+    if (!authToken) return
+    if (!ownedCardBorders.includes(borderId)) return
+    void authFetch('/api/me/border', authToken, { method: 'POST', body: { borderId } })
+      .then((r) => r.json())
+      .then((data: { ok: boolean; error?: string; selectedCardBorder?: CardBorder }) => {
+        if (!data.ok) {
+          setToastMessage(data.error ?? 'Could not equip border.')
+          return
+        }
+        setServerProfile((prev) => (prev ? { ...prev, selectedCardBorder: data.selectedCardBorder ?? borderId } : prev))
+        setToastMessage(`${CARD_BORDER_OFFERS.find((b) => b.id === borderId)?.name ?? 'Border'} equipped.`)
+        playSound('tap', soundEnabled)
+      })
+      .catch(() => setToastMessage('Could not equip border.'))
+  }
+
   function handlePurchaseBorder(borderId: CardBorder, cost: number) {
     if (!authToken) {
       setToastMessage('Sign in to purchase card borders.')
       return
     }
     if (ownedCardBorders.includes(borderId)) {
-      // Already owned — just equip it.
-      void handleSelectBorder(borderId)
+      handleSelectBorder(borderId)
       return
     }
     if (runes < cost) {
       setToastMessage(`Need ${cost - runes} more Shards for that border.`)
       return
     }
-    void authFetch('/api/shop/border', authToken, {
-      method: 'POST',
-      body: { borderId },
-    })
+    void authFetch('/api/shop/border', authToken, { method: 'POST', body: { borderId } })
       .then((r) => r.json())
-      .then((data: {
-        ok: boolean
-        error?: string
-        runes?: number
-        ownedCardBorders?: CardBorder[]
-        selectedCardBorder?: CardBorder
-      }) => {
+      .then((data: { ok: boolean; error?: string; runes?: number; ownedCardBorders?: CardBorder[]; selectedCardBorder?: CardBorder }) => {
         if (!data.ok) {
           setToastMessage(data.error ?? 'Could not purchase border.')
           return
@@ -1195,53 +1001,23 @@ function App() {
       .catch(() => setToastMessage('Could not purchase border.'))
   }
 
-  function handleSelectBorder(borderId: CardBorder) {
-    if (!authToken) return
-    if (!ownedCardBorders.includes(borderId)) return
-    void authFetch('/api/me/border', authToken, {
-      method: 'POST',
-      body: { borderId },
-    })
-      .then((r) => r.json())
-      .then((data: { ok: boolean; error?: string; selectedCardBorder?: CardBorder }) => {
-        if (!data.ok) {
-          setToastMessage(data.error ?? 'Could not equip border.')
-          return
-        }
-        setServerProfile((prev) =>
-          prev
-            ? {
-                ...prev,
-                selectedCardBorder: data.selectedCardBorder ?? borderId,
-              }
-            : prev,
-        )
-        setToastMessage(`${CARD_BORDER_OFFERS.find((b) => b.id === borderId)?.name ?? 'Border'} equipped.`)
-        playSound('tap', soundEnabled)
-      })
-      .catch(() => setToastMessage('Could not equip border.'))
-  }
-
+  // Install / SW prompts
   useEffect(() => {
     const handleBeforeInstall = (event: Event) => {
       event.preventDefault()
       setInstallPromptEvent(event as InstallPromptEvent)
       setToastMessage('Install Fractured Arcanum for a faster home-screen launch.')
     }
-
     const handleInstalled = () => {
       setInstallPromptEvent(null)
       setToastMessage('Fractured Arcanum is installed and ready to play.')
     }
-
     window.addEventListener('beforeinstallprompt', handleBeforeInstall)
     window.addEventListener('appinstalled', handleInstalled)
-
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstall)
       window.removeEventListener('appinstalled', handleInstalled)
     }
-    // setToastMessage is a stable useCallback wrapper — installation listeners only need to register once.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -1251,12 +1027,11 @@ function App() {
       swRegistrationRef.current = detail.registration
       setSwUpdateAvailable(true)
     }
-
     window.addEventListener('sw-update-available', handleSwUpdate)
     return () => window.removeEventListener('sw-update-available', handleSwUpdate)
   }, [])
 
-  // Drives time-based UI: trade expiration countdowns, pending challenges, etc.
+  // Drives time-based UI for trade countdowns / challenges
   useEffect(() => {
     const interval = window.setInterval(() => setNowTick(Date.now()), 1000)
     return () => window.clearInterval(interval)
@@ -1270,36 +1045,21 @@ function App() {
   }, [queueState, soundEnabled])
 
   useEffect(() => {
-    if (activeScreen === 'battle') {
-      return
-    }
-
+    if (activeScreen === 'battle') return
     battleStartedRef.current = false
     if (battleIntroTimerRef.current) {
       window.clearTimeout(battleIntroTimerRef.current)
       battleIntroTimerRef.current = null
     }
-
-    const hideTimer = window.setTimeout(() => {
-      setBattleIntroVisible(false)
-    }, 0)
-
-    return () => {
-      window.clearTimeout(hideTimer)
-    }
+    const hideTimer = window.setTimeout(() => setBattleIntroVisible(false), 0)
+    return () => window.clearTimeout(hideTimer)
   }, [activeScreen])
 
   useEffect(() => {
-    void sendAnalytics(
-      'page_view',
-      {
-        screen: getScreenBucket(),
-        mode: game.mode,
-      },
-      'home',
-    )
-  }, [game.mode, sendAnalytics])
+    void sendAnalytics('page_view', { screen: getScreenBucket(), mode: game.mode }, activeScreen)
+  }, [game.mode, sendAnalytics, activeScreen])
 
+  // Damage flash detection
   useEffect(() => {
     const prev = prevBoardRef.current
     const playerBoard = game.player.board
@@ -1308,9 +1068,7 @@ function App() {
       prevBoardRef.current = { player: playerBoard, enemy: enemyBoard }
       return
     }
-
     const damaged = new Set<string>()
-
     for (const side of ['player', 'enemy'] as const) {
       const oldBoard = prev[side]
       const newBoard = side === 'player' ? playerBoard : enemyBoard
@@ -1322,13 +1080,9 @@ function App() {
         }
       }
     }
-
     prevBoardRef.current = { player: playerBoard, enemy: enemyBoard }
-
     if (damaged.size > 0) {
-      const showTimer = window.setTimeout(() => {
-        setDamagedSlots(new Set(damaged))
-      }, 0)
+      const showTimer = window.setTimeout(() => setDamagedSlots(new Set(damaged)), 0)
       const clearTimer = window.setTimeout(() => setDamagedSlots(new Set()), 400)
       return () => {
         window.clearTimeout(showTimer)
@@ -1339,42 +1093,18 @@ function App() {
 
   useEffect(() => {
     if (enemyTurnActive) return
-    if (game.winner === 'player') {
-      playSound('win', soundEnabled)
-    } else if (game.winner === 'enemy') {
-      playSound('lose', soundEnabled)
-    }
-
-    const overlayTimer = window.setTimeout(() => {
-      setRewardOverlayVisible(game.winner === 'player')
-    }, 0)
-
-    return () => {
-      window.clearTimeout(overlayTimer)
-    }
+    if (game.winner === 'player') playSound('win', soundEnabled)
+    else if (game.winner === 'enemy') playSound('lose', soundEnabled)
+    const overlayTimer = window.setTimeout(() => setRewardOverlayVisible(game.winner === 'player'), 0)
+    return () => window.clearTimeout(overlayTimer)
   }, [game.winner, soundEnabled, enemyTurnActive])
 
   useEffect(() => {
-    if (!game.winner) {
-      return
-    }
-
+    if (!game.winner) return
     const matchKey = `${game.enemy.name}-${game.turnNumber}-${game.winner}`
-    if (matchKey === resolvedMatchKeyRef.current) {
-      return
-    }
-
+    if (matchKey === resolvedMatchKeyRef.current) return
     resolvedMatchKeyRef.current = matchKey
-    void sendAnalytics(
-      'match_complete',
-      {
-        winner: game.winner,
-        mode: game.mode,
-        turnNumber: game.turnNumber,
-      },
-      'match',
-    )
-
+    void sendAnalytics('match_complete', { winner: game.winner, mode: game.mode, turnNumber: game.turnNumber }, 'match')
     if (authToken && game.mode !== 'duel') {
       const result = game.winner === 'player' ? 'win' : game.winner === 'enemy' ? 'loss' : 'draw'
       void authFetch('/api/match/complete', authToken, {
@@ -1400,7 +1130,6 @@ function App() {
         })
         .catch(() => {})
     }
-
     if (authToken && game.mode === 'duel') {
       void authFetch('/api/me', authToken)
         .then((r) => r.json())
@@ -1411,6 +1140,7 @@ function App() {
     }
   }, [game, sendAnalytics, authToken])
 
+  // ─── Derived game/battle properties ────────────────────────────────────
   const isRankedBattle = battleKind === 'ranked'
   const isLocalPassBattle = battleKind === 'local'
   const activeSide: BattleSide = isLocalPassBattle ? game.turn : 'player'
@@ -1430,14 +1160,9 @@ function App() {
   const totalOwnedCards = Object.values(collection).reduce((sum, count) => sum + count, 0)
   const totalGames = record.wins + record.losses
   const winRate = totalGames > 0 ? Math.round((record.wins / totalGames) * 100) : 0
-  const previousRankTarget =
-    seasonRating < 1150 ? 1000 : seasonRating < 1300 ? 1150 : seasonRating < 1500 ? 1300 : 1500
-  const nextRankTarget =
-    seasonRating < 1150 ? 1150 : seasonRating < 1300 ? 1300 : seasonRating < 1500 ? 1500 : 1700
-  const rankProgress = Math.min(
-    100,
-    Math.round(((seasonRating - previousRankTarget) / (nextRankTarget - previousRankTarget)) * 100),
-  )
+  const previousRankTarget = seasonRating < 1150 ? 1000 : seasonRating < 1300 ? 1150 : seasonRating < 1500 ? 1300 : 1500
+  const nextRankTarget = seasonRating < 1150 ? 1150 : seasonRating < 1300 ? 1300 : seasonRating < 1500 ? 1500 : 1700
+  const rankProgress = Math.min(100, Math.round(((seasonRating - previousRankTarget) / (nextRankTarget - previousRankTarget)) * 100))
   const nextRewardLabel =
     seasonRating >= 1500 ? 'Champion Vault' : seasonRating >= 1300 ? 'Gold Chest' : seasonRating >= 1150 ? 'Silver Cache' : 'Bronze Bundle'
   const todayKey = new Date().toISOString().slice(0, 10)
@@ -1454,11 +1179,13 @@ function App() {
             ? 'Vault'
             : 'Operations'
 
-
-  function openScreen(screen: AppScreen) {
-    playSound('tap', soundEnabled)
-    setActiveScreen(screen)
-  }
+  const openScreen = useCallback(
+    (screen: AppScreen) => {
+      playSound('tap', soundEnabled)
+      setActiveScreen(screen)
+    },
+    [setActiveScreen, soundEnabled],
+  )
 
   function resetBattleState(mode: GameMode = preferredMode, toast = 'Battle reset. Ready when you are.', nextScreen: AppScreen = 'home') {
     const nextDifficulty = mode === 'ai' ? resolvedAIDifficulty : 'legend'
@@ -1492,7 +1219,6 @@ function App() {
   function handleResumeBattle() {
     playSound('tap', soundEnabled)
     setActiveScreen('battle')
-
     if (battleKind === 'ranked') {
       if (socketClientRef.current?.connected) {
         socketClientRef.current.emit('game:rejoin')
@@ -1502,46 +1228,44 @@ function App() {
       }
       return
     }
-
     setToastMessage(`Resuming your battle against ${game.enemy.name}.`)
+  }
+
+  function emitAction(action: Record<string, unknown>) {
+    if (isRankedBattle && socketClientRef.current?.connected) {
+      socketClientRef.current.emit('game:action', { action })
+    }
   }
 
   function handleAbandonBattle() {
     playSound('tap', soundEnabled)
-
     if (serverBattleActive && hasBattleInProgress && socketClientRef.current?.connected) {
       emitAction({ type: 'surrender' })
       resetBattleState(preferredMode, 'Ranked match abandoned. The result will be recorded by the server.')
       return
     }
-
     if (hasBattleInProgress) {
       resetBattleState(preferredMode, game.mode === 'ai' ? 'AI battle abandoned. Ready for a fresh match.' : 'Battle reset. Ready when you are.')
       return
     }
-
     resetBattleState(preferredMode)
   }
 
   function handleLeaveBattle() {
     playSound('tap', soundEnabled)
-
     if (queueState !== 'idle' && !hasBattleInProgress) {
       handleCancelQueue()
       return
     }
-
     if (serverBattleActive && hasBattleInProgress) {
       setActiveScreen('home')
       setToastMessage(`Battle paused vs ${game.enemy.name}. You can resume or abandon it from the lobby.`)
       return
     }
-
     if (hasBattleInProgress) {
       resetBattleState(preferredMode, game.mode === 'ai' ? 'AI battle abandoned. Ready for a fresh match.' : 'Battle closed. Start a new match whenever you like.')
       return
     }
-
     setActiveScreen('home')
   }
 
@@ -1550,21 +1274,22 @@ function App() {
       setToastMessage(authToken ? 'The daily reward has already been claimed today.' : 'Log in to claim daily rewards.')
       return
     }
-
     playSound('win', soundEnabled)
     pulseFeedback(18)
     void authFetch('/api/me/daily', authToken, { method: 'POST' })
       .then((r) => r.json())
       .then((data: { ok: boolean; error?: string; runes?: number; totalEarned?: number }) => {
         if (data.ok) {
-          setServerProfile((prev) => prev ? { ...prev, runes: data.runes ?? prev.runes, lastDaily: todayKey, totalEarned: data.totalEarned ?? prev.totalEarned } : prev)
+          setServerProfile((prev) =>
+            prev ? { ...prev, runes: data.runes ?? prev.runes, lastDaily: todayKey, totalEarned: data.totalEarned ?? prev.totalEarned } : prev,
+          )
           setToastMessage('Daily reward claimed: +50 Shards.')
         } else {
           setToastMessage(data.error ?? 'Could not claim daily reward.')
         }
       })
       .catch(() => setToastMessage('Network error claiming daily reward.'))
-    void sendAnalytics('reward_claim', { amount: 50, currency: 'shards' }, 'vault')
+    void sendAnalytics('reward_claim', { amount: 50, currency: 'shards' }, 'shop')
   }
 
   function handleEquipTheme(themeId: CosmeticTheme, cost: number) {
@@ -1572,26 +1297,18 @@ function App() {
       setToastMessage('Log in to use cosmetic themes.')
       return
     }
-
     const alreadyOwned = ownedThemes.includes(themeId)
-
     if (!alreadyOwned && runes < cost) {
       setToastMessage('Not enough Shards yet for that cosmetic theme.')
       return
     }
-
     if (!alreadyOwned) {
       void authFetch('/api/shop/theme', authToken, { method: 'POST', body: { themeId } })
         .then((r) => r.json())
         .then((data: { ok: boolean; error?: string; runes?: number; ownedThemes?: CosmeticTheme[] }) => {
           if (data.ok) {
             setServerProfile((prev) =>
-              prev ? {
-                ...prev,
-                runes: data.runes ?? prev.runes,
-                ownedThemes: data.ownedThemes ?? prev.ownedThemes,
-                selectedTheme: themeId,
-              } : prev,
+              prev ? { ...prev, runes: data.runes ?? prev.runes, ownedThemes: data.ownedThemes ?? prev.ownedThemes, selectedTheme: themeId } : prev,
             )
             setToastMessage(`${THEME_OFFERS.find((item) => item.id === themeId)?.name ?? 'Theme'} unlocked.`)
           } else {
@@ -1603,15 +1320,12 @@ function App() {
       void authFetch('/api/me/theme', authToken, { method: 'POST', body: { themeId } })
         .then((r) => r.json())
         .then((data: { ok: boolean }) => {
-          if (data.ok) {
-            setServerProfile((prev) => prev ? { ...prev, selectedTheme: themeId } : prev)
-          }
+          if (data.ok) setServerProfile((prev) => (prev ? { ...prev, selectedTheme: themeId } : prev))
         })
         .catch(() => {})
       setToastMessage(`${THEME_OFFERS.find((item) => item.id === themeId)?.name ?? 'Theme'} equipped.`)
     }
-
-    void sendAnalytics('cosmetic_equip', { themeId }, 'vault')
+    void sendAnalytics('cosmetic_equip', { themeId }, 'shop')
   }
 
   async function refreshAdminOverview() {
@@ -1623,21 +1337,14 @@ function App() {
       setAdminError('Your account does not have admin privileges.')
       return
     }
-
     setAdminLoading(true)
-
     try {
       const response = await authFetch('/api/admin/overview', authToken)
-
-      if (!response.ok) {
-        throw new Error('Admin access denied')
-      }
-
+      if (!response.ok) throw new Error('Admin access denied')
       const data = (await response.json()) as AdminOverview
       setAdminOverview(data)
       setAdminSettings(data.settings)
       setAdminError('')
-      // Also refresh users + audit for owner UI
       if (isOwnerRole) {
         void refreshAdminUsers()
         void refreshAdminAudit()
@@ -1650,7 +1357,7 @@ function App() {
     }
   }
 
-  async function refreshAdminUsers(searchTerm = adminUserSearch) {
+  async function refreshAdminUsers(searchTerm: string = adminUserSearch) {
     if (!authToken || !isAdminRole) return
     setAdminUsersLoading(true)
     try {
@@ -1660,9 +1367,7 @@ function App() {
       if (!response.ok) throw new Error('users fetch failed')
       const data = (await response.json()) as { ok: boolean; users: AdminUser[] }
       setAdminUsers(data.users ?? [])
-    } catch {
-      // non-fatal
-    } finally {
+    } catch { /* non-fatal */ } finally {
       setAdminUsersLoading(false)
     }
   }
@@ -1696,8 +1401,7 @@ function App() {
             </p>
           ) : (
             <p>
-              <strong>@{target.username}</strong> will immediately lose access to the Ops
-              console.
+              <strong>@{target.username}</strong> will immediately lose access to the Ops console.
             </p>
           )}
           <p className="mini-text">You can reverse this at any time.</p>
@@ -1708,11 +1412,10 @@ function App() {
     })
     if (!ok) return
     try {
-      const response = await authFetch(
-        `/api/admin/users/${encodeURIComponent(target.accountId)}/role`,
-        authToken,
-        { method: 'POST', body: { role: newRole } },
-      )
+      const response = await authFetch(`/api/admin/users/${encodeURIComponent(target.accountId)}/role`, authToken, {
+        method: 'POST',
+        body: { role: newRole },
+      })
       const data = (await response.json()) as { ok: boolean; error?: string }
       if (!response.ok || !data.ok) {
         setAdminError(data.error ?? 'Role change failed.')
@@ -1740,7 +1443,7 @@ function App() {
       setTransferStatus('Target must be a different account.')
       return
     }
-    const target = adminUsers.find((user) => user.accountId === targetAccountId)
+    const target = adminUsers.find((u) => u.accountId === targetAccountId)
     const targetUsername = target?.username ?? ''
     if (!targetUsername) {
       setTransferStatus('Search for the target account in the list above before transferring.')
@@ -1778,7 +1481,7 @@ function App() {
       }
       setTransferStatus(`Ownership transferred to @${targetUsername}. You are now an admin on this server.`)
       setTransferForm({ targetAccountId: '', password: '' })
-      setServerProfile((profile) => (profile ? { ...profile, role: 'admin' } : profile))
+      setServerProfile((p) => (p ? { ...p, role: 'admin' } : p))
       await refreshAdminUsers()
       await refreshAdminAudit()
       await refreshAdminOverview()
@@ -1789,40 +1492,21 @@ function App() {
 
   async function handleSubmitComplaint(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-
     if (!complaintForm.summary.trim() || !complaintForm.details.trim()) {
       setComplaintStatus('Add both a short summary and clear details before sending the report.')
       return
     }
-
     try {
       const response = await fetch(`${ARENA_URL}/api/complaints`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          visitorId,
-          sessionId,
-          page: 'arena',
-          ...complaintForm,
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ visitorId, sessionId, page: 'arena', ...complaintForm }),
       })
-
       const data = (await response.json()) as { ok?: boolean; complaintId?: string; message?: string }
-
-      if (!response.ok || !data.ok) {
-        throw new Error(data.message ?? 'Complaint submission failed')
-      }
-
+      if (!response.ok || !data.ok) throw new Error(data.message ?? 'Complaint submission failed')
       setComplaintStatus(`Report ${data.complaintId} submitted for review.`)
       setToastMessage(`Support ticket ${data.complaintId} created.`)
-      setComplaintForm({
-        category: 'gameplay',
-        severity: 'normal',
-        summary: '',
-        details: '',
-      })
+      setComplaintForm({ category: 'gameplay', severity: 'normal', summary: '', details: '' })
     } catch {
       setComplaintStatus('The report could not be submitted right now. Please try again.')
     }
@@ -1833,17 +1517,9 @@ function App() {
       setAdminError('Sign in with an admin account to save live settings.')
       return
     }
-
     try {
-      const response = await authFetch('/api/admin/settings', authToken, {
-        method: 'POST',
-        body: adminSettings,
-      })
-
-      if (!response.ok) {
-        throw new Error('Save failed')
-      }
-
+      const response = await authFetch('/api/admin/settings', authToken, { method: 'POST', body: adminSettings })
+      if (!response.ok) throw new Error('Save failed')
       setMotd(adminSettings.motd)
       setDailyQuest(adminSettings.quest)
       setFeaturedMode(adminSettings.featuredMode)
@@ -1860,23 +1536,15 @@ function App() {
       setAdminError('Sign in with an admin account to update tickets.')
       return
     }
-
     try {
       const response = await authFetch(`/api/admin/complaints/${id}`, authToken, {
         method: 'POST',
         body: {
           status,
-          note:
-            status === 'resolved'
-              ? 'Marked resolved from the in-app admin console.'
-              : 'Marked investigating from the in-app admin console.',
+          note: status === 'resolved' ? 'Marked resolved from the in-app admin console.' : 'Marked investigating from the in-app admin console.',
         },
       })
-
-      if (!response.ok) {
-        throw new Error('Update failed')
-      }
-
+      if (!response.ok) throw new Error('Update failed')
       setToastMessage(`Complaint ${id} updated to ${status}.`)
       await refreshAdminOverview()
     } catch {
@@ -1884,20 +1552,14 @@ function App() {
     }
   }
 
-  function startMatch(
-    mode: GameMode = preferredMode,
-    enemyName?: string,
-    overrideDeckConfig?: DeckConfig,
-  ) {
+  function startMatch(mode: GameMode = preferredMode, enemyName?: string, overrideDeckConfig?: DeckConfig) {
     const deckForMatch = overrideDeckConfig ?? deckConfig
     if (getDeckSize(deckForMatch) < MIN_DECK_SIZE) {
       setToastMessage('Finish building your deck before entering the arena.')
       setActiveScreen('deck')
       return
     }
-
     const aiDifficulty = mode === 'ai' ? resolvedAIDifficulty : 'legend'
-
     setPreferredMode(mode)
     setBattleKind(mode === 'duel' ? 'local' : 'ai')
     setBattleSessionActive(true)
@@ -1913,13 +1575,7 @@ function App() {
     setGame(createGame(mode, deckForMatch, enemyName, aiDifficulty))
     void sendAnalytics(
       'match_start',
-      {
-        mode,
-        opponent: enemyName ?? 'Arena Bot',
-        aiDifficulty,
-        screen: getScreenBucket(),
-        preset: overrideDeckConfig ? true : false,
-      },
+      { mode, opponent: enemyName ?? 'Arena Bot', aiDifficulty, screen: getScreenBucket(), preset: overrideDeckConfig ? true : false },
       'match',
     )
   }
@@ -1944,22 +1600,11 @@ function App() {
       setToastMessage('Log in to buy card packs.')
       return
     }
-
     setPackOpening(packType)
     try {
       const response = await authFetch('/api/shop/pack', authToken, { method: 'POST', body: { packType } })
-      const data = (await response.json()) as {
-        ok?: boolean
-        error?: string
-        cards?: OpenedPackCard[]
-        refund?: number
-        runes?: number
-      }
-
-      if (!response.ok || !data.ok) {
-        throw new Error(data.error ?? 'Pack opening failed.')
-      }
-
+      const data = (await response.json()) as { ok?: boolean; error?: string; cards?: OpenedPackCard[]; refund?: number; runes?: number }
+      if (!response.ok || !data.ok) throw new Error(data.error ?? 'Pack opening failed.')
       setOpenedPackCards(data.cards ?? [])
       setServerProfile((prev) => (prev ? { ...prev, runes: data.runes ?? prev.runes } : prev))
       const collectionResponse = await authFetch('/api/me/collection', authToken)
@@ -1975,16 +1620,12 @@ function App() {
 
   async function handleAddFriend(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (!authToken) {
-      return
-    }
-
+    if (!authToken) return
     const username = friendUsernameInput.trim()
     if (!username) {
       setSocialStatus('Enter a username to add a friend.')
       return
     }
-
     setSocialLoading(true)
     try {
       const response = await authFetch('/api/social/friends', authToken, { method: 'POST', body: { username } })
@@ -2004,10 +1645,7 @@ function App() {
   }
 
   async function handleRemoveFriend(friendAccountId: string, displayName: string) {
-    if (!authToken) {
-      return
-    }
-
+    if (!authToken) return
     setSocialLoading(true)
     try {
       const response = await authFetch(`/api/social/friends/${friendAccountId}`, authToken, { method: 'DELETE' })
@@ -2040,10 +1678,7 @@ function App() {
       return
     }
     setChallengeStatus(`Inviting ${friend.displayName}…`)
-    socket.emit('challenge:send', {
-      targetAccountId: friend.accountId,
-      deckConfig,
-    })
+    socket.emit('challenge:send', { targetAccountId: friend.accountId, deckConfig })
   }
 
   function handleAcceptChallenge() {
@@ -2053,10 +1688,7 @@ function App() {
       setChallengeStatus('Build a deck before accepting challenges.')
       return
     }
-    socket.emit('challenge:accept', {
-      challengeId: incomingChallenge.challengeId,
-      deckConfig,
-    })
+    socket.emit('challenge:accept', { challengeId: incomingChallenge.challengeId, deckConfig })
   }
 
   function handleDeclineChallenge() {
@@ -2074,7 +1706,6 @@ function App() {
   }
 
   // ─── Trading ──────────────────────────────────────────────────────
-
   const refreshTrades = useCallback(async () => {
     if (!authToken) return
     try {
@@ -2082,15 +1713,9 @@ function App() {
       if (!response.ok) return
       const data = (await response.json()) as { ok: boolean; trades: Trade[] }
       setTrades(data.trades ?? [])
-    } catch {
-      /* non-fatal */
-    }
+    } catch { /* non-fatal */ }
   }, [authToken])
 
-  // Fetch trades whenever a trade event bumps the tick (login, trade:incoming,
-  // trade:updated). This is a plain "subscribe to external event" effect —
-  // the setState call inside refreshTrades is the legitimate way to mirror
-  // external updates into React state.
   useEffect(() => {
     if (!loggedIn) return
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -2183,13 +1808,10 @@ function App() {
     return `${totalSec}s`
   }
 
-
   async function handleTradeAction(tradeId: string, action: 'accept' | 'reject' | 'cancel') {
     if (!authToken) return
     try {
-      const response = await authFetch(`/api/trades/${encodeURIComponent(tradeId)}/${action}`, authToken, {
-        method: 'POST',
-      })
+      const response = await authFetch(`/api/trades/${encodeURIComponent(tradeId)}/${action}`, authToken, { method: 'POST' })
       const data = (await response.json()) as { ok: boolean; error?: string }
       if (!response.ok || !data.ok) {
         setTradeStatus(data.error ?? `Could not ${action} trade.`)
@@ -2200,14 +1822,11 @@ function App() {
       else setTradeStatus('Trade cancelled.')
       await refreshTrades()
       if (action === 'accept') {
-        // Collection changed; refresh it.
         try {
           const collectionResponse = await authFetch('/api/collection', authToken)
           if (collectionResponse.ok) {
             const collectionData = (await collectionResponse.json()) as { ok: boolean; collection?: Record<string, number> }
-            if (collectionData.ok && collectionData.collection) {
-              setCollection(collectionData.collection)
-            }
+            if (collectionData.ok && collectionData.collection) setCollection(collectionData.collection)
           }
         } catch { /* non-fatal */ }
       }
@@ -2218,16 +1837,10 @@ function App() {
 
   async function handleCreateClan(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (!authToken) {
-      return
-    }
-
+    if (!authToken) return
     setSocialLoading(true)
     try {
-      const response = await authFetch('/api/social/clan/create', authToken, {
-        method: 'POST',
-        body: { name: clanForm.name, tag: clanForm.tag },
-      })
+      const response = await authFetch('/api/social/clan/create', authToken, { method: 'POST', body: { name: clanForm.name, tag: clanForm.tag } })
       const data = (await response.json()) as { ok?: boolean; error?: string }
       if (!response.ok || !data.ok) {
         setSocialStatus(data.error ?? 'Could not create clan right now.')
@@ -2245,16 +1858,12 @@ function App() {
 
   async function handleJoinClan(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (!authToken) {
-      return
-    }
-
+    if (!authToken) return
     const inviteCode = clanForm.inviteCode.trim().toUpperCase()
     if (!inviteCode) {
       setSocialStatus('Enter a clan invite code to join.')
       return
     }
-
     setSocialLoading(true)
     try {
       const response = await authFetch('/api/social/clan/join', authToken, { method: 'POST', body: { inviteCode } })
@@ -2274,10 +1883,7 @@ function App() {
   }
 
   async function handleLeaveClan() {
-    if (!authToken) {
-      return
-    }
-
+    if (!authToken) return
     setSocialLoading(true)
     try {
       const response = await authFetch('/api/social/clan/leave', authToken, { method: 'POST' })
@@ -2296,30 +1902,17 @@ function App() {
   }
 
   async function handleInstallApp() {
-    if (!installPromptEvent) {
-      return
-    }
-
+    if (!installPromptEvent) return
     await installPromptEvent.prompt()
     const result = await installPromptEvent.userChoice
-    setToastMessage(
-      result.outcome === 'accepted'
-        ? 'Installation accepted. Fractured Arcanum is being added to your device.'
-        : 'Install prompt dismissed.',
-    )
-
-    if (result.outcome === 'accepted') {
-      void sendAnalytics('install', { screen: getScreenBucket() }, 'install')
-    }
-
+    setToastMessage(result.outcome === 'accepted' ? 'Installation accepted. Fractured Arcanum is being added to your device.' : 'Install prompt dismissed.')
+    if (result.outcome === 'accepted') void sendAnalytics('install', { screen: getScreenBucket() }, 'install')
     setInstallPromptEvent(null)
   }
 
   function handleAcceptUpdate() {
     const reg = swRegistrationRef.current
-    if (reg?.waiting) {
-      reg.waiting.postMessage({ type: 'SKIP_WAITING' })
-    }
+    if (reg?.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' })
     setSwUpdateAvailable(false)
   }
 
@@ -2336,13 +1929,8 @@ function App() {
       log: [`${activePlayer.name} reacts ${emote}`, ...current.log].slice(0, 10),
     }))
     void sendAnalytics('emote', { emote }, 'social')
-
     if (backendOnline && socketClientRef.current?.connected) {
-      socketClientRef.current.emit('room:emote', {
-        roomId: lobbyCode,
-        emote,
-        from: activePlayer.name,
-      })
+      socketClientRef.current.emit('room:emote', { roomId: lobbyCode, emote, from: activePlayer.name })
     }
   }
 
@@ -2352,12 +1940,10 @@ function App() {
       setActiveScreen('deck')
       return
     }
-
     if (!backendOnline || !socketClientRef.current?.connected) {
       setToastMessage('Live matchmaking is unavailable right now. Please reconnect and try again.')
       return
     }
-
     setActiveScreen('home')
     setQueueState('searching')
     setQueueSeconds(0)
@@ -2371,16 +1957,7 @@ function App() {
       ratingWindow: 150,
     })
     setToastMessage(`Searching the live ladder for a real opponent. ${Math.max(queuePresence.connectedPlayers - 1, 0)} other players online.`)
-    void sendAnalytics(
-      'queue_join',
-      {
-        rank: rankLabel,
-        deckSize: selectedDeckSize,
-        screen: getScreenBucket(),
-      },
-      'queue',
-    )
-
+    void sendAnalytics('queue_join', { rank: rankLabel, deckSize: selectedDeckSize, screen: getScreenBucket() }, 'queue')
     socketClientRef.current.emit('queue:join', {
       name: 'Rune Captain',
       rank: `${rankLabel} Division`,
@@ -2393,7 +1970,6 @@ function App() {
     if (backendOnline && socketClientRef.current?.connected) {
       socketClientRef.current.emit('queue:leave')
     }
-
     setQueueState('idle')
     setQueueSeconds(0)
     setQueuedOpponent(null)
@@ -2406,16 +1982,11 @@ function App() {
       ratingWindow: 150,
     })
     setToastMessage('Ranked matchmaking canceled.')
-    if (activeScreen === 'battle' && !gameInProgress) {
-      setActiveScreen('home')
-    }
+    if (activeScreen === 'battle' && !gameInProgress) setActiveScreen('home')
   }
 
   function handleAcceptQueue() {
-    if (!queuedOpponent) {
-      return
-    }
-
+    if (!queuedOpponent) return
     setToastMessage(`Live match found against ${queuedOpponent.name}. Joining now.`)
   }
 
@@ -2427,132 +1998,80 @@ function App() {
       const ownedCount = loggedIn ? (collection[cardId] ?? 0) : maxCopies
       const allowedCopies = Math.min(maxCopies, ownedCount)
       const nextCount = Math.max(0, Math.min(allowedCopies, (current[cardId] ?? 0) + delta))
-
-      if (delta > 0 && total >= MAX_DECK_SIZE) {
-        return current
-      }
-
-      return {
-        ...current,
-        [cardId]: nextCount,
-      }
+      if (delta > 0 && total >= MAX_DECK_SIZE) return current
+      return { ...current, [cardId]: nextCount }
     })
   }
 
-  /**
-   * Quick-battle preset launcher. Players never have to "own" the cards in
-   * a preset to play it — presets are curated AI-only loadouts, intended
-   * to give new players an immediate feel for the game without requiring
-   * them to first build a 10-card deck. The preset deck is used directly
-   * by `startMatch` and is never saved into the player's collection.
-   */
   function handleQuickBattle(name: string, config: DeckConfig) {
     playSound('tap', soundEnabled)
     setToastMessage(`Launching quick AI match: ${name} preset.`)
     startMatch('ai', `${name} Sparring Bot`, config)
   }
 
-  function emitAction(action: Record<string, unknown>) {
-    if (isRankedBattle && socketClientRef.current?.connected) {
-      socketClientRef.current.emit('game:action', { action })
-    }
-  }
-
   function handlePlayCard(index: number) {
     const card = activePlayer.hand[index]
-    if (game.winner || !isMyTurn || !card || card.cost > activePlayer.mana || !activeBoardHasOpenLane) {
-      return
-    }
-
+    if (game.winner || !isMyTurn || !card || card.cost > activePlayer.mana || !activeBoardHasOpenLane) return
     playSound('summon', soundEnabled)
     pulseFeedback(12)
-
     if (isRankedBattle) {
       emitAction({ type: 'playCard', handIndex: index })
       return
     }
-
     setGame((current) => playCard(current, current.turn, index))
   }
 
   function handleSelectAttacker(index: number) {
     const unit = activePlayer.board[index]
-
-    if (game.winner || !unit || unit.exhausted || !isMyTurn) {
-      return
-    }
-
+    if (game.winner || !unit || unit.exhausted || !isMyTurn) return
     playSound('tap', soundEnabled)
     setSelectedAttacker((current) => (current === index ? null : index))
   }
 
   function handleAttackTarget(target: number | 'hero') {
-    if (selectedAttacker === null || game.winner || !isMyTurn) {
-      return
-    }
-
+    if (selectedAttacker === null || game.winner || !isMyTurn) return
     playSound('attack', soundEnabled)
     pulseFeedback(16)
-
     if (isRankedBattle) {
       emitAction({ type: 'attack', attackerIndex: selectedAttacker, target })
       setSelectedAttacker(null)
       return
     }
-
     setGame((current) => attack(current, current.turn, selectedAttacker, target))
     setSelectedAttacker(null)
   }
 
   function handleBurst() {
-    if (game.winner || !isMyTurn) {
-      return
-    }
-
+    if (game.winner || !isMyTurn) return
     playSound('burst', soundEnabled)
     pulseFeedback(22)
-
     if (isRankedBattle) {
       emitAction({ type: 'burst' })
       return
     }
-
     setGame((current) => castMomentumBurst(current, current.turn))
   }
 
-  function clearEnemyTurnTimers() {
-    enemyTurnTimers.current.forEach((id) => window.clearTimeout(id))
-    enemyTurnTimers.current = []
-  }
-
   function handleEndTurn() {
-    if (game.winner || !isMyTurn) {
-      return
-    }
-
+    if (game.winner || !isMyTurn) return
     playSound('tap', soundEnabled)
     setSelectedAttacker(null)
-
     if (isRankedBattle) {
       emitAction({ type: 'endTurn' })
       return
     }
-
     if (isLocalPassBattle) {
       setGame((current) => passTurn(current))
       setToastMessage(`Pass the device to ${game.turn === 'player' ? game.enemy.name : game.player.name}.`)
       return
     }
-
     const steps = generateEnemyTurnSteps(game)
     if (steps.length === 0) return
-
     clearEnemyTurnTimers()
     setEnemyTurnActive(true)
     setEnemyTurnLabel(steps[0].label)
     setGame(steps[0].state)
     prevBoardRef.current = { player: steps[0].state.player.board, enemy: steps[0].state.enemy.board }
-
     if (steps.length === 1) {
       const t = window.setTimeout(() => {
         setEnemyTurnActive(false)
@@ -2561,7 +2080,6 @@ function App() {
       enemyTurnTimers.current.push(t)
       return
     }
-
     steps.slice(1).forEach((step, i) => {
       const t = window.setTimeout(() => {
         if (step.state.winner) {
@@ -2575,7 +2093,6 @@ function App() {
           enemyTurnTimers.current = [done]
           return
         }
-
         setGame(step.state)
         setEnemyTurnLabel(step.label)
         if (i === steps.length - 2) {
@@ -2590,421 +2107,254 @@ function App() {
     })
   }
 
-  return (
-    <main className={`app-shell theme-${selectedTheme}`}>
-      {/* ─── Floating toast stack (auto-fading) ──────────────────────── */}
-      <ToastStack toasts={toastStack} />
+  const value: AppContextValue = useMemo(
+    () => ({
+      // Auth
+      authToken,
+      setAuthToken,
+      authScreen,
+      setAuthScreen,
+      authForm,
+      setAuthForm,
+      authError,
+      authLoading,
+      loggedIn,
+      setupRequired,
+      setupForm,
+      setSetupForm,
+      setupError,
+      setupLoading,
+      handleSetup,
+      handleAuth,
+      handleLogout,
 
-      {/* ─── Branded confirmation modal ──────────────────────────────── */}
-      <ConfirmModal
-        request={confirmRequest}
-        textInput={confirmTextInput}
-        onTextInputChange={setConfirmTextInput}
-        onClose={closeConfirm}
-      />
+      // Profile
+      serverProfile,
+      setServerProfile,
+      runes,
+      seasonRating,
+      record,
+      ownedThemes,
+      selectedTheme,
+      ownedCardBorders,
+      selectedCardBorder,
+      lastDailyClaim,
+      accountRole,
+      isAdminRole,
+      isOwnerRole,
+      rankLabel,
+      totalGames,
+      winRate,
+      rankProgress,
+      nextRankTarget,
+      nextRewardLabel,
+      todayKey,
+      canClaimDailyReward,
+      totalOwnedCards,
 
-      {/* ─── First-launch setup ─────────────────────────────────────── */}
-      {setupRequired && (
-        <div className="auth-gate">
-          <div className="auth-card">
-            <img className="brand-logo" src="/fractured-arcanum-logo.svg" alt="Fractured Arcanum" />
-            <h1>Server Setup</h1>
-            <p className="auth-tagline">Create your admin account to get started</p>
-            <form className="auth-form" onSubmit={handleSetup}>
-                <label>
-                  Display Name
-                  <input
-                    type="text"
-                    placeholder="Your arena name"
-                    maxLength={20}
-                    value={setupForm.displayName}
-                    onChange={(event) => setSetupForm((f) => ({ ...f, displayName: event.target.value }))}
-                  />
-                </label>
-                <label>
-                  Username
-                  <input
-                    type="text"
-                    placeholder="3–20 chars, letters/numbers/_"
-                    maxLength={20}
-                    autoComplete="username"
-                    required
-                    value={setupForm.username}
-                    onChange={(event) => setSetupForm((f) => ({ ...f, username: event.target.value }))}
-                  />
-                </label>
-                <label>
-                  Password
-                  <input
-                    type="password"
-                    placeholder="8+ characters"
-                    minLength={8}
-                    autoComplete="new-password"
-                    required
-                    value={setupForm.password}
-                    onChange={(event) => setSetupForm((f) => ({ ...f, password: event.target.value }))}
-                  />
-                </label>
-                {setupError && <p className="auth-error">{setupError}</p>}
-                <button className="primary" type="submit" disabled={setupLoading}>
-                  {setupLoading ? 'Setting up…' : 'Create Admin Account'}
-                </button>
-              </form>
-          </div>
-        </div>
-      )}
+      // Decks / collection
+      collection,
+      setCollection,
+      deckConfig,
+      setDeckConfig,
+      selectedDeckSize,
+      deckReady,
+      savedDecks,
+      activeDeckId,
+      builderFilter,
+      setBuilderFilter,
+      pendingBreakdown,
+      setPendingBreakdown,
+      handleCreateDeck,
+      handleRenameDeck,
+      handleDeleteDeck,
+      handleSelectDeck,
+      handleBreakdownCard,
+      handleDeckCount,
 
-      {/* ─── App update banner ────────────────────────────────────── */}
-      {swUpdateAvailable && (
-        <div className="update-banner">
-          <span>A new version of Fractured Arcanum is available!</span>
-          <div className="update-banner-actions">
-            <button className="primary small" onClick={handleAcceptUpdate}>Update Now</button>
-            <button className="ghost small" onClick={handleDismissUpdate}>Later</button>
-          </div>
-        </div>
-      )}
+      // Cosmetics / shop
+      packOffers,
+      openedPackCards,
+      packOpening,
+      handleOpenPack,
+      handlePurchaseBorder,
+      handleSelectBorder,
+      handleEquipTheme,
+      handleClaimDailyReward,
 
-      {/* ─── Incoming friend challenge ────────────────────────────── */}
-      {incomingChallenge && (
-        <div className="challenge-banner incoming update-banner">
-          <span>
-            <strong>{incomingChallenge.fromName}</strong> is challenging you to an unranked duel.
-          </span>
-          <div className="update-banner-actions">
-            <button className="primary small" onClick={handleAcceptChallenge}>Accept</button>
-            <button className="ghost small" onClick={handleDeclineChallenge}>Decline</button>
-          </div>
-        </div>
-      )}
+      // Navigation / UI shell
+      activeScreen,
+      previousScreen,
+      openScreen,
+      screenTitle,
+      toastMessage,
+      toastSeverity,
+      toastStack,
+      setToastMessage,
+      inferToastSeverity,
+      confirmRequest,
+      confirmTextInput,
+      setConfirmTextInput,
+      askConfirm,
+      closeConfirm,
+      inspectedCard,
+      setInspectedCard,
+      consumeLongPressAction,
+      getLongPressProps,
+      installPromptEvent,
+      handleInstallApp,
+      swUpdateAvailable,
+      handleAcceptUpdate,
+      handleDismissUpdate,
+      soundEnabled,
+      setSoundEnabled,
+      analyticsConsent,
+      setAnalyticsConsent,
+      visitorId,
 
-      {/* ─── Auth gate ─────────────────────────────────────────────── */}
-      {!setupRequired && !loggedIn && (
-        <div className="auth-gate">
-          <div className="auth-card">
-            <img className="brand-logo" src="/fractured-arcanum-logo.svg" alt="Fractured Arcanum" />
-            <h1>Fractured Arcanum</h1>
-            <p className="auth-tagline">Cosmic horror card battles await</p>
-            <form className="auth-form" onSubmit={handleAuth}>
-              {authScreen === 'signup' && (
-                <label>
-                  Display Name
-                  <input
-                    type="text"
-                    placeholder="Your arena name"
-                    maxLength={20}
-                    value={authForm.displayName}
-                    onChange={(event) => setAuthForm((f) => ({ ...f, displayName: event.target.value }))}
-                  />
-                </label>
-              )}
-              <label>
-                Username
-                <input
-                  type="text"
-                  placeholder="3–20 chars, letters/numbers/_"
-                  maxLength={20}
-                  autoComplete="username"
-                  required
-                  value={authForm.username}
-                  onChange={(event) => setAuthForm((f) => ({ ...f, username: event.target.value }))}
-                />
-              </label>
-              <label>
-                Password
-                <input
-                  type="password"
-                  placeholder="8+ characters"
-                  minLength={8}
-                  autoComplete={authScreen === 'signup' ? 'new-password' : 'current-password'}
-                  required
-                  value={authForm.password}
-                  onChange={(event) => setAuthForm((f) => ({ ...f, password: event.target.value }))}
-                />
-              </label>
-              {authError && <p className="auth-error">{authError}</p>}
-              <button className="primary" type="submit" disabled={authLoading}>
-                {authLoading ? 'Please wait…' : authScreen === 'signup' ? 'Create Account' : 'Log In'}
-              </button>
-            </form>
-            <p className="auth-switch">
-              {authScreen === 'login' ? (
-                <>
-                  New here?{' '}
-                  <button className="link" onClick={() => { setAuthScreen('signup'); setAuthError('') }}>
-                    Create account
-                  </button>
-                </>
-              ) : (
-                <>
-                  Already have an account?{' '}
-                  <button className="link" onClick={() => { setAuthScreen('login'); setAuthError('') }}>
-                    Log in
-                  </button>
-                </>
-              )}
-            </p>
-            {installPromptEvent && (
-              <button className="pwa-install-btn" onClick={handleInstallApp}>
-                Install App
-              </button>
-            )}
-          </div>
-        </div>
-      )}
+      // Live service
+      backendOnline,
+      motd,
+      dailyQuest,
+      featuredMode,
 
-      {loggedIn && activeScreen !== 'battle' && (
-        <TopBar
-          screenTitle={screenTitle}
-          serverProfile={serverProfile}
-          soundEnabled={soundEnabled}
-          onToggleSound={() => {
-            playSound('tap', !soundEnabled)
-            setSoundEnabled((value) => !value)
-          }}
-          installPromptEvent={installPromptEvent}
-          onInstallApp={() => void handleInstallApp()}
-          onLogout={handleLogout}
-        />
-      )}
+      // Queue
+      queueState,
+      queueSeconds,
+      queuedOpponent,
+      queuePresence,
+      queueSearchStatus,
+      liveQueueLabel,
+      leaderboardEntries,
+      handleStartQueue,
+      handleCancelQueue,
+      handleAcceptQueue,
 
-      {activeScreen === 'home' && loggedIn && (
-        <section className="nav-strip section-card">
-          <div className="season-progress-block">
-            <div>
-              <p className="eyebrow">Season of Whispers</p>
-              <h2>{rankLabel} League</h2>
-            </div>
-            <div className="progress-column">
-              <div className="progress-shell">
-                <div className="progress-fill" style={{ width: `${rankProgress}%` }}></div>
-              </div>
-              <p className="note">{seasonRating} / {nextRankTarget} rating</p>
-            </div>
-          </div>
-        </section>
-      )}
+      // Battle
+      game,
+      battleKind,
+      isRankedBattle,
+      isLocalPassBattle,
+      battleSessionActive,
+      serverBattleActive,
+      hasBattleInProgress,
+      gameInProgress,
+      selectedAttacker,
+      enemyTurnActive,
+      enemyTurnLabel,
+      battleIntroVisible,
+      rewardOverlayVisible,
+      setRewardOverlayVisible,
+      damagedSlots,
+      opponentDisconnected,
+      disconnectGraceMs,
+      preferredMode,
+      aiDifficultySetting,
+      resolvedAIDifficulty,
+      activePlayer,
+      defendingPlayer,
+      isMyTurn,
+      defenderHasGuard,
+      activeBoardHasOpenLane,
+      startMatch,
+      handleQuickBattle,
+      handleResumeBattle,
+      handleAbandonBattle,
+      handleLeaveBattle,
+      handleModeChange,
+      handleAIDifficultyChange,
+      handlePlayCard,
+      handleSelectAttacker,
+      handleAttackTarget,
+      handleBurst,
+      handleEndTurn,
+      handleSendEmote,
 
-      <BattleIntroOverlay visible={battleIntroVisible} game={game} />
+      // Social
+      friends,
+      onlineFriendIds,
+      outgoingChallenge,
+      incomingChallenge,
+      challengeStatus,
+      socialLoading,
+      socialStatus,
+      friendUsernameInput,
+      setFriendUsernameInput,
+      clan,
+      clanForm,
+      setClanForm,
+      handleAddFriend,
+      handleRemoveFriend,
+      handleChallengeFriend,
+      handleAcceptChallenge,
+      handleDeclineChallenge,
+      handleCancelOutgoingChallenge,
+      handleCreateClan,
+      handleJoinClan,
+      handleLeaveClan,
 
-      <RewardOverlay
-        visible={rewardOverlayVisible}
-        winner={game.winner}
-        isRankedBattle={isRankedBattle}
-        battleKind={battleKind}
-        rankLabel={rankLabel}
-        streak={record.streak}
-        mode={game.mode}
-        onClaim={() => setRewardOverlayVisible(false)}
-        onQueueAgain={(mode) => startMatch(mode)}
-      />
+      // Trading
+      trades,
+      tradeStatus,
+      tradeForm,
+      setTradeForm,
+      tradePickerDraft,
+      setTradePickerDraft,
+      tradeSubmitting,
+      handleProposeTrade,
+      handleTradeAction,
+      addTradeChip,
+      removeTradeChip,
+      formatCountdown,
 
-      {inspectedCard && (
-        <CardInspectModal card={inspectedCard} onClose={() => setInspectedCard(null)} />
-      )}
-
-
-      {loggedIn && (<>
-      <HomeScreen
-        activeScreen={activeScreen}
-        gameInProgress={gameInProgress}
-        game={game}
-        handleResumeBattle={handleResumeBattle}
-        handleAbandonBattle={handleAbandonBattle}
-        preferredMode={preferredMode}
-        handleModeChange={handleModeChange}
-        resolvedAIDifficulty={resolvedAIDifficulty}
-        aiDifficultySetting={aiDifficultySetting}
-        seasonRating={seasonRating}
-        handleAIDifficultyChange={handleAIDifficultyChange}
-        startMatch={startMatch}
-        deckReady={deckReady}
-        handleStartQueue={handleStartQueue}
-        queueState={queueState}
-        openScreen={openScreen}
-        queueSeconds={queueSeconds}
-        queueSearchStatus={queueSearchStatus}
-        queuePresence={queuePresence}
-        handleCancelQueue={handleCancelQueue}
-        queuedOpponent={queuedOpponent}
-        handleAcceptQueue={handleAcceptQueue}
-        toastSeverity={toastSeverity}
-        toastMessage={toastMessage}
-        record={record}
-        dailyQuest={dailyQuest}
-        winRate={winRate}
-        selectedDeckSize={selectedDeckSize}
-        serverProfile={serverProfile}
-        rankLabel={rankLabel}
-        totalGames={totalGames}
-        runes={runes}
-        liveQueueLabel={liveQueueLabel}
-        leaderboardEntries={leaderboardEntries}
-        friends={friends}
-        friendUsernameInput={friendUsernameInput}
-        setFriendUsernameInput={setFriendUsernameInput}
-        handleAddFriend={handleAddFriend}
-        socialLoading={socialLoading}
-        onlineFriendIds={onlineFriendIds}
-        outgoingChallenge={outgoingChallenge}
-        incomingChallenge={incomingChallenge}
-        handleChallengeFriend={handleChallengeFriend}
-        handleRemoveFriend={handleRemoveFriend}
-        challengeStatus={challengeStatus}
-        handleCancelOutgoingChallenge={handleCancelOutgoingChallenge}
-        clan={clan}
-        handleLeaveClan={handleLeaveClan}
-        clanForm={clanForm}
-        setClanForm={setClanForm}
-        handleCreateClan={handleCreateClan}
-        handleJoinClan={handleJoinClan}
-        socialStatus={socialStatus}
-        tradeForm={tradeForm}
-        setTradeForm={setTradeForm}
-        handleProposeTrade={handleProposeTrade}
-        tradeSubmitting={tradeSubmitting}
-        tradePickerDraft={tradePickerDraft}
-        setTradePickerDraft={setTradePickerDraft}
-        addTradeChip={addTradeChip}
-        removeTradeChip={removeTradeChip}
-        collection={collection}
-        formatCountdown={formatCountdown}
-        tradeStatus={tradeStatus}
-        trades={trades}
-        handleTradeAction={handleTradeAction}
-        handleSendEmote={handleSendEmote}
-      />
-
-      <DeckScreen
-        activeScreen={activeScreen}
-        loggedIn={loggedIn}
-        deckReady={deckReady}
-        selectedDeckSize={selectedDeckSize}
-        savedDecks={savedDecks}
-        activeDeckId={activeDeckId}
-        handleCreateDeck={handleCreateDeck}
-        handleSelectDeck={handleSelectDeck}
-        handleRenameDeck={handleRenameDeck}
-        handleDeleteDeck={handleDeleteDeck}
-        builderFilter={builderFilter}
-        setBuilderFilter={setBuilderFilter}
-        deckConfig={deckConfig}
-        collection={collection}
-        selectedCardBorder={selectedCardBorder}
-        handleDeckCount={handleDeckCount}
-        startMatch={startMatch}
-        handleStartQueue={handleStartQueue}
-        queueState={queueState}
-        openScreen={openScreen}
-        handleQuickBattle={handleQuickBattle}
-      />
-
-      <BattleScreen
-        activeScreen={activeScreen}
-        game={game}
-        activePlayer={activePlayer}
-        isMyTurn={isMyTurn}
-        isRankedBattle={isRankedBattle}
-        battleKind={battleKind}
-        enemyTurnActive={enemyTurnActive}
-        enemyTurnLabel={enemyTurnLabel}
-        backendOnline={backendOnline}
-        opponentDisconnected={opponentDisconnected}
-        disconnectGraceMs={disconnectGraceMs}
-        handleBurst={handleBurst}
-        handleEndTurn={handleEndTurn}
-        handleLeaveBattle={handleLeaveBattle}
-        handleAttackTarget={handleAttackTarget}
-        handleSelectAttacker={handleSelectAttacker}
-        selectedAttacker={selectedAttacker}
-        defenderHasGuard={defenderHasGuard}
-        damagedSlots={damagedSlots}
-        consumeLongPressAction={consumeLongPressAction}
-        getLongPressProps={getLongPressProps}
-        handlePlayCard={handlePlayCard}
-        activeBoardHasOpenLane={activeBoardHasOpenLane}
-        selectedCardBorder={selectedCardBorder}
-        rankLabel={rankLabel}
-        seasonRating={seasonRating}
-        winRate={winRate}
-        startMatch={startMatch}
-        setPreferredMode={setPreferredMode}
-        openScreen={openScreen}
-      />
-
-      <VaultScreen
-        activeScreen={activeScreen}
-        loggedIn={loggedIn}
-        runes={runes}
-        totalOwnedCards={totalOwnedCards}
-        nextRewardLabel={nextRewardLabel}
-        canClaimDailyReward={canClaimDailyReward}
-        handleClaimDailyReward={handleClaimDailyReward}
-        startMatch={startMatch}
-        ownedThemes={ownedThemes}
-        selectedTheme={selectedTheme}
-        handleEquipTheme={handleEquipTheme}
-        ownedCardBorders={ownedCardBorders}
-        selectedCardBorder={selectedCardBorder}
-        handlePurchaseBorder={handlePurchaseBorder}
-        packOffers={packOffers}
-        packOpening={packOpening}
-        openedPackCards={openedPackCards}
-        handleOpenPack={handleOpenPack}
-        collection={collection}
-        savedDecks={savedDecks}
-        pendingBreakdown={pendingBreakdown}
-        setPendingBreakdown={setPendingBreakdown}
-        handleBreakdownCard={handleBreakdownCard}
-      />
-
-      <OpsScreen
-        activeScreen={activeScreen}
-        isAdminRole={isAdminRole}
-        isOwnerRole={isOwnerRole}
-        accountRole={accountRole}
-        analyticsConsent={analyticsConsent}
-        setAnalyticsConsent={setAnalyticsConsent}
-        serverProfile={serverProfile}
-        visitorId={visitorId}
-        featuredMode={featuredMode}
-        backendOnline={backendOnline}
-        complaintForm={complaintForm}
-        setComplaintForm={setComplaintForm}
-        complaintStatus={complaintStatus}
-        handleSubmitComplaint={handleSubmitComplaint}
-        adminLoading={adminLoading}
-        adminOverview={adminOverview}
-        adminError={adminError}
-        refreshAdminOverview={refreshAdminOverview}
-        adminSettings={adminSettings}
-        setAdminSettings={setAdminSettings}
-        handleSaveAdminSettings={handleSaveAdminSettings}
-        handleUpdateComplaintStatus={handleUpdateComplaintStatus}
-        adminUserSearch={adminUserSearch}
-        setAdminUserSearch={setAdminUserSearch}
-        adminUsers={adminUsers}
-        adminUsersLoading={adminUsersLoading}
-        refreshAdminUsers={refreshAdminUsers}
-        handleSetUserRole={handleSetUserRole}
-        transferForm={transferForm}
-        setTransferForm={setTransferForm}
-        transferStatus={transferStatus}
-        handleTransferOwnership={handleTransferOwnership}
-        adminAudit={adminAudit}
-        adminAuditFilter={adminAuditFilter}
-        setAdminAuditFilter={setAdminAuditFilter}
-        adminAuditExpandedId={adminAuditExpandedId}
-        setAdminAuditExpandedId={setAdminAuditExpandedId}
-        refreshAdminAudit={refreshAdminAudit}
-        inferToastSeverity={inferToastSeverity}
-        setToastMessage={setToastMessage}
-      />
-
-      <NavBar activeScreen={activeScreen} isAdminRole={isAdminRole} onNavigate={openScreen} />
-      </>)}
-    </main>
+      // Settings / admin
+      complaintForm,
+      setComplaintForm,
+      complaintStatus,
+      handleSubmitComplaint,
+      adminOverview,
+      adminLoading,
+      adminError,
+      adminUsers,
+      adminUsersLoading,
+      adminUserSearch,
+      setAdminUserSearch,
+      adminAudit,
+      adminAuditFilter,
+      setAdminAuditFilter,
+      adminAuditExpandedId,
+      setAdminAuditExpandedId,
+      adminSettings,
+      setAdminSettings,
+      transferForm,
+      setTransferForm,
+      transferStatus,
+      refreshAdminOverview,
+      refreshAdminUsers,
+      refreshAdminAudit,
+      handleSetUserRole,
+      handleTransferOwnership,
+      handleSaveAdminSettings,
+      handleUpdateComplaintStatus,
+    }),
+    // Re-build value when ANY of these change. We deliberately list everything that's exposed.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [
+      authToken, authScreen, authForm, authError, authLoading, loggedIn, setupRequired, setupForm,
+      setupError, setupLoading, serverProfile, savedDecks, activeDeckId, builderFilter, pendingBreakdown,
+      collection, deckConfig, packOffers, openedPackCards, packOpening, friends, onlineFriendIds,
+      outgoingChallenge, incomingChallenge, challengeStatus, trades, tradeStatus, tradeForm, tradePickerDraft,
+      tradeSubmitting, clan, socialLoading, socialStatus, friendUsernameInput, clanForm, battleKind,
+      battleSessionActive, serverBattleActive, enemyTurnActive, enemyTurnLabel, backendOnline, motd, dailyQuest,
+      featuredMode, soundEnabled, analyticsConsent, installPromptEvent, toastMessage, toastSeverity, toastStack,
+      confirmRequest, confirmTextInput, opponentDisconnected, disconnectGraceMs, swUpdateAvailable, complaintForm,
+      complaintStatus, adminOverview, adminLoading, adminError, adminUsers, adminUsersLoading, adminUserSearch,
+      adminAudit, adminAuditFilter, adminAuditExpandedId, transferForm, transferStatus, battleIntroVisible,
+      rewardOverlayVisible, damagedSlots, inspectedCard, adminSettings, game, queueState, queueSeconds,
+      queuedOpponent, leaderboardEntries, queuePresence, queueSearchStatus, selectedAttacker, preferredMode,
+      aiDifficultySetting, activeScreen, previousScreen,
+    ],
   )
-}
 
-export default App
+  return <AppContext.Provider value={value}>{children}</AppContext.Provider>
+}
