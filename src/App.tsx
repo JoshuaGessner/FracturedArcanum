@@ -427,6 +427,8 @@ function App() {
   const [rewardOverlayVisible, setRewardOverlayVisible] = useState(false)
   const [damagedSlots, setDamagedSlots] = useState<Set<string>>(new Set())
   const [inspectedCard, setInspectedCard] = useState<InspectedCard | null>(null)
+  const longPressTimerRef = useRef<number | null>(null)
+  const longPressTriggeredRef = useRef(false)
   const battleStartedRef = useRef(false)
   const battleIntroTimerRef = useRef<number | null>(null)
   const enemyTurnTimers = useRef<number[]>([])
@@ -464,6 +466,47 @@ function App() {
     },
     [analyticsConsent, sessionId, visitorId],
   )
+
+  function clearLongPressTimer() {
+    if (longPressTimerRef.current) {
+      window.clearTimeout(longPressTimerRef.current)
+      longPressTimerRef.current = null
+    }
+  }
+
+  function consumeLongPressAction() {
+    if (!longPressTriggeredRef.current) {
+      return false
+    }
+
+    longPressTriggeredRef.current = false
+    return true
+  }
+
+  function inspectCard(card: InspectedCard) {
+    clearLongPressTimer()
+    longPressTriggeredRef.current = true
+    pulseFeedback(12)
+    setInspectedCard(card)
+  }
+
+  function getLongPressProps(card: InspectedCard) {
+    return {
+      onPointerDown: (event: React.PointerEvent<HTMLElement>) => {
+        if (event.pointerType === 'mouse' && event.button !== 0) {
+          return
+        }
+
+        clearLongPressTimer()
+        longPressTriggeredRef.current = false
+        longPressTimerRef.current = window.setTimeout(() => inspectCard(card), 420)
+      },
+      onPointerUp: () => clearLongPressTimer(),
+      onPointerLeave: () => clearLongPressTimer(),
+      onPointerCancel: () => clearLongPressTimer(),
+      onContextMenu: (event: React.MouseEvent<HTMLElement>) => event.preventDefault(),
+    }
+  }
 
   const triggerBattleIntro = useCallback(() => {
     battleStartedRef.current = true
@@ -798,6 +841,12 @@ function App() {
       }
     }
   }, [queueState, backendOnline])
+
+  useEffect(() => {
+    return () => {
+      clearLongPressTimer()
+    }
+  }, [])
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -1501,7 +1550,8 @@ function App() {
   }
 
   function handlePlayCard(index: number) {
-    if (game.winner || !isMyTurn) {
+    const card = activePlayer.hand[index]
+    if (game.winner || !isMyTurn || !card || card.cost > activePlayer.mana || !activeBoardHasOpenLane) {
       return
     }
 
@@ -2202,13 +2252,16 @@ function App() {
                     .join(' ')}
                   key={unit.uid}
                   style={{ '--rarity-color': RARITY_COLORS[unit.rarity] } as React.CSSProperties}
-                  onClick={() => (isSelectable ? handleSelectAttacker(index) : handleAttackTarget(index))}
-                  onDoubleClick={(e) => {
-                    e.preventDefault()
-                    setInspectedCard({ name: unit.name, icon: unit.icon, id: unit.id, cost: unit.cost, attack: unit.attack, health: unit.health, currentHealth: unit.currentHealth, rarity: unit.rarity, tribe: unit.tribe, text: unit.text, effect: unit.effect ?? null })
+                  onClick={() => {
+                    if (consumeLongPressAction()) return
+                    if (isSelectable) handleSelectAttacker(index)
+                    else handleAttackTarget(index)
                   }}
-                  disabled={Boolean(game.winner) || (isSelectable ? unit.exhausted : selectedAttacker === null)}
+                  {...getLongPressProps({ name: unit.name, icon: unit.icon, id: unit.id, cost: unit.cost, attack: unit.attack, health: unit.health, currentHealth: unit.currentHealth, rarity: unit.rarity, tribe: unit.tribe, text: unit.text, effect: unit.effect ?? null })}
+                  aria-disabled={Boolean(game.winner) || (isSelectable ? unit.exhausted : selectedAttacker === null)}
+                  title="Long press to inspect"
                 >
+                  <img className="unit-portrait" src={cardArtPath(unit.id)} alt={`${unit.name} artwork`} loading="lazy" />
                   <div className="slot-head">
                     <strong>
                       {unit.icon} {unit.name}
@@ -2257,13 +2310,16 @@ function App() {
                     .join(' ')}
                   key={unit.uid}
                   style={{ '--rarity-color': RARITY_COLORS[unit.rarity] } as React.CSSProperties}
-                  onClick={() => (isSelectable ? handleSelectAttacker(index) : handleAttackTarget(index))}
-                  onDoubleClick={(e) => {
-                    e.preventDefault()
-                    setInspectedCard({ name: unit.name, icon: unit.icon, id: unit.id, cost: unit.cost, attack: unit.attack, health: unit.health, currentHealth: unit.currentHealth, rarity: unit.rarity, tribe: unit.tribe, text: unit.text, effect: unit.effect ?? null })
+                  onClick={() => {
+                    if (consumeLongPressAction()) return
+                    if (isSelectable) handleSelectAttacker(index)
+                    else handleAttackTarget(index)
                   }}
-                  disabled={Boolean(game.winner) || (isSelectable ? unit.exhausted : selectedAttacker === null)}
+                  {...getLongPressProps({ name: unit.name, icon: unit.icon, id: unit.id, cost: unit.cost, attack: unit.attack, health: unit.health, currentHealth: unit.currentHealth, rarity: unit.rarity, tribe: unit.tribe, text: unit.text, effect: unit.effect ?? null })}
+                  aria-disabled={Boolean(game.winner) || (isSelectable ? unit.exhausted : selectedAttacker === null)}
+                  title="Long press to inspect"
                 >
+                  <img className="unit-portrait" src={cardArtPath(unit.id)} alt={`${unit.name} artwork`} loading="lazy" />
                   <div className="slot-head">
                     <strong>
                       {unit.icon} {unit.name}
@@ -2751,17 +2807,21 @@ function App() {
                 <button
                   className={['hand-card', `rarity-${card.rarity}`, canPlay ? '' : 'unplayable'].filter(Boolean).join(' ')}
                   key={card.instanceId}
-                  onClick={() => handlePlayCard(index)}
-                  onDoubleClick={(e) => {
-                    e.preventDefault()
-                    setInspectedCard({ name: card.name, icon: card.icon, id: card.id, cost: card.cost, attack: card.attack, health: card.health, rarity: card.rarity, tribe: card.tribe, text: card.text, effect: card.effect ?? null })
+                  onClick={() => {
+                    if (consumeLongPressAction()) return
+                    if (canPlay) handlePlayCard(index)
                   }}
-                  disabled={!canPlay}
+                  {...getLongPressProps({ name: card.name, icon: card.icon, id: card.id, cost: card.cost, attack: card.attack, health: card.health, rarity: card.rarity, tribe: card.tribe, text: card.text, effect: card.effect ?? null })}
+                  aria-disabled={!canPlay}
+                  title={canPlay ? 'Tap to play or long press to inspect' : 'Long press to inspect'}
                   style={{ '--rarity-color': RARITY_COLORS[card.rarity] } as React.CSSProperties}
                 >
                   <div className="card-top">
                     <span className="cost-pill">{card.cost}</span>
                     <span className="hero-label">{card.icon}</span>
+                  </div>
+                  <div className="card-art-shell thumb">
+                    <img className="card-illustration" src={cardArtPath(card.id)} alt={`${card.name} artwork`} loading="lazy" />
                   </div>
                   <div>
                     <strong className="card-name">{card.name}</strong>

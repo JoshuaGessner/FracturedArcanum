@@ -1,7 +1,7 @@
 {
   "id": "/",
   "name": "Fractured Arcanum",
-  "short_name": "Fractured Arcanum",
+  "short_name": "FArcanum",
   "description": "A mobile-first cosmic-horror card battler with deck building, ranked play, and live arena features.",
   "start_url": "/",
   "scope": "/",
