@@ -3,6 +3,7 @@ import { createHash, randomBytes, scryptSync, timingSafeEqual } from 'node:crypt
 import { existsSync, mkdirSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { CARD_LIBRARY, DEFAULT_DECK_CONFIG, MAX_COPIES as GAME_MAX_COPIES, MAX_LEGENDARY_COPIES } from './game.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const DATA_DIR = path.resolve(process.env.DATA_DIR ?? path.resolve(__dirname, '../data'))
@@ -99,6 +100,7 @@ function ensureColumn(tableName, columnName, definition) {
 
 ensureColumn('accounts', 'created_ip_hash', 'TEXT')
 ensureColumn('accounts', 'created_ua_hash', 'TEXT')
+ensureColumn('player_profiles', 'owned_cards', "TEXT NOT NULL DEFAULT '{}' ")
 
 // ─── Password hashing (scrypt — no native addon needed) ──────────────────────
 
@@ -182,8 +184,8 @@ const _insertAccount = db.prepare(`
 `)
 
 const _insertProfile = db.prepare(`
-  INSERT INTO player_profiles (account_id, deck_config)
-  VALUES (?, ?)
+  INSERT INTO player_profiles (account_id, deck_config, owned_cards)
+  VALUES (?, ?, ?)
 `)
 
 const _getByUsername = db.prepare(`SELECT * FROM accounts WHERE username = ?`)
@@ -308,7 +310,7 @@ export function createAccount(username, password, displayName, deviceFp, ip, use
         userAgentHash,
         flags,
       )
-      _insertProfile.run(id, '{}')
+      _insertProfile.run(id, JSON.stringify(DEFAULT_DECK_CONFIG), JSON.stringify(buildStarterCollection()))
     })
     tx()
     return { ok: true, accountId: id }
@@ -383,6 +385,30 @@ setInterval(cleanupSessions, 60 * 60 * 1000)
 
 const _getProfile = db.prepare(`SELECT * FROM player_profiles WHERE account_id = ?`)
 
+function buildStarterCollection() {
+  const starter = {}
+
+  Object.entries(DEFAULT_DECK_CONFIG).forEach(([cardId, count]) => {
+    if (count > 0) {
+      starter[cardId] = count
+    }
+  })
+
+  ;['bog-lurker', 'rust-golem', 'militia-recruit', 'moonwell-sage', 'pack-wolf'].forEach((cardId) => {
+    starter[cardId] = Math.max(1, starter[cardId] ?? 0)
+  })
+
+  return starter
+}
+
+function normalizeOwnedCards(rawValue) {
+  const parsed = rawValue ? JSON.parse(rawValue) : {}
+  if (parsed && Object.keys(parsed).length > 0) {
+    return parsed
+  }
+  return buildStarterCollection()
+}
+
 const _updateDeck = db.prepare(`
   UPDATE player_profiles SET deck_config = ?, updated_at = datetime('now') WHERE account_id = ?
 `)
@@ -398,6 +424,7 @@ export function getProfile(accountId) {
     ...row,
     owned_themes: JSON.parse(row.owned_themes),
     deck_config: JSON.parse(row.deck_config),
+    owned_cards: normalizeOwnedCards(row.owned_cards),
   }
 }
 
@@ -439,6 +466,20 @@ export function validateDeckConfig(deckConfig) {
 export function saveDeck(accountId, deckConfig) {
   const result = validateDeckConfig(deckConfig)
   if (!result.ok) return result
+
+  const profile = getProfile(accountId)
+  if (!profile) {
+    return { ok: false, error: 'Profile not found.' }
+  }
+
+  for (const [cardId, count] of Object.entries(result.deckConfig)) {
+    const owned = profile.owned_cards?.[cardId] ?? 0
+    if (count > owned) {
+      const cardName = CARD_LIBRARY.find((card) => card.id === cardId)?.name ?? cardId
+      return { ok: false, error: `You only own ${owned} copy/copies of ${cardName}. Open packs to unlock more.` }
+    }
+  }
+
   _updateDeck.run(JSON.stringify(result.deckConfig), accountId)
   return { ok: true, total: result.total, ready: result.ready }
 }
@@ -613,9 +654,10 @@ export function getRecentMatches(accountId) {
 // ─── Leaderboard ─────────────────────────────────────────────────────────────
 
 const _getLeaderboard = db.prepare(`
-  SELECT p.account_id, a.display_name, p.season_rating, p.wins, p.losses
+  SELECT p.account_id, a.display_name, p.season_rating, p.wins, p.losses, p.updated_at
   FROM player_profiles p JOIN accounts a ON a.id = p.account_id
-  ORDER BY p.season_rating DESC LIMIT 25
+  ORDER BY p.season_rating DESC, p.wins DESC, p.losses ASC, p.updated_at DESC
+  LIMIT 25
 `)
 
 export function getLeaderboard() {
@@ -625,33 +667,13 @@ export function getLeaderboard() {
 // ─── Card Pack System ────────────────────────────────────────────────────────
 
 const CARD_POOL = {
-  common: [
-    'flame-imp','stone-wall','elven-archer','dark-cultist','mana-wisp','shadow-fiend',
-    'frost-archer','iron-guard','war-grunt','nature-sprite','fire-drake','crystal-shard',
-    'swamp-lurker','battle-dog','wind-sprite','ember-mage','stone-golem','sea-serpent',
-    'poison-dart','flame-dancer','iron-sentry','plague-rat','wild-boar','dust-devil',
-    'moss-troll','thorn-bush','spark-elemental','clay-soldier',
-  ],
-  rare: [
-    'fire-imp','silver-knight','golden-dragon','spirit-healer','rune-weaver',
-    'blood-mage','thunder-wolf','bone-knight','sand-wurm','moon-druid',
-    'lava-hound','ghost-knight','jungle-panther','coral-golem','obsidian-knight',
-    'shadow-assassin','glacial-colossus','arcane-golem','storm-shaman','bone-collector',
-    'ancient-hydra','druid-elder',
-  ],
-  epic: [
-    'inferno-dragon','abyssal-tyrant','iron-clad','phoenix-ascendant',
-    'crimson-witch','thunder-titan','deep-kraken','war-chief','crystal-oracle',
-    'necro-sage','celestial-archer','void-stalker','arcane-artificer','tempest-eagle',
-  ],
-  legendary: [
-    'velara','malachar','kronos','aethon','drakarion','zephyr',
-  ],
+  common: CARD_LIBRARY.filter((card) => card.rarity === 'common').map((card) => card.id),
+  rare: CARD_LIBRARY.filter((card) => card.rarity === 'rare').map((card) => card.id),
+  epic: CARD_LIBRARY.filter((card) => card.rarity === 'epic').map((card) => card.id),
+  legendary: CARD_LIBRARY.filter((card) => card.rarity === 'legendary').map((card) => card.id),
 }
 
-const ALL_CARDS = [
-  ...CARD_POOL.common, ...CARD_POOL.rare, ...CARD_POOL.epic, ...CARD_POOL.legendary,
-]
+const ALL_CARDS = CARD_LIBRARY.map((card) => card.id)
 
 const PACK_DEFS = {
   basic:     { cost: 50,  slots: [ { rarity: 'common' }, { rarity: 'common' }, { rarity: 'common' }, { rarity: 'rare' } ] },
@@ -681,9 +703,6 @@ function pickCard(rarity) {
   return pool[Math.floor(Math.random() * pool.length)]
 }
 
-// Add owned_cards column if it doesn't exist
-try { db.exec(`ALTER TABLE player_profiles ADD COLUMN owned_cards TEXT NOT NULL DEFAULT '{}'`) } catch { /* column exists */ }
-
 const _getOwnedCards = db.prepare(`SELECT owned_cards FROM player_profiles WHERE account_id = ?`)
 
 const _setOwnedCards = db.prepare(`
@@ -693,7 +712,11 @@ const _setOwnedCards = db.prepare(`
 export function getCollection(accountId) {
   const row = _getOwnedCards.get(accountId)
   if (!row) return null
-  return JSON.parse(row.owned_cards)
+  const owned = normalizeOwnedCards(row.owned_cards)
+  if (!row.owned_cards || row.owned_cards === '{}' || row.owned_cards === 'null') {
+    _setOwnedCards.run(JSON.stringify(owned), accountId)
+  }
+  return owned
 }
 
 export function openPack(accountId, packType) {
@@ -716,12 +739,12 @@ export function openPack(accountId, packType) {
   })
 
   const ownedRow = _getOwnedCards.get(accountId)
-  const owned = ownedRow ? JSON.parse(ownedRow.owned_cards) : {}
+  const owned = ownedRow ? normalizeOwnedCards(ownedRow.owned_cards) : buildStarterCollection()
 
   // Duplicate protection: if card already max copies (common/rare/epic: 2, legendary: 1), grant rune refund
   let refund = 0
   const RARITY_REFUND = { common: 5, rare: 10, epic: 25, legendary: 100 }
-  const MAX_COPIES = { common: 2, rare: 2, epic: 2, legendary: 1 }
+  const MAX_COPIES = { common: GAME_MAX_COPIES, rare: GAME_MAX_COPIES, epic: GAME_MAX_COPIES, legendary: MAX_LEGENDARY_COPIES }
 
   for (const card of cards) {
     const current = owned[card.id] ?? 0

@@ -21,6 +21,7 @@ import {
   playCard,
   attack,
   castMomentumBurst,
+  passTurn,
   createGame,
   generateEnemyTurnSteps,
   getRecommendedAIDifficulty,
@@ -54,6 +55,22 @@ type QueuePresence = {
   rankedAvailable: boolean
   updatedAt: string
 }
+
+type CardCollection = Record<string, number>
+
+type PackOffer = {
+  id: string
+  cost: number
+  cardCount: number
+}
+
+type OpenedPackCard = {
+  id: string
+  rarity: string
+  duplicate?: boolean
+}
+
+type BattleKind = 'ai' | 'local' | 'ranked'
 
 type ComplaintFormState = {
   category: string
@@ -104,6 +121,8 @@ type AdminOverview = {
 }
 
 type ServerProfile = {
+  accountId?: string
+  displayName?: string
   username: string
   runes: number
   seasonRating: number
@@ -430,6 +449,11 @@ function App() {
     rankedAvailable: false,
     updatedAt: '',
   })
+  const [collection, setCollection] = useState<CardCollection>({})
+  const [packOffers, setPackOffers] = useState<PackOffer[]>([])
+  const [openedPackCards, setOpenedPackCards] = useState<OpenedPackCard[]>([])
+  const [packOpening, setPackOpening] = useState<string | null>(null)
+  const [battleKind, setBattleKind] = useState<BattleKind>(savedMode === 'duel' ? 'local' : 'ai')
   const [battleSessionActive, setBattleSessionActive] = useState(false)
   const [serverBattleActive, setServerBattleActive] = useState(false)
   const resolvedMatchKeyRef = useRef('')
@@ -684,8 +708,11 @@ function App() {
     socketClientRef.current?.disconnect()
     socketClientRef.current = null
     setBackendOnline(false)
+    setBattleKind('ai')
     setBattleSessionActive(false)
     setServerBattleActive(false)
+    setCollection({})
+    setPackOffers([])
     setAuthToken('')
     setServerProfile(null)
     setLoggedIn(false)
@@ -760,6 +787,7 @@ function App() {
 
     socket.on('game:start', (payload: { yourSide: BattleSide; state: GameState }) => {
       setGame(payload.state)
+      setBattleKind('ranked')
       setBattleSessionActive(true)
       setServerBattleActive(true)
       setActiveScreen('battle')
@@ -803,6 +831,7 @@ function App() {
     // ─── Reconnect / disconnect events ──────────────────────────────
     socket.on('game:rejoin', (payload: { yourSide: BattleSide; state: GameState; roomId: string; opponentDisconnected: boolean }) => {
       setGame(payload.state)
+      setBattleKind('ranked')
       setBattleSessionActive(true)
       setServerBattleActive(true)
       setActiveScreen('battle')
@@ -921,6 +950,33 @@ function App() {
   }, [loggedIn])
 
   useEffect(() => {
+    if (!authToken || !loggedIn) {
+      return
+    }
+
+    void Promise.all([
+      authFetch('/api/me/collection', authToken).then((r) => r.json()),
+      authFetch('/api/shop/packs', authToken).then((r) => r.json()),
+    ])
+      .then(([collectionData, packData]: [{ ok?: boolean; collection?: CardCollection }, { ok?: boolean; packs?: PackOffer[] }]) => {
+        const nextCollection = collectionData.collection ?? {}
+        setCollection(nextCollection)
+        setPackOffers(packData.packs ?? [])
+        setDeckConfig((current) => {
+          const clampedDeck = Object.fromEntries(
+            Object.entries(current).map(([cardId, count]) => {
+              const card = CARD_LIBRARY.find((entry) => entry.id === cardId)
+              const maxCopies = card?.rarity === 'legendary' ? MAX_LEGENDARY_COPIES : MAX_COPIES
+              return [cardId, Math.min(count, nextCollection[cardId] ?? 0, maxCopies)]
+            }),
+          ) as DeckConfig
+          return JSON.stringify(clampedDeck) === JSON.stringify(current) ? current : clampedDeck
+        })
+      })
+      .catch(() => {})
+  }, [authToken, loggedIn])
+
+  useEffect(() => {
     if (queueState !== 'searching') {
       return undefined
     }
@@ -978,7 +1034,14 @@ function App() {
   useEffect(() => {
     if (!authToken || !loggedIn) return
     const timer = window.setTimeout(() => {
-      void authFetch('/api/me/deck', authToken, { method: 'POST', body: { deckConfig } }).catch(() => {})
+      void authFetch('/api/me/deck', authToken, { method: 'POST', body: { deckConfig } })
+        .then((response) => response.json())
+        .then((data: { ok?: boolean; error?: string }) => {
+          if (data.ok === false && data.error) {
+            setToastMessage(data.error)
+          }
+        })
+        .catch(() => {})
     }, 1500)
     return () => window.clearTimeout(timer)
   }, [deckConfig, authToken, loggedIn])
@@ -1164,11 +1227,13 @@ function App() {
     }
   }, [game, sendAnalytics, authToken])
 
-  const activeSide = game.turn
+  const isRankedBattle = battleKind === 'ranked'
+  const isLocalPassBattle = battleKind === 'local'
+  const activeSide: BattleSide = isLocalPassBattle ? game.turn : 'player'
   const defendingSide = otherSide(activeSide)
   const activePlayer = game[activeSide]
   const defendingPlayer = game[defendingSide]
-  const isMyTurn = game.turn === 'player' && !enemyTurnActive
+  const isMyTurn = !enemyTurnActive && (isLocalPassBattle || game.turn === 'player')
   const hasBattleInProgress = battleSessionActive && !game.winner
   const gameInProgress = activeScreen !== 'battle' && hasBattleInProgress
   const activeBoardHasOpenLane = activePlayer.board.some((slot) => slot === null)
@@ -1178,6 +1243,7 @@ function App() {
   const rankLabel = getRankLabel(seasonRating)
   const resolvedAIDifficulty = aiDifficultySetting === 'auto' ? getRecommendedAIDifficulty(seasonRating) : aiDifficultySetting
   const liveQueueLabel = queuePresence.rankedAvailable ? 'Ranked live' : 'Warming up'
+  const totalOwnedCards = Object.values(collection).reduce((sum, count) => sum + count, 0)
   const totalGames = record.wins + record.losses
   const winRate = totalGames > 0 ? Math.round((record.wins / totalGames) * 100) : 0
   const previousRankTarget =
@@ -1212,6 +1278,7 @@ function App() {
 
   function resetBattleState(mode: GameMode = preferredMode, toast = 'Battle reset. Ready when you are.', nextScreen: AppScreen = 'home') {
     const nextDifficulty = mode === 'ai' ? resolvedAIDifficulty : 'legend'
+    setBattleKind(mode === 'duel' ? 'local' : 'ai')
     clearEnemyTurnTimers()
     battleStartedRef.current = false
     if (battleIntroTimerRef.current) {
@@ -1498,6 +1565,7 @@ function App() {
     const aiDifficulty = mode === 'ai' ? resolvedAIDifficulty : 'legend'
 
     setPreferredMode(mode)
+    setBattleKind(mode === 'duel' ? 'local' : 'ai')
     setBattleSessionActive(true)
     setServerBattleActive(false)
     setSelectedAttacker(null)
@@ -1534,6 +1602,40 @@ function App() {
     playSound('tap', soundEnabled)
     setAiDifficultySetting(level)
     setToastMessage(level === 'auto' ? `AI difficulty set to Auto. Recommended tier: ${getRecommendedAIDifficulty(seasonRating)}.` : `${level.charAt(0).toUpperCase() + level.slice(1)} AI selected.`)
+  }
+
+  async function handleOpenPack(packType: string) {
+    if (!authToken) {
+      setToastMessage('Log in to buy card packs.')
+      return
+    }
+
+    setPackOpening(packType)
+    try {
+      const response = await authFetch('/api/shop/pack', authToken, { method: 'POST', body: { packType } })
+      const data = (await response.json()) as {
+        ok?: boolean
+        error?: string
+        cards?: OpenedPackCard[]
+        refund?: number
+        runes?: number
+      }
+
+      if (!response.ok || !data.ok) {
+        throw new Error(data.error ?? 'Pack opening failed.')
+      }
+
+      setOpenedPackCards(data.cards ?? [])
+      setServerProfile((prev) => (prev ? { ...prev, runes: data.runes ?? prev.runes } : prev))
+      const collectionResponse = await authFetch('/api/me/collection', authToken)
+      const collectionData = (await collectionResponse.json()) as { ok?: boolean; collection?: CardCollection }
+      setCollection(collectionData.collection ?? {})
+      setToastMessage(`Pack opened.${data.refund ? ` Duplicate refund: +${data.refund} Shards.` : ''}`)
+    } catch (error) {
+      setToastMessage(error instanceof Error ? error.message : 'Pack opening failed.')
+    } finally {
+      setPackOpening(null)
+    }
   }
 
   async function handleInstallApp() {
@@ -1654,7 +1756,9 @@ function App() {
       const total = getDeckSize(current)
       const card = CARD_LIBRARY.find((c) => c.id === cardId)
       const maxCopies = card?.rarity === 'legendary' ? MAX_LEGENDARY_COPIES : MAX_COPIES
-      const nextCount = Math.max(0, Math.min(maxCopies, (current[cardId] ?? 0) + delta))
+      const ownedCount = loggedIn ? (collection[cardId] ?? 0) : maxCopies
+      const allowedCopies = Math.min(maxCopies, ownedCount)
+      const nextCount = Math.max(0, Math.min(allowedCopies, (current[cardId] ?? 0) + delta))
 
       if (delta > 0 && total >= MAX_DECK_SIZE) {
         return current
@@ -1669,12 +1773,22 @@ function App() {
 
   function handleLoadPreset(name: string, config: DeckConfig) {
     playSound('tap', soundEnabled)
-    setToastMessage(`${name} preset loaded.`)
-    setDeckConfig(config)
+
+    const filteredConfig = Object.fromEntries(
+      Object.entries(config).map(([cardId, count]) => {
+        const libraryCard = CARD_LIBRARY.find((item) => item.id === cardId)
+        const maxCopies = libraryCard?.rarity === 'legendary' ? MAX_LEGENDARY_COPIES : MAX_COPIES
+        const ownedCount = loggedIn ? (collection[cardId] ?? 0) : maxCopies
+        return [cardId, Math.min(count, ownedCount, maxCopies)]
+      }),
+    ) as DeckConfig
+
+    setToastMessage(`${name} preset loaded${getDeckSize(filteredConfig) < MIN_DECK_SIZE ? ' with your currently owned cards.' : '.'}`)
+    setDeckConfig(filteredConfig)
   }
 
   function emitAction(action: Record<string, unknown>) {
-    if (game.mode === 'duel' && socketClientRef.current?.connected) {
+    if (isRankedBattle && socketClientRef.current?.connected) {
       socketClientRef.current.emit('game:action', { action })
     }
   }
@@ -1688,7 +1802,7 @@ function App() {
     playSound('summon', soundEnabled)
     pulseFeedback(12)
 
-    if (game.mode === 'duel') {
+    if (isRankedBattle) {
       emitAction({ type: 'playCard', handIndex: index })
       return
     }
@@ -1715,7 +1829,7 @@ function App() {
     playSound('attack', soundEnabled)
     pulseFeedback(16)
 
-    if (game.mode === 'duel') {
+    if (isRankedBattle) {
       emitAction({ type: 'attack', attackerIndex: selectedAttacker, target })
       setSelectedAttacker(null)
       return
@@ -1733,7 +1847,7 @@ function App() {
     playSound('burst', soundEnabled)
     pulseFeedback(22)
 
-    if (game.mode === 'duel') {
+    if (isRankedBattle) {
       emitAction({ type: 'burst' })
       return
     }
@@ -1754,8 +1868,14 @@ function App() {
     playSound('tap', soundEnabled)
     setSelectedAttacker(null)
 
-    if (game.mode === 'duel') {
+    if (isRankedBattle) {
       emitAction({ type: 'endTurn' })
+      return
+    }
+
+    if (isLocalPassBattle) {
+      setGame((current) => passTurn(current))
+      setToastMessage(`Pass the device to ${game.turn === 'player' ? game.enemy.name : game.player.name}.`)
       return
     }
 
@@ -2020,14 +2140,14 @@ function App() {
           <div className="queue-modal reward-modal section-card">
             <img className="reward-art" src="/generated/ui/reward-chest.svg" alt="Reward chest" />
             <p className="eyebrow">Victory Rewards</p>
-            <h2>Season Chest Unlocked</h2>
+            <h2>{isRankedBattle ? 'Ranked Victory Secured' : battleKind === 'local' ? 'Casual Duel Won' : 'Season Chest Unlocked'}</h2>
             <div className="badges">
-              <span className="badge">+25 Rating</span>
+              <span className="badge">{isRankedBattle ? '+25 Rating' : battleKind === 'local' ? 'Casual Match' : '+30 Shards'}</span>
               <span className="badge">+30 Shards</span>
               <span className="badge">Win Streak {record.streak}</span>
               <span className="badge">League {rankLabel}</span>
             </div>
-            <p className="note">Your crew celebrates another climb up the ranked ladder.</p>
+            <p className="note">{isRankedBattle ? 'Your crew celebrates another climb up the live ladder.' : battleKind === 'local' ? 'Great pass-and-play win. Queue online when you want leaderboard progress.' : 'Your crew celebrates a strong practice match.'}</p>
             <div className="controls">
               <button className="primary" onClick={() => setRewardOverlayVisible(false)}>
                 Claim Rewards
@@ -2082,7 +2202,7 @@ function App() {
           <div className="arena-title-block">
             <p className="eyebrow">Season of Whispers</p>
             <h2>The Arena Awaits</h2>
-            <p className="note">Choose your mode and enter battle.</p>
+            <p className="note">Queue online for live browser-vs-browser battles, or start AI and local matches instantly.</p>
           </div>
 
           {gameInProgress && (
@@ -2133,7 +2253,7 @@ function App() {
               {gameInProgress ? 'Start Fresh Battle' : 'Enter Arena'}
             </button>
             <button className="secondary" onClick={handleStartQueue} disabled={!deckReady || queueState !== 'idle'}>
-              Find Ranked Match
+              Play Online (Ranked)
             </button>
             <button className="ghost" onClick={() => openScreen('deck')}>
               Deck Forge
@@ -2156,7 +2276,7 @@ function App() {
                 {queuedOpponent.rank} • {queuedOpponent.style} • {queuedOpponent.ping}ms {queuedOpponent.isBot ? '• Practice AI' : '• Live player'}
               </span>
               <div className="controls">
-                <button className="primary" onClick={handleAcceptQueue}>{queuedOpponent.isBot ? 'Accept Match' : 'Match Ready'}</button>
+                <button className="primary" onClick={handleAcceptQueue} disabled={!queuedOpponent.isBot}>{queuedOpponent.isBot ? 'Accept Match' : 'Live Match Starting…'}</button>
                 <button className="ghost" onClick={handleCancelQueue}>Decline</button>
               </div>
             </div>
@@ -2184,6 +2304,8 @@ function App() {
               <span className="badge">{serverProfile?.username ?? 'Guest'}</span>
             </div>
             <div className="badges">
+              <span className="badge">@{serverProfile?.username ?? 'guest'}</span>
+              <span className="badge">{serverProfile?.displayName ?? serverProfile?.username ?? 'Player'}</span>
               <span className="badge">{rankLabel}</span>
               <span className="badge">{totalGames} games</span>
               <span className="badge">{winRate}% WR</span>
@@ -2214,6 +2336,7 @@ function App() {
               <h2>Leaderboard</h2>
               <span className="badge">Top 5</span>
             </div>
+            <p className="note">Online ranked matches update the live ladder automatically.</p>
             <div className="leaderboard-list">
               {leaderboardEntries.slice(0, 5).map((entry, index) => {
                 const entryGames = Math.max(1, entry.wins + entry.losses)
@@ -2269,9 +2392,11 @@ function App() {
           <div className="builder-grid">
             {CARD_LIBRARY.map((card) => {
               const maxCopies = card.rarity === 'legendary' ? MAX_LEGENDARY_COPIES : MAX_COPIES
+              const ownedCount = loggedIn ? (collection[card.id] ?? 0) : maxCopies
               const count = deckConfig[card.id] ?? 0
+              const addDisabled = count >= Math.min(maxCopies, ownedCount)
               return (
-              <div className={`builder-card rarity-${card.rarity}`} key={card.id} style={{ '--rarity-color': RARITY_COLORS[card.rarity] } as React.CSSProperties}>
+              <div className={`builder-card rarity-${card.rarity} ${ownedCount === 0 ? 'locked' : ''}`} key={card.id} style={{ '--rarity-color': RARITY_COLORS[card.rarity] } as React.CSSProperties}>
                 <div>
                   <div className="card-art-shell">
                     <img
@@ -2290,13 +2415,14 @@ function App() {
                   <div className="card-meta-row">
                     <span className="rarity-gem" style={{ color: RARITY_COLORS[card.rarity] }}>{card.rarity === 'legendary' ? '★' : card.rarity === 'epic' ? '◆' : card.rarity === 'rare' ? '◈' : '●'} {card.rarity}</span>
                     <span className="tribe-badge">{card.tribe}</span>
+                    <span className="tribe-badge">Owned {ownedCount}</span>
                   </div>
                   <div className="card-stats">
                     <span>⚔️ {card.attack}</span>
                     <span>❤️ {card.health}</span>
                   </div>
                   {card.effect && <span className="effect-badge small">{EFFECT_LABELS[card.effect] ?? card.effect}</span>}
-                  <p className="card-text">{card.text}</p>
+                  <p className="card-text clamped">{card.text}</p>
                 </div>
 
                 <div className="stepper">
@@ -2304,7 +2430,7 @@ function App() {
                     −
                   </button>
                   <span className="count-chip">{count}</span>
-                  <button className="ghost mini" onClick={() => handleDeckCount(card.id, 1)} disabled={count >= maxCopies}>
+                  <button className="ghost mini" onClick={() => handleDeckCount(card.id, 1)} disabled={addDisabled}>
                     +
                   </button>
                 </div>
@@ -2318,7 +2444,7 @@ function App() {
               Play With This Deck
             </button>
             <button className="secondary" onClick={handleStartQueue} disabled={!deckReady || queueState !== 'idle'}>
-              Queue Ranked
+              Play Online
             </button>
             <button className="ghost" onClick={() => openScreen('home')}>
               Back to Home
@@ -2333,13 +2459,13 @@ function App() {
         </div>
       )}
 
-      {activeScreen === 'battle' && !backendOnline && game.mode === 'duel' && (
+      {activeScreen === 'battle' && !backendOnline && isRankedBattle && (
         <div className="connection-banner reconnecting">
           <span>Connection lost — reconnecting...</span>
         </div>
       )}
 
-      {activeScreen === 'battle' && opponentDisconnected && game.mode === 'duel' && (
+      {activeScreen === 'battle' && opponentDisconnected && isRankedBattle && (
         <div className="connection-banner opponent-disconnected">
           <span>Opponent disconnected — waiting for reconnect ({Math.round(disconnectGraceMs / 1000)}s window)...</span>
         </div>
@@ -2536,7 +2662,7 @@ function App() {
               </p>
             </div>
             <span className={`deck-status ${game.winner === 'player' ? 'ready' : 'warning'}`}>
-              {game.winner === 'player' ? '+25 Rating' : game.winner === 'enemy' ? '-15 Rating' : 'Even Match'}
+              {isRankedBattle ? (game.winner === 'player' ? '+25 Rating' : game.winner === 'enemy' ? '-15 Rating' : 'Even Match') : battleKind === 'local' ? 'Casual Duel' : game.winner === 'player' ? '+30 Shards' : 'Practice Match'}
             </span>
           </div>
 
@@ -2569,7 +2695,7 @@ function App() {
           <div className="section-head">
             <div>
               <h2>Reward Vault</h2>
-              <p className="note">Claim simple daily rewards and stockpile Shards for cosmetics.</p>
+              <p className="note">Claim daily rewards, earn Shards, and build your card library over time.</p>
             </div>
             <span className="deck-status ready">Balance {runes}</span>
           </div>
@@ -2626,18 +2752,43 @@ function App() {
         <article className="section-card utility-card">
           <div className="section-head">
             <div>
-              <h2>Simple Monetization Plan</h2>
-              <p className="note">This preview keeps the game fair and monetizes only convenience-free cosmetics.</p>
+              <h2>Card Packs & Collection</h2>
+              <p className="note">New accounts start with a starter library. Open packs with Shards to unlock more cards by rarity.</p>
             </div>
-            <span className="badge">Plan Ready</span>
+            <span className="badge">Owned {totalOwnedCards}</span>
           </div>
 
-          <ul className="shop-plan-list">
-            <li><strong>Starter Bundle</strong> — small cosmetic pack plus bonus Shards.</li>
-            <li><strong>Season Pass</strong> — extra cosmetic track, never gameplay power.</li>
-            <li><strong>Board and Theme Skins</strong> — premium visuals for collectors.</li>
-            <li><strong>No pay-to-win</strong> — card strength and match fairness stay equal.</li>
-          </ul>
+          <div className="theme-grid">
+            {packOffers.map((pack) => (
+              <div className="theme-offer-card" key={pack.id}>
+                <strong>{pack.id[0].toUpperCase() + pack.id.slice(1)} Pack</strong>
+                <p className="mini-text">{pack.cardCount} random cards with rarity protection.</p>
+                <div className="badges">
+                  <span className="badge">{pack.cost} Shards</span>
+                </div>
+                <button className="primary" onClick={() => void handleOpenPack(pack.id)} disabled={packOpening === pack.id || runes < pack.cost}>
+                  {packOpening === pack.id ? 'Opening…' : 'Open Pack'}
+                </button>
+              </div>
+            ))}
+          </div>
+
+          {openedPackCards.length > 0 && (
+            <div className="leaderboard-list">
+              {openedPackCards.map((card, index) => {
+                const cardMeta = CARD_LIBRARY.find((entry) => entry.id === card.id)
+                return (
+                  <div className="leaderboard-row" key={`${card.id}-${index}`}>
+                    <span className="badge">{card.rarity}</span>
+                    <div className="leaderboard-meta">
+                      <strong>{cardMeta?.icon} {cardMeta?.name ?? card.id}</strong>
+                      <span className="note">{card.duplicate ? 'Duplicate converted into Shards.' : 'Added to your library.'}</span>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </article>
       </section>
 
