@@ -36,7 +36,7 @@ export function CollectionScreen() {
   } = useApp()
 
   return (
-    <section className={`meta-grid deck-focus screen-panel ${activeScreen === 'collection' ? 'active' : 'hidden'}`}>
+    <section className={`meta-grid deck-focus collection-screen screen-panel ${activeScreen === 'collection' ? 'active' : 'hidden'}`}>
       <article className="section-card">
         <div className="section-head">
           <div>

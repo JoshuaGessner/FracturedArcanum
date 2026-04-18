@@ -171,6 +171,67 @@ button:disabled {
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
+/* ─── Per-screen ambient backgrounds (Phase 3A assets) ──────────── */
+/* Subtle full-bleed backdrops layered behind content. Each panel uses
+   a low-opacity image so type stays legible. Scoped to specific
+   screen classes so BattleScreen's nested panels are not affected. */
+
+.home-screen.active,
+.play-screen.active,
+.social-screen.active,
+.collection-screen.active,
+.shop-screen.active,
+.settings-screen.active,
+.battlefield.active {
+  position: relative;
+  isolation: isolate;
+}
+
+.home-screen.active::before,
+.play-screen.active::before,
+.social-screen.active::before,
+.collection-screen.active::before,
+.shop-screen.active::before,
+.settings-screen.active::before,
+.battlefield.active::before {
+  content: '';
+  position: absolute;
+  inset: -16px;
+  z-index: -1;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: 0.22;
+  filter: saturate(1.05) blur(0.5px);
+  border-radius: 24px;
+  pointer-events: none;
+}
+
+.home-screen.active::before { background-image: url('/generated/ui/bg-main-menu.svg'); }
+.play-screen.active::before { background-image: url('/generated/ui/bg-play.svg'); }
+.collection-screen.active::before { background-image: url('/generated/ui/bg-collection.svg'); }
+.social-screen.active::before { background-image: url('/generated/ui/bg-social.svg'); }
+.shop-screen.active::before { background-image: url('/generated/ui/bg-shop.svg'); }
+.settings-screen.active::before { background-image: url('/generated/ui/bg-settings.svg'); }
+.battlefield.active::before { background-image: url('/generated/ui/bg-battle.svg'); opacity: 0.32; }
+
+/* PlayScreen reuses .home-screen as a layout class but should NOT show
+   the main-menu backdrop — .play-screen rules above override. */
+.home-screen.play-screen.active::before,
+.home-screen.social-screen.active::before { background-image: none; }
+.play-screen.active::before { background-image: url('/generated/ui/bg-play.svg'); }
+.social-screen.active::before { background-image: url('/generated/ui/bg-social.svg'); }
+
+@media (prefers-reduced-motion: reduce) {
+  .home-screen.active::before,
+  .play-screen.active::before,
+  .social-screen.active::before,
+  .collection-screen.active::before,
+  .shop-screen.active::before,
+  .settings-screen.active::before,
+  .battlefield.active::before { filter: none; }
+}
+
 /* ─── Layout Grids ──────────────────────────────────────────────── */
 
 .topbar, .home-screen, .battlefield, .vault-grid, .ops-grid {
@@ -273,8 +334,30 @@ button:disabled {
   color: #e6ecff;
   text-align: center;
   cursor: pointer;
+  position: relative;
+  overflow: hidden;
   transition: transform 0.18s ease-out, box-shadow 0.18s ease-out, background 0.2s;
 }
+
+.nav-tile::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: 0.18;
+  z-index: 0;
+  transition: opacity 0.2s ease-out;
+}
+
+.nav-tile > * { position: relative; z-index: 1; }
+
+.nav-tile-play::before { background-image: url('/generated/ui/tile-play.svg'); }
+.nav-tile-collection::before { background-image: url('/generated/ui/tile-collection.svg'); }
+.nav-tile-social::before { background-image: url('/generated/ui/tile-social.svg'); }
+.nav-tile-shop::before { background-image: url('/generated/ui/tile-shop.svg'); }
+.nav-tile-settings::before { background-image: url('/generated/ui/tile-settings.svg'); }
 
 .nav-tile:hover,
 .nav-tile:focus-visible {
@@ -282,6 +365,9 @@ button:disabled {
   background: linear-gradient(160deg, rgba(124, 58, 237, 0.28), rgba(37, 99, 235, 0.2));
   box-shadow: 0 10px 28px rgba(124, 58, 237, 0.32);
 }
+
+.nav-tile:hover::before,
+.nav-tile:focus-visible::before { opacity: 0.32; }
 
 .nav-tile-icon { font-size: 1.9rem; line-height: 1; }
 .nav-tile-label { font-size: 1rem; font-weight: 600; letter-spacing: 0.02em; }

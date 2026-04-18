@@ -48,7 +48,8 @@ export function HomeScreen() {
           {NAV_TILES.map((tile) => (
             <button
               key={tile.id}
-              className="nav-tile"
+              className={`nav-tile nav-tile-${tile.id}`}
+              data-tile={tile.id}
               onClick={() => openScreen(tile.id)}
             >
               <span className="nav-tile-icon" aria-hidden="true">{tile.icon}</span>

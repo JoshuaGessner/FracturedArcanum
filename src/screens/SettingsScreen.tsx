@@ -47,7 +47,7 @@ export function SettingsScreen() {
   } = useApp()
 
   return (
-    <section className={`ops-grid screen-panel ${activeScreen === 'settings' ? 'active' : 'hidden'}`}>
+    <section className={`ops-grid settings-screen screen-panel ${activeScreen === 'settings' ? 'active' : 'hidden'}`}>
       <article className="section-card utility-card">
         <div className="section-head">
           <div>

@@ -1454,7 +1454,7 @@ function App() {
 
 
   function openScreen(screen: AppScreen) {
-    playSound('tap', soundEnabled)
+    playSound('navigate', soundEnabled)
     setActiveScreen(screen)
   }
 

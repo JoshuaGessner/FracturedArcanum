@@ -16,7 +16,7 @@ export function PlayScreen() {
   } = useApp()
 
   return (
-    <section className={`home-screen screen-panel ${activeScreen === 'play' ? 'active' : 'hidden'}`}>
+    <section className={`home-screen play-screen screen-panel ${activeScreen === 'play' ? 'active' : 'hidden'}`}>
       <article className="section-card utility-card spotlight-card">
         <div className="arena-title-block">
           <p className="eyebrow">The Arena Gate</p>

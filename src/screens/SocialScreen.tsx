@@ -38,7 +38,7 @@ export function SocialScreen() {
   } = useApp()
 
   return (
-    <section className={`home-screen screen-panel ${activeScreen === 'social' ? 'active' : 'hidden'}`}>
+    <section className={`home-screen social-screen screen-panel ${activeScreen === 'social' ? 'active' : 'hidden'}`}>
       <div className="home-cards">
         <article className="section-card utility-card">
           <div className="section-head">

@@ -32,7 +32,7 @@ export function ShopScreen() {
   } = useApp()
 
   return (
-    <section className={`vault-grid screen-panel ${activeScreen === 'shop' ? 'active' : 'hidden'}`}>
+    <section className={`vault-grid shop-screen screen-panel ${activeScreen === 'shop' ? 'active' : 'hidden'}`}>
       <article className="section-card utility-card">
         <div className="section-head">
           <div>
