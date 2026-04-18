@@ -2518,7 +2518,7 @@ function AppShell() {
       return
     }
 
-    playSound('summon', soundEnabled)
+    playSound('cardSlam', soundEnabled)
     pulseFeedback(12)
 
     if (isRankedBattle) {
@@ -2545,7 +2545,7 @@ function AppShell() {
       return
     }
 
-    playSound('attack', soundEnabled)
+    playSound('attackLunge', soundEnabled)
     pulseFeedback(16)
 
     if (isRankedBattle) {

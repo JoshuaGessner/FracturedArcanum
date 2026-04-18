@@ -1,12 +1,39 @@
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   RARITY_COLORS,
 } from '../game'
-import { cardArtPath, getHandFanTilt, handleCardArtError } from '../utils'
+import { cardArtPath, getHandFanTilt, handleCardArtError, pulseFeedback } from '../utils'
+import { UI_ASSETS } from '../constants'
+import { playSound, startLoopingSound } from '../audio'
 import { EffectBadge, RankBadge, StatIcon } from '../components/AssetBadge'
 import { useAppShell, useGame, useProfile } from '../contexts'
 
+type DragState = {
+  handIndex: number
+  pointerId: number
+  originX: number
+  originY: number
+  pointerX: number
+  pointerY: number
+  active: boolean
+  canPlay: boolean
+}
+
+type ArrowState = {
+  fromX: number
+  fromY: number
+  toX: number
+  toY: number
+} | null
+
+type HeroFx = 'damaged' | 'healed' | null
+
+const PULL_UP_COMMIT_PX = 60
+const DRAG_ACTIVATE_PX = 12
+const SLAM_DURATION_MS = 380
+
 export function BattleScreen() {
-  const { activeScreen, openScreen, backendOnline } = useAppShell()
+  const { activeScreen, openScreen, backendOnline, soundEnabled } = useAppShell()
   const {
     game, activePlayer, isMyTurn, isRankedBattle, battleKind,
     enemyTurnActive, enemyTurnLabel, opponentDisconnected, disconnectGraceMs,
@@ -31,6 +58,281 @@ export function BattleScreen() {
       ? 'Your command phase'
       : 'Enemy pressure'
   const resultTone = game.winner === 'player' ? 'result-victory' : game.winner === 'enemy' ? 'result-defeat' : 'result-draw'
+
+  // ─── Drag-to-play state ─────────────────────────────────────────────
+  const [drag, setDrag] = useState<DragState | null>(null)
+  const dragRef = useRef<DragState | null>(null)
+  useEffect(() => {
+    dragRef.current = drag
+  }, [drag])
+  // Sentinel consumed by hand-card onClick to suppress tap-play after a drag commit.
+  const dragHandledRef = useRef(false)
+  // Lane index that was just slammed into; clears after animation completes.
+  const [slamLane, setSlamLane] = useState<number | null>(null)
+  const slamTimerRef = useRef<number | null>(null)
+
+  const triggerSlam = useCallback((laneIndex: number) => {
+    if (slamTimerRef.current) {
+      window.clearTimeout(slamTimerRef.current)
+    }
+    setSlamLane(laneIndex)
+    slamTimerRef.current = window.setTimeout(() => {
+      setSlamLane(null)
+      slamTimerRef.current = null
+    }, SLAM_DURATION_MS)
+  }, [])
+
+  useEffect(() => () => {
+    if (slamTimerRef.current) window.clearTimeout(slamTimerRef.current)
+  }, [])
+
+  // ─── Attack arrow telegraph ─────────────────────────────────────────
+  const battlefieldRef = useRef<HTMLElement | null>(null)
+  const playerSlotRefs = useRef<Array<HTMLButtonElement | null>>([])
+  const enemySlotRefs = useRef<Array<HTMLDivElement | HTMLButtonElement | null>>([])
+  const [arrow, setArrow] = useState<ArrowState>(null)
+
+  const computeArrowFrom = useCallback((): { x: number; y: number } | null => {
+    if (selectedAttacker === null) return null
+    const slot = playerSlotRefs.current[selectedAttacker]
+    const stage = battlefieldRef.current
+    if (!slot || !stage) return null
+    const slotRect = slot.getBoundingClientRect()
+    const stageRect = stage.getBoundingClientRect()
+    return {
+      x: slotRect.left - stageRect.left + slotRect.width / 2,
+      y: slotRect.top - stageRect.top + slotRect.height / 2,
+    }
+  }, [selectedAttacker])
+
+  // Update arrow target on global pointermove while attacker is selected.
+  useEffect(() => {
+    if (selectedAttacker === null) {
+      // Clear via cleanup of the previous effect run.
+      return
+    }
+    const updateArrow = (clientX: number, clientY: number) => {
+      const stage = battlefieldRef.current
+      const from = computeArrowFrom()
+      if (!stage || !from) return
+      const stageRect = stage.getBoundingClientRect()
+      setArrow({
+        fromX: from.x,
+        fromY: from.y,
+        toX: clientX - stageRect.left,
+        toY: clientY - stageRect.top,
+      })
+    }
+    // Initial arrow to enemy hero (or center) so user immediately sees feedback.
+    const initFrom = computeArrowFrom()
+    const stage = battlefieldRef.current
+    if (initFrom && stage) {
+      setArrow({ fromX: initFrom.x, fromY: initFrom.y, toX: initFrom.x, toY: Math.max(initFrom.y - 80, 20) })
+    }
+    const onPointerMove = (event: PointerEvent) => updateArrow(event.clientX, event.clientY)
+    window.addEventListener('pointermove', onPointerMove, { passive: true })
+    return () => {
+      window.removeEventListener('pointermove', onPointerMove)
+      setArrow(null)
+    }
+  }, [selectedAttacker, computeArrowFrom])
+
+  // ─── Hero portrait reactions ────────────────────────────────────────
+  const prevHeroRef = useRef({ player: game.player.health, enemy: game.enemy.health })
+  const [playerHeroFx, setPlayerHeroFx] = useState<HeroFx>(null)
+  const [enemyHeroFx, setEnemyHeroFx] = useState<HeroFx>(null)
+  const playerFxTimerRef = useRef<number | null>(null)
+  const enemyFxTimerRef = useRef<number | null>(null)
+
+  useEffect(() => {
+    const prev = prevHeroRef.current
+    const playerNow = game.player.health
+    const enemyNow = game.enemy.health
+    if (playerNow !== prev.player) {
+      const fx: HeroFx = playerNow < prev.player ? 'damaged' : 'healed'
+      setPlayerHeroFx(fx)
+      if (fx === 'damaged') {
+        playSound('heroHit', soundEnabled)
+        pulseFeedback(18)
+      } else {
+        playSound('heroHeal', soundEnabled)
+        pulseFeedback(10)
+      }
+      if (playerFxTimerRef.current) window.clearTimeout(playerFxTimerRef.current)
+      playerFxTimerRef.current = window.setTimeout(() => setPlayerHeroFx(null), 520)
+    }
+    if (enemyNow !== prev.enemy) {
+      const fx: HeroFx = enemyNow < prev.enemy ? 'damaged' : 'healed'
+      setEnemyHeroFx(fx)
+      if (fx === 'damaged') {
+        playSound('heroHit', soundEnabled)
+      } else {
+        playSound('heroHeal', soundEnabled)
+      }
+      if (enemyFxTimerRef.current) window.clearTimeout(enemyFxTimerRef.current)
+      enemyFxTimerRef.current = window.setTimeout(() => setEnemyHeroFx(null), 520)
+    }
+    prevHeroRef.current = { player: playerNow, enemy: enemyNow }
+  }, [game.player.health, game.enemy.health, soundEnabled])
+
+  useEffect(() => () => {
+    if (playerFxTimerRef.current) window.clearTimeout(playerFxTimerRef.current)
+    if (enemyFxTimerRef.current) window.clearTimeout(enemyFxTimerRef.current)
+  }, [])
+
+  // Low-HP heartbeat — loops while player hero is < 30% (≤ 9 HP) and battle is live.
+  const playerLowHp = !game.winner && isBattle && game.player.health > 0 && game.player.health <= 9
+  useEffect(() => {
+    if (!playerLowHp) return
+    const stop = startLoopingSound('heroLowHp', soundEnabled, 1000)
+    return stop
+  }, [playerLowHp, soundEnabled])
+
+  // ─── Drag-to-play handlers ──────────────────────────────────────────
+  const findDropLane = useCallback((clientX: number, clientY: number): number | null => {
+    if (typeof document === 'undefined') return null
+    const el = document.elementFromPoint(clientX, clientY)
+    if (!el) return null
+    const target = (el as HTMLElement).closest<HTMLElement>('[data-drop-lane]')
+    if (!target) return null
+    const idxAttr = target.getAttribute('data-drop-lane')
+    if (idxAttr === null) return null
+    const idx = Number(idxAttr)
+    if (Number.isNaN(idx)) return null
+    return idx
+  }, [])
+
+  const commitDragPlay = useCallback((index: number, clientX: number, clientY: number, canPlay: boolean): boolean => {
+    if (!canPlay) return false
+    const dy = (dragRef.current?.originY ?? clientY) - clientY
+    let laneIndex = findDropLane(clientX, clientY)
+    // Pull-up gesture: dragging > 60px above origin commits to first open lane.
+    if (laneIndex === null && dy >= PULL_UP_COMMIT_PX) {
+      const openLane = game.player.board.findIndex((slot) => slot === null)
+      if (openLane >= 0) laneIndex = openLane
+    }
+    if (laneIndex === null) return false
+    if (game.player.board[laneIndex] !== null) return false
+    handlePlayCard(index)
+    triggerSlam(laneIndex)
+    return true
+  }, [findDropLane, game.player.board, handlePlayCard, triggerSlam])
+
+  const cancelDrag = useCallback(() => {
+    setDrag(null)
+  }, [])
+
+  const handleHandPointerDown = useCallback((event: React.PointerEvent<HTMLButtonElement>, index: number, canPlay: boolean) => {
+    if (event.pointerType === 'mouse' && event.button !== 0) return
+    setDrag({
+      handIndex: index,
+      pointerId: event.pointerId,
+      originX: event.clientX,
+      originY: event.clientY,
+      pointerX: event.clientX,
+      pointerY: event.clientY,
+      active: false,
+      canPlay,
+    })
+    dragHandledRef.current = false
+  }, [])
+
+  const handleHandPointerMove = useCallback((event: React.PointerEvent<HTMLButtonElement>) => {
+    const current = dragRef.current
+    if (!current || current.pointerId !== event.pointerId) return
+    const dx = event.clientX - current.originX
+    const dy = event.clientY - current.originY
+    const distance = Math.hypot(dx, dy)
+    if (!current.active && distance >= DRAG_ACTIVATE_PX) {
+      // First time we cross the threshold — lift the card.
+      playSound('cardLift', soundEnabled)
+      pulseFeedback(8)
+      try {
+        event.currentTarget.setPointerCapture?.(event.pointerId)
+      } catch {
+        /* setPointerCapture not supported / already captured */
+      }
+      setDrag({ ...current, pointerX: event.clientX, pointerY: event.clientY, active: true })
+    } else if (current.active) {
+      setDrag({ ...current, pointerX: event.clientX, pointerY: event.clientY })
+    }
+  }, [soundEnabled])
+
+  const handleHandPointerUp = useCallback((event: React.PointerEvent<HTMLButtonElement>, index: number) => {
+    const current = dragRef.current
+    if (!current || current.pointerId !== event.pointerId) {
+      cancelDrag()
+      return
+    }
+    if (current.active) {
+      const committed = commitDragPlay(index, event.clientX, event.clientY, current.canPlay)
+      dragHandledRef.current = true
+      cancelDrag()
+      // Suppress synthetic click that follows pointerup on touch.
+      event.preventDefault()
+      // If drop was a no-op, the card just snaps back via state reset.
+      if (!committed) {
+        // No additional sound needed — cardLift already played on activate.
+      }
+    } else {
+      cancelDrag()
+    }
+  }, [cancelDrag, commitDragPlay])
+
+  const handleHandPointerCancel = useCallback((event: React.PointerEvent<HTMLButtonElement>) => {
+    const current = dragRef.current
+    if (current && current.pointerId === event.pointerId) {
+      cancelDrag()
+    }
+  }, [cancelDrag])
+
+  const dragActive = Boolean(drag?.active)
+  const dragHandIndex = drag?.handIndex ?? null
+
+  // Compose pointer handlers that run BOTH the long-press inspect logic and
+  // the drag-to-play logic. Long-press already cancels itself when pointer
+  // moves > 6px, so the drag activation threshold (12px) keeps inspect from
+  // racing the lift.
+  const composeHandlers = (card: Parameters<typeof getLongPressProps>[0], index: number, canPlay: boolean) => {
+    const longPress = getLongPressProps(card) as {
+      onPointerDown: (e: React.PointerEvent<HTMLElement>) => void
+      onPointerMove: (e: React.PointerEvent<HTMLElement>) => void
+      onPointerUp: (e: React.PointerEvent<HTMLElement>) => void
+      onPointerLeave: (e: React.PointerEvent<HTMLElement>) => void
+      onPointerCancel: (e: React.PointerEvent<HTMLElement>) => void
+      onContextMenu: (e: React.MouseEvent<HTMLElement>) => void
+    }
+    return {
+      onPointerDown: (event: React.PointerEvent<HTMLButtonElement>) => {
+        longPress.onPointerDown(event)
+        handleHandPointerDown(event, index, canPlay)
+      },
+      onPointerMove: (event: React.PointerEvent<HTMLButtonElement>) => {
+        longPress.onPointerMove(event)
+        handleHandPointerMove(event)
+      },
+      onPointerUp: (event: React.PointerEvent<HTMLButtonElement>) => {
+        longPress.onPointerUp(event)
+        handleHandPointerUp(event, index)
+      },
+      onPointerLeave: (event: React.PointerEvent<HTMLButtonElement>) => {
+        longPress.onPointerLeave(event)
+      },
+      onPointerCancel: (event: React.PointerEvent<HTMLButtonElement>) => {
+        longPress.onPointerCancel(event)
+        handleHandPointerCancel(event)
+      },
+      onContextMenu: longPress.onContextMenu,
+    }
+  }
+
+  const consumeDragHandled = (): boolean => {
+    if (dragHandledRef.current) {
+      dragHandledRef.current = false
+      return true
+    }
+    return false
+  }
 
   return (
     <>
@@ -62,17 +364,44 @@ export function BattleScreen() {
       <section className={`battle-topbar section-card battle-command-dais screen-panel ${isBattle ? 'active' : 'hidden'}`}>
         <div className="battle-hud-main">
           <div className="battle-heroes-compact">
-            <div className="hero-compact enemy">
+            <div
+              className={[
+                'hero-compact',
+                'enemy',
+                enemyHeroFx === 'damaged' ? 'is-damaged' : '',
+                enemyHeroFx === 'healed' ? 'is-healed' : '',
+              ].filter(Boolean).join(' ')}
+            >
               <strong>{game.enemy.name}</strong>
               <span className="hero-health"><StatIcon kind="health" /> {game.enemy.health}</span>
+              {enemyHeroFx === 'damaged' && (
+                <img className="hero-fx-overlay hero-fx-cracks" src={UI_ASSETS.overlays.heroCracks} alt="" aria-hidden="true" />
+              )}
+              {enemyHeroFx === 'healed' && (
+                <img className="hero-fx-overlay hero-fx-halo" src={UI_ASSETS.overlays.heroHalo} alt="" aria-hidden="true" />
+              )}
             </div>
             <div className="battle-turn-label">
               <span className="eyebrow">Turn {game.turnNumber}</span>
               <strong className="battle-turn-state">{battleStatusLabel}</strong>
             </div>
-            <div className="hero-compact player">
+            <div
+              className={[
+                'hero-compact',
+                'player',
+                playerHeroFx === 'damaged' ? 'is-damaged' : '',
+                playerHeroFx === 'healed' ? 'is-healed' : '',
+                playerLowHp ? 'is-low-hp' : '',
+              ].filter(Boolean).join(' ')}
+            >
               <strong>{game.player.name}</strong>
               <span className="hero-health"><StatIcon kind="health" /> {game.player.health}</span>
+              {playerHeroFx === 'damaged' && (
+                <img className="hero-fx-overlay hero-fx-cracks" src={UI_ASSETS.overlays.heroCracks} alt="" aria-hidden="true" />
+              )}
+              {playerHeroFx === 'healed' && (
+                <img className="hero-fx-overlay hero-fx-halo" src={UI_ASSETS.overlays.heroHalo} alt="" aria-hidden="true" />
+              )}
             </div>
           </div>
         </div>
@@ -122,7 +451,7 @@ export function BattleScreen() {
       </section>
 
       <section className={`battlefield screen-panel ${isBattle ? 'active' : 'hidden'}`}>
-        <article className="section-card battlefield-stage">
+        <article className="section-card battlefield-stage" ref={battlefieldRef}>
           <div className="battlefield-side enemy-side">
             <div className="section-head battle-side-head">
               <h2>{game.enemy.name} Frontline</h2>
@@ -133,7 +462,7 @@ export function BattleScreen() {
               {game.enemy.board.map((unit, index) => {
                 if (!unit) {
                   return (
-                    <div className="slot empty" key={`enemy-empty-${index}`}>
+                    <div className="slot empty" key={`enemy-empty-${index}`} ref={(el) => { enemySlotRefs.current[index] = el }}>
                       Empty lane
                     </div>
                   )
@@ -141,6 +470,10 @@ export function BattleScreen() {
 
                 const isSelectable = false
                 const isSelected = false
+                const isValidDefender = selectedAttacker !== null && !defenderHasGuard
+                  ? true
+                  : selectedAttacker !== null && unit.effect === 'guard'
+                const isInvalidDefender = selectedAttacker !== null && !isValidDefender
 
                 return (
                   <button
@@ -151,10 +484,13 @@ export function BattleScreen() {
                       unit.exhausted ? 'exhausted' : '',
                       isSelected ? 'selected' : '',
                       damagedSlots.has(unit.uid) ? 'damage-flash' : '',
+                      isValidDefender && selectedAttacker !== null ? 'is-valid-defender' : '',
+                      isInvalidDefender ? 'is-invalid-defender' : '',
                     ]
                       .filter(Boolean)
                       .join(' ')}
                     key={unit.uid}
+                    ref={(el) => { enemySlotRefs.current[index] = el }}
                     style={{ '--rarity-color': RARITY_COLORS[unit.rarity] } as React.CSSProperties}
                     onClick={() => {
                       if (consumeLongPressAction()) return
@@ -206,7 +542,18 @@ export function BattleScreen() {
               {game.player.board.map((unit, index) => {
                 if (!unit) {
                   return (
-                    <div className="slot empty" key={`player-empty-${index}`}>
+                    <div
+                      className={[
+                        'slot',
+                        'empty',
+                        dragActive ? 'drop-target-active' : '',
+                        dragActive ? 'drop-target-valid' : '',
+                        slamLane === index ? 'is-slamming' : '',
+                      ].filter(Boolean).join(' ')}
+                      key={`player-empty-${index}`}
+                      data-drop-lane={index}
+                      ref={(el) => { playerSlotRefs.current[index] = null; void el }}
+                    >
                       Open lane
                     </div>
                   )
@@ -224,13 +571,18 @@ export function BattleScreen() {
                       unit.exhausted ? 'exhausted' : '',
                       isSelected ? 'selected' : '',
                       damagedSlots.has(unit.uid) ? 'damage-flash' : '',
+                      dragActive ? 'drop-target-active' : '',
+                      dragActive ? 'drop-target-invalid' : '',
+                      slamLane === index ? 'is-slamming' : '',
                     ]
                       .filter(Boolean)
                       .join(' ')}
                     key={unit.uid}
+                    ref={(el) => { playerSlotRefs.current[index] = el }}
                     style={{ '--rarity-color': RARITY_COLORS[unit.rarity] } as React.CSSProperties}
                     onClick={() => {
                       if (consumeLongPressAction()) return
+                      if (consumeDragHandled()) return
                       if (isSelectable) handleSelectAttacker(index)
                       else handleAttackTarget(index)
                     }}
@@ -254,6 +606,43 @@ export function BattleScreen() {
               })}
             </div>
           </div>
+
+          {arrow && (
+            <svg
+              className="attack-arrow-svg"
+              role="presentation"
+              aria-hidden="true"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <defs>
+                <linearGradient id="attackArrowStroke" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%" stopColor="#fde68a" stopOpacity="0.95" />
+                  <stop offset="100%" stopColor="#dc2626" stopOpacity="0.95" />
+                </linearGradient>
+              </defs>
+              <line
+                x1={arrow.fromX}
+                y1={arrow.fromY}
+                x2={arrow.toX}
+                y2={arrow.toY}
+                stroke="url(#attackArrowStroke)"
+                strokeWidth={6}
+                strokeLinecap="round"
+              />
+              <image
+                href={UI_ASSETS.overlays.attackArrow}
+                x={arrow.toX - 18}
+                y={arrow.toY - 18}
+                width={36}
+                height={36}
+                style={{
+                  transform: `rotate(${(Math.atan2(arrow.toY - arrow.fromY, arrow.toX - arrow.fromX) * 180) / Math.PI}deg)`,
+                  transformBox: 'fill-box',
+                  transformOrigin: 'center',
+                }}
+              />
+            </svg>
+          )}
         </article>
       </section>
 
@@ -326,20 +715,42 @@ export function BattleScreen() {
                 : ''
 
               const fanTilt = getHandFanTilt(index, activePlayer.hand.length)
+              const isDragging = dragActive && dragHandIndex === index
+              const inspectCard = { name: card.name, icon: card.icon, id: card.id, cost: card.cost, attack: card.attack, health: card.health, rarity: card.rarity, tribe: card.tribe, text: card.text, effect: card.effect ?? null }
+              const composed = composeHandlers(inspectCard, index, canPlay)
+              const dragStyle: React.CSSProperties = isDragging && drag
+                ? {
+                    '--drag-dx': `${drag.pointerX - drag.originX}px`,
+                    '--drag-dy': `${drag.pointerY - drag.originY}px`,
+                  } as React.CSSProperties
+                : {}
 
               return (
                 <button
-                  className={['hand-card', `rarity-${card.rarity}`, `border-${selectedCardBorder}`, canPlay ? '' : 'unplayable'].filter(Boolean).join(' ')}
+                  className={[
+                    'hand-card',
+                    `rarity-${card.rarity}`,
+                    `border-${selectedCardBorder}`,
+                    canPlay ? '' : 'unplayable',
+                    isDragging ? 'is-dragging' : '',
+                    dragActive && !isDragging ? 'is-drag-sibling' : '',
+                  ].filter(Boolean).join(' ')}
                   key={card.instanceId}
                   data-need={overlayLabel}
                   onClick={() => {
                     if (consumeLongPressAction()) return
+                    if (consumeDragHandled()) return
                     if (canPlay) handlePlayCard(index)
                   }}
-                  {...getLongPressProps({ name: card.name, icon: card.icon, id: card.id, cost: card.cost, attack: card.attack, health: card.health, rarity: card.rarity, tribe: card.tribe, text: card.text, effect: card.effect ?? null })}
+                  {...composed}
                   aria-disabled={!canPlay}
-                  title={canPlay ? 'Tap to play or long press to inspect' : `${overlayLabel}. Long press to inspect.`}
-                  style={{ '--rarity-color': RARITY_COLORS[card.rarity], '--fan-tilt': `${fanTilt}deg`, '--fan-order': index + 1 } as React.CSSProperties}
+                  title={canPlay ? 'Tap or drag to play, long press to inspect' : `${overlayLabel}. Long press to inspect.`}
+                  style={{
+                    '--rarity-color': RARITY_COLORS[card.rarity],
+                    '--fan-tilt': `${fanTilt}deg`,
+                    '--fan-order': index + 1,
+                    ...dragStyle,
+                  } as React.CSSProperties}
                 >
                   <div className="card-top">
                     <span className="cost-pill">{card.cost}</span>

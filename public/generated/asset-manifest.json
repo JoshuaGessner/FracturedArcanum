@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-04-18T13:21:36.368Z",
+  "generatedAt": "2026-04-18T16:27:51.702Z",
   "provider": "local-svg",
   "apiReady": false,
   "commercialSafe": true,
@@ -422,6 +422,24 @@
     {
       "id": "overlay-draw.svg",
       "path": "/generated/ui/overlay-draw.svg",
+      "type": "ui-overlay",
+      "source": "local-generated"
+    },
+    {
+      "id": "overlay-attack-arrow.svg",
+      "path": "/generated/ui/overlay-attack-arrow.svg",
+      "type": "ui-overlay",
+      "source": "local-generated"
+    },
+    {
+      "id": "overlay-hero-cracks.svg",
+      "path": "/generated/ui/overlay-hero-cracks.svg",
+      "type": "ui-overlay",
+      "source": "local-generated"
+    },
+    {
+      "id": "overlay-hero-halo.svg",
+      "path": "/generated/ui/overlay-hero-halo.svg",
       "type": "ui-overlay",
       "source": "local-generated"
     },

@@ -129,6 +129,9 @@ export const UI_ASSETS = {
     victory: toUiAsset('overlay-victory.svg'),
     defeat: toUiAsset('overlay-defeat.svg'),
     draw: toUiAsset('overlay-draw.svg'),
+    attackArrow: toUiAsset('overlay-attack-arrow.svg'),
+    heroCracks: toUiAsset('overlay-hero-cracks.svg'),
+    heroHalo: toUiAsset('overlay-hero-halo.svg'),
   },
   glows: {
     common: toUiAsset('glow-common.svg'),

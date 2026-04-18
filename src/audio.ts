@@ -22,6 +22,12 @@ export type SoundName =
   | 'runeWipe'
   | 'modalOpen'
   | 'modalClose'
+  | 'cardLift'
+  | 'cardSlam'
+  | 'attackLunge'
+  | 'heroHit'
+  | 'heroHeal'
+  | 'heroLowHp'
 
 let audioContext: AudioContext | null = null
 
@@ -225,5 +231,78 @@ export function playSound(name: SoundName, enabled: boolean) {
       playTone(context, 660, now, 0.12, 'sine', 0.018)
       playTone(context, 440, now + 0.06, 0.06, 'triangle', 0.018)
       break
+    case 'cardLift':
+      // Brief soft swoosh — filtered noise rising slightly
+      playNoise(context, now, 0.08, 1200, 600, 0.018)
+      playTone(context, 720, now + 0.02, 0.06, 'sine', 0.014)
+      break
+    case 'cardSlam':
+      // Wood thud + bright top harmonic
+      playTone(context, 110, now, 0.12, 'sine', 0.034)
+      playTone(context, 220, now + 0.02, 0.1, 'square', 0.022)
+      playTone(context, 1320, now + 0.04, 0.08, 'triangle', 0.02)
+      playNoise(context, now, 0.09, 600, 200, 0.016)
+      break
+    case 'attackLunge':
+      // Existing attack thump extended with a metallic ring tail
+      playTone(context, 190, now, 0.09, 'square', 0.026)
+      playTone(context, 140, now + 0.04, 0.07, 'square', 0.022)
+      playTone(context, 1760, now + 0.08, 0.18, 'triangle', 0.02)
+      playTone(context, 2640, now + 0.12, 0.16, 'triangle', 0.014)
+      break
+    case 'heroHit':
+      // Low impact thud + brief crack
+      playTone(context, 90, now, 0.16, 'sine', 0.034)
+      playNoise(context, now + 0.02, 0.08, 1800, 400, 0.022)
+      playTone(context, 1200, now + 0.04, 0.06, 'square', 0.018)
+      break
+    case 'heroHeal':
+      // Soft sine swell 440 → 660 Hz
+      {
+        const oscillator = context.createOscillator()
+        const gainNode = context.createGain()
+        oscillator.type = 'sine'
+        oscillator.frequency.setValueAtTime(440, now)
+        oscillator.frequency.exponentialRampToValueAtTime(660, now + 0.22)
+        gainNode.gain.setValueAtTime(0.0001, now)
+        gainNode.gain.exponentialRampToValueAtTime(0.024, now + 0.04)
+        gainNode.gain.exponentialRampToValueAtTime(0.0001, now + 0.24)
+        oscillator.connect(gainNode)
+        gainNode.connect(context.destination)
+        oscillator.start(now)
+        oscillator.stop(now + 0.26)
+      }
+      break
+    case 'heroLowHp':
+      // Single heartbeat thump-thump (call repeatedly via startLoopingSound)
+      playTone(context, 60, now, 0.1, 'sine', 0.02)
+      playTone(context, 60, now + 0.18, 0.1, 'sine', 0.016)
+      break
+  }
+}
+
+/**
+ * Start a looping ambient/feedback sound. Returns a stop function.
+ *
+ * Currently used by the battle scene for the low-HP heartbeat. The cue is
+ * re-triggered on a fixed interval (Web Audio scheduling stays per-tick so
+ * the audio context can be muted/closed cleanly without leaving dangling
+ * oscillators). If `enabled` is false the call is a no-op and the returned
+ * stop function does nothing.
+ */
+export function startLoopingSound(
+  name: Extract<SoundName, 'heroLowHp'>,
+  enabled: boolean,
+  intervalMs: number = 1000,
+): () => void {
+  if (!enabled || typeof window === 'undefined') {
+    return () => {}
+  }
+
+  // Trigger immediately so the player hears the cue without waiting a full beat.
+  playSound(name, enabled)
+  const intervalId = window.setInterval(() => playSound(name, enabled), intervalMs)
+  return () => {
+    window.clearInterval(intervalId)
   }
 }
