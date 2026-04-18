@@ -1,4 +1,4 @@
-import { useApp } from '../useApp'
+import { useAppShell, useGame, useProfile } from '../contexts'
 
 type NavTile = {
   id: 'play' | 'collection' | 'social' | 'shop' | 'settings'
@@ -16,14 +16,9 @@ const NAV_TILES: NavTile[] = [
 ]
 
 export function HomeScreen() {
-  const {
-    activeScreen,
-    gameInProgress, game, handleResumeBattle, handleAbandonBattle,
-    record, dailyQuest, winRate, selectedDeckSize,
-    serverProfile, rankLabel, runes,
-    openScreen,
-    toastSeverity, toastMessage,
-  } = useApp()
+  const { activeScreen, openScreen, toastSeverity, toastMessage, dailyQuest } = useAppShell()
+  const { gameInProgress, game, handleResumeBattle, handleAbandonBattle } = useGame()
+  const { record, winRate, selectedDeckSize, serverProfile, rankLabel, runes } = useProfile()
 
   return (
     <section className={`home-screen screen-panel ${activeScreen === 'home' ? 'active' : 'hidden'}`}>
