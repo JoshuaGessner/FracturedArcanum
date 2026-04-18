@@ -3,41 +3,21 @@ import {
 } from '../game'
 import { EFFECT_LABELS } from '../constants'
 import { cardArtPath, handleCardArtError } from '../utils'
-import { useApp } from '../useApp'
+import { useAppShell, useGame, useProfile } from '../contexts'
 
 export function BattleScreen() {
+  const { activeScreen, openScreen, backendOnline } = useAppShell()
   const {
-    activeScreen,
-    game,
-    activePlayer,
-    isMyTurn,
-    isRankedBattle,
-    battleKind,
-    enemyTurnActive,
-    enemyTurnLabel,
-    backendOnline,
-    opponentDisconnected,
-    disconnectGraceMs,
-    handleBurst,
-    handleEndTurn,
-    handleLeaveBattle,
-    handleAttackTarget,
-    handleSelectAttacker,
-    selectedAttacker,
-    defenderHasGuard,
-    damagedSlots,
-    consumeLongPressAction,
-    getLongPressProps,
-    handlePlayCard,
-    activeBoardHasOpenLane,
-    selectedCardBorder,
-    rankLabel,
-    seasonRating,
-    winRate,
-    startMatch,
-    setPreferredMode,
-    openScreen,
-  } = useApp()
+    game, activePlayer, isMyTurn, isRankedBattle, battleKind,
+    enemyTurnActive, enemyTurnLabel, opponentDisconnected, disconnectGraceMs,
+    handleBurst, handleEndTurn, handleLeaveBattle,
+    handleAttackTarget, handleSelectAttacker, selectedAttacker,
+    defenderHasGuard, damagedSlots,
+    consumeLongPressAction, getLongPressProps,
+    handlePlayCard, activeBoardHasOpenLane,
+    startMatch, setPreferredMode,
+  } = useGame()
+  const { selectedCardBorder, rankLabel, seasonRating, winRate } = useProfile()
 
   const isBattle = activeScreen === 'battle'
 

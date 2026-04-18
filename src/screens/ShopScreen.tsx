@@ -1,35 +1,19 @@
 import { CARD_LIBRARY, RARITY_COLORS } from '../game'
 import { CARD_BORDER_OFFERS, THEME_OFFERS } from '../constants'
-import { useApp } from '../useApp'
+import { useAppShell, useGame, useProfile } from '../contexts'
 
 const RARITY_REFUND = { common: 5, rare: 10, epic: 25, legendary: 100 } as const
 
 export function ShopScreen() {
+  const { activeScreen, loggedIn } = useAppShell()
   const {
-    activeScreen,
-    loggedIn,
-    runes,
-    totalOwnedCards,
-    nextRewardLabel,
-    canClaimDailyReward,
-    handleClaimDailyReward,
-    startMatch,
-    ownedThemes,
-    selectedTheme,
-    handleEquipTheme,
-    ownedCardBorders,
-    selectedCardBorder,
-    handlePurchaseBorder,
-    packOffers,
-    packOpening,
-    openedPackCards,
-    handleOpenPack,
-    collection,
-    savedDecks,
-    pendingBreakdown,
-    setPendingBreakdown,
-    handleBreakdownCard,
-  } = useApp()
+    runes, totalOwnedCards, nextRewardLabel, canClaimDailyReward, handleClaimDailyReward,
+    ownedThemes, selectedTheme, handleEquipTheme,
+    ownedCardBorders, selectedCardBorder, handlePurchaseBorder,
+    packOffers, packOpening, openedPackCards, handleOpenPack,
+    collection, savedDecks, pendingBreakdown, setPendingBreakdown, handleBreakdownCard,
+  } = useProfile()
+  const { startMatch } = useGame()
 
   return (
     <section className={`vault-grid shop-screen screen-panel ${activeScreen === 'shop' ? 'active' : 'hidden'}`}>

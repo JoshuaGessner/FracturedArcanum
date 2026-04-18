@@ -1,19 +1,20 @@
 import { AI_DIFFICULTY_OPTIONS } from '../constants'
 import { formatTimestamp } from '../utils'
-import { useApp } from '../useApp'
+import { useAppShell, useGame, useProfile, useQueue } from '../contexts'
 
 export function PlayScreen() {
+  const { activeScreen, openScreen, toastSeverity, toastMessage } = useAppShell()
   const {
-    activeScreen,
     gameInProgress, game, handleResumeBattle, handleAbandonBattle,
     preferredMode, handleModeChange,
-    resolvedAIDifficulty, aiDifficultySetting, seasonRating, handleAIDifficultyChange,
-    startMatch, deckReady, handleStartQueue, queueState, openScreen,
-    queueSeconds, queueSearchStatus, queuePresence, handleCancelQueue,
-    queuedOpponent, handleAcceptQueue,
-    toastSeverity, toastMessage,
-    liveQueueLabel,
-  } = useApp()
+    resolvedAIDifficulty, aiDifficultySetting, handleAIDifficultyChange,
+    startMatch,
+  } = useGame()
+  const { seasonRating, deckReady } = useProfile()
+  const {
+    handleStartQueue, queueState, queueSeconds, queueSearchStatus, queuePresence,
+    handleCancelQueue, queuedOpponent, handleAcceptQueue, liveQueueLabel,
+  } = useQueue()
 
   return (
     <section className={`home-screen play-screen screen-panel ${activeScreen === 'play' ? 'active' : 'hidden'}`}>

@@ -1,5 +1,5 @@
 import { CARD_LIBRARY } from '../game'
-import { useApp } from '../useApp'
+import { useAppShell, useProfile, useQueue, useSocial } from '../contexts'
 
 type ToastSeverity = 'info' | 'success' | 'warning' | 'error'
 
@@ -24,18 +24,18 @@ function getCardIcon(cardId: string): string {
 }
 
 export function SocialScreen() {
+  const { activeScreen } = useAppShell()
+  const { serverProfile, rankLabel, totalGames, winRate, runes, collection } = useProfile()
+  const { leaderboardEntries } = useQueue()
   const {
-    activeScreen,
-    serverProfile, rankLabel, totalGames, winRate, runes,
-    leaderboardEntries,
     friends, friendUsernameInput, setFriendUsernameInput, handleAddFriend, socialLoading,
     onlineFriendIds, outgoingChallenge, incomingChallenge, handleChallengeFriend, handleRemoveFriend,
     challengeStatus, handleCancelOutgoingChallenge,
     clan, handleLeaveClan, clanForm, setClanForm, handleCreateClan, handleJoinClan, socialStatus,
     tradeForm, setTradeForm, handleProposeTrade, tradeSubmitting,
     tradePickerDraft, setTradePickerDraft, addTradeChip, removeTradeChip,
-    collection, formatCountdown, tradeStatus, trades, handleTradeAction,
-  } = useApp()
+    formatCountdown, tradeStatus, trades, handleTradeAction,
+  } = useSocial()
 
   return (
     <section className={`home-screen social-screen screen-panel ${activeScreen === 'social' ? 'active' : 'hidden'}`}>

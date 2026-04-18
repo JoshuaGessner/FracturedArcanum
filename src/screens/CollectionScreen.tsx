@@ -8,32 +8,18 @@ import {
 } from '../game'
 import { DECK_MAX_TOTAL_DISPLAY, DECK_PRESETS, EFFECT_LABELS } from '../constants'
 import { cardArtPath, handleCardArtError } from '../utils'
-import { useApp } from '../useApp'
+import { useAppShell, useGame, useProfile, useQueue } from '../contexts'
 
 export function CollectionScreen() {
+  const { activeScreen, loggedIn, openScreen } = useAppShell()
   const {
-    activeScreen,
-    loggedIn,
-    deckReady,
-    selectedDeckSize,
-    savedDecks,
-    activeDeckId,
-    handleCreateDeck,
-    handleSelectDeck,
-    handleRenameDeck,
-    handleDeleteDeck,
-    builderFilter,
-    setBuilderFilter,
-    deckConfig,
-    collection,
-    selectedCardBorder,
+    deckReady, selectedDeckSize, savedDecks, activeDeckId,
+    handleCreateDeck, handleSelectDeck, handleRenameDeck, handleDeleteDeck,
+    builderFilter, setBuilderFilter, deckConfig, collection, selectedCardBorder,
     handleDeckCount,
-    startMatch,
-    handleStartQueue,
-    queueState,
-    openScreen,
-    handleQuickBattle,
-  } = useApp()
+  } = useProfile()
+  const { startMatch, handleQuickBattle } = useGame()
+  const { handleStartQueue, queueState } = useQueue()
 
   return (
     <section className={`meta-grid deck-focus collection-screen screen-panel ${activeScreen === 'collection' ? 'active' : 'hidden'}`}>

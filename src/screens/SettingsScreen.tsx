@@ -1,50 +1,23 @@
 import { CARD_LIBRARY } from '../game'
 import { cardArtPath, formatTimestamp, handleCardArtError } from '../utils'
-import { useApp } from '../useApp'
+import { useAppShell, useProfile } from '../contexts'
 
 export function SettingsScreen() {
   const {
     activeScreen,
-    isAdminRole,
-    isOwnerRole,
-    accountRole,
-    analyticsConsent,
-    setAnalyticsConsent,
-    serverProfile,
-    visitorId,
-    featuredMode,
-    backendOnline,
-    complaintForm,
-    setComplaintForm,
-    complaintStatus,
-    handleSubmitComplaint,
-    adminLoading,
-    adminOverview,
-    adminError,
-    refreshAdminOverview,
-    adminSettings,
-    setAdminSettings,
-    handleSaveAdminSettings,
-    handleUpdateComplaintStatus,
-    adminUserSearch,
-    setAdminUserSearch,
-    adminUsers,
-    adminUsersLoading,
-    refreshAdminUsers,
+    analyticsConsent, setAnalyticsConsent,
+    visitorId, featuredMode, backendOnline,
+    complaintForm, setComplaintForm, complaintStatus, handleSubmitComplaint,
+    adminLoading, adminOverview, adminError, refreshAdminOverview,
+    adminSettings, setAdminSettings, handleSaveAdminSettings, handleUpdateComplaintStatus,
+    adminUserSearch, setAdminUserSearch, adminUsers, adminUsersLoading, refreshAdminUsers,
     handleSetUserRole,
-    transferForm,
-    setTransferForm,
-    transferStatus,
-    handleTransferOwnership,
-    adminAudit,
-    adminAuditFilter,
-    setAdminAuditFilter,
-    adminAuditExpandedId,
-    setAdminAuditExpandedId,
-    refreshAdminAudit,
-    inferToastSeverity,
-    setToastMessage,
-  } = useApp()
+    transferForm, setTransferForm, transferStatus, handleTransferOwnership,
+    adminAudit, adminAuditFilter, setAdminAuditFilter,
+    adminAuditExpandedId, setAdminAuditExpandedId, refreshAdminAudit,
+    inferToastSeverity, setToastMessage,
+  } = useAppShell()
+  const { isAdminRole, isOwnerRole, accountRole, serverProfile } = useProfile()
 
   return (
     <section className={`ops-grid settings-screen screen-panel ${activeScreen === 'settings' ? 'active' : 'hidden'}`}>
