@@ -1453,10 +1453,6 @@ button.danger:hover { filter: brightness(1.08); }
 .badge.trade-status-cancelled,
 .badge.trade-status-expired { background: rgba(148, 163, 184, 0.18); border-color: rgba(148, 163, 184, 0.4); color: #cbd5e1; }
 
-/* ─── Emotes ────────────────────────────────────────────────────── */
-
-.emote-row { margin-top: 10px; }
-.emote-chip { min-width: 48px; font-size: 1.1rem; }
 .toast-line { margin-top: 10px; }
 
 /* ─── Battle Animations ─────────────────────────────────────────── */

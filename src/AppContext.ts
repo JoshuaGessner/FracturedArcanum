@@ -198,7 +198,6 @@ export type AppContextValue = {
   handleAttackTarget: (target: number | 'hero') => void
   handleBurst: () => void
   handleEndTurn: () => void
-  handleSendEmote: (emote: string) => void
 
   // ─── Social ────────────────────────────────────────────────────
   friends: SocialFriend[]

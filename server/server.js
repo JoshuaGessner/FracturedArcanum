@@ -292,7 +292,6 @@ function createDefaultAdminStore() {
       matchesStarted: 0,
       matchesCompleted: 0,
       installs: 0,
-      emotes: 0,
     },
     visitors: {},
     pageViews: {},
@@ -640,10 +639,6 @@ function trackAnalyticsEvent(payload = {}) {
   if (type === 'install') {
     adminStore.totals.installs += 1
     visitor.installs += 1
-  }
-
-  if (type === 'emote') {
-    adminStore.totals.emotes += 1
   }
 
   pushActivity(type, {
@@ -2123,15 +2118,6 @@ io.on('connection', (socket) => {
     challenge.status = 'cancelled'
     emitToAccount(challenge.toAccountId, 'challenge:cancelled', { challengeId: challenge.id, reason: 'cancelled_by_sender' })
     socket.emit('challenge:cancelled', { challengeId: challenge.id, reason: 'cancelled_by_sender' })
-  })
-
-  socket.on('room:emote', ({ roomId, emote, from } = {}) => {
-    if (!checkSocketRate(socket.id, 'room:emote', 20)) return
-    if (!roomId || typeof roomId !== 'string') return
-    if (!socket.rooms.has(roomId)) return
-    const safeEmote = typeof emote === 'string' ? emote.slice(0, 30) : ''
-    const safeFrom = typeof from === 'string' ? from.slice(0, 24) : ''
-    socket.to(roomId).emit('room:emote', { emote: safeEmote, from: safeFrom })
   })
 
   // ─── Server-authoritative game actions ────────────────────────────────

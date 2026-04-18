@@ -1,7 +1,7 @@
 import {
   CARD_LIBRARY,
 } from '../game'
-import { AI_DIFFICULTY_OPTIONS, QUICK_EMOTES } from '../constants'
+import { AI_DIFFICULTY_OPTIONS } from '../constants'
 import { formatTimestamp } from '../utils'
 import { useApp } from '../useApp'
 
@@ -46,7 +46,6 @@ export function HomeScreen() {
     tradeForm, setTradeForm, handleProposeTrade, tradeSubmitting,
     tradePickerDraft, setTradePickerDraft, addTradeChip, removeTradeChip,
     collection, formatCountdown, tradeStatus, trades, handleTradeAction,
-    handleSendEmote,
   } = useApp()
 
   return (
@@ -520,14 +519,6 @@ export function HomeScreen() {
             </ul>
           </div>
         </article>
-      </div>
-
-      <div className="controls emote-row">
-        {QUICK_EMOTES.map((emote) => (
-          <button className="ghost emote-chip" key={emote} onClick={() => handleSendEmote(emote)}>
-            {emote}
-          </button>
-        ))}
       </div>
     </section>
   )

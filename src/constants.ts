@@ -85,7 +85,6 @@ export const STORAGE_KEYS = {
   authToken: 'fractured-arcanum.auth-token',
 }
 
-export const QUICK_EMOTES = ['⚡', '🔥', '✨', '🛡️', '😈']
 export const DECK_MAX_TOTAL_DISPLAY = 16
 
 export const AI_DIFFICULTY_OPTIONS: Array<{ id: 'auto' | AIDifficulty; label: string }> = [

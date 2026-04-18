@@ -115,7 +115,6 @@ export type AdminOverview = {
     matchesStarted: number
     matchesCompleted: number
     installs: number
-    emotes: number
     complaintsOpen: number
     complaintsResolved: number
     complaintsTotal: number

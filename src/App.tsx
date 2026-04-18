@@ -137,7 +137,7 @@ function App() {
   const [activeScreen, setActiveScreen] = useState<AppScreen>('home')
   const [preferredMode, setPreferredMode] = useState<GameMode>(savedMode)
   const [aiDifficultySetting, setAiDifficultySetting] = useState<'auto' | AIDifficulty>(savedAIDifficulty)
-  const [lobbyCode, setLobbyCode] = useState(() => makeLobbyCode())
+  const [, setLobbyCode] = useState(() => makeLobbyCode())
   const [game, setGame] = useState<GameState>(() => createGame(savedMode, savedDeckConfig, undefined, savedMode === 'ai' ? initialAIDifficulty : 'legend'))
   const [selectedAttacker, setSelectedAttacker] = useState<number | null>(null)
   const [queueState, setQueueState] = useState<QueueState>('idle')
@@ -748,14 +748,6 @@ function App() {
 
     socket.on('game:error', (payload: { error: string }) => {
       setToastMessage(payload.error)
-    })
-
-    socket.on('room:emote', (payload: { emote: string; from: string }) => {
-      setToastMessage(`${payload.from} reacts ${payload.emote}`)
-      setGame((current) => ({
-        ...current,
-        log: [`${payload.from} reacts ${payload.emote}`, ...current.log].slice(0, 10),
-      }))
     })
 
     // ─── Reconnect / disconnect events ──────────────────────────────
@@ -2328,25 +2320,6 @@ function App() {
     setSwUpdateAvailable(false)
   }
 
-  function handleSendEmote(emote: string) {
-    playSound('tap', soundEnabled)
-    pulseFeedback(10)
-    setToastMessage(`You react ${emote}`)
-    setGame((current) => ({
-      ...current,
-      log: [`${activePlayer.name} reacts ${emote}`, ...current.log].slice(0, 10),
-    }))
-    void sendAnalytics('emote', { emote }, 'social')
-
-    if (backendOnline && socketClientRef.current?.connected) {
-      socketClientRef.current.emit('room:emote', {
-        roomId: lobbyCode,
-        emote,
-        from: activePlayer.name,
-      })
-    }
-  }
-
   function handleStartQueue() {
     if (!deckReady) {
       setToastMessage('Finish your deck first so matchmaking can start.')
@@ -2637,7 +2610,7 @@ function App() {
     startMatch, handleQuickBattle, handleResumeBattle, handleAbandonBattle, handleLeaveBattle,
     handleModeChange, handleAIDifficultyChange,
     handlePlayCard, handleSelectAttacker, handleAttackTarget,
-    handleBurst, handleEndTurn, handleSendEmote,
+    handleBurst, handleEndTurn,
     // Social
     friends, onlineFriendIds, outgoingChallenge, incomingChallenge, challengeStatus,
     socialLoading, socialStatus, friendUsernameInput, setFriendUsernameInput,
