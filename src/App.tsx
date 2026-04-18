@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { io, type Socket } from 'socket.io-client'
 import { playSound } from './audio'
+import { setAmbientScene, type AmbientScene } from './ambient'
 import { feedback } from './feedback'
 import {
   type GameMode,
@@ -225,6 +226,7 @@ function AppShell() {
   const [featuredMode, setFeaturedMode] = useState('Ranked Blitz')
   const [, setMaintenanceMode] = useState(false)
   const [soundEnabled, setSoundEnabled] = useState(() => readStoredValue(STORAGE_KEYS.sound, true))
+  const [ambientEnabled, setAmbientEnabled] = useState(() => readStoredValue(STORAGE_KEYS.ambient, false))
   const [analyticsConsent, setAnalyticsConsent] = useState(() =>
     readStoredValue(STORAGE_KEYS.analyticsConsent, true),
   )
@@ -990,6 +992,7 @@ function AppShell() {
 
     window.localStorage.setItem(STORAGE_KEYS.deck, JSON.stringify(deckConfig))
     window.localStorage.setItem(STORAGE_KEYS.sound, JSON.stringify(soundEnabled))
+    window.localStorage.setItem(STORAGE_KEYS.ambient, JSON.stringify(ambientEnabled))
     window.localStorage.setItem(STORAGE_KEYS.mode, JSON.stringify(preferredMode))
     window.localStorage.setItem(STORAGE_KEYS.aiDifficulty, JSON.stringify(aiDifficultySetting))
     window.localStorage.setItem(STORAGE_KEYS.visitor, JSON.stringify(visitorId))
@@ -998,6 +1001,7 @@ function AppShell() {
   }, [
     deckConfig,
     soundEnabled,
+    ambientEnabled,
     preferredMode,
     aiDifficultySetting,
     visitorId,
@@ -1317,6 +1321,26 @@ function AppShell() {
       feedback('confirm', soundEnabled)
     }
   }, [queueState, soundEnabled])
+
+  // Phase 3V — drive the per-screen ambient bed. setAmbientScene fades the
+  // previous scene out and the new scene in; muting either toggle tears
+  // the active loop down. We only ambient on the 7 primary scenes — the
+  // setup/auth gates have no ambient bed.
+  useEffect(() => {
+    const ambientScene = (loggedIn ? activeScreen : null) as AmbientScene | null
+    setAmbientScene(ambientScene, soundEnabled && ambientEnabled)
+    return () => {
+      // No per-effect teardown — the next effect run handles the swap;
+      // unmount is handled below.
+    }
+  }, [activeScreen, soundEnabled, ambientEnabled, loggedIn])
+
+  useEffect(() => {
+    return () => {
+      // App unmount: stop ambient so HMR/dev tab close does not leak audio nodes.
+      setAmbientScene(null, false)
+    }
+  }, [])
 
   useEffect(() => {
     if (activeScreen === 'battle') {
@@ -2672,7 +2696,7 @@ function AppShell() {
     consumeLongPressAction, getLongPressProps,
     installPromptEvent, handleInstallApp,
     swUpdateAvailable, handleAcceptUpdate, handleDismissUpdate,
-    soundEnabled, setSoundEnabled, analyticsConsent, setAnalyticsConsent, visitorId,
+    soundEnabled, setSoundEnabled, ambientEnabled, setAmbientEnabled, analyticsConsent, setAnalyticsConsent, visitorId,
     // Live service
     backendOnline, dailyQuest, featuredMode,
     // Queue handlers (state lives in QueueProvider)

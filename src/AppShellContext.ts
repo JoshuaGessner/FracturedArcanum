@@ -123,6 +123,8 @@ export type AppShellContextValue = {
   handleDismissUpdate: () => void
   soundEnabled: boolean
   setSoundEnabled: React.Dispatch<React.SetStateAction<boolean>>
+  ambientEnabled: boolean
+  setAmbientEnabled: React.Dispatch<React.SetStateAction<boolean>>
   analyticsConsent: boolean
   setAnalyticsConsent: React.Dispatch<React.SetStateAction<boolean>>
   visitorId: string

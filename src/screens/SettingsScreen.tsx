@@ -7,6 +7,7 @@ export function SettingsScreen() {
   const {
     activeScreen,
     soundEnabled, setSoundEnabled,
+    ambientEnabled, setAmbientEnabled,
     analyticsConsent, setAnalyticsConsent,
     visitorId, featuredMode, backendOnline,
     complaintForm, setComplaintForm, complaintStatus, handleSubmitComplaint,
@@ -88,6 +89,31 @@ export function SettingsScreen() {
                 }}
               >
                 {soundEnabled ? 'Mute Arena Audio' : 'Enable Arena Audio'}
+              </button>
+            </div>
+          </div>
+
+          <div className="preference-tile">
+            <div className="section-head">
+              <div>
+                <h3>Ambient atmosphere</h3>
+                <p className="note">Subtle scene-by-scene background beds — wind, distant crowd, parchment hum, war drum. Off by default; needs Arena Audio enabled.</p>
+              </div>
+              <span className={`deck-status ${ambientEnabled && soundEnabled ? 'ready' : 'warning'}`}>
+                {!soundEnabled ? 'Audio muted' : ambientEnabled ? 'Playing' : 'Silent'}
+              </span>
+            </div>
+            <div className="controls">
+              <button
+                className={ambientEnabled ? 'secondary' : 'primary'}
+                disabled={!soundEnabled}
+                onClick={() => {
+                  const nextValue = !ambientEnabled
+                  setAmbientEnabled(nextValue)
+                  setToastMessage(nextValue ? 'Ambient scene loops enabled.' : 'Ambient scene loops disabled.')
+                }}
+              >
+                {ambientEnabled ? 'Disable Ambient Loops' : 'Enable Ambient Loops'}
               </button>
             </div>
           </div>
