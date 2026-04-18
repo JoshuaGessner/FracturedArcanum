@@ -1,48 +1,48 @@
-import { useApp } from '../useApp'
-import type { AppContextValue } from '../AppContext'
+import { useSocialState, type SocialStateValue } from './SocialProvider'
+import { useAppShellContext, type AppShellContextValue } from '../AppShellContext'
 
 /**
  * Friends, clan, trades, challenges, presence.
  *
- * See REFACTOR_PLAN.md Phase 1A — `src/contexts/SocialContext.tsx`.
+ * Composes `useSocialState()` (real provider) + handlers from AppShellContext.
  */
-export type SocialContextValue = Pick<
-  AppContextValue,
-  | 'friends'
-  | 'onlineFriendIds'
-  | 'outgoingChallenge'
-  | 'incomingChallenge'
-  | 'challengeStatus'
-  | 'socialLoading'
-  | 'socialStatus'
-  | 'friendUsernameInput'
-  | 'setFriendUsernameInput'
-  | 'clan'
-  | 'clanForm'
-  | 'setClanForm'
-  | 'handleAddFriend'
-  | 'handleRemoveFriend'
-  | 'handleChallengeFriend'
-  | 'handleAcceptChallenge'
-  | 'handleDeclineChallenge'
-  | 'handleCancelOutgoingChallenge'
-  | 'handleCreateClan'
-  | 'handleJoinClan'
-  | 'handleLeaveClan'
-  | 'trades'
-  | 'tradeStatus'
-  | 'tradeForm'
-  | 'setTradeForm'
-  | 'tradePickerDraft'
-  | 'setTradePickerDraft'
-  | 'tradeSubmitting'
-  | 'handleProposeTrade'
-  | 'handleTradeAction'
-  | 'addTradeChip'
-  | 'removeTradeChip'
-  | 'formatCountdown'
->
+export type SocialContextValue = SocialStateValue &
+  Pick<
+    AppShellContextValue,
+    | 'handleAddFriend'
+    | 'handleRemoveFriend'
+    | 'handleChallengeFriend'
+    | 'handleAcceptChallenge'
+    | 'handleDeclineChallenge'
+    | 'handleCancelOutgoingChallenge'
+    | 'handleCreateClan'
+    | 'handleJoinClan'
+    | 'handleLeaveClan'
+    | 'handleProposeTrade'
+    | 'handleTradeAction'
+    | 'addTradeChip'
+    | 'removeTradeChip'
+    | 'formatCountdown'
+  >
 
 export function useSocial(): SocialContextValue {
-  return useApp()
+  const social = useSocialState()
+  const shell = useAppShellContext()
+  return {
+    ...social,
+    handleAddFriend: shell.handleAddFriend,
+    handleRemoveFriend: shell.handleRemoveFriend,
+    handleChallengeFriend: shell.handleChallengeFriend,
+    handleAcceptChallenge: shell.handleAcceptChallenge,
+    handleDeclineChallenge: shell.handleDeclineChallenge,
+    handleCancelOutgoingChallenge: shell.handleCancelOutgoingChallenge,
+    handleCreateClan: shell.handleCreateClan,
+    handleJoinClan: shell.handleJoinClan,
+    handleLeaveClan: shell.handleLeaveClan,
+    handleProposeTrade: shell.handleProposeTrade,
+    handleTradeAction: shell.handleTradeAction,
+    addTradeChip: shell.addTradeChip,
+    removeTradeChip: shell.removeTradeChip,
+    formatCountdown: shell.formatCountdown,
+  }
 }

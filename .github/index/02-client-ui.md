@@ -1,20 +1,19 @@
 # Client UI Index
 
 The client UI was extracted from a 5,188-line monolith into a root file plus
-screens/components/types/constants/utils modules. App-wide state currently
-lives in `AppShell` and is exposed through `<AppContext.Provider>`. Screens
-consume **typed slice hooks** from `src/contexts/` (`useGame`, `useProfile`,
-`useSocial`, `useQueue`, `useAppShell`); the legacy `useApp()` hook still
-exists for back-compat but no screen imports it directly anymore.
+screens/components/types/constants/utils modules. Shared shell concerns now
+live in `AppShell` and are exposed through a slim `<AppShellContext.Provider>`.
+Game/profile/social/queue state lives in real providers above `AppShell`, and
+screens consume **typed slice hooks** from `src/contexts/` (`useGame`,
+`useProfile`, `useSocial`, `useQueue`, `useAppShell`).
 
 ## File Structure
 
 ```
 src/
-├── App.tsx                    (2,889 lines)  App = thin wrapper; AppShell = state+effects+handlers+provider+JSX
-├── AppContext.ts              (275)          AppContextValue type + createContext (mega-type, slated for retirement)
-├── useApp.ts                  (10)           useApp() hook (legacy facade)
-├── contexts/                                Phase 1A typed slice hooks (delegate to useApp() until real providers land)
+├── App.tsx                    (2,800+ lines) App = provider tree; AppShell = effects+handlers+refs+provider+JSX
+├── AppShellContext.ts         (200+ lines)   Slim AppShellContextValue type + createContext
+├── contexts/                                Real providers + stable slice hooks
 │   ├── index.ts
 │   ├── QueueProvider.tsx      — ✅ Phase 1F: real provider above AppShell (state + countdown + liveQueueLabel)
 │   ├── ProfileProvider.tsx    — ✅ Phase 1D: real provider above AppShell (decks, collection, pack-shop state)
@@ -57,14 +56,14 @@ src/
 
 Two components:
 
-- **`App`** — thin wrapper, currently just `() => <AppShell />`. Future Phase
-  1C–1F provider extractions will wrap `<AppShell />` in nested providers
-  here without touching AppShell's body.
-- **`AppShell`** — owns ALL state via `useState`/`useRef`, ALL effects, ALL
-  handler functions. Just before its JSX return it builds an `AppContextValue`
-  object literal and wraps the entire `<main>` tree in
-  `<AppContext.Provider value={appCtx}>`. Screens consume that context via
-  the typed slice hooks in `src/contexts/`.
+- **`App`** — thin wrapper that assembles the provider tree:
+  `<QueueProvider><ProfileProvider><SocialProvider><GameProvider><AppShell/></GameProvider></SocialProvider></ProfileProvider></QueueProvider>`.
+- **`AppShell`** — owns cross-cutting `useState`/`useRef`, effects, and
+  handler functions. Just before its JSX return it builds an
+  `AppShellContextValue` object literal and wraps the `<main>` tree in
+  `<AppShellContext.Provider value={appCtx}>`. Screens consume typed slices
+  from `src/contexts/`, which now compose the real providers with this slim
+  shell context.
 
 ### Imports (Lines 1–62)
 - React hooks + `FormEvent` type
@@ -105,27 +104,27 @@ Two components:
 ### JSX Render Tree (Lines ~2596–3008)
 
 ```
-<AppContext.Provider value={appCtx}>
+<AppShellContext.Provider value={appCtx}>
   <main>
     <ToastStack toasts={toastStack} />
     <ConfirmModal ... />
-    <CardInspectModal ... />              (when inspectedCard set)
+    <CardInspectModal ... />
     <TopBar ... />
     <BattleIntroOverlay ... />
     <RewardOverlay ... />
 
     {loggedIn && (<>
-      <HomeScreen />          ← reads useApp()
-      <PlayScreen />          ← reads useApp()
-      <CollectionScreen />    ← reads useApp()
-      <BattleScreen />        ← reads useApp()
-      <SocialScreen />        ← reads useApp()
-      <ShopScreen />          ← reads useApp()
-      <SettingsScreen />      ← reads useApp()
+      <HomeScreen />          ← reads useAppShell()/useProfile()
+      <PlayScreen />          ← reads useGame()/useQueue()
+      <CollectionScreen />    ← reads useProfile()/useGame()
+      <BattleScreen />        ← reads useGame()
+      <SocialScreen />        ← reads useSocial()/useProfile()
+      <ShopScreen />          ← reads useProfile()
+      <SettingsScreen />      ← reads useAppShell()
       <NavBar activeScreen={activeScreen} ... />
     </>)}
   </main>
-</AppContext.Provider>
+</AppShellContext.Provider>
 ```
 
 All screens stay mounted; only the active one is visible (CSS class toggle).
@@ -211,12 +210,11 @@ Small reusable UI primitives. All prop-driven, no app state.
 
 ---
 
-## `src/AppContext.ts` + `src/useApp.ts`
+## `src/AppShellContext.ts`
 
-- **`AppContext.ts`** — declares the `AppContextValue` type (every state slice and handler exposed to screens) and creates the React context. The type is grouped by domain: auth/setup, profile, decks/collection, cosmetics/shop, navigation/UI shell, live service, queue/matchmaking, battle/game, social, trading, settings/admin/complaints.
-- **`useApp.ts`** — a tiny `useApp()` hook that reads the context and throws if used outside `<AppContext.Provider>`.
-
-App.tsx is the sole provider. Each screen imports `useApp` and pulls only the keys it needs. The split into 2 files (type+context, hook) is required by ESLint's `react-refresh/only-export-components` rule.
+- **`AppShellContext.ts`** — declares the slim `AppShellContextValue` type for the concerns that still genuinely belong to `AppShell`: auth/setup, navigation/UI shell, live-service banners, complaints/admin, plus cross-provider handlers and derived values.
+- Game/profile/social/queue runtime state now lives in their dedicated provider files under `src/contexts/`.
+- The slice hooks are the public screen API; no legacy `useApp()` facade remains.
 
 ---
 

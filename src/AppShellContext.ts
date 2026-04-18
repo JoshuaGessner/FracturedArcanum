@@ -1,4 +1,4 @@
-import { createContext, type FormEvent } from 'react'
+import { createContext, useContext, type FormEvent } from 'react'
 import type { GameMode, AIDifficulty, DeckConfig, GameState } from './game'
 import type {
   AdminAuditEntry,
@@ -7,35 +7,37 @@ import type {
   AdminUser,
   AppScreen,
   AuthScreen,
-  BattleKind,
   CardBorder,
-  CardCollection,
   ComplaintFormState,
   ConfirmOptions,
   ConfirmRequest,
   CosmeticTheme,
-  IncomingChallenge,
   InspectedCard,
   InstallPromptEvent,
-  LeaderboardEntry,
-  OpenedPackCard,
-  OpponentProfile,
-  OutgoingChallenge,
-  PackOffer,
-  QueuePresence,
-  QueueSearchStatus,
-  QueueState,
   ServerProfile,
   SavedDeck,
-  SocialClan,
-  SocialFriend,
   ToastEntry,
   ToastSeverity,
-  Trade,
-  TradeItem,
 } from './types'
 
-export type AppContextValue = {
+/**
+ * Phase 1H — slim AppShellContext.
+ *
+ * After Phase 1C–1F extracted state into real providers (Game, Profile,
+ * Social, Queue), the only things still owned by `AppShell` are:
+ *
+ *   - Auth + setup forms
+ *   - Derived profile values (rank label, win rate, daily-claim flags…)
+ *   - Cross-cutting handlers that span multiple providers
+ *   - Navigation, toast, confirm dialog, PWA, sound, analytics
+ *   - Admin / complaint surfaces
+ *   - Derived game presentation (active player, turn predicates, etc.)
+ *
+ * Everything else lives in its dedicated provider. Slice hooks
+ * (`useGame`, `useProfile`, `useSocial`, `useQueue`) compose the relevant
+ * provider hook with this context.
+ */
+export type AppShellContextValue = {
   // ─── Auth / setup ──────────────────────────────────────────────
   authToken: string
   setAuthToken: (value: string) => void
@@ -55,7 +57,7 @@ export type AppContextValue = {
   handleAuth: (event: FormEvent) => Promise<void>
   handleLogout: () => void
 
-  // ─── Profile ───────────────────────────────────────────────────
+  // ─── Derived profile (owned by AppShell, sourced from serverProfile) ──
   serverProfile: ServerProfile | null
   setServerProfile: React.Dispatch<React.SetStateAction<ServerProfile | null>>
   runes: number
@@ -79,21 +81,11 @@ export type AppContextValue = {
   canClaimDailyReward: boolean
   totalOwnedCards: number
 
-  // ─── Decks / collection ────────────────────────────────────────
-  collection: CardCollection
-  setCollection: React.Dispatch<React.SetStateAction<CardCollection>>
-  deckConfig: DeckConfig
-  setDeckConfig: React.Dispatch<React.SetStateAction<DeckConfig>>
+  // ─── Deck/collection handlers + derived (state in ProfileProvider) ────
   selectedDeckSize: number
   deckReady: boolean
   savedDecks: SavedDeck[]
   activeDeckId: string | null
-  builderFilter: { ownedOnly: boolean; search: string; rarity: 'all' | 'common' | 'rare' | 'epic' | 'legendary' }
-  setBuilderFilter: React.Dispatch<
-    React.SetStateAction<{ ownedOnly: boolean; search: string; rarity: 'all' | 'common' | 'rare' | 'epic' | 'legendary' }>
-  >
-  pendingBreakdown: { cardId: string; qty: number } | null
-  setPendingBreakdown: (value: { cardId: string; qty: number } | null) => void
   handleCreateDeck: () => void
   handleRenameDeck: (deck: SavedDeck) => void
   handleDeleteDeck: (deck: SavedDeck) => void
@@ -101,19 +93,15 @@ export type AppContextValue = {
   handleBreakdownCard: (cardId: string, qty: number) => void
   handleDeckCount: (cardId: string, delta: number) => void
 
-  // ─── Cosmetics / shop ──────────────────────────────────────────
-  packOffers: PackOffer[]
-  openedPackCards: OpenedPackCard[]
-  packOpening: string | null
+  // ─── Cosmetics / shop handlers (state in ProfileProvider) ─────────────
   handleOpenPack: (packType: string) => Promise<void>
   handlePurchaseBorder: (borderId: CardBorder, cost: number) => void
   handleSelectBorder: (borderId: CardBorder) => void
   handleEquipTheme: (themeId: CosmeticTheme, cost: number) => void
   handleClaimDailyReward: () => void
 
-  // ─── Navigation / UI shell ─────────────────────────────────────
+  // ─── Navigation / UI shell ────────────────────────────────────────────
   activeScreen: AppScreen
-
   openScreen: (screen: AppScreen) => void
   screenTitle: string
   toastMessage: string
@@ -126,8 +114,6 @@ export type AppContextValue = {
   setConfirmTextInput: (value: string) => void
   askConfirm: (options: ConfirmOptions) => Promise<boolean>
   closeConfirm: (ok: boolean) => void
-  inspectedCard: InspectedCard | null
-  setInspectedCard: (card: InspectedCard | null) => void
   consumeLongPressAction: () => boolean
   getLongPressProps: (card: InspectedCard) => Record<string, unknown>
   installPromptEvent: InstallPromptEvent | null
@@ -141,45 +127,21 @@ export type AppContextValue = {
   setAnalyticsConsent: React.Dispatch<React.SetStateAction<boolean>>
   visitorId: string
 
-  // ─── Live service info ─────────────────────────────────────────
+  // ─── Live service info ────────────────────────────────────────────────
   backendOnline: boolean
-
   dailyQuest: string
   featuredMode: string
 
-  // ─── Queue / matchmaking ───────────────────────────────────────
-  queueState: QueueState
-  queueSeconds: number
-  queuedOpponent: OpponentProfile | null
-  queuePresence: QueuePresence
-  queueSearchStatus: QueueSearchStatus
-  liveQueueLabel: string
-  leaderboardEntries: LeaderboardEntry[]
+  // ─── Queue handlers (state in QueueProvider) ──────────────────────────
   handleStartQueue: () => void
   handleCancelQueue: () => void
   handleAcceptQueue: () => void
 
-  // ─── Battle / game ─────────────────────────────────────────────
-  game: GameState
-  battleKind: BattleKind
+  // ─── Battle handlers + derived (state in GameProvider) ────────────────
   isRankedBattle: boolean
   isLocalPassBattle: boolean
-  battleSessionActive: boolean
-  serverBattleActive: boolean
   hasBattleInProgress: boolean
   gameInProgress: boolean
-  selectedAttacker: number | null
-  enemyTurnActive: boolean
-  enemyTurnLabel: string
-  battleIntroVisible: boolean
-  rewardOverlayVisible: boolean
-  setRewardOverlayVisible: (value: boolean) => void
-  damagedSlots: Set<string>
-  opponentDisconnected: boolean
-  disconnectGraceMs: number
-  preferredMode: GameMode
-  setPreferredMode: React.Dispatch<React.SetStateAction<GameMode>>
-  aiDifficultySetting: 'auto' | AIDifficulty
   resolvedAIDifficulty: AIDifficulty
   activePlayer: GameState['player']
   defendingPlayer: GameState['player']
@@ -199,22 +161,10 @@ export type AppContextValue = {
   handleBurst: () => void
   handleEndTurn: () => void
 
-  // ─── Social ────────────────────────────────────────────────────
-  friends: SocialFriend[]
-  onlineFriendIds: Set<string>
-  outgoingChallenge: OutgoingChallenge | null
-  incomingChallenge: IncomingChallenge | null
-  challengeStatus: string
-  socialLoading: boolean
-  socialStatus: string
-  friendUsernameInput: string
-  setFriendUsernameInput: (value: string) => void
-  clan: SocialClan | null
-  clanForm: { name: string; tag: string; inviteCode: string }
-  setClanForm: React.Dispatch<React.SetStateAction<{ name: string; tag: string; inviteCode: string }>>
+  // ─── Social handlers (state in SocialProvider) ────────────────────────
   handleAddFriend: (event: FormEvent<HTMLFormElement>) => Promise<void>
   handleRemoveFriend: (friendAccountId: string, displayName: string) => Promise<void>
-  handleChallengeFriend: (friend: SocialFriend) => void
+  handleChallengeFriend: (friend: import('./types').SocialFriend) => void
   handleAcceptChallenge: () => void
   handleDeclineChallenge: () => void
   handleCancelOutgoingChallenge: () => void
@@ -222,25 +172,14 @@ export type AppContextValue = {
   handleJoinClan: (event: FormEvent<HTMLFormElement>) => Promise<void>
   handleLeaveClan: () => Promise<void>
 
-  // ─── Trading ───────────────────────────────────────────────────
-  trades: Trade[]
-  tradeStatus: string
-  tradeForm: { toAccountId: string; offer: TradeItem[]; request: TradeItem[] }
-  setTradeForm: React.Dispatch<
-    React.SetStateAction<{ toAccountId: string; offer: TradeItem[]; request: TradeItem[] }>
-  >
-  tradePickerDraft: { side: 'offer' | 'request'; cardId: string; qty: number }
-  setTradePickerDraft: React.Dispatch<
-    React.SetStateAction<{ side: 'offer' | 'request'; cardId: string; qty: number }>
-  >
-  tradeSubmitting: boolean
+  // ─── Trading handlers (state in SocialProvider) ───────────────────────
   handleProposeTrade: (event: FormEvent<HTMLFormElement>) => Promise<void>
   handleTradeAction: (tradeId: string, action: 'accept' | 'reject' | 'cancel') => Promise<void>
   addTradeChip: () => void
   removeTradeChip: (side: 'offer' | 'request', cardId: string) => void
   formatCountdown: (targetMs: number) => string
 
-  // ─── Settings / admin / complaints ─────────────────────────────
+  // ─── Settings / admin / complaints ────────────────────────────────────
   complaintForm: ComplaintFormState
   setComplaintForm: React.Dispatch<React.SetStateAction<ComplaintFormState>>
   complaintStatus: string
@@ -271,4 +210,13 @@ export type AppContextValue = {
   handleUpdateComplaintStatus: (id: string, status: string) => Promise<void>
 }
 
-export const AppContext = createContext<AppContextValue | null>(null)
+export const AppShellContext = createContext<AppShellContextValue | null>(null)
+
+/** Read the current AppShell context. Throws if used outside the provider. */
+export function useAppShellContext(): AppShellContextValue {
+  const ctx = useContext(AppShellContext)
+  if (!ctx) {
+    throw new Error('useAppShellContext must be used within <AppShellContext.Provider>')
+  }
+  return ctx
+}

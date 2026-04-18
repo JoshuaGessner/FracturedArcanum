@@ -53,7 +53,7 @@ import { HomeScreen } from './screens/HomeScreen'
 import { PlayScreen } from './screens/PlayScreen'
 import { SocialScreen } from './screens/SocialScreen'
 import { BattleScreen } from './screens/BattleScreen'
-import { AppContext, type AppContextValue } from './AppContext'
+import { AppShellContext, type AppShellContextValue } from './AppShellContext'
 import type {
   AdminAuditEntry,
   AdminOverview,
@@ -141,13 +141,12 @@ function AppShell() {
   const {
     savedDecks, setSavedDecks,
     activeDeckId, setActiveDeckId,
-    builderFilter, setBuilderFilter,
-    pendingBreakdown, setPendingBreakdown,
+    setPendingBreakdown,
     deckConfig, setDeckConfig,
     collection, setCollection,
-    packOffers, setPackOffers,
-    openedPackCards, setOpenedPackCards,
-    packOpening, setPackOpening,
+    setPackOffers,
+    setOpenedPackCards,
+    setPackOpening,
   } = useProfileState()
 
   // ─── Local screen-shell state ─────────────────────────────────────────
@@ -164,41 +163,40 @@ function AppShell() {
     battleSessionActive, setBattleSessionActive,
     serverBattleActive, setServerBattleActive,
     enemyTurnActive, setEnemyTurnActive,
-    enemyTurnLabel, setEnemyTurnLabel,
-    opponentDisconnected, setOpponentDisconnected,
-    disconnectGraceMs, setDisconnectGraceMs,
+    setEnemyTurnLabel,
+    setOpponentDisconnected,
+    setDisconnectGraceMs,
     battleIntroVisible, setBattleIntroVisible,
     rewardOverlayVisible, setRewardOverlayVisible,
-    damagedSlots, setDamagedSlots,
+    setDamagedSlots,
     inspectedCard, setInspectedCard,
   } = useGameState()
   // Phase 1F — queue state lives in QueueProvider above AppShell.
   const {
     queueState, setQueueState,
-    queueSeconds, setQueueSeconds,
+    setQueueSeconds,
     queuedOpponent, setQueuedOpponent,
     queuePresence, setQueuePresence,
-    queueSearchStatus, setQueueSearchStatus,
-    leaderboardEntries, setLeaderboardEntries,
-    liveQueueLabel,
+    setQueueSearchStatus,
+    setLeaderboardEntries,
   } = useQueueState()
   // ─── Phase 1E — social/trade/challenge state lives in SocialProvider ──
   const {
-    friends, setFriends,
-    onlineFriendIds, setOnlineFriendIds,
+    setFriends,
+    setOnlineFriendIds,
     outgoingChallenge, setOutgoingChallenge,
     incomingChallenge, setIncomingChallenge,
-    challengeStatus, setChallengeStatus,
-    trades, setTrades,
+    setChallengeStatus,
+    setTrades,
     tradesTick, setTradesTick,
-    tradeStatus, setTradeStatus,
+    setTradeStatus,
     tradeForm, setTradeForm,
     tradePickerDraft, setTradePickerDraft,
     tradeSubmitting, setTradeSubmitting,
     nowTick,
-    clan, setClan,
-    socialLoading, setSocialLoading,
-    socialStatus, setSocialStatus,
+    setClan,
+    setSocialLoading,
+    setSocialStatus,
     friendUsernameInput, setFriendUsernameInput,
     clanForm, setClanForm,
   } = useSocialState()
@@ -2580,63 +2578,50 @@ function AppShell() {
     })
   }
 
-  const appCtx: AppContextValue = {
+  const appCtx: AppShellContextValue = {
     // Auth / setup
     authToken, setAuthToken, authScreen, setAuthScreen, authForm, setAuthForm,
     authError, authLoading, loggedIn,
     setupRequired, setupForm, setSetupForm, setupError, setupLoading,
     handleSetup, handleAuth, handleLogout,
-    // Profile
+    // Profile (derived; raw state lives in AppShell)
     serverProfile, setServerProfile, runes, seasonRating, record,
     ownedThemes, selectedTheme, ownedCardBorders, selectedCardBorder,
     lastDailyClaim, accountRole, isAdminRole, isOwnerRole,
     rankLabel, totalGames, winRate, rankProgress, nextRankTarget, nextRewardLabel,
     todayKey, canClaimDailyReward, totalOwnedCards,
-    // Decks / collection
-    collection, setCollection, deckConfig, setDeckConfig, selectedDeckSize, deckReady,
-    savedDecks, activeDeckId, builderFilter, setBuilderFilter,
-    pendingBreakdown, setPendingBreakdown,
+    // Deck / collection handlers + derived (state lives in ProfileProvider)
+    selectedDeckSize, deckReady, savedDecks, activeDeckId,
     handleCreateDeck, handleRenameDeck, handleDeleteDeck, handleSelectDeck,
     handleBreakdownCard, handleDeckCount,
-    // Cosmetics / shop
-    packOffers, openedPackCards, packOpening,
+    // Cosmetics / shop handlers (state lives in ProfileProvider)
     handleOpenPack, handlePurchaseBorder, handleSelectBorder, handleEquipTheme, handleClaimDailyReward,
     // Navigation / UI shell
     activeScreen, openScreen, screenTitle,
     toastMessage, toastSeverity, toastStack, setToastMessage, inferToastSeverity,
     confirmRequest, confirmTextInput, setConfirmTextInput, askConfirm, closeConfirm,
-    inspectedCard, setInspectedCard, consumeLongPressAction, getLongPressProps,
+    consumeLongPressAction, getLongPressProps,
     installPromptEvent, handleInstallApp,
     swUpdateAvailable, handleAcceptUpdate, handleDismissUpdate,
     soundEnabled, setSoundEnabled, analyticsConsent, setAnalyticsConsent, visitorId,
     // Live service
     backendOnline, dailyQuest, featuredMode,
-    // Queue
-    queueState, queueSeconds, queuedOpponent, queuePresence, queueSearchStatus,
-    liveQueueLabel, leaderboardEntries,
+    // Queue handlers (state lives in QueueProvider)
     handleStartQueue, handleCancelQueue, handleAcceptQueue,
-    // Battle
-    game, battleKind, isRankedBattle, isLocalPassBattle,
-    battleSessionActive, serverBattleActive, hasBattleInProgress, gameInProgress,
-    selectedAttacker, enemyTurnActive, enemyTurnLabel,
-    battleIntroVisible, rewardOverlayVisible, setRewardOverlayVisible,
-    damagedSlots, opponentDisconnected, disconnectGraceMs,
-    preferredMode, setPreferredMode, aiDifficultySetting, resolvedAIDifficulty,
+    // Battle handlers + derived (state lives in GameProvider)
+    isRankedBattle, isLocalPassBattle, hasBattleInProgress, gameInProgress,
+    resolvedAIDifficulty,
     activePlayer, defendingPlayer, isMyTurn, defenderHasGuard, activeBoardHasOpenLane,
     startMatch, handleQuickBattle, handleResumeBattle, handleAbandonBattle, handleLeaveBattle,
     handleModeChange, handleAIDifficultyChange,
     handlePlayCard, handleSelectAttacker, handleAttackTarget,
     handleBurst, handleEndTurn,
-    // Social
-    friends, onlineFriendIds, outgoingChallenge, incomingChallenge, challengeStatus,
-    socialLoading, socialStatus, friendUsernameInput, setFriendUsernameInput,
-    clan, clanForm, setClanForm,
+    // Social handlers (state lives in SocialProvider)
     handleAddFriend, handleRemoveFriend, handleChallengeFriend,
     handleAcceptChallenge, handleDeclineChallenge, handleCancelOutgoingChallenge,
     handleCreateClan, handleJoinClan, handleLeaveClan,
-    // Trading
-    trades, tradeStatus, tradeForm, setTradeForm, tradePickerDraft, setTradePickerDraft,
-    tradeSubmitting, handleProposeTrade, handleTradeAction,
+    // Trading handlers (state lives in SocialProvider)
+    handleProposeTrade, handleTradeAction,
     addTradeChip, removeTradeChip, formatCountdown,
     // Settings / admin / complaints
     complaintForm, setComplaintForm, complaintStatus, handleSubmitComplaint,
@@ -2650,7 +2635,7 @@ function AppShell() {
   }
 
   return (
-    <AppContext.Provider value={appCtx}>
+    <AppShellContext.Provider value={appCtx}>
     <main className={`app-shell theme-${selectedTheme}`}>
       {/* ─── Floating toast stack (auto-fading) ──────────────────────── */}
       <ToastStack toasts={toastStack} />
@@ -2882,7 +2867,7 @@ function AppShell() {
       <NavBar activeScreen={activeScreen} onNavigate={openScreen} />
       </>)}
     </main>
-    </AppContext.Provider>
+    </AppShellContext.Provider>
   )
 }
 

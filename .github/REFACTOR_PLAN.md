@@ -1055,8 +1055,8 @@ After all phases complete, verify:
 | **1E** | Move SocialContext state + handlers | Medium | AppShell.tsx, contexts/SocialContext.tsx | ✅ done (friends/clan/challenges/trades + nowTick timer moved into SocialProvider; handlers stay in AppShell) |
 | **1F** | Move QueueContext state + handlers | Low | AppShell.tsx, contexts/QueueContext.tsx | ✅ done (state + countdown timer + liveQueueLabel moved into QueueProvider; handlers stay in AppShell) |
 | **1G** | Remove quick-emote feature (UI, handler, socket, constants, CSS) | Low | HomeScreen, App.tsx, AppContext.ts, constants.ts, server.js, App.css | ✅ done |
-| **1H** | Wire providers in App.tsx, update useApp facade | Medium | App.tsx, useApp.ts, AppContext.ts | pending |
-| **1I** | Delete old AppContext.ts, verify build/test/lint | Low | -1 file | pending |
+| **1H** | Wire providers in App.tsx, replace facade with AppShellContext composition | Medium | App.tsx, contexts/*, AppShellContext.ts | ✅ done (slice hooks now compose real providers + slim AppShellContext) |
+| **1I** | Delete old AppContext.ts/useApp.ts, verify build/test/lint | Low | -2 files | ✅ done (build + lint + 45 tests green) |
 | **2A** | Update AppScreen type to 7 values | Low | types.ts, NavBar, App.tsx |
 | **2B1** | OpsScreen → SettingsScreen | Low | rename + update refs |
 | **2B2** | VaultScreen → ShopScreen | Low | rename + update refs |

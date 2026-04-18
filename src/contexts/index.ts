@@ -1,13 +1,10 @@
 /**
- * Phase 1A — context split (facade phase).
+ * Phase 1 complete — provider-backed slice hooks.
  *
- * These hooks expose typed *slices* of the existing monolithic AppContext.
- * They currently just call `useApp()` and let TypeScript narrow the return
- * value. The runtime is unchanged.
- *
- * Future sessions will replace each facade with a real Provider that owns
- * its own state. Screens that consume the slice hooks will keep working
- * unchanged through that migration, because the public hook API is stable.
+ * These hooks are the stable public API for screens. Each slice now composes
+ * the relevant real provider state (Game/Profile/Social/Queue) with the slim
+ * AppShellContext for cross-cutting handlers, navigation, toasts, auth, and
+ * admin concerns.
  */
 
 export type { GameContextValue } from './useGame'

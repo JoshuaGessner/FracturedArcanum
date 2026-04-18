@@ -13,10 +13,9 @@
 
 | File | Lines | Role |
 |------|-------|------|
-| `src/App.tsx` | 2,889 | `App` (thin wrapper) + `AppShell` (state, effects, handlers, context provider, screen wiring) |
-| `src/AppContext.ts` | 274 | Shared `AppContext` + `AppContextValue` mega-type (slated for retirement during Phase 1C–1F) |
-| `src/useApp.ts` | 10 | `useApp()` legacy hook (still used internally by slice hooks) |
-| `src/contexts/*.ts` | 16–97 each | Phase 1A typed slice hooks (`useGame`, `useProfile`, `useSocial`, `useQueue`, `useAppShell`) |
+| `src/App.tsx` | 2,800+ | `App` (provider tree) + `AppShell` (effects, handlers, refs, slim shared context, screen wiring) |
+| `src/AppShellContext.ts` | 200+ | Slim shared AppShell context for auth, nav, toasts, admin, cross-provider handlers |
+| `src/contexts/*.ts(x)` | 16–190 each | Real provider modules + typed slice hooks (`useGame`, `useProfile`, `useSocial`, `useQueue`, `useAppShell`) |
 | `src/game.ts` | 1,410 | Game engine — types, cards, combat, AI |
 | `src/types.ts` | 252 | UI-only TypeScript types (auth, social, admin, etc.) |
 | `src/constants.ts` | 182 | UI constants — themes, borders, decks, presets, labels |

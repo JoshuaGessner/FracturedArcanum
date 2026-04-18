@@ -47,7 +47,7 @@ A detailed code index lives in `.github/index/`. **Consult it before writing or 
 - Keep sound effects and haptic feedback in handler functions, not in effects.
 - App-level state, effects, and handlers live in the `AppShell` component inside `src/App.tsx` (the outer `App` is just a thin wrapper). Screens (`src/screens/*`) consume that state via the typed slice hooks in `src/contexts/` (`useGame`, `useProfile`, `useSocial`, `useQueue`, `useAppShell`). Shared components (`src/components/*`) remain prop-driven. Do not introduce app state inside screens or components.
 - New shared UI primitives go in `src/components/`. New full screens go in `src/screens/` (and must be wired into AppShell's screen-panel switch and read state via the appropriate slice hooks from `src/contexts/`).
-- When adding new app-wide state in App.tsx, also add the corresponding key to `AppContextValue` in `src/AppContext.ts` and include it in the `appCtx` object literal in App.tsx.
+- When adding new shared AppShell state in App.tsx, add the corresponding key to `AppShellContextValue` in `src/AppShellContext.ts` and include it in the `appCtx` object literal in App.tsx. Prefer the dedicated Game/Profile/Social/Queue providers when the state belongs to one domain.
 - Pure helpers belong in `src/utils.ts`. Static UI data (themes, presets, labels) belongs in `src/constants.ts`.
 
 ### Game Engine Rules
@@ -91,10 +91,9 @@ A detailed code index lives in `.github/index/`. **Consult it before writing or 
 | File | Lines | Role | Edit Rules |
 |------|-------|------|------------|
 | `src/game.ts` | 1,410 | Game engine — single source of truth for all mechanics | Pure functions only. After edit: `npm run build:engine` |
-| `src/App.tsx` | 2,889 | `App` (provider tree: `<QueueProvider><ProfileProvider><SocialProvider><GameProvider><AppShell/></GameProvider></SocialProvider></ProfileProvider></QueueProvider>`) + `AppShell` (effects, handlers, refs, builds AppContextValue, provides via `<AppContext.Provider>`) | All AppShell-owned refs/handlers live in AppShell. Queue/Profile/Social/Game state live in their respective providers. Screens read all slices via hooks from `src/contexts/`. |
-| `src/contexts/*.ts(x)` | 16–190 each | Phase 1A typed slice hooks: `useGame`, `useProfile`, `useSocial`, `useQueue`, `useAppShell` + Phase 1C `GameProvider` + Phase 1D `ProfileProvider` + Phase 1E `SocialProvider` + Phase 1F `QueueProvider` | Screens import slice hooks. AppShell uses internal `useGameState()` / `useProfileState()` / `useSocialState()` / `useQueueState()` from providers for setters. |
-| `src/AppContext.ts` | 275 | `AppContextValue` mega-type + `createContext` (slated for retirement during Phase 1C–1F) | Update when adding shared state |
-| `src/useApp.ts` | 10 | `useApp()` legacy hook — still used internally by slice hooks | |
+| `src/App.tsx` | 2,800+ | `App` (provider tree: `<QueueProvider><ProfileProvider><SocialProvider><GameProvider><AppShell/></GameProvider></SocialProvider></ProfileProvider></QueueProvider>`) + `AppShell` (effects, handlers, refs, builds `AppShellContextValue`, provides via `<AppShellContext.Provider>`) | All AppShell-owned refs/handlers live in AppShell. Queue/Profile/Social/Game state live in their respective providers. Screens read all slices via hooks from `src/contexts/`. |
+| `src/contexts/*.ts(x)` | 16–190 each | Real provider modules + typed slice hooks: `useGame`, `useProfile`, `useSocial`, `useQueue`, `useAppShell` + `GameProvider` + `ProfileProvider` + `SocialProvider` + `QueueProvider` | Screens import slice hooks. AppShell uses internal `useGameState()` / `useProfileState()` / `useSocialState()` / `useQueueState()` from providers for setters. |
+| `src/AppShellContext.ts` | 200+ | Slim `AppShellContextValue` + `createContext` for auth/nav/toasts/admin and cross-provider handlers | Update when adding shared AppShell-only state |
 | `src/types.ts` | 252 | UI-only TypeScript types | Add new UI types here |
 | `src/constants.ts` | 182 | Static UI constants (themes, presets, labels) | No functions — data only |
 | `src/utils.ts` | 134 | Pure helper functions | No React, no app state |
