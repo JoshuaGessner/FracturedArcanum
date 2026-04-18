@@ -9,6 +9,7 @@
   "orientation": "portrait",
   "lang": "en",
   "categories": ["games", "entertainment"],
+  "prefer_related_applications": false,
   "background_color": "#0b1020",
   "theme_color": "#0b1020",
   "icons": [
@@ -34,18 +35,6 @@
       "src": "/fractured-arcanum-icon-maskable-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "maskable"
-    },
-    {
-      "src": "/fractured-arcanum-icon-512.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any"
-    },
-    {
-      "src": "/fractured-arcanum-icon-maskable.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
       "purpose": "maskable"
     }
   ]

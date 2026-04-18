@@ -214,6 +214,7 @@ function AppShell() {
   const [visitorId] = useState(() => readStoredValue(STORAGE_KEYS.visitor, createAnonymousId()))
   const [sessionId] = useState(() => `session-${Math.random().toString(36).slice(2, 10)}`)
   const [installPromptEvent, setInstallPromptEvent] = useState<InstallPromptEvent | null>(null)
+  const [showIosInstallHelp, setShowIosInstallHelp] = useState(false)
   const [toastMessage, setToastMessageRaw] = useState('Ready your deck and enter the arena.')
   const [toastSeverity, setToastSeverity] = useState<'info' | 'success' | 'warning' | 'error'>('info')
   type ToastEntry = { id: string; message: string; severity: 'info' | 'success' | 'warning' | 'error' }
@@ -1219,6 +1220,17 @@ function AppShell() {
       })
       .catch(() => setToastMessage('Could not equip border.'))
   }
+
+  useEffect(() => {
+    const nav = navigator as Navigator & { standalone?: boolean }
+    const isIosDevice =
+      /iphone|ipad|ipod/i.test(window.navigator.userAgent) ||
+      (window.navigator.platform === 'MacIntel' && window.navigator.maxTouchPoints > 1)
+    const isStandalone =
+      window.matchMedia('(display-mode: standalone)').matches || nav.standalone === true
+
+    setShowIosInstallHelp(isIosDevice && !isStandalone)
+  }, [])
 
   useEffect(() => {
     const handleBeforeInstall = (event: Event) => {
@@ -2304,6 +2316,9 @@ function AppShell() {
 
   async function handleInstallApp() {
     if (!installPromptEvent) {
+      if (showIosInstallHelp) {
+        setToastMessage('On iPhone/iPad: tap Share, then choose “Add to Home Screen.”')
+      }
       return
     }
 
@@ -2652,7 +2667,11 @@ function AppShell() {
       {setupRequired && (
         <div className="auth-gate">
           <div className="auth-card">
-            <img className="brand-logo" src="/fractured-arcanum-logo.svg" alt="Fractured Arcanum" />
+            <img
+              className="brand-logo"
+              src="/fractured-arcanum-icon-192.png"
+              alt="Fractured Arcanum app icon"
+            />
             <h1>Server Setup</h1>
             <p className="auth-tagline">Create your admin account to get started</p>
             <form className="auth-form" onSubmit={handleSetup}>
@@ -2727,7 +2746,11 @@ function AppShell() {
       {!setupRequired && !loggedIn && (
         <div className="auth-gate">
           <div className="auth-card">
-            <img className="brand-logo" src="/fractured-arcanum-logo.svg" alt="Fractured Arcanum" />
+            <img
+              className="brand-logo"
+              src="/fractured-arcanum-icon-192.png"
+              alt="Fractured Arcanum app icon"
+            />
             <h1>Fractured Arcanum</h1>
             <p className="auth-tagline">Cosmic horror card battles await</p>
             <form className="auth-form" onSubmit={handleAuth}>
@@ -2789,9 +2812,9 @@ function AppShell() {
                 </>
               )}
             </p>
-            {installPromptEvent && (
+            {(installPromptEvent || showIosInstallHelp) && (
               <button className="pwa-install-btn" onClick={handleInstallApp}>
-                Install App
+                {installPromptEvent ? 'Install App' : 'How to Install on iPhone'}
               </button>
             )}
           </div>

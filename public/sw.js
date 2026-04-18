@@ -3,8 +3,11 @@ const CORE_ASSETS = [
   '/',
   '/manifest.webmanifest',
   '/fractured-arcanum-icon-512.svg',
+  '/fractured-arcanum-crest.svg',
   '/fractured-arcanum-icon-192.png',
   '/fractured-arcanum-icon-512.png',
+  '/fractured-arcanum-icon-maskable-192.png',
+  '/fractured-arcanum-icon-maskable-512.png',
   '/apple-touch-icon.png',
 ]
 
