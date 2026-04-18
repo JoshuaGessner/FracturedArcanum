@@ -1,81 +1,96 @@
-# Styles Index — `src/App.css` (2,662 lines)
+# Styles Index — `src/App.css` (3,819 lines)
 
-## CSS Custom Properties (Lines 1–71)
-`:root` variables — color palette, design tokens, spacing, typography, semantic colors, animation curves
+## Overview
 
-### Theme Variants (Lines 137–151)
-`.theme-ember`, `.theme-moon` — Override ambient background colors
+`src/App.css` now contains the full Phase 3 presentation layer:
 
-## Section Map
+- per-screen illustrated backdrops
+- semantic fantasy chrome for cards, buttons, panels, and dividers
+- queue, reward, and battle ceremony surfaces
+- collection, social, shop, and settings redesign blocks
+- gamification and urgency effects
+- responsive and reduced-motion safeguards at the end of the file
 
-| Section | Lines | Key Classes |
-|---------|-------|-------------|
-| **Root Variables** | 1–71 | `:root`, custom properties |
-| **Layout Primitives** | 73–95 | `.stack-*`, `.row-*`, focus rings |
-| **App Shell** | 97–135 | `.app-shell`, ambient gradient, `@keyframes ambientFloat` |
-| **Screen Transitions** | 153–180 | `.screen-panel.active`, `@keyframes screenIn` |
-| **Per-screen Backdrops** | 181–230 | `.home-screen.active::before` … `.battlefield.active::before` — Phase 3A SVG backgrounds, prefers-reduced-motion override |
-| **Nav Tiles** | 256–310 | `.nav-tile-row` grid, `.nav-tile`, `.nav-tile-{id}::before` illustrations |
-| **Navigation** | 182–243 | `.nav-strip`, `.nav-chip` |
-| **Topbar & Brand** | 245–296 | `.topbar-art`, `.brand-logo`, `@keyframes logoPulse` |
-| **Season Progress** | 298–322 | `.season-progress-block`, `.progress-fill` |
-| **Section Cards** | 324–379 | `.section-card`, `.hero-card`, `.eyebrow` |
-| **Hero Display** | 381–425 | Hero showcase, battle HUD |
-| **Badges & Status** | 427–475 | Badges, difficulty panels, leaderboard |
-| **Buttons** | 477–516 | `.btn-primary`, `.btn-secondary`, `.btn-ghost`, `.mini` |
-| **Battle Topbar** | 518–548 | Battle HUD, hero compacts, resources |
-| **Mana/Momentum Pips** | 550–575 | `.pip-row`, filled/momentum states |
-| **Enemy Turn Banner** | 577–596 | `.enemy-turn-banner`, `@keyframes banner-pulse` |
-| **Board & Lanes** | 598–678 | `.board-grid`, `.slot` states (empty, selected, exhausted, guard), `@keyframes selectPulse` |
-| **Rarity Styling** | 680–722 | `.rarity-*` color overrides |
-| **Hand Cards** | 724–828 | `.hand-grid`, `.hand-card`, `.cost-pill`, card art |
-| **Deck Builder** | 830–889 | `.builder-grid`, `.builder-card`, `.stepper` |
-| **Text Styles** | 891–908 | `.note`, `.card-text`, clamped text |
-| **Victory/Summary** | 910–932 | Summary cards, quest/log lists |
-| **Queue/Modals** | 934–1029 | `.queue-overlay`, `.queue-modal`, `@keyframes modalPop`, `@keyframes spin` |
-| **Matchmaking** | 1031–1055 | Queue pills (idle/searching/found) |
-| **Vault Themes** | 1057–1093 | Theme grid, swatches (royal/ember/moon) |
-| **Forms & Admin** | 1110–1284 | Form stacks, admin panels, role badges, audit log |
-| **Presence & Challenge** | 1286–1320 | Presence dots, challenge banner, `@keyframes challenge-pulse` |
-| **Card Trading** | 1322–1372 | Trade blocks, trade chips, status badges |
-| **Battle Animations** | 1378–1411 | `@keyframes cardPlay`, `damageFlash`, `deathFade`, `legendaryShine` |
-| **Responsive** | 1413–1483 | Breakpoints: 900px, 640px, 400px |
-| **Auth Gate** | 1485–1558 | Auth modal, form inputs |
-| **Card Packs** | 1560–1632 | Pack grid, `@keyframes cardReveal` |
-| **Turn HUD** | 1634–1662 | `.turn-bar`, arena title |
-| **Card Inspect** | 1664–1727 | Card inspect modal |
-| **Connection Status** | 1756–1802 | Reconnection banners, PWA install |
-| **Toast System** | 1837–1864 | `.toast` with success/error/warning |
-| **Modal System** | 1887–1936 | `.modal-backdrop`, `.modal` |
-| **Multi-Deck Roster** | 2020–2080 | `.deck-roster` |
-| **Builder Toolbar** | 2082–2134 | Filter chips, search, rarity toggles |
-| **Mana Curve** | 2136–2172 | `.mana-curve`, curve bars |
-| **Card Borders** | 2174–2209 | `.border-*` cosmetics |
-| **Reduced Motion** | 2211–2217 | `prefers-reduced-motion` |
+## Major section map
 
-## Keyframe Animations (12)
+| Section | Approx. Range | Key Classes |
+|---------|---------------|-------------|
+| Root tokens | 1–90 | `:root`, spacing, palette, motion variables |
+| App shell and ambient backdrop | 90–180 | `.app-shell`, ambient gradients, shell motion |
+| Screen transitions | 180–250 | `.screen-panel.active`, forward, back, lateral, battle entry classes |
+| Screen backdrops | 180–260 | `.home-screen.active::before` through `.battlefield.active::before` |
+| Navigation and nav tiles | 260–380 | `.bottom-nav`, `.nav-chip`, `.nav-tile-*`, urgency notice dot |
+| Brand and topbar | 380–460 | `.topbar-art`, `.brand-logo`, `.top-action-toggle` |
+| Season and hero presentation | 460–560 | `.season-progress-*`, `.profile-showcase`, `.battle-objective` |
+| Badges, status, and gamified strips | 560–720 | `.badge`, `.deck-status`, `.streak-badge`, leaderboard rows |
+| Buttons and action chrome | 720–820 | `.primary`, `.secondary`, `.ghost`, `.btn-danger` |
+| Battle HUD and arena status | 820–980 | `.battle-topbar`, `.battle-command-dais`, `.battle-status-strip` |
+| Pips and enemy-turn banner | 980–1110 | `.pip-*`, `.enemy-turn-banner-*` |
+| Board, slots, rarity, effects | 1110–1400 | `.board-grid`, `.slot`, `.rarity-*`, `.effect-badge` |
+| Hand fan and card presentation | 1280–1500 | `.hand-fan-stage`, `.hand-fan-grid`, `.hand-card`, overlays |
+| Summary and reward surfaces | 1500–1700 | `.summary-card`, `.reward-summary-grid`, `.season-framing` |
+| Queue, battle intro, reward overlays | 1700–1960 | `.queue-overlay`, `.intro-modal`, `.reward-modal`, VS art |
+| Play, collection, shop, settings chrome | 1960–3200 | mode cards, collection ring, pack reveal, settings desk, admin console |
+| Modal and support systems | 2860–3045 | confirmation modal, trade chips, audit expansion |
+| Responsive overrides | 3045–end | tablet, mobile, small phone, reduced motion |
 
-| Animation | Line | Duration | Purpose |
-|-----------|------|----------|---------|
-| `ambientFloat` | ~115 | 20s | Background gradient movement |
-| `screenIn` | ~165 | 0.3s | Screen slide-in |
-| `logoPulse` | ~270 | 2s | Brand logo glow |
-| `selectPulse` | ~652 | 1.5s | Selected unit glow |
-| `legendaryShine` | ~841 | 3s | Legendary card shimmer |
-| `banner-pulse` | ~590 | 2s | Enemy turn banner pulse |
-| `modalPop` | ~990 | 0.25s | Modal scale-in |
-| `spin` | ~1010 | 0.9s | Loading spinner |
-| `cardPlay` | ~1380 | 0.35s | Card play animation |
-| `damageFlash` | ~1390 | 0.4s | Damage red flash |
-| `deathFade` | ~1400 | 0.4s | Unit death fade |
-| `cardReveal` | ~1610 | 0.5s | Pack opening reveal |
-| `challenge-pulse` | ~1310 | 2s | Challenge banner pulse |
+## Key visual systems
 
-## Responsive Breakpoints
+### Screen backgrounds
+Every main screen uses a dedicated generated SVG background wired through a scoped `::before` rule:
 
-| Width | Line | Changes |
-|-------|------|---------|
-| ≤900px | 1413 | Tablet layout adjustments |
-| ≤640px | ~1440 | Mobile optimizations |
-| ≤400px | ~1470 | Small phone compact |
-| `prefers-reduced-motion` | 2211 | Disable animations |
+- home
+- play
+- collection
+- social
+- shop
+- settings
+- battle
+
+### Chrome strategy
+- panels use `panel-frame.svg`
+- action buttons use `btn-primary.svg`, `btn-ghost.svg`, and `btn-danger.svg`
+- dividers use `divider-rune.svg`
+- mana and momentum are art-backed pips rather than plain circles
+
+### Gamification and reward cues
+The stylesheet now includes:
+
+- streak heat badge states
+- reward urgency pulses
+- collection progress rings
+- pack reveal glow layers
+- victory summary tiles
+- battle intro and reward ceremony framing
+
+## Keyframe animations in active use
+
+| Animation | Purpose |
+|-----------|---------|
+| `ambientFloat` | Background drift and shell ambience |
+| `logoPulse` | Brand logo pulse |
+| `banner-pulse` | Enemy-turn banner emphasis |
+| `selectPulse` | Selected unit targeting emphasis |
+| `cardPlay` | Card and slot entrance motion |
+| `damageFlash` | Damage feedback on impacted units |
+| `deathFade` | Unit death dissolve |
+| `legendaryShine` | Legendary rarity shimmer |
+| `modalPop` | Overlay and modal entry |
+| `spin` | Queue and loading spinners |
+| `vsSlam` | Battle intro VS impact |
+| `challenge-pulse` | Live challenge banner urgency |
+| `urgencyPulse` | Daily reward and alert emphasis |
+| `rewardSweep` | Streak and reward shimmer motion |
+
+## Responsive and motion policy
+
+- `@media (max-width: 900px)` stacks multi-column layouts into single-column reading order
+- `@media (max-width: 640px)` tightens battle, shop, and form spacing for touch comfort
+- `@media (max-width: 400px)` further compresses dense card and header surfaces
+- `@media (prefers-reduced-motion: reduce)` disables decorative animations and pulse effects while preserving state clarity
+
+## Maintenance notes
+
+- add new styles near the most relevant visual system instead of appending random blocks
+- keep reduced-motion overrides at the very end so they win specificity cleanly
+- prefer semantic class names tied to screen roles and asset-backed primitives

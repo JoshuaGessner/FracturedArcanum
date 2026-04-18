@@ -1,7 +1,7 @@
 # Fractured Arcanum — Full Refactor & Redesign Plan
 
 > Generated 2026-04-17. Reference this file at the start of the implementation session.
-> **Current state:** App.tsx = 2,896 lines, 1 monolithic AppContext (170+ keys), 5 old-name screens, 7 shared components. Build/test/lint all green.
+> **Current state:** App.tsx = 2,905 lines, provider tree + AppShellContext composition are fully live, 7 renamed screens and 8 shared components are in place, the SVG asset pipeline is verified, and tests/lint/build are green.
 
 ---
 
@@ -1068,19 +1068,19 @@ After all phases complete, verify:
 | **3A** | Generate ~70 new SVGs (backgrounds, tiles, ranks, packs, gems, chrome, effects, overlays, particles) | Medium | generate-brand-assets.mjs, public/generated/ui/ |
 | **3B** | Add 10 new synthesized sounds to audio.ts | Low | audio.ts |
 | **3C** | Kill browser defaults: button frames, parchment inputs, rune toggles, scrollbars, typography | Medium | App.css (+80 lines) |
-| **3D** | Add transition system + micro-animations CSS + JS | Medium | App.css (+100 lines), AppContext |
-| **3E** | Redesign MainMenuScreen (backgrounds, nav tiles, season arc, quest banner) | Medium | MainMenuScreen.tsx, App.css |
-| **3F** | Redesign PlayScreen (mode cards, portal queue, VS splash) | Medium | PlayScreen.tsx, App.css |
-| **3G** | Redesign CollectionScreen (deck spines, large card browser, filter gems, disenchant particles) | Medium | CollectionScreen.tsx, App.css |
-| **3H** | Redesign SocialScreen (profile hero, podium, friend cards, trading split-screen) | Medium | SocialScreen.tsx, App.css |
-| **3I** | Redesign ShopScreen (pack ceremony, theme previews, border previews, daily claim) | High | ShopScreen.tsx, App.css |
-| **3J** | Redesign BattleScreen (fan hand, attack animations, pip SVGs, VS intro, victory/defeat overlays) | Highest | BattleScreen.tsx, BattleIntroOverlay, RewardOverlay, App.css |
-| **3K** | Redesign SettingsScreen (parchment forms, tabbed admin, scroll entries) | Low | SettingsScreen.tsx, App.css |
-| **3L** | Gamification pass (streak fire, rank-up ceremony, count animations, NEW badge, emote pop) | Medium | App.css, various screens |
-| **4A** | Regenerate all assets, update asset-manifest.json, update asset-pipeline.md | Low | scripts, docs |
-| **4B** | Rewrite index files (00-overview, 02-client-ui, new 08-assets, 06-styles) | Low | .github/index/ |
-| **4C** | Update copilot-instructions.md (contexts, screens, asset rules, sound rules, chrome rules) | Low | .github/copilot-instructions.md |
-| **4D** | Full pre-ship audit against Phase 4 checklist | Low | all files |
+| **3D** | Add transition system + micro-animations CSS + JS | Medium | App.css (+100 lines), AppContext | 🟡 partial — directional screen transitions and battle zoom motion landed |
+| **3E** | Redesign MainMenuScreen (backgrounds, nav tiles, season arc, quest banner) | Medium | MainMenuScreen.tsx, App.css | 🟡 partial — season progress ring and ranked league visual pass landed |
+| **3F** | Redesign PlayScreen (mode cards, portal queue, VS splash) | Medium | PlayScreen.tsx, App.css | 🟡 partial — arena mode cards, live queue portal, and VS found banner landed |
+| **3G** | Redesign CollectionScreen (deck spines, large card browser, filter gems, disenchant particles) | Medium | CollectionScreen.tsx, App.css | 🟡 partial — collection completion ring, rune dividers, gem filter chips, and richer deck-forge presentation landed |
+| **3H** | Redesign SocialScreen (profile hero, podium, friend cards, trading split-screen) | Medium | SocialScreen.tsx, App.css | 🟡 partial — guild profile hero, live challenge CTA, and richer friend, clan, and trade cards landed |
+| **3I** | Redesign ShopScreen (pack ceremony, theme previews, border previews, daily claim) | High | ShopScreen.tsx, App.css | 🟡 partial — pack offer cards and animated reveal-stage styling landed |
+| **3J** | Redesign BattleScreen (fan hand, attack animations, pip SVGs, VS intro, victory/defeat overlays) | Highest | BattleScreen.tsx, BattleIntroOverlay, RewardOverlay, App.css | 🟡 partial — command-dais HUD, richer enemy-turn banner, hand-fan presentation, improved VS intro, and result-overlay ceremony landed |
+| **3K** | Redesign SettingsScreen (parchment forms, tabbed admin, scroll entries) | Low | SettingsScreen.tsx, App.css | 🟡 partial — scribe-desk hero, preference tiles, complaint severity seals, and richer admin console chrome landed |
+| **3L** | Gamification pass (streak fire, rank-up ceremony, count animations, NEW badge, emote pop) | Medium | App.css, various screens | 🟡 partial — daily reward urgency, streak heat badges, seasonal framing, richer victory summary cards, and production UI cleanup landed |
+| **4A** | Regenerate all assets, update asset-manifest.json, update asset-pipeline.md | Low | scripts, docs | ✅ done — generation verified at 168 manifest entries and docs refreshed |
+| **4B** | Rewrite index files (00-overview, 02-client-ui, new 08-assets, 06-styles) | Low | .github/index/ | ✅ done — index now matches the provider architecture and Phase 3 UI systems |
+| **4C** | Update copilot-instructions.md (contexts, screens, asset rules, sound rules, chrome rules) | Low | .github/copilot-instructions.md | ✅ done — rules aligned to the current app shell, asset pipeline, and sound model |
+| **4D** | Full pre-ship audit against Phase 4 checklist | Low | all files | ✅ done — release:check passed, 54 tests green, no errors, no TODO-style placeholders found |
 
 ---
 

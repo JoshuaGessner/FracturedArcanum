@@ -77,10 +77,20 @@ A detailed code index lives in `.github/index/`. **Consult it before writing or 
 ### CSS & Style
 - Mobile-first responsive design. Test at 375px width minimum.
 - CSS custom properties for theming (`:root` variables in `App.css`).
-- Card art served from `public/generated/cards/` as WebP images.
+- Visual art ships from `public/generated/ui/` and `public/generated/cards/` as original generated SVG assets.
+- No browser-default control styling in production UI — buttons, panels, and dividers use the project chrome.
+- No emoji-driven production UI; use generated icons and labels instead.
+- Buttons should use the generated button frames, panels should use `panel-frame.svg`, and section dividers should use `divider-rune.svg` where appropriate.
 - Use semantic HTML elements where possible.
 - New styles go in `App.css` in the appropriate section (see `06-styles.md`).
 - Support `prefers-reduced-motion` for all new animations.
+
+### Asset & Audio Rules
+- All new visual assets go through `scripts/generate-brand-assets.mjs` and are registered in `public/generated/asset-manifest.json`.
+- All generated assets must remain original, commercial-safe SVG output.
+- Repeated visual surfaces should resolve through the semantic registry in `src/constants.ts` and shared primitives such as `src/components/AssetBadge.tsx`.
+- All new sounds must remain synthesized in `src/audio.ts` via Web Audio API — do not add downloaded sound files.
+- Interactive feedback should continue pairing sound cues with haptic feedback when the surrounding flow already supports it.
 
 ---
 
@@ -95,11 +105,11 @@ A detailed code index lives in `.github/index/`. **Consult it before writing or 
 | `src/contexts/*.ts(x)` | 16–190 each | Real provider modules + typed slice hooks: `useGame`, `useProfile`, `useSocial`, `useQueue`, `useAppShell` + `GameProvider` + `ProfileProvider` + `SocialProvider` + `QueueProvider` | Screens import slice hooks. AppShell uses internal `useGameState()` / `useProfileState()` / `useSocialState()` / `useQueueState()` from providers for setters. |
 | `src/AppShellContext.ts` | 200+ | Slim `AppShellContextValue` + `createContext` for auth/nav/toasts/admin and cross-provider handlers | Update when adding shared AppShell-only state |
 | `src/types.ts` | 252 | UI-only TypeScript types | Add new UI types here |
-| `src/constants.ts` | 182 | Static UI constants (themes, presets, labels) | No functions — data only |
-| `src/utils.ts` | 134 | Pure helper functions | No React, no app state |
-| `src/screens/*.tsx` | 79–554 each | Presentational screens (Home, Play, Collection, Battle, Social, Shop, Settings) | Propless — read state via slice hooks from `src/contexts/` |
-| `src/components/*.tsx` | 18–66 each | Shared UI primitives (modals, nav, overlays) | Prop-driven only |
-| `src/App.css` | 2,785 | All styles | Add to correct section per `06-styles.md` |
+| `src/constants.ts` | 284 | Static UI constants, theme offers, labels, and semantic asset registry | No functions — data only |
+| `src/utils.ts` | 246 | Pure helper functions for asset lookup, transitions, completion, severity, and fan layout | No React, no app state |
+| `src/screens/*.tsx` | 97–600 each | Presentational screens (Home, Play, Collection, Battle, Social, Shop, Settings) | Propless — read state via slice hooks from `src/contexts/` |
+| `src/components/*.tsx` | 18–89 each | Shared UI primitives (modals, nav, overlays, asset badges) | Prop-driven only |
+| `src/App.css` | 3,819 | All styles and motion systems | Add to correct section per `06-styles.md` |
 | `src/audio.ts` | 160 | Sound synthesis | 17 sound types via Web Audio API |
 | `server/server.js` | 2,321 | Express API + Socket.IO + matchmaking | Rate-limit all new endpoints |
 | `server/db.js` | 1,993 | SQLite data layer | Parameterized queries only |

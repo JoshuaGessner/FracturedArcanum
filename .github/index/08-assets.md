@@ -1,83 +1,89 @@
-# Generated Asset Pipeline (Phase 3A)
+# Generated Asset Pipeline
 
-All bundled images are produced by `scripts/generate-brand-assets.mjs` (996 lines) and written into `public/generated/`. There are **168 generated assets** total — 100 brand/card and 68 UI assets — registered in `public/generated/asset-manifest.json`.
+All shipped visual art is produced by [scripts/generate-brand-assets.mjs](../../scripts/generate-brand-assets.mjs) and written into [public/generated](../../public/generated). The latest verified generation pass produced **168 manifest entries**.
 
-## Generation
+## Verified asset counts
 
-| Command | Effect |
-|---------|--------|
-| `npm run assets:generate` | Re-runs the generator script |
-| `node scripts/generate-brand-assets.mjs` | Same, direct |
+| Category | Count |
+|---------|------:|
+| Root brand and shared art | 6 |
+| UI assets | 72 |
+| Card art files | 90 |
+| Manifest entries | 168 |
 
-The generator never overwrites manually edited art that lives outside `public/generated/`. All output is plain SVG, original, commercial-safe.
+## Regeneration
 
-## Output Layout
+| Command | Purpose |
+|---------|---------|
+| `npm run assets:generate` | Standard regeneration path |
+| `node scripts/generate-brand-assets.mjs` | Direct local generator invocation |
 
-```
-public/
-├── fractured-arcanum-logo.svg           Brand wordmark
-├── fractured-arcanum-crest.svg          Brand crest
-├── fractured-arcanum-board.svg          Brand board art
-├── fractured-arcanum-card.svg           Brand card frame
-├── fractured-arcanum-hero-player.svg
-├── fractured-arcanum-hero-enemy.svg
-└── generated/
-    ├── asset-manifest.json
-    ├── cards/                            Card art (one SVG per card id)
-    └── ui/                               68 UI assets (Phase 3A)
-```
+## Output structure
 
-## UI Asset Inventory (`public/generated/ui/`)
+- [public/generated/asset-manifest.json](../../public/generated/asset-manifest.json) — generated manifest
+- [public/generated/ui](../../public/generated/ui) — all UI chrome and illustrated shell assets
+- [public/generated/cards](../../public/generated/cards) — card art by card id
 
-| Group | Count | Files | Viewbox | Used By |
-|-------|-------|-------|---------|---------|
-| Backgrounds | 7 | `bg-{main-menu,play,collection,social,shop,battle,settings}.svg` | 1440×900 | Per-screen `::before` ambient backdrops in App.css |
-| Nav tiles | 6 | `tile-{play,collection,social,shop,settings,battle}.svg` | 240×320 | HomeScreen `.nav-tile-${id}::before` |
-| Rank insignia | 4 | `rank-{bronze,silver,gold,diamond}.svg` | 120×120 | (Reserved — wire into rank badge) |
-| Pack covers | 3 | `pack-{standard,premium,legendary}.svg` | 200×280 | (Reserved — wire into ShopScreen) |
-| Rarity gems | 4 | `gem-{common,rare,epic,legendary}.svg` | 32×32 | (Reserved — card chip) |
-| UI chrome | 12 | `btn-{primary,ghost,danger}.svg`, `panel-frame.svg`, `divider-rune.svg`, `pip-mana-{empty,filled}.svg`, `pip-momentum-{empty,filled}.svg`, `icon-{health,attack,guard}.svg` | varies | (Reserved — chrome polish phase) |
-| Effect icons | 20 | `fx-{charge,guard,rally,blast,heal,draw,fury,drain,empower,poison,shield,siphon,bolster,cleave,lifesteal,summon,silence,frostbite,enrage,deathrattle}.svg` | 40×40 | (Reserved — wire into card-effect chips) |
-| Overlays | 8 | `overlay-{vs,victory,defeat,draw}.svg`, `glow-{common,rare,epic,legendary}.svg` | varies | (Reserved — battle splash + pack-open ceremony) |
-| Particles | 4 | `particle-{rune,ember,dust,frost}.svg` | 16×16 | (Reserved — animated FX layer) |
-| Banners | 4 | `admin-ops-banner.svg`, `asset-forge-banner.svg`, `season-medal.svg`, `reward-chest.svg` | varies | Pre-existing UI banners |
+## Naming conventions
 
-## Manifest Format (`asset-manifest.json`)
+| Prefix | Meaning | Examples |
+|--------|---------|----------|
+| `bg-` | full-screen backdrops | `bg-play.svg`, `bg-settings.svg` |
+| `tile-` | home and battle navigation art | `tile-shop.svg`, `tile-battle.svg` |
+| `rank-` | rank insignia crests | `rank-gold.svg` |
+| `pack-` | pack cover art | `pack-legendary.svg` |
+| `gem-` | rarity gem chips | `gem-epic.svg` |
+| `btn-` | button frames | `btn-primary.svg`, `btn-danger.svg` |
+| `pip-` | mana and momentum pips | `pip-mana-filled.svg` |
+| `icon-` | stat and utility icons | `icon-health.svg`, `icon-guard.svg` |
+| `fx-` | card effect icons | `fx-charge.svg`, `fx-heal.svg` |
+| `overlay-` | cinematic battle and reward art | `overlay-victory.svg`, `overlay-vs.svg` |
+| `glow-` | rarity glow bursts | `glow-legendary.svg` |
+| `particle-` | ambient effect textures | `particle-rune.svg`, `particle-ember.svg` |
 
-Each entry:
+## UI asset groups
 
-```json
-{
-  "id": "bg-main-menu.svg",
-  "path": "/generated/ui/bg-main-menu.svg",
-  "type": "ui-background",
-  "source": "local-generated"
-}
-```
+| Group | Count | Notes |
+|-------|------:|------|
+| Backgrounds | 7 | One for each main screen surface |
+| Navigation tiles | 6 | Play, collection, social, shop, settings, battle |
+| Rank insignia | 4 | Bronze, silver, gold, diamond |
+| Pack covers | 3 | Standard, premium, legendary |
+| Rarity gems | 4 | Common through legendary |
+| UI chrome | 12 | Button frames, panel frame, divider, pips, stat icons |
+| Effect icons | 20 | Card-effect icon set |
+| Overlays and glows | 8 | VS, victory, defeat, draw, plus rarity glow bursts |
+| Particles | 4 | Rune, ember, dust, frost |
+| Banners and support art | 4 | Reward chest and ops banner surfaces |
 
-`type` is one of: `brand`, `ui-banner`, `ui-background`, `ui-nav-tile`, `ui-rank`, `ui-pack`, `ui-rarity-gem`, `ui-chrome`, `ui-effect`, `ui-overlay`, `ui-particle`, `card-art`. Card-art entries also carry a `rarity` field.
+## How the app consumes assets
 
-## Editing the Generator
+- [src/constants.ts](../../src/constants.ts) exports the semantic `UI_ASSETS` registry
+- [src/components/AssetBadge.tsx](../../src/components/AssetBadge.tsx) renders shared rank, rarity, effect, pack, and stat visuals
+- [src/utils.ts](../../src/utils.ts) supplies safe lookup and fallback helpers
+- [src/App.css](../../src/App.css) wires most backgrounds and chrome through semantic class names
 
-`scripts/generate-brand-assets.mjs` structure:
+## Manifest schema
 
-1. Output directory setup (top of file)
-2. Palette + provider config
-3. `cardBlueprints` array — primary card art definitions
-4. `extendedBlueprints` array — secondary card art
-5. `makeCardArt(card)` — SVG card builder
-6. `sharedFiles` object — brand SVGs at the public root
-7. **Phase 3A block** — `svg()` helper, `bg()`, `tileBg()`, `rankShield()`, `pack()`, `gem()`, `fx()` template helpers; then `backgrounds`, `tiles`, `ranks`, `packs`, `gems`, `chrome`, `effects`, `overlays`, `particles` objects merged into `uiAssets`
-8. `uiAssetType(id)` classifier for manifest tagging
-9. Manifest construction with `sharedFiles + uiAssets + allCards`
-10. Three writer loops (sharedFiles, uiAssets, cards), then manifest write
+Each manifest entry records:
 
-To add a new UI asset: append to the appropriate object inside the Phase 3A block, run `npm run assets:generate`, commit both the new SVG and the regenerated manifest.
+- the asset id
+- its generated path
+- the semantic type such as `ui-background`, `ui-effect`, or `card-art`
+- the generation source
+- rarity metadata for card art where relevant
 
-## CSS Wiring Conventions
+## Extending the generator
 
-- Per-screen ambient backdrop: scoped to `.{screen-name}.active::before` (not generic `.screen-panel.active::before` — would over-apply to BattleScreen subpanels)
-- Default backdrop opacity: `0.22` (battle uses `0.32`)
-- `prefers-reduced-motion` drops the `saturate+blur` filter
-- Unique screen classes: `.home-screen`, `.play-screen`, `.collection-screen`, `.social-screen`, `.shop-screen`, `.settings-screen`, `.battlefield`
-- Nav tile illustrations: `.nav-tile-{id}::before` at `opacity: 0.18` (hover boosts to `0.32`)
+To add a new asset:
+
+1. update the correct generator block in [scripts/generate-brand-assets.mjs](../../scripts/generate-brand-assets.mjs)
+2. regenerate assets
+3. verify the new SVG appears in the correct folder and manifest
+4. wire it through the semantic registry instead of referencing raw paths directly in screen code
+
+## Practical rules
+
+- keep all generated art original and commercially safe
+- do not hand-edit files under [public/generated](../../public/generated) unless you intend the next regeneration to replace them
+- treat the generator and manifest as the source of truth for the shipped art direction
