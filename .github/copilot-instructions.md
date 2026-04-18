@@ -18,6 +18,7 @@ A detailed code index lives in `.github/index/`. **Consult it before writing or 
 | `05-game-room.md` | `server/game-room.js` — room lifecycle, action validation |
 | `06-styles.md` | `src/App.css` — section map, animations, breakpoints |
 | `07-supporting-files.md` | audio, tests, configs, deployment |
+| `08-assets.md` | generated SVG asset pipeline (Phase 3A) |
 
 **Workflow:** Index file → locate section → read actual source lines → implement change. Never guess at function signatures, state variables, or line numbers — verify from the index, then confirm in source.
 
@@ -90,16 +91,16 @@ A detailed code index lives in `.github/index/`. **Consult it before writing or 
 | File | Lines | Role | Edit Rules |
 |------|-------|------|------------|
 | `src/game.ts` | 1,410 | Game engine — single source of truth for all mechanics | Pure functions only. After edit: `npm run build:engine` |
-| `src/App.tsx` | 2,896 | Root React component — all state, effects, handlers, builds AppContextValue and provides via `<AppContext.Provider>` | Owns app state. Screens read it via `useApp()`. |
+| `src/App.tsx` | 2,878 | Root React component — all state, effects, handlers, builds AppContextValue and provides via `<AppContext.Provider>` | Owns app state. Screens read it via `useApp()`. |
 | `src/AppContext.ts` | 275 | `AppContextValue` type + `createContext` | Update when adding shared state |
 | `src/useApp.ts` | 10 | `useApp()` hook | |
 | `src/types.ts` | 252 | UI-only TypeScript types | Add new UI types here |
 | `src/constants.ts` | 182 | Static UI constants (themes, presets, labels) | No functions — data only |
 | `src/utils.ts` | 134 | Pure helper functions | No React, no app state |
-| `src/screens/*.tsx` | 282–554 each | Presentational screens (Home, Deck, Battle, Vault, Ops) | Propless — read state via `useApp()` |
+| `src/screens/*.tsx` | 80–554 each | Presentational screens (Home, Play, Collection, Battle, Social, Shop, Settings) | Propless — read state via `useApp()` |
 | `src/components/*.tsx` | 18–66 each | Shared UI primitives (modals, nav, overlays) | Prop-driven only |
-| `src/App.css` | 2,662 | All styles | Add to correct section per `06-styles.md` |
-| `src/audio.ts` | 91 | Sound synthesis | 7 sound types via Web Audio API |
+| `src/App.css` | 2,785 | All styles | Add to correct section per `06-styles.md` |
+| `src/audio.ts` | 160 | Sound synthesis | 17 sound types via Web Audio API |
 | `server/server.js` | 2,321 | Express API + Socket.IO + matchmaking | Rate-limit all new endpoints |
 | `server/db.js` | 1,993 | SQLite data layer | Parameterized queries only |
 | `server/game-room.js` | 348 | Game room manager | Server-authoritative validation |

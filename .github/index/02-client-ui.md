@@ -25,17 +25,19 @@ src/
 │   ├── TopBar.tsx
 │   ├── BattleIntroOverlay.tsx
 │   └── RewardOverlay.tsx
-└── screens/                                 5 main app screens (consume useApp() context)
-    ├── HomeScreen.tsx
-    ├── DeckScreen.tsx
-    ├── BattleScreen.tsx
-    ├── VaultScreen.tsx
-    └── OpsScreen.tsx
+└── screens/                                 7 main app screens (consume useApp() context)
+    ├── HomeScreen.tsx        — main menu launchpad
+    ├── PlayScreen.tsx        — match start, AI / queue
+    ├── CollectionScreen.tsx  — deck builder + card grid
+    ├── BattleScreen.tsx      — battle UI (multiple sibling sections)
+    ├── SocialScreen.tsx      — friends, leaderboard, clan, trades
+    ├── ShopScreen.tsx        — packs, themes, borders
+    └── SettingsScreen.tsx    — privacy, complaints, admin
 ```
 
 ---
 
-## `src/App.tsx` (2,896 lines)
+## `src/App.tsx` (2,878 lines)
 
 Root component. Owns ALL state via `useState`/`useRef`, ALL effects, ALL handler functions. Just before its JSX return it builds an `AppContextValue` object literal and wraps the entire `<main>` tree in `<AppContext.Provider value={appCtx}>`. Screens consume that context via `useApp()`.
 
@@ -72,7 +74,7 @@ Root component. Owns ALL state via `useState`/`useRef`, ALL effects, ALL handler
 | Admin | 1617–1858 | `refreshAdminOverview`, `refreshAdminUsers`, `refreshAdminAudit`, `handleSetUserRole`, `handleTransferOwnership`, `handleSubmitComplaint`, `handleSaveAdminSettings`, `handleUpdateComplaintStatus` |
 | Match start | 1887–1942 | `startMatch`, `handleModeChange`, `handleAIDifficultyChange`, `handleOpenPack` |
 | Social | 1976–2298 | `handleAddFriend`, `handleRemoveFriend`, `handleChallengeFriend`, `handleAcceptChallenge`, `handleDeclineChallenge`, `handleCancelOutgoingChallenge`, `handleProposeTrade`, `addTradeChip`, `removeTradeChip`, `handleTradeAction`, `handleCreateClan`, `handleJoinClan`, `handleLeaveClan` |
-| App-level | 2298–2349 | `handleInstallApp`, `handleAcceptUpdate`, `handleDismissUpdate`, `handleSendEmote`, `handleStartQueue`, `handleCancelQueue`, `handleAcceptQueue` |
+| App-level | 2298–2349 | `handleInstallApp`, `handleAcceptUpdate`, `handleDismissUpdate`, `handleStartQueue`, `handleCancelQueue`, `handleAcceptQueue` |
 | Deckbuilder + battle actions | 2422–2528 | `handleDeckCount`, `handleQuickBattle`, `emitAction`, `handlePlayCard`, `handleSelectAttacker`, `handleAttackTarget`, `handleBurst`, `clearEnemyTurnTimers`, `handleEndTurn` |
 
 ### JSX Render Tree (Lines ~2596–3008)
@@ -89,10 +91,12 @@ Root component. Owns ALL state via `useState`/`useRef`, ALL effects, ALL handler
 
     {loggedIn && (<>
       <HomeScreen />          ← reads useApp()
-      <DeckScreen />          ← reads useApp()
+      <PlayScreen />          ← reads useApp()
+      <CollectionScreen />    ← reads useApp()
       <BattleScreen />        ← reads useApp()
-      <VaultScreen />         ← reads useApp()
-      <OpsScreen />           ← reads useApp()
+      <SocialScreen />        ← reads useApp()
+      <ShopScreen />          ← reads useApp()
+      <SettingsScreen />      ← reads useApp()
       <NavBar activeScreen={activeScreen} ... />
     </>)}
   </main>
@@ -124,7 +128,6 @@ Pure data constants (no functions, no side effects):
 - `DECK_MAX_TOTAL_DISPLAY` — UI-shown max size
 - `THEME_OFFERS` — 3 cosmetic themes
 - `CARD_BORDER_OFFERS` — 5 card border cosmetics
-- `QUICK_EMOTES` — 5 reaction buttons
 - `AI_DIFFICULTY_OPTIONS` — Difficulty selector
 - `EFFECT_LABELS` / `EFFECT_DESCRIPTIONS` — Card effect text
 - `CARD_ART_ALIASES` — Fallback image mappings
@@ -153,11 +156,13 @@ All screens are propless and consume app state via `const { ... } = useApp()`. N
 
 | Screen | Lines | Notes |
 |--------|-------|-------|
-| `HomeScreen.tsx` | 534 | Largest screen — lobby, queue, mode switch, profile, leaderboard, social hub, friends, clan, trades, emotes |
-| `OpsScreen.tsx` | 554 | Privacy + complaint form + admin console (overview, users, audit, role transfer) |
+| `HomeScreen.tsx` | 80 | Main menu — welcome, optional resume-battle banner, 5 nav tiles, daily quest checklist |
+| `PlayScreen.tsx` | 141 | Mode switch (AI/duel), AI difficulty, start/queue buttons, opponent preview |
+| `SocialScreen.tsx` | 382 | Profile badges, leaderboard, friends list, clan, card trading panel |
+| `CollectionScreen.tsx` | 282 | Saved decks roster, builder filters, mana curve, quick-battle presets |
 | `BattleScreen.tsx` | 346 | Returns a `<>` fragment containing 6 sibling sections: enemy-turn-banner, connection banners, battle-topbar, battlefield, summary-card, hand-section |
-| `DeckScreen.tsx` | 282 | Saved decks roster, builder filters, mana curve, quick-battle presets |
-| `VaultScreen.tsx` | 288 | Daily reward, themes, borders, packs, breakdown |
+| `ShopScreen.tsx` | 288 | Daily reward, themes, borders, packs, breakdown |
+| `SettingsScreen.tsx` | 554 | Privacy + complaint form + admin console (overview, users, audit, role transfer) |
 
 ---
 

@@ -200,7 +200,6 @@
 | `challenge:accept` | 1684 | 10/min | Accept challenge |
 | `challenge:decline` | 1752 | 20/min | Decline challenge |
 | `challenge:cancel` | 1763 | 20/min | Cancel challenge |
-| `room:emote` | 1773 | 20/min | Emote broadcast |
 | `game:action` | 1785 | 120/min | Execute game action |
 | `disconnect` | 1842 | — | Cleanup + forfeit timer |
 

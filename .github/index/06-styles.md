@@ -14,6 +14,8 @@
 | **Layout Primitives** | 73–95 | `.stack-*`, `.row-*`, focus rings |
 | **App Shell** | 97–135 | `.app-shell`, ambient gradient, `@keyframes ambientFloat` |
 | **Screen Transitions** | 153–180 | `.screen-panel.active`, `@keyframes screenIn` |
+| **Per-screen Backdrops** | 181–230 | `.home-screen.active::before` … `.battlefield.active::before` — Phase 3A SVG backgrounds, prefers-reduced-motion override |
+| **Nav Tiles** | 256–310 | `.nav-tile-row` grid, `.nav-tile`, `.nav-tile-{id}::before` illustrations |
 | **Navigation** | 182–243 | `.nav-strip`, `.nav-chip` |
 | **Topbar & Brand** | 245–296 | `.topbar-art`, `.brand-logo`, `@keyframes logoPulse` |
 | **Season Progress** | 298–322 | `.season-progress-block`, `.progress-fill` |

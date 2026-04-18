@@ -13,28 +13,30 @@
 
 | File | Lines | Role |
 |------|-------|------|
-| `src/App.tsx` | 2,896 | Root component — state, effects, handlers, context provider, screen wiring |
-| `src/AppContext.ts` | 275 | Shared `AppContext` + `AppContextValue` type |
+| `src/App.tsx` | 2,878 | Root component — state, effects, handlers, context provider, screen wiring |
+| `src/AppContext.ts` | 274 | Shared `AppContext` + `AppContextValue` type |
 | `src/useApp.ts` | 10 | `useApp()` hook |
 | `src/game.ts` | 1,410 | Game engine — types, cards, combat, AI |
 | `src/types.ts` | 252 | UI-only TypeScript types (auth, social, admin, etc.) |
 | `src/constants.ts` | 182 | UI constants — themes, borders, decks, presets, labels |
 | `src/utils.ts` | 134 | Pure helpers — auth fetch, art paths, format, fingerprint |
-| `src/audio.ts` | 91 | Synthesized sound effects (7 types) |
+| `src/audio.ts` | 160 | Synthesized sound effects (17 types) |
 | `src/main.tsx` | 55 | React root + service worker registration |
 | `src/index.css` | 33 | Base CSS reset + root tokens |
-| `src/App.css` | 2,662 | All styles — themes, animations, responsive |
+| `src/App.css` | 2,785 | All styles — themes, animations, responsive, per-screen backdrops |
 | `src/game.test.ts` | 205 | Game engine tests (15 cases) |
 
 ### Client — Screens (`src/screens/`)
 
 | File | Lines | Role |
 |------|-------|------|
-| `src/screens/HomeScreen.tsx` | 534 | Lobby — queue, mode switch, profile, leaderboard, social, trades |
-| `src/screens/OpsScreen.tsx` | 554 | Privacy, complaints, admin console, audit log |
+| `src/screens/HomeScreen.tsx` | 80 | Main menu — welcome, resume banner, 5 nav tiles, daily quests |
+| `src/screens/PlayScreen.tsx` | 141 | Mode select, AI difficulty, start match, queue, opponent preview |
+| `src/screens/SocialScreen.tsx` | 382 | Profile, leaderboard, friends, clan, trades |
+| `src/screens/CollectionScreen.tsx` | 282 | Deck builder, saved decks, filters, mana curve |
 | `src/screens/BattleScreen.tsx` | 346 | Battle topbar, battlefield, hand, summary (consolidated) |
-| `src/screens/DeckScreen.tsx` | 282 | Deck builder, saved decks, filters, mana curve |
-| `src/screens/VaultScreen.tsx` | 288 | Rewards, themes, borders, packs, breakdown |
+| `src/screens/ShopScreen.tsx` | 288 | Rewards, themes, borders, packs, breakdown |
+| `src/screens/SettingsScreen.tsx` | 554 | Privacy, complaints, admin console, audit log |
 
 ### Client — Shared Components (`src/components/`)
 
@@ -43,8 +45,8 @@
 | `src/components/RewardOverlay.tsx` | 66 | Post-battle reward modal |
 | `src/components/ConfirmModal.tsx` | 61 | Generic confirm dialog (text input optional) |
 | `src/components/CardInspectModal.tsx` | 55 | Long-press card detail view |
+| `src/components/NavBar.tsx` | 49 | Bottom 6-tab nav (Home, Play, Collection, Social, Shop, Settings) |
 | `src/components/TopBar.tsx` | 48 | Header (logo, title, sound, install, logout) |
-| `src/components/NavBar.tsx` | 46 | Bottom 5-tab nav |
 | `src/components/BattleIntroOverlay.tsx` | 23 | "Battle starting" splash |
 | `src/components/ToastStack.tsx` | 18 | Stacked toast notifications |
 
