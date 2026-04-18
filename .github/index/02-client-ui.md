@@ -19,6 +19,7 @@ src/
 │   ├── QueueProvider.tsx      — ✅ Phase 1F: real provider above AppShell (state + countdown + liveQueueLabel)
 │   ├── ProfileProvider.tsx    — ✅ Phase 1D: real provider above AppShell (decks, collection, pack-shop state)
 │   ├── SocialProvider.tsx     — ✅ Phase 1E: real provider above AppShell (friends/clan/challenges/trades + nowTick)
+│   ├── GameProvider.tsx       — ✅ Phase 1C: real provider above AppShell (battle/game presentation state)
 │   ├── useGame.ts             — battle state, game actions, AI animation
 │   ├── useProfile.ts          — decks, collection, cosmetics, derived rank
 │   ├── useSocial.ts           — friends, clan, trades, challenges

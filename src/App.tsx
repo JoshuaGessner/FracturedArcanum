@@ -13,7 +13,6 @@ import {
   MAX_COPIES,
   MAX_LEGENDARY_COPIES,
   CARD_LIBRARY,
-  DEFAULT_DECK_CONFIG,
   otherSide,
   getDeckSize,
   boardHasGuard,
@@ -37,7 +36,6 @@ import {
   getDeviceFingerprint,
   getRankLabel,
   getScreenBucket,
-  makeLobbyCode,
   pulseFeedback,
   readStoredValue,
 } from './utils'
@@ -62,7 +60,6 @@ import type {
   AdminUser,
   AppScreen,
   AuthScreen,
-  BattleKind,
   CardBorder,
   CardCollection,
   ComplaintFormState,
@@ -84,23 +81,27 @@ import type {
 import { QueueProvider, useQueueState } from './contexts/QueueProvider'
 import { ProfileProvider, useProfileState } from './contexts/ProfileProvider'
 import { SocialProvider, useSocialState } from './contexts/SocialProvider'
+import { GameProvider, useGameState } from './contexts/GameProvider'
 import './App.css'
 
 /**
  * Phase 1B — App is now a thin wrapper that exists only to host the
- * provider tree. All state, effects, and handlers live in `AppShell`.
+ * provider tree. All effects, handlers, and refs live in `AppShell`.
  *
- * Phase 1F added the real `QueueProvider`. Phase 1D added the real
- * `ProfileProvider` (decks, collection, pack-shop). Phase 1E added the
- * real `SocialProvider` (friends, clan, trades, challenges, nowTick).
- * The remaining extraction (1C, GameProvider) will nest inside this tree.
+ * Phase 1F added `QueueProvider`. Phase 1D added `ProfileProvider`.
+ * Phase 1E added `SocialProvider`. Phase 1C added `GameProvider`
+ * (active battle/game presentation state). Refs and handlers remain in
+ * `AppShell` because they are tightly coupled to socket/auth/profile
+ * context that hasn’t been lifted yet.
  */
 function App() {
   return (
     <QueueProvider>
       <ProfileProvider>
         <SocialProvider>
-          <AppShell />
+          <GameProvider>
+            <AppShell />
+          </GameProvider>
         </SocialProvider>
       </ProfileProvider>
     </QueueProvider>
@@ -108,14 +109,6 @@ function App() {
 }
 
 function AppShell() {
-  // `savedDeckConfig` mirrors the initial value loaded by ProfileProvider —
-  // we re-read here so `createGame` below can seed the engine with the same
-  // deck (cheap sync localStorage read; no behavior change).
-  const savedDeckConfig = readStoredValue<DeckConfig>(STORAGE_KEYS.deck, DEFAULT_DECK_CONFIG)
-  const savedMode = readStoredValue<GameMode>(STORAGE_KEYS.mode, 'ai')
-  const savedAIDifficulty = readStoredValue<'auto' | AIDifficulty>(STORAGE_KEYS.aiDifficulty, 'auto')
-  const initialAIDifficulty = savedAIDifficulty === 'auto' ? 'adept' : savedAIDifficulty
-
   // ─── Auth state ───────────────────────────────────────────────────────
   const [authToken, setAuthToken] = useState(() => readStoredValue(STORAGE_KEYS.authToken, ''))
   const [authScreen, setAuthScreen] = useState<AuthScreen>('login')
@@ -157,13 +150,28 @@ function AppShell() {
     packOpening, setPackOpening,
   } = useProfileState()
 
-  // ─── Local game/UI state ──────────────────────────────────────────────
+  // ─── Local screen-shell state ─────────────────────────────────────────
   const [activeScreen, setActiveScreen] = useState<AppScreen>('home')
-  const [preferredMode, setPreferredMode] = useState<GameMode>(savedMode)
-  const [aiDifficultySetting, setAiDifficultySetting] = useState<'auto' | AIDifficulty>(savedAIDifficulty)
-  const [, setLobbyCode] = useState(() => makeLobbyCode())
-  const [game, setGame] = useState<GameState>(() => createGame(savedMode, savedDeckConfig, undefined, savedMode === 'ai' ? initialAIDifficulty : 'legend'))
-  const [selectedAttacker, setSelectedAttacker] = useState<number | null>(null)
+
+  // ─── Phase 1C — active battle/game state lives in GameProvider ───────
+  const {
+    preferredMode, setPreferredMode,
+    aiDifficultySetting, setAiDifficultySetting,
+    setLobbyCode,
+    game, setGame,
+    selectedAttacker, setSelectedAttacker,
+    battleKind, setBattleKind,
+    battleSessionActive, setBattleSessionActive,
+    serverBattleActive, setServerBattleActive,
+    enemyTurnActive, setEnemyTurnActive,
+    enemyTurnLabel, setEnemyTurnLabel,
+    opponentDisconnected, setOpponentDisconnected,
+    disconnectGraceMs, setDisconnectGraceMs,
+    battleIntroVisible, setBattleIntroVisible,
+    rewardOverlayVisible, setRewardOverlayVisible,
+    damagedSlots, setDamagedSlots,
+    inspectedCard, setInspectedCard,
+  } = useGameState()
   // Phase 1F — queue state lives in QueueProvider above AppShell.
   const {
     queueState, setQueueState,
@@ -194,13 +202,8 @@ function AppShell() {
     friendUsernameInput, setFriendUsernameInput,
     clanForm, setClanForm,
   } = useSocialState()
-  const [battleKind, setBattleKind] = useState<BattleKind>(savedMode === 'duel' ? 'local' : 'ai')
-  const [battleSessionActive, setBattleSessionActive] = useState(false)
-  const [serverBattleActive, setServerBattleActive] = useState(false)
   const resolvedMatchKeyRef = useRef('')
   const socketClientRef = useRef<Socket | null>(null)
-  const [enemyTurnActive, setEnemyTurnActive] = useState(false)
-  const [enemyTurnLabel, setEnemyTurnLabel] = useState('')
   const [backendOnline, setBackendOnline] = useState(false)
   const [, setMotd] = useState('Queue up for ranked arena play.')
   const [dailyQuest, setDailyQuest] = useState('Win 1 ranked arena match')
@@ -272,8 +275,6 @@ function AppShell() {
     },
     [],
   )
-  const [opponentDisconnected, setOpponentDisconnected] = useState(false)
-  const [disconnectGraceMs, setDisconnectGraceMs] = useState(0)
   const [swUpdateAvailable, setSwUpdateAvailable] = useState(false)
   const swRegistrationRef = useRef<ServiceWorkerRegistration | null>(null)
   const [complaintForm, setComplaintForm] = useState<ComplaintFormState>({
@@ -294,10 +295,6 @@ function AppShell() {
   const [adminAuditExpandedId, setAdminAuditExpandedId] = useState<string | null>(null)
   const [transferForm, setTransferForm] = useState({ targetAccountId: '', password: '' })
   const [transferStatus, setTransferStatus] = useState('')
-  const [battleIntroVisible, setBattleIntroVisible] = useState(false)
-  const [rewardOverlayVisible, setRewardOverlayVisible] = useState(false)
-  const [damagedSlots, setDamagedSlots] = useState<Set<string>>(new Set())
-  const [inspectedCard, setInspectedCard] = useState<InspectedCard | null>(null)
   const longPressTimerRef = useRef<number | null>(null)
   const longPressTriggeredRef = useRef(false)
   const battleStartedRef = useRef(false)
@@ -416,6 +413,9 @@ function AppShell() {
       setBattleIntroVisible(false)
       battleIntroTimerRef.current = null
     }, 1600)
+    // setBattleIntroVisible comes from GameProvider's useState; stable but
+    // eslint can't see through useContext.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // ─── Auth: restore session on mount ──────────────────────────────────────
@@ -1283,6 +1283,9 @@ function AppShell() {
     return () => {
       window.clearTimeout(hideTimer)
     }
+    // setBattleIntroVisible comes from GameProvider's useState; stable but
+    // eslint can't see through useContext.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeScreen])
 
   useEffect(() => {
@@ -1331,6 +1334,9 @@ function AppShell() {
         window.clearTimeout(clearTimer)
       }
     }
+    // setDamagedSlots comes from GameProvider's useState; stable but eslint
+    // can't see through useContext.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [game.player.board, game.enemy.board])
 
   useEffect(() => {
@@ -1348,6 +1354,9 @@ function AppShell() {
     return () => {
       window.clearTimeout(overlayTimer)
     }
+    // setRewardOverlayVisible comes from GameProvider's useState; stable but
+    // eslint can't see through useContext.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [game.winner, soundEnabled, enemyTurnActive])
 
   useEffect(() => {
