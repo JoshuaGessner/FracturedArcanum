@@ -28,6 +28,10 @@ export type SoundName =
   | 'heroHit'
   | 'heroHeal'
   | 'heroLowHp'
+  | 'packHover'
+  | 'lidSplit'
+  | 'cardArc'
+  | 'firstTime'
 
 let audioContext: AudioContext | null = null
 
@@ -277,6 +281,32 @@ export function playSound(name: SoundName, enabled: boolean) {
       // Single heartbeat thump-thump (call repeatedly via startLoopingSound)
       playTone(context, 60, now, 0.1, 'sine', 0.02)
       playTone(context, 60, now + 0.18, 0.1, 'sine', 0.016)
+      break
+    case 'packHover':
+      // Soft chime 880Hz, 60ms
+      playTone(context, 880, now, 0.06, 'triangle', 0.022)
+      break
+    case 'lidSplit':
+      // Sharp wood crack 200Hz + bright sparkle on top
+      playTone(context, 200, now, 0.09, 'square', 0.034)
+      playNoise(context, now, 0.08, 2400, 600, 0.022)
+      playTone(context, 1760, now + 0.04, 0.18, 'triangle', 0.02)
+      playTone(context, 2640, now + 0.08, 0.16, 'triangle', 0.014)
+      break
+    case 'cardArc':
+      // Whoosh per card with slight pitch variance for layered fan
+      {
+        const variance = 1 + (Math.random() - 0.5) * 0.18
+        playNoise(context, now, 0.12, 1400 * variance, 400 * variance, 0.018)
+        playTone(context, 660 * variance, now + 0.02, 0.08, 'sine', 0.014)
+      }
+      break
+    case 'firstTime':
+      // Bright bell triad — major chord with sparkle
+      playTone(context, 1046, now, 0.22, 'triangle', 0.026)
+      playTone(context, 1318, now + 0.04, 0.22, 'triangle', 0.024)
+      playTone(context, 1568, now + 0.08, 0.24, 'triangle', 0.022)
+      playTone(context, 2093, now + 0.18, 0.18, 'sine', 0.018)
       break
   }
 }

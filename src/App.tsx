@@ -150,6 +150,7 @@ function AppShell() {
     setPackOffers,
     setOpenedPackCards,
     setPackOpening,
+    setPrevCollectionSnapshot,
   } = useProfileState()
 
   // ─── Local screen-shell state ─────────────────────────────────────────
@@ -2018,6 +2019,9 @@ function AppShell() {
       return
     }
 
+    // Snapshot collection BEFORE the server mutates it so the ceremony overlay
+    // can detect first-time card discoveries (Phase 3T NEW! ribbon).
+    setPrevCollectionSnapshot(collection)
     setPackOpening(packType)
     try {
       const response = await authFetch('/api/shop/pack', authToken, { method: 'POST', body: { packType } })

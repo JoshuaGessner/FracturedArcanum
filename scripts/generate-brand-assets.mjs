@@ -911,6 +911,12 @@ const overlays = {
   'glow-legendary.svg': svg('0 0 200 200',
     `<defs><radialGradient id="gle" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="rgba(254,230,138,0.95)"/><stop offset="50%" stop-color="rgba(217,119,6,0.5)"/><stop offset="100%" stop-color="rgba(120,53,15,0)"/></radialGradient></defs><circle cx="100" cy="100" r="100" fill="url(#gle)"/><g stroke="rgba(254,230,138,0.7)" stroke-width="3" fill="none"><line x1="100" y1="0" x2="100" y2="200"/><line x1="0" y1="100" x2="200" y2="100"/><line x1="20" y1="20" x2="180" y2="180"/><line x1="180" y1="20" x2="20" y2="180"/></g>`,
     'Legendary glow'),
+  'pack-burst.svg': svg('0 0 400 400',
+    `<defs><radialGradient id="pbCore" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="rgba(255,251,214,1)"/><stop offset="35%" stop-color="rgba(254,230,138,0.85)"/><stop offset="70%" stop-color="rgba(217,119,6,0.35)"/><stop offset="100%" stop-color="rgba(120,53,15,0)"/></radialGradient><linearGradient id="pbRay" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="rgba(255,251,214,0.95)"/><stop offset="100%" stop-color="rgba(254,230,138,0)"/></linearGradient></defs><circle cx="200" cy="200" r="200" fill="url(#pbCore)"/><g fill="url(#pbRay)" transform="translate(200 200)"><polygon points="-12,-200 12,-200 0,-40"/><polygon points="-12,200 12,200 0,40" transform="rotate(180)"/><polygon points="-12,-200 12,-200 0,-40" transform="rotate(45)"/><polygon points="-12,-200 12,-200 0,-40" transform="rotate(90)"/><polygon points="-12,-200 12,-200 0,-40" transform="rotate(135)"/><polygon points="-12,-200 12,-200 0,-40" transform="rotate(225)"/><polygon points="-12,-200 12,-200 0,-40" transform="rotate(270)"/><polygon points="-12,-200 12,-200 0,-40" transform="rotate(315)"/><polygon points="-6,-180 6,-180 0,-30" transform="rotate(22.5)" opacity="0.65"/><polygon points="-6,-180 6,-180 0,-30" transform="rotate(67.5)" opacity="0.65"/><polygon points="-6,-180 6,-180 0,-30" transform="rotate(112.5)" opacity="0.65"/><polygon points="-6,-180 6,-180 0,-30" transform="rotate(157.5)" opacity="0.65"/><polygon points="-6,-180 6,-180 0,-30" transform="rotate(202.5)" opacity="0.65"/><polygon points="-6,-180 6,-180 0,-30" transform="rotate(247.5)" opacity="0.65"/><polygon points="-6,-180 6,-180 0,-30" transform="rotate(292.5)" opacity="0.65"/><polygon points="-6,-180 6,-180 0,-30" transform="rotate(337.5)" opacity="0.65"/></g>`,
+    'Pack opening golden burst'),
+  'ribbon-new.svg': svg('0 0 120 60',
+    `<defs><linearGradient id="rnFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#fef2f2"/><stop offset="35%" stop-color="#ef4444"/><stop offset="100%" stop-color="#7f1d1d"/></linearGradient></defs><path d="M6 14 L98 14 L114 30 L98 46 L6 46 L18 30 Z" fill="url(#rnFill)" stroke="#fde68a" stroke-width="2" stroke-linejoin="round"/><path d="M6 14 L18 30 L6 46 L0 30 Z" fill="#7f1d1d" stroke="#fde68a" stroke-width="1.5"/><text x="58" y="38" text-anchor="middle" font-size="22" font-family="Verdana,Segoe UI,sans-serif" font-weight="900" fill="#fff8dc" stroke="#7f1d1d" stroke-width="0.6">NEW!</text>`,
+    'New card discovery ribbon'),
 }
 
 // Particles (16×16)
@@ -948,6 +954,7 @@ const uiAssetType = (id) => {
   if (id.startsWith('bg-')) return 'ui-background'
   if (id.startsWith('tile-')) return 'ui-nav-tile'
   if (id.startsWith('rank-')) return 'ui-rank'
+  if (id === 'pack-burst.svg' || id === 'ribbon-new.svg') return 'ui-overlay'
   if (id.startsWith('pack-')) return 'ui-pack'
   if (id.startsWith('gem-')) return 'ui-rarity-gem'
   if (id.startsWith('btn-') || id.startsWith('panel-') || id.startsWith('divider-') || id.startsWith('pip-') || id.startsWith('icon-')) return 'ui-chrome'

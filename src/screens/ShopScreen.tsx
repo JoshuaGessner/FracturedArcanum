@@ -1,23 +1,53 @@
+import { useState } from 'react'
 import { CARD_LIBRARY, RARITY_COLORS } from '../game'
 import { CARD_BORDER_OFFERS, THEME_OFFERS } from '../constants'
 import { PackArt, RarityBadge } from '../components/AssetBadge'
+import { PackCeremonyOverlay } from '../components/PackCeremonyOverlay'
 import { cardArtPath, handleCardArtError } from '../utils'
 import { useAppShell, useGame, useProfile } from '../contexts'
 
 const RARITY_REFUND = { common: 5, rare: 10, epic: 25, legendary: 100 } as const
 
 export function ShopScreen() {
-  const { activeScreen, loggedIn } = useAppShell()
+  const { activeScreen, loggedIn, soundEnabled } = useAppShell()
   const {
     runes, totalOwnedCards, nextRewardLabel, canClaimDailyReward, handleClaimDailyReward,
     ownedThemes, selectedTheme, handleEquipTheme,
     ownedCardBorders, selectedCardBorder, handlePurchaseBorder,
     packOffers, packOpening, openedPackCards, handleOpenPack,
+    setOpenedPackCards, prevCollectionSnapshot, setPrevCollectionSnapshot,
     collection, savedDecks, pendingBreakdown, setPendingBreakdown, handleBreakdownCard,
   } = useProfile()
   const { startMatch } = useGame()
 
+  // Tracks which pack the player is currently opening so the ceremony overlay
+  // can stage that pack's art and so "Open Another" can re-fire the same
+  // offer after `packOpening` clears.
+  const [activeCeremonyPackId, setActiveCeremonyPackId] = useState<string | null>(null)
+
+  const ceremonyPack = activeCeremonyPackId
+    ? packOffers.find((offer) => offer.id === activeCeremonyPackId) ?? null
+    : null
+  const ceremonyVisible = openedPackCards.length > 0 && ceremonyPack !== null
+
+  const handleClickOpenPack = (packId: string) => {
+    setActiveCeremonyPackId(packId)
+    void handleOpenPack(packId)
+  }
+
+  const handleCeremonyClose = () => {
+    setOpenedPackCards([])
+    setPrevCollectionSnapshot(null)
+    setActiveCeremonyPackId(null)
+  }
+
+  const handleCeremonyOpenAnother = () => {
+    if (!ceremonyPack) return
+    void handleOpenPack(ceremonyPack.id)
+  }
+
   return (
+    <>
     <section className={`vault-grid shop-screen screen-panel ${activeScreen === 'shop' ? 'active' : 'hidden'}`}>
       <article className={`section-card utility-card reward-vault-card ${canClaimDailyReward ? 'claim-ready' : ''}`}>
         <div className="section-head">
@@ -139,7 +169,7 @@ export function ShopScreen() {
               <div className="badges">
                 <span className="badge">{pack.cost} Shards</span>
               </div>
-              <button className="primary" onClick={() => void handleOpenPack(pack.id)} disabled={packOpening === pack.id || runes < pack.cost}>
+              <button className="primary" onClick={() => handleClickOpenPack(pack.id)} disabled={packOpening === pack.id || runes < pack.cost}>
                 {packOpening === pack.id ? (
                   <><span className="spinner spinner-inline" aria-hidden="true" />Opening…</>
                 ) : (
@@ -150,7 +180,7 @@ export function ShopScreen() {
           ))}
         </div>
 
-        {openedPackCards.length > 0 && (
+        {openedPackCards.length > 0 && !ceremonyVisible && (
           <div className="pack-reveal-stage">
             <div className="section-head compact">
               <div>
@@ -298,5 +328,20 @@ export function ShopScreen() {
         })()}
       </article>
     </section>
+    {ceremonyVisible && ceremonyPack && (
+      <PackCeremonyOverlay
+        key={`${ceremonyPack.id}-${openedPackCards.length}-${openedPackCards[0]?.id ?? ''}`}
+        cards={openedPackCards}
+        packId={ceremonyPack.id}
+        packCost={ceremonyPack.cost}
+        runes={runes}
+        prevCollection={prevCollectionSnapshot ?? collection}
+        soundEnabled={soundEnabled}
+        packOpening={packOpening}
+        onOpenAnother={handleCeremonyOpenAnother}
+        onClose={handleCeremonyClose}
+      />
+    )}
+    </>
   )
 }

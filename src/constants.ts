@@ -132,6 +132,8 @@ export const UI_ASSETS = {
     attackArrow: toUiAsset('overlay-attack-arrow.svg'),
     heroCracks: toUiAsset('overlay-hero-cracks.svg'),
     heroHalo: toUiAsset('overlay-hero-halo.svg'),
+    packBurst: toUiAsset('pack-burst.svg'),
+    ribbonNew: toUiAsset('ribbon-new.svg'),
   },
   glows: {
     common: toUiAsset('glow-common.svg'),

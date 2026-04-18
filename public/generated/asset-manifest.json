@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-04-18T16:27:51.702Z",
+  "generatedAt": "2026-04-18T16:42:30.126Z",
   "provider": "local-svg",
   "apiReady": false,
   "commercialSafe": true,
@@ -464,6 +464,18 @@
     {
       "id": "glow-legendary.svg",
       "path": "/generated/ui/glow-legendary.svg",
+      "type": "ui-overlay",
+      "source": "local-generated"
+    },
+    {
+      "id": "pack-burst.svg",
+      "path": "/generated/ui/pack-burst.svg",
+      "type": "ui-overlay",
+      "source": "local-generated"
+    },
+    {
+      "id": "ribbon-new.svg",
+      "path": "/generated/ui/ribbon-new.svg",
       "type": "ui-overlay",
       "source": "local-generated"
     },

@@ -64,6 +64,8 @@ export type ProfileStateValue = {
   setOpenedPackCards: Dispatch<SetStateAction<OpenedPackCard[]>>
   packOpening: string | null
   setPackOpening: Dispatch<SetStateAction<string | null>>
+  prevCollectionSnapshot: CardCollection | null
+  setPrevCollectionSnapshot: Dispatch<SetStateAction<CardCollection | null>>
 }
 
 const ProfileContext = createContext<ProfileStateValue | null>(null)
@@ -86,6 +88,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   const [packOffers, setPackOffers] = useState<PackOffer[]>([])
   const [openedPackCards, setOpenedPackCards] = useState<OpenedPackCard[]>([])
   const [packOpening, setPackOpening] = useState<string | null>(null)
+  const [prevCollectionSnapshot, setPrevCollectionSnapshot] = useState<CardCollection | null>(null)
 
   const value = useMemo<ProfileStateValue>(
     () => ({
@@ -107,6 +110,8 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
       setOpenedPackCards,
       packOpening,
       setPackOpening,
+      prevCollectionSnapshot,
+      setPrevCollectionSnapshot,
     }),
     [
       savedDecks,
@@ -118,6 +123,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
       packOffers,
       openedPackCards,
       packOpening,
+      prevCollectionSnapshot,
     ],
   )
 

@@ -4225,3 +4225,404 @@ button.icon-only {
 .border-preview.border-frost   { box-shadow: 0 0 0 2px #7dd3fc inset, 0 0 14px rgba(125, 211, 252, 0.4); }
 .border-preview.border-solar   { box-shadow: 0 0 0 2px #f59e0b inset, 0 0 16px rgba(245, 158, 11, 0.45); }
 .border-preview.border-void    { box-shadow: 0 0 0 2px #a855f7 inset, 0 0 18px rgba(168, 85, 247, 0.5); }
+
+/* ─── Phase 3T — Pack Opening Ceremony Overlay ───────────────────── */
+
+.pack-ceremony-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: radial-gradient(ellipse at center, rgba(8, 6, 22, 0.78) 0%, rgba(2, 2, 10, 0.94) 70%);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  animation: packCeremonyVeilIn 200ms ease forwards;
+  touch-action: none;
+  -webkit-touch-callout: none;
+  user-select: none;
+}
+
+@keyframes packCeremonyVeilIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.pack-ceremony-stage {
+  position: relative;
+  width: min(620px, 100%);
+  max-height: calc(100dvh - 32px);
+  display: grid;
+  grid-template-rows: 1fr auto;
+  align-items: center;
+  justify-items: center;
+  gap: 16px;
+}
+
+.pack-ceremony-stage.legendary-shake-a { animation: packCeremonyShake 360ms ease-in-out; }
+.pack-ceremony-stage.legendary-shake-b { animation: packCeremonyShake 360ms ease-in-out reverse; }
+
+@keyframes packCeremonyShake {
+  0%, 100% { transform: translate(0, 0); }
+  15% { transform: translate(-6px, 4px); }
+  30% { transform: translate(6px, -4px); }
+  45% { transform: translate(-5px, -3px); }
+  60% { transform: translate(4px, 5px); }
+  75% { transform: translate(-3px, 2px); }
+  90% { transform: translate(2px, -1px); }
+}
+
+.pack-ceremony-pack {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: clamp(160px, 38vw, 220px);
+  height: clamp(220px, 52vw, 308px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  filter: drop-shadow(0 18px 28px rgba(0, 0, 0, 0.55));
+}
+
+.pack-ceremony-pack img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.pack-ceremony-pack-intro img { animation: packCeremonyZoom 220ms ease-out forwards; }
+.pack-ceremony-pack-shake img { animation: packCeremonyWiggle 540ms ease-in-out; }
+.pack-ceremony-pack-burst { animation: packCeremonyFade 380ms ease-out forwards; }
+
+@keyframes packCeremonyZoom {
+  from { transform: scale(0.6); opacity: 0; }
+  to   { transform: scale(1);   opacity: 1; }
+}
+
+@keyframes packCeremonyWiggle {
+  0%, 100% { transform: rotate(0deg) scale(1); }
+  10% { transform: rotate(-4deg) scale(1.02); }
+  25% { transform: rotate(4deg) scale(1.04); }
+  40% { transform: rotate(-5deg) scale(1.05); }
+  55% { transform: rotate(5deg) scale(1.06); }
+  70% { transform: rotate(-3deg) scale(1.05); }
+  85% { transform: rotate(2deg) scale(1.03); }
+}
+
+@keyframes packCeremonyFade {
+  from { opacity: 1; transform: scale(1); }
+  to   { opacity: 0; transform: scale(1.4); }
+}
+
+.pack-ceremony-lid {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.pack-ceremony-lid-half {
+  position: absolute;
+  top: 0;
+  width: 50%;
+  height: 50%;
+  background: linear-gradient(180deg, rgba(254, 230, 138, 0.95), rgba(217, 119, 6, 0.6));
+  border: 1px solid rgba(254, 230, 138, 0.85);
+  box-shadow: 0 0 18px rgba(254, 230, 138, 0.65);
+}
+
+.pack-ceremony-lid-half.left  { left: 0;  border-radius: 12px 0 0 0; animation: packLidFlyL 480ms ease-out forwards; }
+.pack-ceremony-lid-half.right { right: 0; border-radius: 0 12px 0 0; animation: packLidFlyR 480ms ease-out forwards; }
+
+@keyframes packLidFlyL {
+  from { transform: translate(0, 0) rotate(0deg); opacity: 1; }
+  to   { transform: translate(-90%, -120%) rotate(-40deg); opacity: 0; }
+}
+
+@keyframes packLidFlyR {
+  from { transform: translate(0, 0) rotate(0deg); opacity: 1; }
+  to   { transform: translate(90%, -120%) rotate(40deg); opacity: 0; }
+}
+
+.pack-ceremony-burst {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: min(120vw, 720px);
+  height: min(120vw, 720px);
+  pointer-events: none;
+  opacity: 0;
+  animation: packBurstIn 520ms ease-out forwards;
+  mix-blend-mode: screen;
+}
+
+.pack-ceremony-burst.fade { animation: packBurstFade 600ms ease-out forwards; }
+
+@keyframes packBurstIn {
+  0%   { opacity: 0; transform: scale(0.4) rotate(0deg); }
+  60%  { opacity: 0.95; transform: scale(1.05) rotate(8deg); }
+  100% { opacity: 0.55; transform: scale(1) rotate(0deg); }
+}
+
+@keyframes packBurstFade {
+  from { opacity: 0.55; }
+  to   { opacity: 0; }
+}
+
+.pack-ceremony-fan {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  position: relative;
+  width: 100%;
+  height: clamp(280px, 60vh, 420px);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.pack-ceremony-fan-slot {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%) rotate(var(--ceremony-tilt)) translateY(calc(var(--ceremony-lift) * -1));
+  transform-origin: bottom center;
+  width: clamp(120px, 32vw, 168px);
+  margin-left: calc((var(--ceremony-index) - (var(--ceremony-fan-count, 5) / 2)) * clamp(70px, 18vw, 110px));
+  animation: packCardArc 420ms ease-out backwards;
+  animation-delay: calc(var(--ceremony-index) * 80ms);
+}
+
+@keyframes packCardArc {
+  from {
+    transform: translateX(-50%) translateY(60px) scale(0.5) rotate(0deg);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(-50%) rotate(var(--ceremony-tilt)) translateY(calc(var(--ceremony-lift) * -1));
+    opacity: 1;
+  }
+}
+
+/* Position cards horizontally based on index for the fan layout. */
+.pack-ceremony-fan-slot:nth-child(1) { left: calc(50% - clamp(160px, 36vw, 220px)); }
+.pack-ceremony-fan-slot:nth-child(2) { left: calc(50% - clamp(80px, 18vw, 110px)); }
+.pack-ceremony-fan-slot:nth-child(3) { left: 50%; }
+.pack-ceremony-fan-slot:nth-child(4) { left: calc(50% + clamp(80px, 18vw, 110px)); }
+.pack-ceremony-fan-slot:nth-child(5) { left: calc(50% + clamp(160px, 36vw, 220px)); }
+.pack-ceremony-fan-slot:nth-child(6) { left: calc(50% - clamp(220px, 50vw, 320px)); }
+.pack-ceremony-fan-slot:nth-child(7) { left: calc(50% + clamp(220px, 50vw, 320px)); }
+
+.pack-ceremony-card {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  width: 100%;
+  cursor: pointer;
+  perspective: 900px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.pack-ceremony-card-inner {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 5 / 7;
+  transform-style: preserve-3d;
+  transition: transform 480ms cubic-bezier(0.4, 0.1, 0.2, 1);
+}
+
+.pack-ceremony-card.flipped .pack-ceremony-card-inner {
+  transform: rotateY(180deg);
+}
+
+.pack-ceremony-card-back,
+.pack-ceremony-card-front {
+  position: absolute;
+  inset: 0;
+  border-radius: 14px;
+  overflow: hidden;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  border: 2px solid var(--rarity-color, #fbbf24);
+  box-shadow: 0 12px 22px rgba(0, 0, 0, 0.45);
+  background: linear-gradient(180deg, rgba(22, 24, 46, 0.96), rgba(12, 16, 32, 0.96));
+}
+
+.pack-ceremony-card-back img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  filter: brightness(0.85);
+}
+
+.pack-ceremony-card-front {
+  transform: rotateY(180deg);
+  display: grid;
+  grid-template-rows: 1fr auto;
+  gap: 6px;
+  padding: 8px;
+}
+
+.pack-ceremony-card-glow {
+  position: absolute;
+  inset: -28px;
+  pointer-events: none;
+  opacity: 0;
+  z-index: 0;
+}
+
+.pack-ceremony-card.flipped .pack-ceremony-card-glow {
+  animation: packGlowBurst 720ms ease-out forwards;
+}
+
+.pack-ceremony-card.legendary-flipped .pack-ceremony-card-glow {
+  animation: packGlowBurstLegendary 1100ms ease-out forwards;
+}
+
+@keyframes packGlowBurst {
+  0%   { opacity: 0; transform: scale(0.6); }
+  40%  { opacity: 0.85; transform: scale(1.15); }
+  100% { opacity: 0.45; transform: scale(1); }
+}
+
+@keyframes packGlowBurstLegendary {
+  0%   { opacity: 0; transform: scale(0.6) rotate(0deg); }
+  35%  { opacity: 1;  transform: scale(1.25) rotate(8deg); }
+  70%  { opacity: 0.85; transform: scale(1.1)  rotate(-4deg); }
+  100% { opacity: 0.6;  transform: scale(1)    rotate(0deg); }
+}
+
+.pack-ceremony-card-art {
+  position: relative;
+  z-index: 1;
+  border-radius: 10px;
+  overflow: hidden;
+  background: rgba(8, 12, 28, 0.6);
+}
+
+.pack-ceremony-card-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.pack-ceremony-card-meta {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 2px;
+  padding: 4px 2px 0;
+  text-align: center;
+}
+
+.pack-ceremony-card-meta strong {
+  font-size: 0.8rem;
+  line-height: 1.1;
+  color: var(--text);
+}
+
+.pack-ceremony-card-meta .mini-text {
+  font-size: 0.65rem;
+  opacity: 0.75;
+}
+
+.pack-ceremony-card-ribbon {
+  position: absolute;
+  top: -8px;
+  right: -10px;
+  width: 80px;
+  height: auto;
+  z-index: 2;
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.55));
+  animation: packRibbonIn 360ms ease-out 240ms backwards;
+}
+
+@keyframes packRibbonIn {
+  from { transform: translateY(-12px) scale(0.6) rotate(-12deg); opacity: 0; }
+  to   { transform: translateY(0) scale(1) rotate(-6deg); opacity: 1; }
+}
+
+.pack-ceremony-footer {
+  position: relative;
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(15, 17, 40, 0.92), rgba(8, 10, 28, 0.92));
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.45);
+  width: 100%;
+  max-width: 540px;
+}
+
+.pack-ceremony-footer button {
+  min-height: 44px;
+  min-width: 44px;
+  flex: 1 1 140px;
+}
+
+@media (max-width: 460px) {
+  .pack-ceremony-fan-slot {
+    width: clamp(100px, 30vw, 132px);
+  }
+  .pack-ceremony-card-meta strong { font-size: 0.72rem; }
+  .pack-ceremony-card-ribbon { width: 64px; right: -8px; }
+}
+
+.pack-ceremony-stage.reduced-motion .pack-ceremony-pack-shake img,
+.pack-ceremony-stage.reduced-motion .pack-ceremony-pack-intro img,
+.pack-ceremony-stage.reduced-motion .pack-ceremony-card-inner,
+.pack-ceremony-stage.reduced-motion .pack-ceremony-fan-slot,
+.pack-ceremony-stage.reduced-motion .pack-ceremony-card.flipped .pack-ceremony-card-glow,
+.pack-ceremony-stage.reduced-motion .pack-ceremony-card.legendary-flipped .pack-ceremony-card-glow,
+.pack-ceremony-stage.reduced-motion .pack-ceremony-burst,
+.pack-ceremony-stage.reduced-motion .pack-ceremony-card-ribbon,
+.pack-ceremony-stage.reduced-motion .pack-ceremony-lid-half {
+  animation: none !important;
+  transition: none !important;
+}
+
+.pack-ceremony-stage.reduced-motion .pack-ceremony-card.flipped .pack-ceremony-card-inner {
+  transform: rotateY(180deg);
+}
+
+.pack-ceremony-stage.reduced-motion .pack-ceremony-card-glow {
+  opacity: 0.5;
+}
+
+.pack-ceremony-stage.reduced-motion .pack-ceremony-burst {
+  opacity: 0.4;
+}
+
+.pack-ceremony-stage.reduced-motion.legendary-shake-a,
+.pack-ceremony-stage.reduced-motion.legendary-shake-b {
+  animation: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pack-ceremony-overlay { animation: none; }
+  .pack-ceremony-pack-intro img,
+  .pack-ceremony-pack-shake img,
+  .pack-ceremony-pack-burst,
+  .pack-ceremony-burst,
+  .pack-ceremony-fan-slot,
+  .pack-ceremony-card-ribbon,
+  .pack-ceremony-lid-half {
+    animation: none !important;
+  }
+  .pack-ceremony-card-inner { transition: none !important; }
+  .pack-ceremony-card.flipped .pack-ceremony-card-inner { transform: rotateY(180deg); }
+  .pack-ceremony-card-glow { opacity: 0.45 !important; animation: none !important; }
+  .pack-ceremony-stage.legendary-shake-a,
+  .pack-ceremony-stage.legendary-shake-b { animation: none !important; }
+}
