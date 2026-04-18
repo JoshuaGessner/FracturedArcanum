@@ -1465,7 +1465,7 @@ function AppShell() {
               : activeScreen === 'shop'
                 ? 'Shop'
                 : 'Settings'
-
+  const isBattleScreen = activeScreen === 'battle'
 
   function transitionToScreen(screen: AppScreen, withSound = false) {
     setScreenTransitionClass(getScreenTransitionClass(activeScreen, screen))
@@ -2648,7 +2648,7 @@ function AppShell() {
 
   return (
     <AppShellContext.Provider value={appCtx}>
-    <main className={`app-shell theme-${selectedTheme} ${screenTransitionClass}`}>
+    <main className={`app-shell theme-${selectedTheme} ${screenTransitionClass} ${isBattleScreen ? 'battle-shell-active' : ''}`}>
       {/* ─── Floating toast stack (auto-fading) ──────────────────────── */}
       <ToastStack toasts={toastStack} />
 
@@ -2895,7 +2895,7 @@ function AppShell() {
 
       <SettingsScreen />
 
-      <NavBar activeScreen={activeScreen} onNavigate={openScreen} />
+      {!isBattleScreen && <NavBar activeScreen={activeScreen} onNavigate={openScreen} />}
       </>)}
     </main>
     </AppShellContext.Provider>

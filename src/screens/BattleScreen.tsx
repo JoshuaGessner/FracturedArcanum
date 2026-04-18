@@ -96,52 +96,116 @@ export function BattleScreen() {
           <span className="badge">{isRankedBattle ? 'Ladder live' : battleKind === 'local' ? 'Local duel' : 'Practice arena'}</span>
         </div>
 
-        <div className="battle-resource-row">
-          <div className="pip-row">
-            {Array.from({ length: Math.max(activePlayer.maxMana, 1) }).map((_, index) => (
-              <span
-                key={`mana-${index}`}
-                className={index < activePlayer.mana ? 'pip filled' : 'pip'}
-              />
-            ))}
-            <span className="hero-label">Mana</span>
+        <div className="battle-action-row">
+          <div className="battle-resource-row">
+            <div className="pip-row">
+              {Array.from({ length: Math.max(activePlayer.maxMana, 1) }).map((_, index) => (
+                <span
+                  key={`mana-${index}`}
+                  className={index < activePlayer.mana ? 'pip filled' : 'pip'}
+                />
+              ))}
+              <span className="hero-label">Mana</span>
+            </div>
+            <div className="pip-row">
+              {Array.from({ length: 10 }).map((_, index) => (
+                <span
+                  key={`momentum-${index}`}
+                  className={index < activePlayer.momentum ? 'pip momentum filled' : 'pip momentum'}
+                />
+              ))}
+              <span className="hero-label">Momentum</span>
+            </div>
           </div>
-          <div className="pip-row">
-            {Array.from({ length: 10 }).map((_, index) => (
-              <span
-                key={`momentum-${index}`}
-                className={index < activePlayer.momentum ? 'pip momentum filled' : 'pip momentum'}
-              />
-            ))}
-            <span className="hero-label">Momentum</span>
-          </div>
-        </div>
 
-        <div className="controls">
-          <button
-            className="primary"
-            onClick={handleBurst}
-            disabled={activePlayer.momentum < 3 || Boolean(game.winner) || !isMyTurn}
-          >
-            Burst
-          </button>
-          <button className="secondary" onClick={handleEndTurn} disabled={Boolean(game.winner) || !isMyTurn}>
-            {!isMyTurn ? (
-              <><span className="spinner spinner-inline" aria-hidden="true" />Opponent thinking<span className="thinking-dots" /></>
-            ) : (
-              'End Turn'
-            )}
-          </button>
-          <button className="ghost" onClick={handleLeaveBattle}>
-            Leave
-          </button>
+          <div className="controls battle-controls">
+            <button
+              className="primary"
+              onClick={handleBurst}
+              disabled={activePlayer.momentum < 3 || Boolean(game.winner) || !isMyTurn}
+            >
+              Burst
+            </button>
+            <button className="secondary" onClick={handleEndTurn} disabled={Boolean(game.winner) || !isMyTurn}>
+              {!isMyTurn ? (
+                <><span className="spinner spinner-inline" aria-hidden="true" />Opponent thinking<span className="thinking-dots" /></>
+              ) : (
+                'End Turn'
+              )}
+            </button>
+            <button className="ghost" onClick={handleLeaveBattle}>
+              Leave
+            </button>
+          </div>
         </div>
       </section>
 
       <section className={`battlefield screen-panel ${isBattle ? 'active' : 'hidden'}`}>
-        <article className="section-card">
-          <div className="section-head">
-            <h2>{game.enemy.name} Frontline</h2>
+        <article className="section-card battlefield-stage">
+          <div className="battlefield-side enemy-side">
+            <div className="section-head battle-side-head">
+              <h2>{game.enemy.name} Frontline</h2>
+              <span className="badge">Enemy {game.enemy.health} HP</span>
+            </div>
+
+            <div className="board-grid board-grid-battle">
+              {game.enemy.board.map((unit, index) => {
+                if (!unit) {
+                  return (
+                    <div className="slot empty" key={`enemy-empty-${index}`}>
+                      Empty lane
+                    </div>
+                  )
+                }
+
+                const isSelectable = false
+                const isSelected = false
+
+                return (
+                  <button
+                    className={[
+                      'slot',
+                      `rarity-${unit.rarity}`,
+                      unit.effect === 'guard' ? 'guard' : '',
+                      unit.exhausted ? 'exhausted' : '',
+                      isSelected ? 'selected' : '',
+                      damagedSlots.has(unit.uid) ? 'damage-flash' : '',
+                    ]
+                      .filter(Boolean)
+                      .join(' ')}
+                    key={unit.uid}
+                    style={{ '--rarity-color': RARITY_COLORS[unit.rarity] } as React.CSSProperties}
+                    onClick={() => {
+                      if (consumeLongPressAction()) return
+                      if (isSelectable) handleSelectAttacker(index)
+                      else handleAttackTarget(index)
+                    }}
+                    {...getLongPressProps({ name: unit.name, icon: unit.icon, id: unit.id, cost: unit.cost, attack: unit.attack, health: unit.health, currentHealth: unit.currentHealth, rarity: unit.rarity, tribe: unit.tribe, text: unit.text, effect: unit.effect ?? null })}
+                    aria-disabled={Boolean(game.winner) || (isSelectable ? unit.exhausted : selectedAttacker === null)}
+                    title="Long press to inspect"
+                  >
+                    <img className="unit-portrait" src={cardArtPath(unit.id)} alt={`${unit.name} artwork`} loading="lazy" onError={handleCardArtError} />
+                    <div className="slot-head">
+                      <strong>
+                        {unit.icon} {unit.name}
+                      </strong>
+                      <span className="stats battle-stats-inline">
+                        <span><StatIcon kind="attack" />{unit.attack}</span>
+                        <span><StatIcon kind="health" />{unit.currentHealth}</span>
+                      </span>
+                    </div>
+                    {unit.effect && <EffectBadge effect={unit.effect} compact />}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          <div className="battle-centerline">
+            <div className="battle-center-status">
+              <span className="eyebrow">Arena clash</span>
+              <strong>{battleStatusLabel}</strong>
+            </div>
             <button
               className="ghost"
               onClick={() => handleAttackTarget('hero')}
@@ -151,117 +215,63 @@ export function BattleScreen() {
             </button>
           </div>
 
-          <div className="board-grid">
-            {game.enemy.board.map((unit, index) => {
-              if (!unit) {
+          <div className="battlefield-side player-side">
+            <div className="section-head battle-side-head">
+              <h2>{game.player.name} Frontline</h2>
+              <span className="badge">{isMyTurn ? 'Your turn' : 'Holding'}</span>
+            </div>
+
+            <div className="board-grid board-grid-battle">
+              {game.player.board.map((unit, index) => {
+                if (!unit) {
+                  return (
+                    <div className="slot empty" key={`player-empty-${index}`}>
+                      Open lane
+                    </div>
+                  )
+                }
+
+                const isSelectable = game.turn === 'player'
+                const isSelected = isSelectable && selectedAttacker === index
+
                 return (
-                  <div className="slot empty" key={`enemy-empty-${index}`}>
-                    Empty lane
-                  </div>
+                  <button
+                    className={[
+                      'slot',
+                      `rarity-${unit.rarity}`,
+                      unit.effect === 'guard' ? 'guard' : '',
+                      unit.exhausted ? 'exhausted' : '',
+                      isSelected ? 'selected' : '',
+                      damagedSlots.has(unit.uid) ? 'damage-flash' : '',
+                    ]
+                      .filter(Boolean)
+                      .join(' ')}
+                    key={unit.uid}
+                    style={{ '--rarity-color': RARITY_COLORS[unit.rarity] } as React.CSSProperties}
+                    onClick={() => {
+                      if (consumeLongPressAction()) return
+                      if (isSelectable) handleSelectAttacker(index)
+                      else handleAttackTarget(index)
+                    }}
+                    {...getLongPressProps({ name: unit.name, icon: unit.icon, id: unit.id, cost: unit.cost, attack: unit.attack, health: unit.health, currentHealth: unit.currentHealth, rarity: unit.rarity, tribe: unit.tribe, text: unit.text, effect: unit.effect ?? null })}
+                    aria-disabled={Boolean(game.winner) || (isSelectable ? unit.exhausted : selectedAttacker === null)}
+                    title="Long press to inspect"
+                  >
+                    <img className="unit-portrait" src={cardArtPath(unit.id)} alt={`${unit.name} artwork`} loading="lazy" onError={handleCardArtError} />
+                    <div className="slot-head">
+                      <strong>
+                        {unit.icon} {unit.name}
+                      </strong>
+                      <span className="stats battle-stats-inline">
+                        <span><StatIcon kind="attack" />{unit.attack}</span>
+                        <span><StatIcon kind="health" />{unit.currentHealth}</span>
+                      </span>
+                    </div>
+                    {unit.effect && <EffectBadge effect={unit.effect} compact />}
+                  </button>
                 )
-              }
-
-              const isSelectable = false
-              const isSelected = false
-
-              return (
-                <button
-                  className={[
-                    'slot',
-                    `rarity-${unit.rarity}`,
-                    unit.effect === 'guard' ? 'guard' : '',
-                    unit.exhausted ? 'exhausted' : '',
-                    isSelected ? 'selected' : '',
-                    damagedSlots.has(unit.uid) ? 'damage-flash' : '',
-                  ]
-                    .filter(Boolean)
-                    .join(' ')}
-                  key={unit.uid}
-                  style={{ '--rarity-color': RARITY_COLORS[unit.rarity] } as React.CSSProperties}
-                  onClick={() => {
-                    if (consumeLongPressAction()) return
-                    if (isSelectable) handleSelectAttacker(index)
-                    else handleAttackTarget(index)
-                  }}
-                  {...getLongPressProps({ name: unit.name, icon: unit.icon, id: unit.id, cost: unit.cost, attack: unit.attack, health: unit.health, currentHealth: unit.currentHealth, rarity: unit.rarity, tribe: unit.tribe, text: unit.text, effect: unit.effect ?? null })}
-                  aria-disabled={Boolean(game.winner) || (isSelectable ? unit.exhausted : selectedAttacker === null)}
-                  title="Long press to inspect"
-                >
-                  <img className="unit-portrait" src={cardArtPath(unit.id)} alt={`${unit.name} artwork`} loading="lazy" onError={handleCardArtError} />
-                  <div className="slot-head">
-                    <strong>
-                      {unit.icon} {unit.name}
-                    </strong>
-                    <span className="stats battle-stats-inline">
-                      <span><StatIcon kind="attack" />{unit.attack}</span>
-                      <span><StatIcon kind="health" />{unit.currentHealth}</span>
-                    </span>
-                  </div>
-                  {unit.effect && <EffectBadge effect={unit.effect} compact />}
-                </button>
-              )
-            })}
-          </div>
-        </article>
-
-        <div className="rune-divider battlefield-divider" aria-hidden="true" />
-
-        <article className="section-card">
-          <div className="section-head">
-            <h2>{game.player.name} Frontline</h2>
-            <p className="note">Ready units can attack once each turn.</p>
-          </div>
-
-          <div className="board-grid">
-            {game.player.board.map((unit, index) => {
-              if (!unit) {
-                return (
-                  <div className="slot empty" key={`player-empty-${index}`}>
-                    Open lane
-                  </div>
-                )
-              }
-
-              const isSelectable = game.turn === 'player'
-              const isSelected = isSelectable && selectedAttacker === index
-
-              return (
-                <button
-                  className={[
-                    'slot',
-                    `rarity-${unit.rarity}`,
-                    unit.effect === 'guard' ? 'guard' : '',
-                    unit.exhausted ? 'exhausted' : '',
-                    isSelected ? 'selected' : '',
-                    damagedSlots.has(unit.uid) ? 'damage-flash' : '',
-                  ]
-                    .filter(Boolean)
-                    .join(' ')}
-                  key={unit.uid}
-                  style={{ '--rarity-color': RARITY_COLORS[unit.rarity] } as React.CSSProperties}
-                  onClick={() => {
-                    if (consumeLongPressAction()) return
-                    if (isSelectable) handleSelectAttacker(index)
-                    else handleAttackTarget(index)
-                  }}
-                  {...getLongPressProps({ name: unit.name, icon: unit.icon, id: unit.id, cost: unit.cost, attack: unit.attack, health: unit.health, currentHealth: unit.currentHealth, rarity: unit.rarity, tribe: unit.tribe, text: unit.text, effect: unit.effect ?? null })}
-                  aria-disabled={Boolean(game.winner) || (isSelectable ? unit.exhausted : selectedAttacker === null)}
-                  title="Long press to inspect"
-                >
-                  <img className="unit-portrait" src={cardArtPath(unit.id)} alt={`${unit.name} artwork`} loading="lazy" onError={handleCardArtError} />
-                  <div className="slot-head">
-                    <strong>
-                      {unit.icon} {unit.name}
-                    </strong>
-                    <span className="stats battle-stats-inline">
-                      <span><StatIcon kind="attack" />{unit.attack}</span>
-                      <span><StatIcon kind="health" />{unit.currentHealth}</span>
-                    </span>
-                  </div>
-                  {unit.effect && <EffectBadge effect={unit.effect} compact />}
-                </button>
-              )
-            })}
+              })}
+            </div>
           </div>
         </article>
       </section>
@@ -311,12 +321,12 @@ export function BattleScreen() {
 
       <section className={`hand-section screen-panel ${isBattle ? 'active' : 'hidden'}`}>
         <article className="section-card hand-fan-stage">
-          <div className="section-head">
+          <div className="section-head battle-hand-head">
             <div>
-              <h2>{activePlayer.name} Hand</h2>
-              <p className="note">Tap a card to cast it or long-press to inspect its art and effect details.</p>
+              <h2>Hand</h2>
+              <p className="note battle-hand-note">Tap to cast or hold to inspect.</p>
             </div>
-            <span className="badge">Mana {activePlayer.mana}</span>
+            <span className="badge">Mana {activePlayer.mana}/{activePlayer.maxMana}</span>
           </div>
 
           <div className="hand-grid hand-fan-grid">

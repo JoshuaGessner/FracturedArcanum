@@ -127,6 +127,12 @@ button:disabled {
   position: relative;
 }
 
+.app-shell.battle-shell-active {
+  max-width: 1320px;
+  gap: 12px;
+  padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+}
+
 .app-shell::before {
   content: '';
   position: fixed;
@@ -281,7 +287,11 @@ button:disabled {
 }
 
 .deck-focus { grid-template-columns: 1fr; }
-.battlefield { grid-template-columns: 1fr; }
+.battlefield {
+  grid-template-columns: 1fr;
+  position: relative;
+  z-index: 1;
+}
 
 /* ─── Navigation ────────────────────────────────────────────────── */
 
@@ -954,15 +964,14 @@ button:disabled {
 /* ─── Battle Topbar ─────────────────────────────────────────────── */
 
 .battle-topbar {
-  position: sticky;
-  top: 8px;
-  z-index: 6;
+  position: relative;
+  z-index: 3;
   background: linear-gradient(135deg, rgba(10, 16, 31, 0.96), rgba(31, 45, 88, 0.92));
   backdrop-filter: blur(12px);
 }
 
 .battle-command-dais {
-  position: sticky;
+  position: relative;
   overflow: hidden;
 }
 
@@ -984,6 +993,7 @@ button:disabled {
 
 .battle-heroes-compact {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
   gap: 12px;
@@ -992,6 +1002,8 @@ button:disabled {
 .hero-compact {
   display: grid;
   gap: 2px;
+  min-width: 0;
+  flex: 1 1 220px;
   padding: 10px 12px;
   border-radius: 12px;
   background: rgba(8, 14, 30, 0.44);
@@ -1020,7 +1032,7 @@ button:disabled {
 }
 
 .battle-status-strip {
-  margin-top: 10px;
+  margin-top: 4px;
 }
 
 .battle-status-strip .badge {
@@ -1028,12 +1040,24 @@ button:disabled {
   background: rgba(251, 191, 36, 0.12);
 }
 
+.battle-action-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+}
+
 .battle-resource-row {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
-  justify-content: center;
-  margin-top: 10px;
+  justify-content: flex-start;
+  margin-top: 0;
+}
+
+.battle-controls {
+  margin-top: 0;
+  justify-content: flex-end;
 }
 
 .battle-resource-panel { display: grid; gap: 10px; }
@@ -1127,7 +1151,52 @@ button:disabled {
   gap: 10px;
 }
 
+.battlefield-stage {
+  display: grid;
+  gap: 10px;
+  padding-top: 12px;
+}
+
+.battlefield-side {
+  display: grid;
+  gap: 8px;
+}
+
+.battle-side-head {
+  margin-bottom: 0;
+}
+
+.battle-centerline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(147, 197, 253, 0.16);
+  background: linear-gradient(135deg, rgba(12, 18, 36, 0.88), rgba(28, 34, 60, 0.74));
+}
+
+.battle-center-status {
+  display: grid;
+  gap: 2px;
+}
+
+.board-grid-battle .slot {
+  min-height: 92px;
+  padding: 6px 8px;
+}
+
+.board-grid-battle .unit-portrait {
+  height: 40px;
+}
+
+.board-grid-battle .slot-head {
+  align-items: flex-start;
+}
+
 .battlefield-divider {
+  display: none;
   margin: 2px 0;
 }
 
@@ -1294,10 +1363,23 @@ button:disabled {
 
 /* ─── Hand Cards ────────────────────────────────────────────────── */
 
-.hand-section { display: grid; gap: 16px; }
+.hand-section {
+  display: grid;
+  gap: 16px;
+  position: relative;
+  z-index: 1;
+}
 
 .hand-fan-stage {
   overflow: hidden;
+}
+
+.battle-hand-head {
+  align-items: end;
+}
+
+.battle-hand-note {
+  margin: 0;
 }
 
 .hand-grid {
@@ -2471,8 +2553,27 @@ button.danger:hover { filter: brightness(1.08); }
   .vault-grid, .ops-grid, .meta-grid, .footer-grid, .topbar,
   .season-progress-block, .summary-grid, .split-fields, .preference-grid,
   .admin-columns, .admin-auth-row, .insight-grid, .reward-summary-grid,
-  .battle-hud-main, .profile-showcase, .battle-objective {
+  .battle-hud-main, .profile-showcase, .battle-objective,
+  .battle-action-row {
     grid-template-columns: 1fr;
+  }
+
+  .battle-topbar {
+    position: relative;
+    top: auto;
+  }
+
+  .battle-heroes-compact {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .battle-turn-label {
+    order: -1;
+  }
+
+  .battle-controls {
+    justify-content: stretch;
   }
 
   .admin-console { grid-column: span 1; }
@@ -2493,6 +2594,20 @@ button.danger:hover { filter: brightness(1.08); }
   .brand-logo { width: min(160px, 46vw); }
   .mode-switch, .stepper { flex-wrap: wrap; }
   .slot { min-height: 110px; padding: 8px; }
+  .board-grid-battle .slot {
+    min-height: 84px;
+    padding: 6px;
+  }
+  .board-grid-battle .unit-portrait {
+    height: 34px;
+  }
+  .battle-centerline {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .battle-objective .note {
+    display: none;
+  }
   .queue-modal { width: 100%; }
   .hand-card { min-height: 220px; }
   .hand-fan-grid .hand-card {
