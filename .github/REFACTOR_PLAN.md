@@ -1028,17 +1028,35 @@ After all phases complete, verify:
 
 ## Implementation Sequence (commit-per-step)
 
-| Step | Description | Risk | Est. Files Changed |
-|------|-------------|------|--------------------|
-| **1A** | Create 5 context provider files (empty shells with types) | Low | +5 new files |
-| **1B** | Move AppContext state + handlers from App.tsx | Medium | App.tsx, contexts/AppContext.tsx |
-| **1C** | Move GameContext state + handlers | High | App.tsx, contexts/GameContext.tsx |
-| **1D** | Move ProfileContext state + handlers | Medium | App.tsx, contexts/ProfileContext.tsx |
-| **1E** | Move SocialContext state + handlers | Medium | App.tsx, contexts/SocialContext.tsx |
-| **1F** | Move QueueContext state + handlers | Low | App.tsx, contexts/QueueContext.tsx |
-| **1G** | Remove quick-emote feature (UI, handler, socket, constants, CSS) | Low | HomeScreen, App.tsx, AppContext.ts, constants.ts, server.js, App.css |
-| **1H** | Wire providers in App.tsx, update useApp facade | Medium | App.tsx, useApp.ts, AppContext.ts |
-| **1I** | Delete old AppContext.ts, verify build/test/lint | Low | -1 file |
+> **Sequencing note (April 2026):** During Phase 1A facade migration we
+> confirmed that `App` is currently both the AppContext provider and the
+> consumer of every other context. To extract any real provider, `App` must
+> first be split into `App` (provider tree only) + `AppShell` (body that
+> consumes the contexts). That restructure should land **before** 1C–1F.
+> Recommended order from here:
+>
+> 1. **1B** — Split `App` into `App` + `AppShell`; `App` only assembles
+>    `<AppContext.Provider><Profile…><Game…><Social…><Queue…><AppShell/>`.
+>    No state moves yet; AppShell is renamed App body.
+> 2. **1F** — Move queue state + handlers + queue:* socket events + polling
+>    + countdown timer into `QueueProvider`. AppShell reads via `useQueue()`.
+> 3. **1D** — ProfileProvider.
+> 4. **1E** — SocialProvider.
+> 5. **1C** — GameProvider (highest risk, many refs).
+> 6. **1H/1I** — finalize AppContext, retire `AppContextValue` mega-type and
+>    `useApp()` facade.
+
+| Step | Description | Risk | Est. Files Changed | Status |
+|------|-------------|------|--------------------|--------|
+| **1A** | Create 5 context provider files (empty shells with types) | Low | +5 new files | ✅ done (4d75820, f2fcfda — facade hooks + all 7 screens migrated) |
+| **1B** | Split App into App (provider tree) + AppShell (body) | Medium | App.tsx, +AppShell.tsx | pending — **prerequisite for 1C–1F** |
+| **1C** | Move GameContext state + handlers | High | AppShell.tsx, contexts/GameContext.tsx | pending |
+| **1D** | Move ProfileContext state + handlers | Medium | AppShell.tsx, contexts/ProfileContext.tsx | pending |
+| **1E** | Move SocialContext state + handlers | Medium | AppShell.tsx, contexts/SocialContext.tsx | pending |
+| **1F** | Move QueueContext state + handlers | Low | AppShell.tsx, contexts/QueueContext.tsx | pending |
+| **1G** | Remove quick-emote feature (UI, handler, socket, constants, CSS) | Low | HomeScreen, App.tsx, AppContext.ts, constants.ts, server.js, App.css | ✅ done |
+| **1H** | Wire providers in App.tsx, update useApp facade | Medium | App.tsx, useApp.ts, AppContext.ts | pending |
+| **1I** | Delete old AppContext.ts, verify build/test/lint | Low | -1 file | pending |
 | **2A** | Update AppScreen type to 7 values | Low | types.ts, NavBar, App.tsx |
 | **2B1** | OpsScreen → SettingsScreen | Low | rename + update refs |
 | **2B2** | VaultScreen → ShopScreen | Low | rename + update refs |
