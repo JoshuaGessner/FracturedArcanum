@@ -2186,13 +2186,11 @@ function AppShell() {
     setQueueState('idle')
     setQueueSeconds(0)
     setQueuedOpponent(null)
-    setToastMessage(mode === 'ai' ? 'AI skirmish ready. Choose a difficulty and enter the arena.' : 'Pass-and-play duel ready. Ranked matchmaking stays available below.')
   }
 
   function handleAIDifficultyChange(level: 'auto' | AIDifficulty) {
     feedback('select', soundEnabled, hapticsEnabled)
     setAiDifficultySetting(level)
-    setToastMessage(level === 'auto' ? `AI difficulty set to Auto. Recommended tier: ${getRecommendedAIDifficulty(seasonRating)}.` : `${level.charAt(0).toUpperCase() + level.slice(1)} AI selected.`)
   }
 
   async function handleOpenPack(packType: string) {
@@ -3071,6 +3069,10 @@ function AppShell() {
         />
       )}
 
+      {loggedIn && !isBattleScreen && activeScreen !== 'home' && (
+        <NavBar activeScreen={activeScreen} onNavigate={openScreen} />
+      )}
+
       {activeScreen === 'home' && loggedIn && (
         <section className="nav-strip section-card">
           <div className="season-progress-block">
@@ -3146,7 +3148,6 @@ function AppShell() {
         <SettingsScreen />
       </div>
 
-      {!isBattleScreen && <NavBar activeScreen={activeScreen} onNavigate={openScreen} />}
       </>)}
     </main>
     </AppShellContext.Provider>

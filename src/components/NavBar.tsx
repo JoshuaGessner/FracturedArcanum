@@ -16,7 +16,7 @@ const NAV_ITEMS: Array<{ id: Exclude<AppScreen, 'battle'>; label: string }> = [
 
 export function NavBar({ activeScreen, onNavigate }: NavBarProps) {
   return (
-    <nav className="bottom-nav" aria-label="Primary screens">
+    <nav className="scene-nav" aria-label="Primary screens">
       {NAV_ITEMS.map((item) => (
         <button
           key={item.id}

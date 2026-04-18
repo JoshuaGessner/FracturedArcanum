@@ -10,11 +10,17 @@ export function PlayScreen() {
     resolvedAIDifficulty, aiDifficultySetting, handleAIDifficultyChange,
     startMatch,
   } = useGame()
-  const { seasonRating, deckReady } = useProfile()
+  const { seasonRating, deckReady, selectedDeckSize } = useProfile()
   const {
     handleStartQueue, queueState, queueSeconds, queueSearchStatus, queuePresence,
     handleCancelQueue, queuedOpponent, handleAcceptQueue, liveQueueLabel,
   } = useQueue()
+  const launchDisabled = !deckReady || queueState !== 'idle'
+  const entryHint = queueState === 'searching'
+    ? 'Ranked matchmaking is already searching. Cancel it below to switch modes.'
+    : deckReady
+      ? 'Tap a battle type to launch immediately.'
+      : `Your active deck has ${selectedDeckSize} cards. Finish it in Deck Forge to unlock battle entry.`
 
   return (
     <section className={`home-screen play-screen screen-panel ${activeScreen === 'play' ? 'active' : 'hidden'}`}>
@@ -37,7 +43,11 @@ export function PlayScreen() {
         <div className="mode-card-grid" aria-label="Choose a battle mode">
           <button
             className={`mode-card mode-card-ai ${preferredMode === 'ai' ? 'active' : ''}`}
-            onClick={() => handleModeChange('ai')}
+            onClick={() => {
+              handleModeChange('ai')
+              startMatch('ai')
+            }}
+            disabled={launchDisabled}
           >
             <span className="mode-card-eyebrow">Solo Arena</span>
             <strong>AI Skirmish</strong>
@@ -45,7 +55,11 @@ export function PlayScreen() {
           </button>
           <button
             className={`mode-card mode-card-duel ${preferredMode === 'duel' ? 'active' : ''}`}
-            onClick={() => handleModeChange('duel')}
+            onClick={() => {
+              handleModeChange('duel')
+              startMatch('duel')
+            }}
+            disabled={launchDisabled}
           >
             <span className="mode-card-eyebrow">Couch Clash</span>
             <strong>Pass &amp; Play</strong>
@@ -54,7 +68,8 @@ export function PlayScreen() {
           <button
             className={`mode-card mode-card-ranked ${queueState !== 'idle' ? 'active' : ''}`}
             onClick={handleStartQueue}
-            disabled={!deckReady || queueState !== 'idle'}
+            disabled={launchDisabled}
+            data-tour-id="queue-button"
           >
             <span className="mode-card-eyebrow">Live Ladder</span>
             <strong>Ranked Queue</strong>
@@ -79,11 +94,13 @@ export function PlayScreen() {
           </div>
         )}
 
+        <div className={`play-entry-hint ${deckReady ? 'ready' : 'warning'}`}>
+          <strong>{entryHint}</strong>
+        </div>
+
         <div className="play-action-row">
-          <button className="primary" onClick={() => startMatch()} disabled={!deckReady} data-tour-id="queue-button">
-            {gameInProgress ? 'Start Fresh Battle' : 'Enter Arena'}
-          </button>
-          <button className="ghost" onClick={() => openScreen('collection')}>Deck Forge</button>
+          <button className="secondary" onClick={() => openScreen('collection')}>Deck Forge</button>
+          <button className="ghost" onClick={() => openScreen('home')}>Back Home</button>
         </div>
 
         {queueState === 'searching' && (

@@ -139,7 +139,7 @@ button:disabled {
 /* Lock dock chrome to natural height; only the scene stage may grow. */
 .app-shell > .topbar,
 .app-shell > .nav-strip,
-.app-shell > .bottom-nav,
+.app-shell > .scene-nav,
 .app-shell > .update-banner,
 .app-shell > .challenge-banner {
   flex: 0 0 auto;
@@ -399,7 +399,7 @@ button:disabled {
   gap: 8px;
 }
 
-.bottom-nav {
+.scene-nav {
   position: relative;
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -409,9 +409,8 @@ button:disabled {
   z-index: 4;
   background: rgba(10, 14, 28, 0.92);
   backdrop-filter: blur(14px);
-  border-top: 1px solid rgba(147, 197, 253, 0.12);
+  border: 1px solid rgba(147, 197, 253, 0.12);
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.32);
-  padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
   flex: 0 0 auto;
 }
 
@@ -865,6 +864,13 @@ button:disabled {
   box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.24), 0 10px 28px rgba(251, 191, 36, 0.12);
 }
 
+.mode-card:disabled {
+  opacity: 0.58;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
 .mode-card-eyebrow {
   font-size: 0.72rem;
   letter-spacing: 0.12em;
@@ -911,18 +917,36 @@ button:disabled {
 
 /* ─── Play Action Row & Live Strip ──────────────────────────────── */
 
+.play-entry-hint {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-size: 0.88rem;
+  background: rgba(37, 99, 235, 0.08);
+  border: 1px solid rgba(147, 197, 253, 0.14);
+  color: #dbe7ff;
+}
+
+.play-entry-hint.ready {
+  background: rgba(34, 197, 94, 0.08);
+  border-color: rgba(74, 222, 128, 0.18);
+}
+
+.play-entry-hint.warning {
+  background: rgba(245, 158, 11, 0.08);
+  border-color: rgba(251, 191, 36, 0.2);
+}
+
 .play-action-row {
   display: flex;
   gap: 8px;
   margin-top: 12px;
 }
 
-.play-action-row .primary {
-  flex: 1 1 auto;
-}
-
+.play-action-row .primary,
+.play-action-row .secondary,
 .play-action-row .ghost {
-  flex: 0 0 auto;
+  flex: 1 1 0;
 }
 
 .play-live-strip {
@@ -2906,7 +2930,7 @@ button.danger:hover { filter: brightness(1.08); }
 @media (max-width: 640px) {
   .app-shell {
     gap: 8px;
-    padding: 10px 10px calc(88px + env(safe-area-inset-bottom, 0px));
+    padding: 10px 10px calc(10px + env(safe-area-inset-bottom, 0px));
   }
   .subtitle { display: none; }
   .brand-logo { width: min(156px, 44vw); }
