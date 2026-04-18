@@ -83,24 +83,31 @@ import type {
   TradeItem,
 } from './types'
 import { QueueProvider, useQueueState } from './contexts/QueueProvider'
+import { ProfileProvider, useProfileState } from './contexts/ProfileProvider'
 import './App.css'
 
 /**
  * Phase 1B — App is now a thin wrapper that exists only to host the
  * provider tree. All state, effects, and handlers live in `AppShell`.
  *
- * Phase 1F added the real `QueueProvider` above `AppShell`. Future
- * provider extractions (1C–1E) will nest inside this tree the same way.
+ * Phase 1F added the real `QueueProvider` above `AppShell`. Phase 1D
+ * added the real `ProfileProvider` (decks, collection, pack-shop state).
+ * Future provider extractions (1C, 1E) will nest inside this tree.
  */
 function App() {
   return (
     <QueueProvider>
-      <AppShell />
+      <ProfileProvider>
+        <AppShell />
+      </ProfileProvider>
     </QueueProvider>
   )
 }
 
 function AppShell() {
+  // `savedDeckConfig` mirrors the initial value loaded by ProfileProvider —
+  // we re-read here so `createGame` below can seed the engine with the same
+  // deck (cheap sync localStorage read; no behavior change).
   const savedDeckConfig = readStoredValue<DeckConfig>(STORAGE_KEYS.deck, DEFAULT_DECK_CONFIG)
   const savedMode = readStoredValue<GameMode>(STORAGE_KEYS.mode, 'ai')
   const savedAIDifficulty = readStoredValue<'auto' | AIDifficulty>(STORAGE_KEYS.aiDifficulty, 'auto')
@@ -134,23 +141,20 @@ function AppShell() {
   const isAdminRole = accountRole === 'admin' || accountRole === 'owner'
   const isOwnerRole = accountRole === 'owner'
 
-  // ─── Multi-deck state ─────────────────────────────────────────────────
-  const [savedDecks, setSavedDecks] = useState<SavedDeck[]>([])
-  const [activeDeckId, setActiveDeckId] = useState<string | null>(null)
-  // Deck-builder UI filters.
-  const [builderFilter, setBuilderFilter] = useState<{
-    ownedOnly: boolean
-    search: string
-    rarity: 'all' | 'common' | 'rare' | 'epic' | 'legendary'
-  }>({ ownedOnly: false, search: '', rarity: 'all' })
-  // Pending shard breakdown confirmation. `null` when nothing is pending.
-  const [pendingBreakdown, setPendingBreakdown] = useState<{
-    cardId: string
-    qty: number
-  } | null>(null)
+  // ─── Phase 1D — deck/collection/shop state lives in ProfileProvider ──
+  const {
+    savedDecks, setSavedDecks,
+    activeDeckId, setActiveDeckId,
+    builderFilter, setBuilderFilter,
+    pendingBreakdown, setPendingBreakdown,
+    deckConfig, setDeckConfig,
+    collection, setCollection,
+    packOffers, setPackOffers,
+    openedPackCards, setOpenedPackCards,
+    packOpening, setPackOpening,
+  } = useProfileState()
 
   // ─── Local game/UI state ──────────────────────────────────────────────
-  const [deckConfig, setDeckConfig] = useState<DeckConfig>(savedDeckConfig)
   const [activeScreen, setActiveScreen] = useState<AppScreen>('home')
   const [preferredMode, setPreferredMode] = useState<GameMode>(savedMode)
   const [aiDifficultySetting, setAiDifficultySetting] = useState<'auto' | AIDifficulty>(savedAIDifficulty)
@@ -167,10 +171,6 @@ function AppShell() {
     leaderboardEntries, setLeaderboardEntries,
     liveQueueLabel,
   } = useQueueState()
-  const [collection, setCollection] = useState<CardCollection>({})
-  const [packOffers, setPackOffers] = useState<PackOffer[]>([])
-  const [openedPackCards, setOpenedPackCards] = useState<OpenedPackCard[]>([])
-  const [packOpening, setPackOpening] = useState<string | null>(null)
   const [friends, setFriends] = useState<SocialFriend[]>([])
   const [onlineFriendIds, setOnlineFriendIds] = useState<Set<string>>(new Set())
   const [outgoingChallenge, setOutgoingChallenge] = useState<{ challengeId: string; toAccountId: string; toName: string; expiresAt: number } | null>(null)
@@ -917,6 +917,9 @@ function AppShell() {
         })
       })
       .catch(() => {})
+    // setCollection/setPackOffers/setDeckConfig come from ProfileProvider's
+    // useState; they're stable but eslint can't see through useContext.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authToken, loggedIn])
 
   useEffect(() => {
@@ -993,6 +996,9 @@ function AppShell() {
         }
       })
       .catch(() => {})
+    // setSavedDecks/setActiveDeckId come from ProfileProvider's useState;
+    // they're stable but eslint can't see through useContext.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authToken, loggedIn])
 
   // Reload deck list helper used after every CRUD mutation.
@@ -1011,6 +1017,9 @@ function AppShell() {
       } catch { /* ignore */ }
       return null
     },
+    // setSavedDecks/setActiveDeckId come from ProfileProvider's useState;
+    // they're stable but eslint can't see through useContext.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [authToken],
   )
 
