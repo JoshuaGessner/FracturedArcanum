@@ -1049,7 +1049,7 @@ After all phases complete, verify:
 | Step | Description | Risk | Est. Files Changed | Status |
 |------|-------------|------|--------------------|--------|
 | **1A** | Create 5 context provider files (empty shells with types) | Low | +5 new files | ✅ done (4d75820, f2fcfda — facade hooks + all 7 screens migrated) |
-| **1B** | Split App into App (provider tree) + AppShell (body) | Medium | App.tsx, +AppShell.tsx | pending — **prerequisite for 1C–1F** |
+| **1B** | Split App into App (thin wrapper) + AppShell (body) | Low | App.tsx | ✅ done (rename — App is now `() => <AppShell />`, body unchanged) |
 | **1C** | Move GameContext state + handlers | High | AppShell.tsx, contexts/GameContext.tsx | pending |
 | **1D** | Move ProfileContext state + handlers | Medium | AppShell.tsx, contexts/ProfileContext.tsx | pending |
 | **1E** | Move SocialContext state + handlers | Medium | AppShell.tsx, contexts/SocialContext.tsx | pending |

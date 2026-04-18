@@ -13,9 +13,10 @@
 
 | File | Lines | Role |
 |------|-------|------|
-| `src/App.tsx` | 2,878 | Root component — state, effects, handlers, context provider, screen wiring |
-| `src/AppContext.ts` | 274 | Shared `AppContext` + `AppContextValue` type |
-| `src/useApp.ts` | 10 | `useApp()` hook |
+| `src/App.tsx` | 2,889 | `App` (thin wrapper) + `AppShell` (state, effects, handlers, context provider, screen wiring) |
+| `src/AppContext.ts` | 274 | Shared `AppContext` + `AppContextValue` mega-type (slated for retirement during Phase 1C–1F) |
+| `src/useApp.ts` | 10 | `useApp()` legacy hook (still used internally by slice hooks) |
+| `src/contexts/*.ts` | 16–97 each | Phase 1A typed slice hooks (`useGame`, `useProfile`, `useSocial`, `useQueue`, `useAppShell`) |
 | `src/game.ts` | 1,410 | Game engine — types, cards, combat, AI |
 | `src/types.ts` | 252 | UI-only TypeScript types (auth, social, admin, etc.) |
 | `src/constants.ts` | 182 | UI constants — themes, borders, decks, presets, labels |
@@ -82,7 +83,7 @@
 
 ## Architecture Notes
 
-- **Screens consume `useApp()` context.** All app state and handlers live in `App.tsx`, which constructs an `AppContextValue` and provides it via `<AppContext.Provider>` wrapping the entire UI tree. Screens call `useApp()` to pull the slice they need; small components remain prop-driven for clarity.
+- **Screens consume typed slice hooks.** All app state and handlers live in `AppShell` inside `App.tsx`, which constructs an `AppContextValue` and provides it via `<AppContext.Provider>` wrapping the entire UI tree. Screens import the appropriate slice hook from `src/contexts/` (`useGame`, `useProfile`, `useSocial`, `useQueue`, `useAppShell`); small components remain prop-driven for clarity. The legacy `useApp()` hook remains as the implementation backing the slice hooks until Phase 1C–1F lifts each slice into a real provider.
 - **Game engine is pure.** All functions in `src/game.ts` take state and return new state — no mutation, no side effects. Shared between client (TypeScript source) and server (compiled `server/game.js`).
 - **5-screen architecture.** `type AppScreen = 'home' | 'deck' | 'battle' | 'vault' | 'ops'`. Screens are CSS-toggled (`screen-panel.active` vs `.hidden`) so they all stay mounted but only one is visible.
 - **Multiplayer.** AI mode runs the engine in-browser. Duel mode (`battleKind = 'ranked'`) is server-authoritative — clients emit `game:action`, server validates, broadcasts redacted `game:state`.

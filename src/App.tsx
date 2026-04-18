@@ -85,7 +85,19 @@ import type {
 } from './types'
 import './App.css'
 
+/**
+ * Phase 1B — App is now a thin wrapper that exists only to host the
+ * provider tree. All state, effects, and handlers live in `AppShell`.
+ *
+ * As real providers are extracted (Phase 1C–1F), they will be added here
+ * to wrap `<AppShell />`. Each extracted provider can read AppShell-owned
+ * data via the existing slice hooks until its own state lands.
+ */
 function App() {
+  return <AppShell />
+}
+
+function AppShell() {
   const savedDeckConfig = readStoredValue<DeckConfig>(STORAGE_KEYS.deck, DEFAULT_DECK_CONFIG)
   const savedMode = readStoredValue<GameMode>(STORAGE_KEYS.mode, 'ai')
   const savedAIDifficulty = readStoredValue<'auto' | AIDifficulty>(STORAGE_KEYS.aiDifficulty, 'auto')

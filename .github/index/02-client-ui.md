@@ -1,14 +1,26 @@
 # Client UI Index
 
-The client UI was extracted from a 5,188-line monolith into a root file plus screens/components/types/constants/utils modules. App-wide state is provided via React Context (`AppContext` + `useApp()`); screens call `useApp()` to pull the slice they need.
+The client UI was extracted from a 5,188-line monolith into a root file plus
+screens/components/types/constants/utils modules. App-wide state currently
+lives in `AppShell` and is exposed through `<AppContext.Provider>`. Screens
+consume **typed slice hooks** from `src/contexts/` (`useGame`, `useProfile`,
+`useSocial`, `useQueue`, `useAppShell`); the legacy `useApp()` hook still
+exists for back-compat but no screen imports it directly anymore.
 
 ## File Structure
 
 ```
 src/
-├── App.tsx                    (2,896 lines)  Root: state, effects, handlers, context provider, JSX wiring
-├── AppContext.ts              (275)          AppContextValue type + createContext
-├── useApp.ts                  (10)           useApp() hook
+├── App.tsx                    (2,889 lines)  App = thin wrapper; AppShell = state+effects+handlers+provider+JSX
+├── AppContext.ts              (275)          AppContextValue type + createContext (mega-type, slated for retirement)
+├── useApp.ts                  (10)           useApp() hook (legacy facade)
+├── contexts/                                Phase 1A typed slice hooks (delegate to useApp() until real providers land)
+│   ├── index.ts
+│   ├── useGame.ts             — battle state, game actions, AI animation
+│   ├── useProfile.ts          — decks, collection, cosmetics, derived rank
+│   ├── useSocial.ts           — friends, clan, trades, challenges
+│   ├── useQueue.ts            — matchmaking, leaderboard
+│   └── useAppShell.ts         — auth, navigation, toasts, install/SW, complaints, admin
 ├── types.ts                   (252)          UI-only type definitions
 ├── constants.ts               (182)          Themes, borders, presets, labels
 ├── utils.ts                   (134)          Pure helpers
@@ -25,7 +37,7 @@ src/
 │   ├── TopBar.tsx
 │   ├── BattleIntroOverlay.tsx
 │   └── RewardOverlay.tsx
-└── screens/                                 7 main app screens (consume useApp() context)
+└── screens/                                 7 main app screens (consume slice hooks)
     ├── HomeScreen.tsx        — main menu launchpad
     ├── PlayScreen.tsx        — match start, AI / queue
     ├── CollectionScreen.tsx  — deck builder + card grid
@@ -37,9 +49,18 @@ src/
 
 ---
 
-## `src/App.tsx` (2,878 lines)
+## `src/App.tsx` (2,889 lines)
 
-Root component. Owns ALL state via `useState`/`useRef`, ALL effects, ALL handler functions. Just before its JSX return it builds an `AppContextValue` object literal and wraps the entire `<main>` tree in `<AppContext.Provider value={appCtx}>`. Screens consume that context via `useApp()`.
+Two components:
+
+- **`App`** — thin wrapper, currently just `() => <AppShell />`. Future Phase
+  1C–1F provider extractions will wrap `<AppShell />` in nested providers
+  here without touching AppShell's body.
+- **`AppShell`** — owns ALL state via `useState`/`useRef`, ALL effects, ALL
+  handler functions. Just before its JSX return it builds an `AppContextValue`
+  object literal and wraps the entire `<main>` tree in
+  `<AppContext.Provider value={appCtx}>`. Screens consume that context via
+  the typed slice hooks in `src/contexts/`.
 
 ### Imports (Lines 1–62)
 - React hooks + `FormEvent` type
@@ -152,7 +173,11 @@ Pure helper functions:
 
 ## `src/screens/`
 
-All screens are propless and consume app state via `const { ... } = useApp()`. None of them hold local app state. Each is wrapped in a `<section className="... screen-panel ${active ? 'active' : 'hidden'}">` so it can stay mounted.
+All screens are propless and consume app state via the typed slice hooks
+from `src/contexts/` (e.g. `const { game, handlePlayCard } = useGame()`).
+None of them hold local app state. Each is wrapped in a
+`<section className="... screen-panel ${active ? 'active' : 'hidden'}">`
+so it can stay mounted.
 
 | Screen | Lines | Notes |
 |--------|-------|-------|
