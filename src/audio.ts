@@ -1,4 +1,21 @@
-export type SoundName = 'tap' | 'summon' | 'attack' | 'burst' | 'match' | 'win' | 'lose'
+export type SoundName =
+  | 'tap'
+  | 'summon'
+  | 'attack'
+  | 'burst'
+  | 'match'
+  | 'win'
+  | 'lose'
+  | 'navigate'
+  | 'packOpen'
+  | 'cardReveal'
+  | 'legendaryReveal'
+  | 'rankUp'
+  | 'questComplete'
+  | 'error'
+  | 'challenge'
+  | 'trade'
+  | 'countdown'
 
 let audioContext: AudioContext | null = null
 
@@ -86,6 +103,58 @@ export function playSound(name: SoundName, enabled: boolean) {
     case 'lose':
       playTone(context, 294, now, 0.16, 'sine', 0.024)
       playTone(context, 220, now + 0.1, 0.22, 'sine', 0.024)
+      break
+    case 'navigate':
+      // Quick ascending two-note chime (C5 → E5)
+      playTone(context, 523, now, 0.06, 'triangle', 0.022)
+      playTone(context, 659, now + 0.04, 0.07, 'triangle', 0.022)
+      break
+    case 'packOpen':
+      // Deep thud + ascending shimmer sweep
+      playTone(context, 80, now, 0.18, 'sine', 0.03)
+      playTone(context, 200, now + 0.08, 0.16, 'sawtooth', 0.022)
+      playTone(context, 520, now + 0.18, 0.18, 'triangle', 0.024)
+      playTone(context, 880, now + 0.3, 0.14, 'triangle', 0.02)
+      break
+    case 'cardReveal':
+      // Quick bright ting
+      playTone(context, 880, now, 0.06, 'triangle', 0.022)
+      break
+    case 'legendaryReveal':
+      // Extended golden fanfare (C5 → E5 → G5 → C6)
+      playTone(context, 523, now, 0.12, 'triangle', 0.028)
+      playTone(context, 659, now + 0.12, 0.12, 'triangle', 0.028)
+      playTone(context, 784, now + 0.24, 0.14, 'triangle', 0.028)
+      playTone(context, 1046, now + 0.38, 0.22, 'triangle', 0.03)
+      break
+    case 'rankUp':
+      // Rising three-note triumph (F4 → A4 → C5)
+      playTone(context, 349, now, 0.1, 'triangle', 0.026)
+      playTone(context, 440, now + 0.09, 0.1, 'triangle', 0.026)
+      playTone(context, 523, now + 0.18, 0.16, 'triangle', 0.028)
+      break
+    case 'questComplete':
+      // Warm double-chime (G4 + B4 chord)
+      playTone(context, 392, now, 0.18, 'sine', 0.024)
+      playTone(context, 494, now, 0.18, 'sine', 0.022)
+      break
+    case 'error':
+      // Low buzz
+      playTone(context, 120, now, 0.1, 'square', 0.02)
+      break
+    case 'challenge':
+      // Alert horn (descending sawtooth)
+      playTone(context, 440, now, 0.12, 'sawtooth', 0.026)
+      playTone(context, 330, now + 0.1, 0.14, 'sawtooth', 0.024)
+      break
+    case 'trade':
+      // Coin clink × 2
+      playTone(context, 1200, now, 0.04, 'triangle', 0.022)
+      playTone(context, 1400, now + 0.06, 0.04, 'triangle', 0.022)
+      break
+    case 'countdown':
+      // Metronome tick
+      playTone(context, 660, now, 0.05, 'triangle', 0.025)
       break
   }
 }
