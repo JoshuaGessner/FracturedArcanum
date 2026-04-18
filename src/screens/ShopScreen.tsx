@@ -3,13 +3,14 @@ import { CARD_LIBRARY, RARITY_COLORS } from '../game'
 import { CARD_BORDER_OFFERS, THEME_OFFERS } from '../constants'
 import { PackArt, RarityBadge } from '../components/AssetBadge'
 import { PackCeremonyOverlay } from '../components/PackCeremonyOverlay'
+import { buildPackSummarySequence } from '../components/RewardCinemaSequence'
 import { cardArtPath, handleCardArtError } from '../utils'
 import { useAppShell, useGame, useProfile } from '../contexts'
 
 const RARITY_REFUND = { common: 5, rare: 10, epic: 25, legendary: 100 } as const
 
 export function ShopScreen() {
-  const { activeScreen, loggedIn, soundEnabled } = useAppShell()
+  const { activeScreen, loggedIn, soundEnabled, presentRewardCinema, lastPackRefund, setLastPackRefund } = useAppShell()
   const {
     runes, totalOwnedCards, nextRewardLabel, canClaimDailyReward, handleClaimDailyReward,
     ownedThemes, selectedTheme, handleEquipTheme,
@@ -36,9 +37,22 @@ export function ShopScreen() {
   }
 
   const handleCeremonyClose = () => {
+    const finisherCards = openedPackCards
+    const finisherPackId = ceremonyPack?.id ?? activeCeremonyPackId
+    const finisherRefund = lastPackRefund
     setOpenedPackCards([])
     setPrevCollectionSnapshot(null)
     setActiveCeremonyPackId(null)
+    setLastPackRefund(0)
+    if (finisherPackId && finisherCards.length > 0) {
+      presentRewardCinema(
+        buildPackSummarySequence({
+          packId: finisherPackId,
+          cards: finisherCards,
+          shardsRefunded: finisherRefund,
+        }),
+      )
+    }
   }
 
   const handleCeremonyOpenAnother = () => {

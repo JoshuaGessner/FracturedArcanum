@@ -49,7 +49,13 @@ import { CardInspectModal } from './components/CardInspectModal'
 import { NavBar } from './components/NavBar'
 import { TopBar } from './components/TopBar'
 import { BattleIntroOverlay } from './components/BattleIntroOverlay'
-import { RewardOverlay } from './components/RewardOverlay'
+import { RewardCinemaOverlay } from './components/RewardCinemaOverlay'
+import {
+  buildBattleVictorySequence,
+  buildDailyClaimSequence,
+  buildRankUpSequence,
+  type RewardBeat,
+} from './components/RewardCinemaSequence'
 import { RankBadge } from './components/AssetBadge'
 import { SettingsScreen } from './screens/SettingsScreen'
 import { ShopScreen } from './screens/ShopScreen'
@@ -159,6 +165,17 @@ function AppShell() {
   const [activeScreen, setActiveScreen] = useState<AppScreen>('home')
   const [screenTransitionClass, setScreenTransitionClass] = useState<'screen-enter-forward' | 'screen-enter-back' | 'screen-enter-lateral' | 'screen-enter-battle'>('screen-enter-lateral')
 
+  // ─── Phase 3W — Reward cinema sequence (battle / daily / pack / rank-up)
+  const [cinemaSequence, setCinemaSequence] = useState<RewardBeat[] | null>(null)
+  const presentRewardCinema = useCallback((beats: RewardBeat[]) => {
+    if (beats.length === 0) return
+    setCinemaSequence(beats)
+  }, [])
+  const dismissRewardCinema = useCallback(() => setCinemaSequence(null), [])
+  // Tracks the most recent pack open's duplicate refund so ShopScreen can
+  // build an accurate finisher cinema after the ceremony overlay closes.
+  const [lastPackRefund, setLastPackRefund] = useState<number>(0)
+
   // ─── Phase 1C — active battle/game state lives in GameProvider ───────
   const {
     preferredMode, setPreferredMode,
@@ -174,7 +191,6 @@ function AppShell() {
     setOpponentDisconnected,
     setDisconnectGraceMs,
     battleIntroVisible, setBattleIntroVisible,
-    rewardOverlayVisible, setRewardOverlayVisible,
     setDamagedSlots,
     inspectedCard, setInspectedCard,
   } = useGameState()
@@ -1423,17 +1439,6 @@ function AppShell() {
     } else if (game.winner === 'enemy') {
       playSound('lose', soundEnabled)
     }
-
-    const overlayTimer = window.setTimeout(() => {
-      setRewardOverlayVisible(game.winner === 'player')
-    }, 0)
-
-    return () => {
-      window.clearTimeout(overlayTimer)
-    }
-    // setRewardOverlayVisible comes from GameProvider's useState; stable but
-    // eslint can't see through useContext.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [game.winner, soundEnabled, enemyTurnActive])
 
   useEffect(() => {
@@ -1459,28 +1464,63 @@ function AppShell() {
 
     if (authToken && game.mode !== 'duel') {
       const result = game.winner === 'player' ? 'win' : game.winner === 'enemy' ? 'loss' : 'draw'
+      const previousRating = serverProfile?.seasonRating ?? 1200
+      const previousStreak = serverProfile?.streak ?? 0
       void authFetch('/api/match/complete', authToken, {
         method: 'POST',
         body: { opponent: game.enemy.name, mode: game.mode, result, turns: game.turnNumber },
       })
         .then((r) => r.json())
         .then((data: { ok: boolean; runes?: number; seasonRating?: number; wins?: number; losses?: number; streak?: number; runesEarned?: number }) => {
-          if (data.ok) {
-            setServerProfile((prev) =>
-              prev
-                ? {
-                    ...prev,
-                    runes: data.runes ?? prev.runes,
-                    seasonRating: data.seasonRating ?? prev.seasonRating,
-                    wins: data.wins ?? prev.wins,
-                    losses: data.losses ?? prev.losses,
-                    streak: data.streak ?? prev.streak,
-                  }
-                : prev,
-            )
+          if (!data.ok) return
+          setServerProfile((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  runes: data.runes ?? prev.runes,
+                  seasonRating: data.seasonRating ?? prev.seasonRating,
+                  wins: data.wins ?? prev.wins,
+                  losses: data.losses ?? prev.losses,
+                  streak: data.streak ?? prev.streak,
+                }
+              : prev,
+          )
+
+          if (game.winner !== 'player') return
+
+          const newRating = data.seasonRating ?? previousRating
+          const ratingDelta = newRating - previousRating
+          const previousRankLabel = getRankLabel(previousRating)
+          const newRankLabel = getRankLabel(newRating)
+          const rankCrossed = previousRankLabel !== newRankLabel && newRating > previousRating
+          const isRanked = game.mode !== 'ai'
+          const battleKindForBeats = isRanked ? 'ranked' : 'ai'
+          const beats = buildBattleVictorySequence({
+            rankLabel: newRankLabel,
+            streak: data.streak ?? previousStreak + 1,
+            isRanked,
+            battleKind: battleKindForBeats,
+            mode: game.mode,
+            shards: data.runesEarned ?? 30,
+            ratingDelta: isRanked ? ratingDelta : undefined,
+          })
+          if (rankCrossed) {
+            beats.push(...buildRankUpSequence({ previousRankLabel, newRankLabel }))
           }
+          presentRewardCinema(beats)
         })
         .catch(() => {})
+    } else if (game.winner === 'player') {
+      // Local pass-and-play or unauthenticated AI run — fire the local
+      // victory cinema immediately (no server fetch is required).
+      const localBeats = buildBattleVictorySequence({
+        rankLabel: getRankLabel(serverProfile?.seasonRating ?? 1200),
+        streak: (serverProfile?.streak ?? 0) + 1,
+        isRanked: false,
+        battleKind: game.mode === 'duel' ? 'local' : 'ai',
+        mode: game.mode,
+      })
+      window.setTimeout(() => presentRewardCinema(localBeats), 0)
     }
 
     if (authToken && game.mode === 'duel') {
@@ -1491,7 +1531,7 @@ function AppShell() {
         })
         .catch(() => {})
     }
-  }, [game, sendAnalytics, authToken])
+  }, [game, sendAnalytics, authToken, presentRewardCinema, serverProfile, setServerProfile])
 
   const isRankedBattle = battleKind === 'ranked'
   const isLocalPassBattle = battleKind === 'local'
@@ -1571,7 +1611,6 @@ function AppShell() {
     setSelectedAttacker(null)
     setEnemyTurnActive(false)
     setEnemyTurnLabel('')
-    setRewardOverlayVisible(false)
     setDamagedSlots(new Set())
     setInspectedCard(null)
     setOpponentDisconnected(false)
@@ -1656,6 +1695,9 @@ function AppShell() {
         if (data.ok) {
           setServerProfile((prev) => prev ? { ...prev, runes: data.runes ?? prev.runes, lastDaily: todayKey, totalEarned: data.totalEarned ?? prev.totalEarned } : prev)
           setToastMessage('Daily reward claimed: +50 Shards.')
+          presentRewardCinema(
+            buildDailyClaimSequence({ shards: 50, totalEarned: data.totalEarned }),
+          )
         } else {
           setToastMessage(data.error ?? 'Could not claim daily reward.')
         }
@@ -2061,6 +2103,7 @@ function AppShell() {
       }
 
       setOpenedPackCards(data.cards ?? [])
+      setLastPackRefund(data.refund ?? 0)
       setServerProfile((prev) => (prev ? { ...prev, runes: data.runes ?? prev.runes } : prev))
       const collectionResponse = await authFetch('/api/me/collection', authToken)
       const collectionData = (await collectionResponse.json()) as { ok?: boolean; collection?: CardCollection }
@@ -2694,6 +2737,8 @@ function AppShell() {
     toastMessage, toastSeverity, toastStack, setToastMessage, inferToastSeverity,
     confirmRequest, confirmTextInput, setConfirmTextInput, askConfirm, closeConfirm,
     consumeLongPressAction, getLongPressProps,
+    cinemaSequence, presentRewardCinema, dismissRewardCinema,
+    lastPackRefund, setLastPackRefund,
     installPromptEvent, handleInstallApp,
     swUpdateAvailable, handleAcceptUpdate, handleDismissUpdate,
     soundEnabled, setSoundEnabled, ambientEnabled, setAmbientEnabled, analyticsConsent, setAnalyticsConsent, visitorId,
@@ -2944,16 +2989,10 @@ function AppShell() {
 
       <BattleIntroOverlay visible={battleIntroVisible} game={game} />
 
-      <RewardOverlay
-        visible={rewardOverlayVisible}
-        winner={game.winner}
-        isRankedBattle={isRankedBattle}
-        battleKind={battleKind}
-        rankLabel={rankLabel}
-        streak={record.streak}
-        mode={game.mode}
-        onClaim={() => setRewardOverlayVisible(false)}
-        onQueueAgain={(mode) => startMatch(mode)}
+      <RewardCinemaOverlay
+        sequence={cinemaSequence}
+        soundEnabled={soundEnabled}
+        onClose={dismissRewardCinema}
       />
 
       {inspectedCard && (

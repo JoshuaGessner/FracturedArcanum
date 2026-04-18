@@ -71,8 +71,6 @@ export type GameStateValue = {
   setDisconnectGraceMs: Dispatch<SetStateAction<number>>
   battleIntroVisible: boolean
   setBattleIntroVisible: Dispatch<SetStateAction<boolean>>
-  rewardOverlayVisible: boolean
-  setRewardOverlayVisible: Dispatch<SetStateAction<boolean>>
   damagedSlots: Set<string>
   setDamagedSlots: Dispatch<SetStateAction<Set<string>>>
   inspectedCard: InspectedCard | null
@@ -102,7 +100,6 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const [opponentDisconnected, setOpponentDisconnected] = useState(false)
   const [disconnectGraceMs, setDisconnectGraceMs] = useState(0)
   const [battleIntroVisible, setBattleIntroVisible] = useState(false)
-  const [rewardOverlayVisible, setRewardOverlayVisible] = useState(false)
   const [damagedSlots, setDamagedSlots] = useState<Set<string>>(() => new Set())
   const [inspectedCard, setInspectedCard] = useState<InspectedCard | null>(null)
 
@@ -133,8 +130,6 @@ export function GameProvider({ children }: { children: ReactNode }) {
       setDisconnectGraceMs,
       battleIntroVisible,
       setBattleIntroVisible,
-      rewardOverlayVisible,
-      setRewardOverlayVisible,
       damagedSlots,
       setDamagedSlots,
       inspectedCard,
@@ -153,7 +148,6 @@ export function GameProvider({ children }: { children: ReactNode }) {
       opponentDisconnected,
       disconnectGraceMs,
       battleIntroVisible,
-      rewardOverlayVisible,
       damagedSlots,
       inspectedCard,
     ],
