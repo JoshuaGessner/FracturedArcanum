@@ -27,6 +27,7 @@ import {
 import {
   ARENA_URL,
   CARD_BORDER_OFFERS,
+  IOS_INSTALL_INSTRUCTIONS,
   STORAGE_KEYS,
   THEME_OFFERS,
 } from './constants'
@@ -38,6 +39,7 @@ import {
   getScreenBucket,
   pulseFeedback,
   readStoredValue,
+  shouldShowIosInstallHelp,
 } from './utils'
 import { ToastStack } from './components/ToastStack'
 import { ConfirmModal } from './components/ConfirmModal'
@@ -214,7 +216,7 @@ function AppShell() {
   const [visitorId] = useState(() => readStoredValue(STORAGE_KEYS.visitor, createAnonymousId()))
   const [sessionId] = useState(() => `session-${Math.random().toString(36).slice(2, 10)}`)
   const [installPromptEvent, setInstallPromptEvent] = useState<InstallPromptEvent | null>(null)
-  const [showIosInstallHelp, setShowIosInstallHelp] = useState(false)
+  const [showIosInstallHelp, setShowIosInstallHelp] = useState(() => shouldShowIosInstallHelp())
   const [toastMessage, setToastMessageRaw] = useState('Ready your deck and enter the arena.')
   const [toastSeverity, setToastSeverity] = useState<'info' | 'success' | 'warning' | 'error'>('info')
   type ToastEntry = { id: string; message: string; severity: 'info' | 'success' | 'warning' | 'error' }
@@ -1222,17 +1224,6 @@ function AppShell() {
   }
 
   useEffect(() => {
-    const nav = navigator as Navigator & { standalone?: boolean }
-    const isIosDevice =
-      /iphone|ipad|ipod/i.test(window.navigator.userAgent) ||
-      (window.navigator.platform === 'MacIntel' && window.navigator.maxTouchPoints > 1)
-    const isStandalone =
-      window.matchMedia('(display-mode: standalone)').matches || nav.standalone === true
-
-    setShowIosInstallHelp(isIosDevice && !isStandalone)
-  }, [])
-
-  useEffect(() => {
     const handleBeforeInstall = (event: Event) => {
       event.preventDefault()
       setInstallPromptEvent(event as InstallPromptEvent)
@@ -1253,6 +1244,28 @@ function AppShell() {
     }
     // setToastMessage is a stable useCallback wrapper — installation listeners only need to register once.
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(display-mode: standalone)')
+    const syncIosInstallHelp = () => {
+      setShowIosInstallHelp(shouldShowIosInstallHelp())
+    }
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        syncIosInstallHelp()
+      }
+    }
+
+    mediaQuery.addEventListener('change', syncIosInstallHelp)
+    window.addEventListener('appinstalled', syncIosInstallHelp)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    return () => {
+      mediaQuery.removeEventListener('change', syncIosInstallHelp)
+      window.removeEventListener('appinstalled', syncIosInstallHelp)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
   }, [])
 
   useEffect(() => {
@@ -2317,7 +2330,7 @@ function AppShell() {
   async function handleInstallApp() {
     if (!installPromptEvent) {
       if (showIosInstallHelp) {
-        setToastMessage('On iPhone/iPad: tap Share, then choose “Add to Home Screen.”')
+        setToastMessage(IOS_INSTALL_INSTRUCTIONS, 'info')
       }
       return
     }
@@ -2814,7 +2827,7 @@ function AppShell() {
             </p>
             {(installPromptEvent || showIosInstallHelp) && (
               <button className="pwa-install-btn" onClick={handleInstallApp}>
-                {installPromptEvent ? 'Install App' : 'How to Install on iPhone'}
+                {installPromptEvent ? 'Install App' : 'How to Install on iOS'}
               </button>
             )}
           </div>

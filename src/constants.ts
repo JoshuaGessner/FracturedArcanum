@@ -86,6 +86,7 @@ export const STORAGE_KEYS = {
 }
 
 export const DECK_MAX_TOTAL_DISPLAY = 16
+export const IOS_INSTALL_INSTRUCTIONS = 'On iPhone/iPad: tap Share, then choose “Add to Home Screen.”'
 
 export const AI_DIFFICULTY_OPTIONS: Array<{ id: 'auto' | AIDifficulty; label: string }> = [
   { id: 'auto', label: 'Auto' },

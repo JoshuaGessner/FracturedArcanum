@@ -65,6 +65,23 @@ export function getScreenBucket(): string {
   return 'desktop'
 }
 
+export function shouldShowIosInstallHelp(): boolean {
+  if (typeof window === 'undefined' || typeof navigator === 'undefined') {
+    return false
+  }
+
+  const nav = navigator as Navigator & { standalone?: boolean }
+  // iOS Safari still requires manual install (Share → Add to Home Screen) and
+  // does not expose a reliable capability API equivalent to beforeinstallprompt.
+  const isIosDevice =
+    /iphone|ipad|ipod/i.test(window.navigator.userAgent) ||
+    (window.navigator.platform === 'MacIntel' && window.navigator.maxTouchPoints > 1)
+  const isStandalone =
+    window.matchMedia('(display-mode: standalone)').matches || nav.standalone === true
+
+  return isIosDevice && !isStandalone
+}
+
 export function formatTimestamp(value: string): string {
   return new Date(value).toLocaleString([], {
     month: 'short',
