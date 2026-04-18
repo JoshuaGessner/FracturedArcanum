@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-04-17T03:06:46.157Z",
+  "generatedAt": "2026-04-18T00:29:22.434Z",
   "provider": "local-svg",
   "apiReady": false,
   "commercialSafe": true,
@@ -63,6 +63,414 @@
       "id": "generated/ui/reward-chest.svg",
       "path": "/generated/ui/reward-chest.svg",
       "type": "brand",
+      "source": "local-generated"
+    },
+    {
+      "id": "bg-main-menu.svg",
+      "path": "/generated/ui/bg-main-menu.svg",
+      "type": "ui-background",
+      "source": "local-generated"
+    },
+    {
+      "id": "bg-play.svg",
+      "path": "/generated/ui/bg-play.svg",
+      "type": "ui-background",
+      "source": "local-generated"
+    },
+    {
+      "id": "bg-collection.svg",
+      "path": "/generated/ui/bg-collection.svg",
+      "type": "ui-background",
+      "source": "local-generated"
+    },
+    {
+      "id": "bg-social.svg",
+      "path": "/generated/ui/bg-social.svg",
+      "type": "ui-background",
+      "source": "local-generated"
+    },
+    {
+      "id": "bg-shop.svg",
+      "path": "/generated/ui/bg-shop.svg",
+      "type": "ui-background",
+      "source": "local-generated"
+    },
+    {
+      "id": "bg-battle.svg",
+      "path": "/generated/ui/bg-battle.svg",
+      "type": "ui-background",
+      "source": "local-generated"
+    },
+    {
+      "id": "bg-settings.svg",
+      "path": "/generated/ui/bg-settings.svg",
+      "type": "ui-background",
+      "source": "local-generated"
+    },
+    {
+      "id": "tile-play.svg",
+      "path": "/generated/ui/tile-play.svg",
+      "type": "ui-nav-tile",
+      "source": "local-generated"
+    },
+    {
+      "id": "tile-collection.svg",
+      "path": "/generated/ui/tile-collection.svg",
+      "type": "ui-nav-tile",
+      "source": "local-generated"
+    },
+    {
+      "id": "tile-social.svg",
+      "path": "/generated/ui/tile-social.svg",
+      "type": "ui-nav-tile",
+      "source": "local-generated"
+    },
+    {
+      "id": "tile-shop.svg",
+      "path": "/generated/ui/tile-shop.svg",
+      "type": "ui-nav-tile",
+      "source": "local-generated"
+    },
+    {
+      "id": "tile-settings.svg",
+      "path": "/generated/ui/tile-settings.svg",
+      "type": "ui-nav-tile",
+      "source": "local-generated"
+    },
+    {
+      "id": "tile-battle.svg",
+      "path": "/generated/ui/tile-battle.svg",
+      "type": "ui-nav-tile",
+      "source": "local-generated"
+    },
+    {
+      "id": "rank-bronze.svg",
+      "path": "/generated/ui/rank-bronze.svg",
+      "type": "ui-rank",
+      "source": "local-generated"
+    },
+    {
+      "id": "rank-silver.svg",
+      "path": "/generated/ui/rank-silver.svg",
+      "type": "ui-rank",
+      "source": "local-generated"
+    },
+    {
+      "id": "rank-gold.svg",
+      "path": "/generated/ui/rank-gold.svg",
+      "type": "ui-rank",
+      "source": "local-generated"
+    },
+    {
+      "id": "rank-diamond.svg",
+      "path": "/generated/ui/rank-diamond.svg",
+      "type": "ui-rank",
+      "source": "local-generated"
+    },
+    {
+      "id": "pack-standard.svg",
+      "path": "/generated/ui/pack-standard.svg",
+      "type": "ui-pack",
+      "source": "local-generated"
+    },
+    {
+      "id": "pack-premium.svg",
+      "path": "/generated/ui/pack-premium.svg",
+      "type": "ui-pack",
+      "source": "local-generated"
+    },
+    {
+      "id": "pack-legendary.svg",
+      "path": "/generated/ui/pack-legendary.svg",
+      "type": "ui-pack",
+      "source": "local-generated"
+    },
+    {
+      "id": "gem-common.svg",
+      "path": "/generated/ui/gem-common.svg",
+      "type": "ui-rarity-gem",
+      "source": "local-generated"
+    },
+    {
+      "id": "gem-rare.svg",
+      "path": "/generated/ui/gem-rare.svg",
+      "type": "ui-rarity-gem",
+      "source": "local-generated"
+    },
+    {
+      "id": "gem-epic.svg",
+      "path": "/generated/ui/gem-epic.svg",
+      "type": "ui-rarity-gem",
+      "source": "local-generated"
+    },
+    {
+      "id": "gem-legendary.svg",
+      "path": "/generated/ui/gem-legendary.svg",
+      "type": "ui-rarity-gem",
+      "source": "local-generated"
+    },
+    {
+      "id": "btn-primary.svg",
+      "path": "/generated/ui/btn-primary.svg",
+      "type": "ui-chrome",
+      "source": "local-generated"
+    },
+    {
+      "id": "btn-ghost.svg",
+      "path": "/generated/ui/btn-ghost.svg",
+      "type": "ui-chrome",
+      "source": "local-generated"
+    },
+    {
+      "id": "btn-danger.svg",
+      "path": "/generated/ui/btn-danger.svg",
+      "type": "ui-chrome",
+      "source": "local-generated"
+    },
+    {
+      "id": "panel-frame.svg",
+      "path": "/generated/ui/panel-frame.svg",
+      "type": "ui-chrome",
+      "source": "local-generated"
+    },
+    {
+      "id": "divider-rune.svg",
+      "path": "/generated/ui/divider-rune.svg",
+      "type": "ui-chrome",
+      "source": "local-generated"
+    },
+    {
+      "id": "pip-mana-empty.svg",
+      "path": "/generated/ui/pip-mana-empty.svg",
+      "type": "ui-chrome",
+      "source": "local-generated"
+    },
+    {
+      "id": "pip-mana-filled.svg",
+      "path": "/generated/ui/pip-mana-filled.svg",
+      "type": "ui-chrome",
+      "source": "local-generated"
+    },
+    {
+      "id": "pip-momentum-empty.svg",
+      "path": "/generated/ui/pip-momentum-empty.svg",
+      "type": "ui-chrome",
+      "source": "local-generated"
+    },
+    {
+      "id": "pip-momentum-filled.svg",
+      "path": "/generated/ui/pip-momentum-filled.svg",
+      "type": "ui-chrome",
+      "source": "local-generated"
+    },
+    {
+      "id": "icon-health.svg",
+      "path": "/generated/ui/icon-health.svg",
+      "type": "ui-chrome",
+      "source": "local-generated"
+    },
+    {
+      "id": "icon-attack.svg",
+      "path": "/generated/ui/icon-attack.svg",
+      "type": "ui-chrome",
+      "source": "local-generated"
+    },
+    {
+      "id": "icon-guard.svg",
+      "path": "/generated/ui/icon-guard.svg",
+      "type": "ui-chrome",
+      "source": "local-generated"
+    },
+    {
+      "id": "fx-charge.svg",
+      "path": "/generated/ui/fx-charge.svg",
+      "type": "ui-effect",
+      "source": "local-generated"
+    },
+    {
+      "id": "fx-guard.svg",
+      "path": "/generated/ui/fx-guard.svg",
+      "type": "ui-effect",
+      "source": "local-generated"
+    },
+    {
+      "id": "fx-rally.svg",
+      "path": "/generated/ui/fx-rally.svg",
+      "type": "ui-effect",
+      "source": "local-generated"
+    },
+    {
+      "id": "fx-blast.svg",
+      "path": "/generated/ui/fx-blast.svg",
+      "type": "ui-effect",
+      "source": "local-generated"
+    },
+    {
+      "id": "fx-heal.svg",
+      "path": "/generated/ui/fx-heal.svg",
+      "type": "ui-effect",
+      "source": "local-generated"
+    },
+    {
+      "id": "fx-draw.svg",
+      "path": "/generated/ui/fx-draw.svg",
+      "type": "ui-effect",
+      "source": "local-generated"
+    },
+    {
+      "id": "fx-fury.svg",
+      "path": "/generated/ui/fx-fury.svg",
+      "type": "ui-effect",
+      "source": "local-generated"
+    },
+    {
+      "id": "fx-drain.svg",
+      "path": "/generated/ui/fx-drain.svg",
+      "type": "ui-effect",
+      "source": "local-generated"
+    },
+    {
+      "id": "fx-empower.svg",
+      "path": "/generated/ui/fx-empower.svg",
+      "type": "ui-effect",
+      "source": "local-generated"
+    },
+    {
+      "id": "fx-poison.svg",
+      "path": "/generated/ui/fx-poison.svg",
+      "type": "ui-effect",
+      "source": "local-generated"
+    },
+    {
+      "id": "fx-shield.svg",
+      "path": "/generated/ui/fx-shield.svg",
+      "type": "ui-effect",
+      "source": "local-generated"
+    },
+    {
+      "id": "fx-siphon.svg",
+      "path": "/generated/ui/fx-siphon.svg",
+      "type": "ui-effect",
+      "source": "local-generated"
+    },
+    {
+      "id": "fx-bolster.svg",
+      "path": "/generated/ui/fx-bolster.svg",
+      "type": "ui-effect",
+      "source": "local-generated"
+    },
+    {
+      "id": "fx-cleave.svg",
+      "path": "/generated/ui/fx-cleave.svg",
+      "type": "ui-effect",
+      "source": "local-generated"
+    },
+    {
+      "id": "fx-lifesteal.svg",
+      "path": "/generated/ui/fx-lifesteal.svg",
+      "type": "ui-effect",
+      "source": "local-generated"
+    },
+    {
+      "id": "fx-summon.svg",
+      "path": "/generated/ui/fx-summon.svg",
+      "type": "ui-effect",
+      "source": "local-generated"
+    },
+    {
+      "id": "fx-silence.svg",
+      "path": "/generated/ui/fx-silence.svg",
+      "type": "ui-effect",
+      "source": "local-generated"
+    },
+    {
+      "id": "fx-frostbite.svg",
+      "path": "/generated/ui/fx-frostbite.svg",
+      "type": "ui-effect",
+      "source": "local-generated"
+    },
+    {
+      "id": "fx-enrage.svg",
+      "path": "/generated/ui/fx-enrage.svg",
+      "type": "ui-effect",
+      "source": "local-generated"
+    },
+    {
+      "id": "fx-deathrattle.svg",
+      "path": "/generated/ui/fx-deathrattle.svg",
+      "type": "ui-effect",
+      "source": "local-generated"
+    },
+    {
+      "id": "overlay-vs.svg",
+      "path": "/generated/ui/overlay-vs.svg",
+      "type": "ui-overlay",
+      "source": "local-generated"
+    },
+    {
+      "id": "overlay-victory.svg",
+      "path": "/generated/ui/overlay-victory.svg",
+      "type": "ui-overlay",
+      "source": "local-generated"
+    },
+    {
+      "id": "overlay-defeat.svg",
+      "path": "/generated/ui/overlay-defeat.svg",
+      "type": "ui-overlay",
+      "source": "local-generated"
+    },
+    {
+      "id": "overlay-draw.svg",
+      "path": "/generated/ui/overlay-draw.svg",
+      "type": "ui-overlay",
+      "source": "local-generated"
+    },
+    {
+      "id": "glow-common.svg",
+      "path": "/generated/ui/glow-common.svg",
+      "type": "ui-overlay",
+      "source": "local-generated"
+    },
+    {
+      "id": "glow-rare.svg",
+      "path": "/generated/ui/glow-rare.svg",
+      "type": "ui-overlay",
+      "source": "local-generated"
+    },
+    {
+      "id": "glow-epic.svg",
+      "path": "/generated/ui/glow-epic.svg",
+      "type": "ui-overlay",
+      "source": "local-generated"
+    },
+    {
+      "id": "glow-legendary.svg",
+      "path": "/generated/ui/glow-legendary.svg",
+      "type": "ui-overlay",
+      "source": "local-generated"
+    },
+    {
+      "id": "particle-rune.svg",
+      "path": "/generated/ui/particle-rune.svg",
+      "type": "ui-particle",
+      "source": "local-generated"
+    },
+    {
+      "id": "particle-ember.svg",
+      "path": "/generated/ui/particle-ember.svg",
+      "type": "ui-particle",
+      "source": "local-generated"
+    },
+    {
+      "id": "particle-dust.svg",
+      "path": "/generated/ui/particle-dust.svg",
+      "type": "ui-particle",
+      "source": "local-generated"
+    },
+    {
+      "id": "particle-frost.svg",
+      "path": "/generated/ui/particle-frost.svg",
+      "type": "ui-particle",
       "source": "local-generated"
     },
     {
