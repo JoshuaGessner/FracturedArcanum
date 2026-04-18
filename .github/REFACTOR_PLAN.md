@@ -1052,7 +1052,7 @@ After all phases complete, verify:
 | **1B** | Split App into App (thin wrapper) + AppShell (body) | Low | App.tsx | ✅ done (rename — App is now `() => <AppShell />`, body unchanged) |
 | **1C** | Move GameContext state + handlers | High | AppShell.tsx, contexts/GameContext.tsx | pending |
 | **1D** | Move ProfileContext state + handlers | Medium | AppShell.tsx, contexts/ProfileContext.tsx | ✅ done (deck/collection/pack-shop state moved into ProfileProvider; handlers stay in AppShell) |
-| **1E** | Move SocialContext state + handlers | Medium | AppShell.tsx, contexts/SocialContext.tsx | pending |
+| **1E** | Move SocialContext state + handlers | Medium | AppShell.tsx, contexts/SocialContext.tsx | ✅ done (friends/clan/challenges/trades + nowTick timer moved into SocialProvider; handlers stay in AppShell) |
 | **1F** | Move QueueContext state + handlers | Low | AppShell.tsx, contexts/QueueContext.tsx | ✅ done (state + countdown timer + liveQueueLabel moved into QueueProvider; handlers stay in AppShell) |
 | **1G** | Remove quick-emote feature (UI, handler, socket, constants, CSS) | Low | HomeScreen, App.tsx, AppContext.ts, constants.ts, server.js, App.css | ✅ done |
 | **1H** | Wire providers in App.tsx, update useApp facade | Medium | App.tsx, useApp.ts, AppContext.ts | pending |

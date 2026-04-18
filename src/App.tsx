@@ -80,25 +80,28 @@ import type {
   SocialClan,
   SocialFriend,
   Trade,
-  TradeItem,
 } from './types'
 import { QueueProvider, useQueueState } from './contexts/QueueProvider'
 import { ProfileProvider, useProfileState } from './contexts/ProfileProvider'
+import { SocialProvider, useSocialState } from './contexts/SocialProvider'
 import './App.css'
 
 /**
  * Phase 1B — App is now a thin wrapper that exists only to host the
  * provider tree. All state, effects, and handlers live in `AppShell`.
  *
- * Phase 1F added the real `QueueProvider` above `AppShell`. Phase 1D
- * added the real `ProfileProvider` (decks, collection, pack-shop state).
- * Future provider extractions (1C, 1E) will nest inside this tree.
+ * Phase 1F added the real `QueueProvider`. Phase 1D added the real
+ * `ProfileProvider` (decks, collection, pack-shop). Phase 1E added the
+ * real `SocialProvider` (friends, clan, trades, challenges, nowTick).
+ * The remaining extraction (1C, GameProvider) will nest inside this tree.
  */
 function App() {
   return (
     <QueueProvider>
       <ProfileProvider>
-        <AppShell />
+        <SocialProvider>
+          <AppShell />
+        </SocialProvider>
       </ProfileProvider>
     </QueueProvider>
   )
@@ -171,31 +174,26 @@ function AppShell() {
     leaderboardEntries, setLeaderboardEntries,
     liveQueueLabel,
   } = useQueueState()
-  const [friends, setFriends] = useState<SocialFriend[]>([])
-  const [onlineFriendIds, setOnlineFriendIds] = useState<Set<string>>(new Set())
-  const [outgoingChallenge, setOutgoingChallenge] = useState<{ challengeId: string; toAccountId: string; toName: string; expiresAt: number } | null>(null)
-  const [incomingChallenge, setIncomingChallenge] = useState<{ challengeId: string; fromAccountId: string; fromName: string; expiresAt: number } | null>(null)
-  const [challengeStatus, setChallengeStatus] = useState('')
-  const [trades, setTrades] = useState<Trade[]>([])
-  const [tradesTick, setTradesTick] = useState(0)
-  const [tradeStatus, setTradeStatus] = useState('')
-  const [tradeForm, setTradeForm] = useState<{ toAccountId: string; offer: TradeItem[]; request: TradeItem[] }>({
-    toAccountId: '',
-    offer: [],
-    request: [],
-  })
-  const [tradePickerDraft, setTradePickerDraft] = useState<{ side: 'offer' | 'request'; cardId: string; qty: number }>({
-    side: 'offer',
-    cardId: '',
-    qty: 1,
-  })
-  const [tradeSubmitting, setTradeSubmitting] = useState(false)
-  const [nowTick, setNowTick] = useState(() => Date.now())
-  const [clan, setClan] = useState<SocialClan | null>(null)
-  const [socialLoading, setSocialLoading] = useState(false)
-  const [socialStatus, setSocialStatus] = useState('Social hub ready.')
-  const [friendUsernameInput, setFriendUsernameInput] = useState('')
-  const [clanForm, setClanForm] = useState({ name: '', tag: '', inviteCode: '' })
+  // ─── Phase 1E — social/trade/challenge state lives in SocialProvider ──
+  const {
+    friends, setFriends,
+    onlineFriendIds, setOnlineFriendIds,
+    outgoingChallenge, setOutgoingChallenge,
+    incomingChallenge, setIncomingChallenge,
+    challengeStatus, setChallengeStatus,
+    trades, setTrades,
+    tradesTick, setTradesTick,
+    tradeStatus, setTradeStatus,
+    tradeForm, setTradeForm,
+    tradePickerDraft, setTradePickerDraft,
+    tradeSubmitting, setTradeSubmitting,
+    nowTick,
+    clan, setClan,
+    socialLoading, setSocialLoading,
+    socialStatus, setSocialStatus,
+    friendUsernameInput, setFriendUsernameInput,
+    clanForm, setClanForm,
+  } = useSocialState()
   const [battleKind, setBattleKind] = useState<BattleKind>(savedMode === 'duel' ? 'local' : 'ai')
   const [battleSessionActive, setBattleSessionActive] = useState(false)
   const [serverBattleActive, setServerBattleActive] = useState(false)
@@ -362,6 +360,9 @@ function AppShell() {
     } finally {
       setSocialLoading(false)
     }
+    // setFriends/setClan/setSocialStatus/setSocialLoading come from
+    // SocialProvider's useState; stable but eslint can't see through useContext.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authToken, loggedIn])
 
   function clearLongPressTimer() {
@@ -1255,11 +1256,7 @@ function AppShell() {
     return () => window.removeEventListener('sw-update-available', handleSwUpdate)
   }, [])
 
-  // Drives time-based UI: trade expiration countdowns, pending challenges, etc.
-  useEffect(() => {
-    const interval = window.setInterval(() => setNowTick(Date.now()), 1000)
-    return () => window.clearInterval(interval)
-  }, [])
+  // nowTick (1Hz) lives in SocialProvider — drives trade/challenge countdowns.
 
   useEffect(() => {
     if (queueState === 'found') {
@@ -2088,15 +2085,15 @@ function AppShell() {
     } catch {
       /* non-fatal */
     }
+    // setTrades comes from SocialProvider's useState; stable but eslint
+    // can't see through useContext.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authToken])
 
   // Fetch trades whenever a trade event bumps the tick (login, trade:incoming,
-  // trade:updated). This is a plain "subscribe to external event" effect —
-  // the setState call inside refreshTrades is the legitimate way to mirror
-  // external updates into React state.
+  // trade:updated). This is a plain "subscribe to external event" effect.
   useEffect(() => {
     if (!loggedIn) return
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     void refreshTrades()
   }, [loggedIn, tradesTick, refreshTrades])
 
