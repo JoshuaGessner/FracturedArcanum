@@ -17,6 +17,7 @@ import type { RewardBeat } from './RewardCinemaSequence'
 export type RewardCinemaOverlayProps = {
   sequence: RewardBeat[] | null
   soundEnabled: boolean
+  hapticsEnabled: boolean
   onClose: () => void
 }
 
@@ -82,10 +83,12 @@ function CountUp({ value, reducedMotion }: { value: number; reducedMotion: boole
 function RewardCinemaInner({
   beats,
   soundEnabled,
+  hapticsEnabled,
   onClose,
 }: {
   beats: RewardBeat[]
   soundEnabled: boolean
+  hapticsEnabled: boolean
   onClose: () => void
 }) {
   const [reducedMotion, setReducedMotion] = useState<boolean>(() => detectReducedMotion())
@@ -118,9 +121,9 @@ function RewardCinemaInner({
   }, [currentBeat, isLastBeat, reducedMotion])
 
   const handleContinue = useCallback(() => {
-    feedback('claim', soundEnabled)
+    feedback('claim', soundEnabled, hapticsEnabled)
     onClose()
-  }, [onClose, soundEnabled])
+  }, [onClose, soundEnabled, hapticsEnabled])
 
   const showShower = useMemo(
     () => !reducedMotion && currentBeat?.kind === 'shower',
@@ -220,7 +223,7 @@ function RewardCinemaInner({
   )
 }
 
-export function RewardCinemaOverlay({ sequence, soundEnabled, onClose }: RewardCinemaOverlayProps) {
+export function RewardCinemaOverlay({ sequence, soundEnabled, hapticsEnabled, onClose }: RewardCinemaOverlayProps) {
   if (!sequence || sequence.length === 0) return null
   const sequenceKey = sequence.map((beat) => beat.id).join('|')
   return (
@@ -228,6 +231,7 @@ export function RewardCinemaOverlay({ sequence, soundEnabled, onClose }: RewardC
       key={sequenceKey}
       beats={sequence}
       soundEnabled={soundEnabled}
+      hapticsEnabled={hapticsEnabled}
       onClose={onClose}
     />
   )

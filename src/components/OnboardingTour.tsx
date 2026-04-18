@@ -18,6 +18,7 @@ import { playSound } from '../audio'
 export type OnboardingTourProps = {
   visible: boolean
   soundEnabled: boolean
+  hapticsEnabled: boolean
   onComplete: () => void
   onSkip: () => void
 }
@@ -186,10 +187,12 @@ function useTargetRect(selector: string): Rect | null {
 
 function OnboardingTourInner({
   soundEnabled,
+  hapticsEnabled,
   onComplete,
   onSkip,
 }: {
   soundEnabled: boolean
+  hapticsEnabled: boolean
   onComplete: () => void
   onSkip: () => void
 }) {
@@ -217,21 +220,21 @@ function OnboardingTourInner({
     if (finishedRef.current) return
     if (isLastStep) {
       finishedRef.current = true
-      feedback('confirm', soundEnabled)
+      feedback('confirm', soundEnabled, hapticsEnabled)
       playSound('questComplete', soundEnabled)
       onComplete()
       return
     }
-    feedback('nav', soundEnabled)
+    feedback('nav', soundEnabled, hapticsEnabled)
     setStepIndex((idx) => Math.min(STEPS.length - 1, idx + 1))
-  }, [isLastStep, onComplete, soundEnabled])
+  }, [isLastStep, onComplete, soundEnabled, hapticsEnabled])
 
   const handleSkip = useCallback(() => {
     if (finishedRef.current) return
     finishedRef.current = true
-    feedback('cancel', soundEnabled)
+    feedback('cancel', soundEnabled, hapticsEnabled)
     onSkip()
-  }, [onSkip, soundEnabled])
+  }, [onSkip, soundEnabled, hapticsEnabled])
 
   if (!currentStep) return null
 
@@ -287,11 +290,12 @@ function OnboardingTourInner({
   )
 }
 
-export function OnboardingTour({ visible, soundEnabled, onComplete, onSkip }: OnboardingTourProps) {
+export function OnboardingTour({ visible, soundEnabled, hapticsEnabled, onComplete, onSkip }: OnboardingTourProps) {
   if (!visible) return null
   return (
     <OnboardingTourInner
       soundEnabled={soundEnabled}
+      hapticsEnabled={hapticsEnabled}
       onComplete={onComplete}
       onSkip={onSkip}
     />

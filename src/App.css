@@ -4959,3 +4959,39 @@ button.icon-only {
 .scene-stage {
   touch-action: pan-y;
 }
+
+/* ─── Phase 3Z — Accessibility & Reduced-Motion Audit ─────────── */
+/*
+ * Consolidated reduced-motion rules for surfaces added in 3Q–3Y.
+ * Per-feature co-located rules (3S battle, 3T pack, 3W reward, 3X tour)
+ * remain in their own sections above. This block catches any gaps
+ * identified during the Phase 3Z audit.
+ */
+
+/* 3R — Curtain scene transitions. The earlier generic `.screen-panel.active`
+   reduced-motion rule has lower specificity than the class-compound selectors
+   used by the curtain system, so we override them explicitly here. Under
+   reduced motion the panel still fades in (1-frame opacity jump) but skips
+   translation, clip-path, and filter motion. */
+@media (prefers-reduced-motion: reduce) {
+  .app-shell.screen-enter-forward .screen-panel.active,
+  .app-shell.screen-enter-back .screen-panel.active,
+  .app-shell.screen-enter-lateral .screen-panel.active,
+  .app-shell.screen-enter-battle .screen-panel.active {
+    animation: none !important;
+  }
+
+  /* Ambient background float and logo pulse — non-essential infinite loops. */
+  .app-shell::before { animation: none !important; }
+  .brand-logo { animation: none !important; }
+
+  /* Collection card selection ring and social challenge banner pulses. */
+  .card-tile.selected,
+  .challenge-banner.incoming { animation: none !important; }
+
+  /* Focus ring uses box-shadow only — no motion concern. */
+}
+
+/* 3Y — Swipe gestures: scene-change commits inherit the curtain transition
+   system whose reduced-motion collapse is handled above. The gesture itself
+   adds no animated CSS affordance, so no additional rule is needed. */

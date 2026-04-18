@@ -188,6 +188,7 @@ export const STORAGE_KEYS = {
   analyticsConsent: 'fractured-arcanum.analytics-consent',
   ambient: 'fractured-arcanum.ambient',
   gestures: 'fractured-arcanum.gestures',
+  haptics: 'fractured-arcanum.haptics',
   runes: 'fractured-arcanum.shards',
   ownedThemes: 'fractured-arcanum.owned-themes',
   selectedTheme: 'fractured-arcanum.selected-theme',

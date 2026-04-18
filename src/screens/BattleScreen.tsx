@@ -33,7 +33,7 @@ const DRAG_ACTIVATE_PX = 12
 const SLAM_DURATION_MS = 380
 
 export function BattleScreen() {
-  const { activeScreen, openScreen, backendOnline, soundEnabled } = useAppShell()
+  const { activeScreen, openScreen, backendOnline, soundEnabled, hapticsEnabled } = useAppShell()
   const {
     game, activePlayer, isMyTurn, isRankedBattle, battleKind,
     enemyTurnActive, enemyTurnLabel, opponentDisconnected, disconnectGraceMs,
@@ -153,10 +153,10 @@ export function BattleScreen() {
       setPlayerHeroFx(fx)
       if (fx === 'damaged') {
         playSound('heroHit', soundEnabled)
-        pulseFeedback(18)
+        pulseFeedback(18, hapticsEnabled)
       } else {
         playSound('heroHeal', soundEnabled)
-        pulseFeedback(10)
+        pulseFeedback(10, hapticsEnabled)
       }
       if (playerFxTimerRef.current) window.clearTimeout(playerFxTimerRef.current)
       playerFxTimerRef.current = window.setTimeout(() => setPlayerHeroFx(null), 520)
@@ -173,7 +173,7 @@ export function BattleScreen() {
       enemyFxTimerRef.current = window.setTimeout(() => setEnemyHeroFx(null), 520)
     }
     prevHeroRef.current = { player: playerNow, enemy: enemyNow }
-  }, [game.player.health, game.enemy.health, soundEnabled])
+  }, [game.player.health, game.enemy.health, soundEnabled, hapticsEnabled])
 
   useEffect(() => () => {
     if (playerFxTimerRef.current) window.clearTimeout(playerFxTimerRef.current)
@@ -246,7 +246,7 @@ export function BattleScreen() {
     if (!current.active && distance >= DRAG_ACTIVATE_PX) {
       // First time we cross the threshold — lift the card.
       playSound('cardLift', soundEnabled)
-      pulseFeedback(8)
+      pulseFeedback(8, hapticsEnabled)
       try {
         event.currentTarget.setPointerCapture?.(event.pointerId)
       } catch {
@@ -256,7 +256,7 @@ export function BattleScreen() {
     } else if (current.active) {
       setDrag({ ...current, pointerX: event.clientX, pointerY: event.clientY })
     }
-  }, [soundEnabled])
+  }, [soundEnabled, hapticsEnabled])
 
   const handleHandPointerUp = useCallback((event: React.PointerEvent<HTMLButtonElement>, index: number) => {
     const current = dragRef.current
@@ -408,20 +408,22 @@ export function BattleScreen() {
 
         <div className="battle-action-row">
           <div className="battle-resource-row">
-            <div className="pip-row">
+            <div className="pip-row" aria-label={`Mana ${activePlayer.mana} of ${activePlayer.maxMana}`}>
               {Array.from({ length: Math.max(activePlayer.maxMana, 1) }).map((_, index) => (
                 <span
                   key={`mana-${index}`}
                   className={index < activePlayer.mana ? 'pip filled' : 'pip'}
+                  aria-hidden="true"
                 />
               ))}
               <span className="hero-label">Mana</span>
             </div>
-            <div className="pip-row">
+            <div className="pip-row" aria-label={`Momentum ${activePlayer.momentum} of 10`}>
               {Array.from({ length: 10 }).map((_, index) => (
                 <span
                   key={`momentum-${index}`}
                   className={index < activePlayer.momentum ? 'pip momentum filled' : 'pip momentum'}
+                  aria-hidden="true"
                 />
               ))}
               <span className="hero-label">Momentum</span>
@@ -535,7 +537,7 @@ export function BattleScreen() {
           <div className="battlefield-side player-side">
             <div className="section-head battle-side-head">
               <h2>{game.player.name} Frontline</h2>
-              <span className="badge">{isMyTurn ? 'Your turn' : 'Holding'}</span>
+              <span className="badge" aria-live="polite">{isMyTurn ? 'Your turn' : 'Holding'}</span>
             </div>
 
             <div className="board-grid board-grid-battle">

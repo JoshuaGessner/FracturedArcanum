@@ -22,6 +22,7 @@ export function SettingsScreen() {
     inferToastSeverity, setToastMessage,
     startOnboardingTour,
     gesturesEnabled, setGesturesEnabled,
+    hapticsEnabled, setHapticsEnabled,
   } = useAppShell()
   const { isAdminRole, isOwnerRole, accountRole, serverProfile } = useProfile()
 
@@ -161,7 +162,7 @@ export function SettingsScreen() {
               <button
                 className="primary"
                 onClick={() => {
-                  feedback('tap', soundEnabled)
+                  feedback('tap', soundEnabled, hapticsEnabled)
                   startOnboardingTour()
                 }}
               >
@@ -185,7 +186,7 @@ export function SettingsScreen() {
                 className={gesturesEnabled ? 'secondary' : 'primary'}
                 onClick={() => {
                   const nextValue = !gesturesEnabled
-                  feedback('tap', soundEnabled)
+                  feedback('tap', soundEnabled, hapticsEnabled)
                   setGesturesEnabled(nextValue)
                   setToastMessage(
                     nextValue
@@ -195,6 +196,35 @@ export function SettingsScreen() {
                 }}
               >
                 {gesturesEnabled ? 'Disable Scene Swipe' : 'Enable Scene Swipe'}
+              </button>
+            </div>
+          </div>
+
+          <div className="preference-tile">
+            <div className="section-head">
+              <div>
+                <h3>Tactile feedback</h3>
+                <p className="note">Vibrate on button taps, card plays, attack impacts, and pack reveals. Requires device vibration support.</p>
+              </div>
+              <span className={`deck-status ${hapticsEnabled ? 'ready' : 'warning'}`}>
+                {hapticsEnabled ? 'Enabled' : 'Disabled'}
+              </span>
+            </div>
+            <div className="controls">
+              <button
+                className={hapticsEnabled ? 'secondary' : 'primary'}
+                onClick={() => {
+                  const nextValue = !hapticsEnabled
+                  feedback('tap', soundEnabled, nextValue)
+                  setHapticsEnabled(nextValue)
+                  setToastMessage(
+                    nextValue
+                      ? 'Tactile feedback enabled.'
+                      : 'Tactile feedback disabled.',
+                  )
+                }}
+              >
+                {hapticsEnabled ? 'Disable Tactile Feedback' : 'Enable Tactile Feedback'}
               </button>
             </div>
           </div>

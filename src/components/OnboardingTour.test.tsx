@@ -48,6 +48,7 @@ describe('OnboardingTour', () => {
       <OnboardingTour
         visible={false}
         soundEnabled={false}
+        hapticsEnabled={false}
         onComplete={() => {}}
         onSkip={() => {}}
       />,
@@ -60,6 +61,7 @@ describe('OnboardingTour', () => {
       <OnboardingTour
         visible
         soundEnabled
+        hapticsEnabled
         onComplete={() => {}}
         onSkip={() => {}}
       />,
@@ -76,6 +78,7 @@ describe('OnboardingTour', () => {
       <OnboardingTour
         visible
         soundEnabled
+        hapticsEnabled
         onComplete={onComplete}
         onSkip={onSkip}
       />,
@@ -100,6 +103,7 @@ describe('OnboardingTour', () => {
       <OnboardingTour
         visible
         soundEnabled={false}
+        hapticsEnabled={false}
         onComplete={onComplete}
         onSkip={onSkip}
       />,
@@ -115,6 +119,7 @@ describe('OnboardingTour', () => {
       <OnboardingTour
         visible
         soundEnabled={false}
+        hapticsEnabled={false}
         onComplete={() => {}}
         onSkip={() => {}}
       />,

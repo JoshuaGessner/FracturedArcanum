@@ -71,21 +71,21 @@ describe('RewardCinemaOverlay', () => {
 
   it('renders nothing when sequence is null', () => {
     const { container } = render(
-      <RewardCinemaOverlay sequence={null} soundEnabled={false} onClose={() => {}} />,
+      <RewardCinemaOverlay sequence={null} soundEnabled={false} hapticsEnabled={false} onClose={() => {}} />,
     )
     expect(container.firstChild).toBeNull()
   })
 
   it('renders nothing when sequence is empty', () => {
     const { container } = render(
-      <RewardCinemaOverlay sequence={[]} soundEnabled={false} onClose={() => {}} />,
+      <RewardCinemaOverlay sequence={[]} soundEnabled={false} hapticsEnabled={false} onClose={() => {}} />,
     )
     expect(container.firstChild).toBeNull()
   })
 
   it('starts on the first beat with Continue disabled until the last beat', () => {
     render(
-      <RewardCinemaOverlay sequence={sampleSequence} soundEnabled={false} onClose={() => {}} />,
+      <RewardCinemaOverlay sequence={sampleSequence} soundEnabled={false} hapticsEnabled={false} onClose={() => {}} />,
     )
     expect(screen.getByText('Victory Secured')).toBeTruthy()
     const continueBtn = screen.getByTestId('reward-cinema-continue') as HTMLButtonElement
@@ -94,14 +94,14 @@ describe('RewardCinemaOverlay', () => {
 
   it('plays the beat sound through playSound when soundEnabled is true', () => {
     render(
-      <RewardCinemaOverlay sequence={sampleSequence} soundEnabled={true} onClose={() => {}} />,
+      <RewardCinemaOverlay sequence={sampleSequence} soundEnabled={true} hapticsEnabled={true} onClose={() => {}} />,
     )
     expect(playSoundMock).toHaveBeenCalledWith('win', true)
   })
 
   it('advances beats automatically on the timer and enables Continue at the end', () => {
     render(
-      <RewardCinemaOverlay sequence={sampleSequence} soundEnabled={false} onClose={() => {}} />,
+      <RewardCinemaOverlay sequence={sampleSequence} soundEnabled={false} hapticsEnabled={false} onClose={() => {}} />,
     )
 
     // Advance past the banner beat (1100ms) — should land on the count beat.
@@ -122,7 +122,7 @@ describe('RewardCinemaOverlay', () => {
   it('requires an explicit Continue click to fire onClose', () => {
     const onClose = vi.fn()
     render(
-      <RewardCinemaOverlay sequence={sampleSequence} soundEnabled={true} onClose={onClose} />,
+      <RewardCinemaOverlay sequence={sampleSequence} soundEnabled={true} hapticsEnabled={true} onClose={onClose} />,
     )
 
     // Walk through every beat. The component must not auto-dismiss after the
@@ -138,7 +138,7 @@ describe('RewardCinemaOverlay', () => {
     expect(continueBtn.disabled).toBe(false)
 
     fireEvent.click(continueBtn)
-    expect(feedbackMock).toHaveBeenCalledWith('claim', true)
+    expect(feedbackMock).toHaveBeenCalledWith('claim', true, true)
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 
@@ -160,7 +160,7 @@ describe('RewardCinemaOverlay', () => {
     ]
 
     const { container } = render(
-      <RewardCinemaOverlay sequence={reducedSequence} soundEnabled={false} onClose={() => {}} />,
+      <RewardCinemaOverlay sequence={reducedSequence} soundEnabled={false} hapticsEnabled={false} onClose={() => {}} />,
     )
 
     // Reduced motion class is applied to the overlay shell.

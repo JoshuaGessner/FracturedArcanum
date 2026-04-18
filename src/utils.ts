@@ -87,8 +87,8 @@ export function handleCardArtError(event: React.SyntheticEvent<HTMLImageElement>
   event.currentTarget.src = fallbackPath
 }
 
-export function pulseFeedback(duration = 14): void {
-  if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+export function pulseFeedback(duration = 14, enabled = true): void {
+  if (enabled && typeof navigator !== 'undefined' && 'vibrate' in navigator) {
     navigator.vibrate(duration)
   }
 }

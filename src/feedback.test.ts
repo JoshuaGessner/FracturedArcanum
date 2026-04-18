@@ -68,4 +68,34 @@ describe('feedback()', () => {
     expect(playSoundMock).toHaveBeenCalledWith('error', true)
     expect(pulseFeedbackMock).toHaveBeenCalledWith(30)
   })
+
+  // ─── Phase 3Z — hapticsEnabled gating ───────────────────────────
+  it('suppresses haptic when hapticsEnabled is false', () => {
+    feedback('tap', true, false)
+    expect(playSoundMock).toHaveBeenCalledWith('tap', true)
+    expect(pulseFeedbackMock).not.toHaveBeenCalled()
+  })
+
+  it('still plays sound when hapticsEnabled is false', () => {
+    feedback('confirm', true, false)
+    expect(playSoundMock).toHaveBeenCalledWith('match', true)
+    expect(pulseFeedbackMock).not.toHaveBeenCalled()
+  })
+
+  it('fires haptic when hapticsEnabled is true (explicit)', () => {
+    feedback('error', true, true)
+    expect(playSoundMock).toHaveBeenCalledWith('error', true)
+    expect(pulseFeedbackMock).toHaveBeenCalledWith(30)
+  })
+
+  it('fully silent when both sound and haptics disabled', () => {
+    feedback('claim', false, false)
+    expect(playSoundMock).toHaveBeenCalledWith('win', false)
+    expect(pulseFeedbackMock).not.toHaveBeenCalled()
+  })
+
+  it('defaults hapticsEnabled to true for backward compat', () => {
+    feedback('nav', true)
+    expect(pulseFeedbackMock).toHaveBeenCalledWith(10)
+  })
 })

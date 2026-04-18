@@ -22,6 +22,7 @@ export function NavBar({ activeScreen, onNavigate }: NavBarProps) {
           key={item.id}
           className={activeScreen === item.id ? 'nav-chip active' : 'nav-chip'}
           data-nav={item.id}
+          aria-current={activeScreen === item.id ? 'page' : undefined}
           onClick={() => onNavigate(item.id)}
         >
           <span>{item.label}</span>

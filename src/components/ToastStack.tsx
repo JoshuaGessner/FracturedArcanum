@@ -9,7 +9,11 @@ export function ToastStack({ toasts }: ToastStackProps) {
   return (
     <div className="toast-stack" role="status" aria-live="polite">
       {toasts.map((entry) => (
-        <div key={entry.id} className={`toast toast-${entry.severity}`}>
+        <div
+          key={entry.id}
+          className={`toast toast-${entry.severity}`}
+          role={entry.severity === 'error' ? 'alert' : undefined}
+        >
           {entry.message}
         </div>
       ))}

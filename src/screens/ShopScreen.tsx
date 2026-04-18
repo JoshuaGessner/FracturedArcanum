@@ -10,7 +10,7 @@ import { useAppShell, useGame, useProfile } from '../contexts'
 const RARITY_REFUND = { common: 5, rare: 10, epic: 25, legendary: 100 } as const
 
 export function ShopScreen() {
-  const { activeScreen, loggedIn, soundEnabled, presentRewardCinema, lastPackRefund, setLastPackRefund } = useAppShell()
+  const { activeScreen, loggedIn, soundEnabled, hapticsEnabled, presentRewardCinema, lastPackRefund, setLastPackRefund } = useAppShell()
   const {
     runes, totalOwnedCards, nextRewardLabel, canClaimDailyReward, handleClaimDailyReward,
     ownedThemes, selectedTheme, handleEquipTheme,
@@ -351,6 +351,7 @@ export function ShopScreen() {
         runes={runes}
         prevCollection={prevCollectionSnapshot ?? collection}
         soundEnabled={soundEnabled}
+        hapticsEnabled={hapticsEnabled}
         packOpening={packOpening}
         onOpenAnother={handleCeremonyOpenAnother}
         onClose={handleCeremonyClose}

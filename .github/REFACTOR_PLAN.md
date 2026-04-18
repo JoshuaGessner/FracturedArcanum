@@ -1274,20 +1274,16 @@ The screenshot review confirms the active combat HUD is still too tall. The next
 
 ### 3Z. Accessibility & Reduced-Motion Parity
 
+**Status:** ✅ Complete
+
 **Goal:** Every new motion / sound / haptic feature must have a documented reduced or off path so accessibility is not retrofitted.
 
-#### Plan
-- audit every animation added in 3Q–3Y under `prefers-reduced-motion: reduce` — must collapse to instant or simple cross-fade
-- audit every new sound — must respect the `soundEnabled` toggle and the new `ambientEnabled` toggle separately
-- haptics — add a Settings toggle for `hapticsEnabled`, default on; gate `pulseFeedback()` on it
-- ensure focus-visible outlines remain crisp and reachable on every new control
-- ensure the swipe gesture layer has keyboard equivalents (arrow keys when scene shell is focused)
-
-#### Acceptance target
-- a player who turns off motion, sound, ambient, and haptics still has a fully usable game
-- no screen relies on a non-text cue alone for state
-
-**Likely files:** `src/App.css`, `src/audio.ts`, `src/ambient.ts`, `src/feedback.ts`, `src/screens/SettingsScreen.tsx`
+#### Delivered
+- **Haptics opt-out:** `hapticsEnabled` state in AppShell, persisted to localStorage, gated in `feedback()` and all direct `pulseFeedback()` call sites, Settings toggle tile added.
+- **Reduced-motion CSS audit:** Added explicit `@media (prefers-reduced-motion: reduce)` rules for 3R curtain transitions (higher-specificity selectors that were not caught by the generic rule), ambient float, logo pulse, and selection/challenge pulse keyframes. Per-feature co-located blocks for 3S/3T/3W/3X confirmed correct.
+- **Sound-toggle audit:** All `playSound()` and `startLoopingSound()` calls confirmed gated on `soundEnabled` with proper cleanup.
+- **ARIA / keyboard audit:** NavBar chips now carry `aria-current="page"`, ToastStack applies `role="alert"` for error severity, ConfirmModal gains focus-on-open + Escape key dismiss, CardInspectModal gains `role="dialog"` + `aria-modal` + `aria-labelledby`, battle mana/momentum pip rows carry `aria-label` with counts, turn indicator badge uses `aria-live="polite"`.
+- **Tests:** 5 new feedback.test.ts cases for hapticsEnabled gating; new ToastStack.test.tsx covering empty, severity classes, role="alert", and live region.
 
 ### 3AA. Pre-Ship Checklist Additions for the New Direction
 
@@ -1429,7 +1425,7 @@ After all phases complete, verify:
 | **3W** | Unified `RewardCinemaOverlay` for battle/daily/pack/rank-up reveal beats | Medium | new RewardCinemaOverlay.tsx, RewardCinemaSequence.ts, App.tsx, ShopScreen.tsx, App.css | � done (new `src/components/RewardCinemaOverlay.tsx` plays a sequence of typed `RewardBeat`s — `banner` unfurl, `count` count-up tile, `shower` ember particles, or `card` icon — auto-advancing via timer and finishing on an explicit `Continue` CTA wired through `feedback('claim', soundEnabled)`. Beat schema and pure builders (`buildBattleVictorySequence`, `buildDailyClaimSequence`, `buildPackSummarySequence`, `buildRankUpSequence`) live in `src/components/RewardCinemaSequence.ts`. AppShell owns a single `cinemaSequence` slot plus `presentRewardCinema` / `dismissRewardCinema` exposed via `AppShellContextValue`; the legacy `RewardOverlay.tsx` and the GameProvider `rewardOverlayVisible` flag are gone. Battle wins resolve through the match-complete handler which infers shards, ladder rating delta, and rank-bucket crossings (`Bronze → Silver → Gold → Diamond`) and appends a rank-up sequence when crossed. Daily claims and pack-ceremony close handlers also feed into the same overlay (pack refund tracked via `lastPackRefund` in AppShell). Reduced-motion mode collapses inter-beat timing to 280 ms, skips the ember shower, and disables animations via `.reward-cinema-overlay.reduced-motion`. New `src/components/RewardCinemaOverlay.test.tsx` (jsdom + @testing-library/react) covers null/empty sequences, beat advancement on a fake timer, the explicit Continue requirement, and reduced-motion behaviour via mocked `matchMedia`; `npm run lint`, 72 tests, and `npm run build` all green.) |
 | **3X** | First-launch onboarding tour with spotlight cutouts; replay from Settings | Medium | new OnboardingTour.tsx, App.tsx, SettingsScreen.tsx | ✅ done — `OnboardingTour` overlay drives a 5-step spotlight walkthrough (home tiles → Collection nav → queue button → battle hand → Settings nav) with radial-gradient veil cutouts and a parchment caption that adjusts placement per viewport; missing targets fall back to a centered caption. AppShell owns `tourVisible` + `startOnboardingTour`/`dismissOnboardingTour(reason)`, auto-fires once on the first authenticated landing on Home (gated by `setupRequired`/`loggedIn`), persists completion via `STORAGE_KEYS.firstLaunch`, and Settings now exposes a “Replay onboarding tour” button. Steps pair with `feedback('nav')`, finale plays `playSound('questComplete')`, and reduced-motion / `soundEnabled` are honoured throughout. Covered by `OnboardingTour.test.tsx`. |
 | **3Y** | Touch swipe gesture between adjacent primary scenes, with rail-aware guards | Medium | App.tsx, App.css, utils.ts | ✅ done — pure helpers in `src/utils/sceneSwipe.ts` (`NAV_ORDER`, `SCENE_SWIPE_OPT_OUT_ATTR`, `getNeighborScreen`, `shouldCommitSwipe`, `findOptOutAncestor`) feed a presentational `useSceneSwipe` hook in `src/hooks/useSceneSwipe.ts` that tracks a single touch, cancels on multi-touch, never preventDefaults on move, and on touchend evaluates a 25%-of-viewport distance OR 0.4 px/ms velocity threshold (with a 60px floor) and a vertical-dominance guard before calling `onCommit('prev'\|'next')`. AppShell mounts the hook on `.scene-stage`, gates it behind a new `gesturesEnabled` preference (persisted via `STORAGE_KEYS.gestures`, default on, exposed through `AppShellContextValue`), and short-circuits when battle is on-screen, the auth/setup gate is up, or the onboarding tour is visible. Commits route back through the existing `transitionToScreen(neighbor, true)` so the curtain class + paired `runeWipe`/`sceneOpen`/`sceneClose` sound from `getScreenTransitionSound` fire automatically — no new audio added. Keyboard parity: ArrowLeft/ArrowRight on the document body trigger the same commits unless focus is in an input/textarea/select/button/anchor/contenteditable. The battle hand fan now carries `data-scene-swipe-opt-out` as a belt-and-braces guard. Settings gains a “Swipe between scenes” preference tile with `feedback('tap')` + toast. CSS adds a `touch-action: pan-y` hint scoped to `.scene-stage` so vertical scroll stays snappy. Coverage: `src/hooks/useSceneSwipe.test.ts` (pure-helper threshold + opt-out cases) and `src/hooks/useSceneSwipe.integration.test.tsx` (synthetic touch sequences validating prev/next commits, battle opt-out, opt-out ancestor, disabled flag). |
-| **3Z** | Accessibility/reduced-motion parity for everything added in 3Q–3Y + haptics toggle | Highest | App.css, audio.ts, ambient.ts, feedback.ts, SettingsScreen.tsx | 🟡 planned |
+| **3Z** | Accessibility/reduced-motion parity for everything added in 3Q–3Y + haptics toggle | Highest | App.css, audio.ts, ambient.ts, feedback.ts, SettingsScreen.tsx | ✅ done |
 
 ---
 

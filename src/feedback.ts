@@ -54,14 +54,15 @@ export const FEEDBACK_TABLE: Record<FeedbackKind, FeedbackProfile> = {
  * Trigger the canonical feedback fingerprint for an interactive control.
  *
  * Audio honours the global `soundEnabled` flag. Haptics honour the
- * platform `navigator.vibrate` capability via {@link pulseFeedback}.
+ * `hapticsEnabled` flag (defaults to `true` for backward compat) plus
+ * the platform `navigator.vibrate` capability via {@link pulseFeedback}.
  */
-export function feedback(kind: FeedbackKind, soundEnabled: boolean): void {
+export function feedback(kind: FeedbackKind, soundEnabled: boolean, hapticsEnabled = true): void {
   const profile = FEEDBACK_TABLE[kind]
   if (profile.sound) {
     playSound(profile.sound, soundEnabled)
   }
-  if (profile.haptic > 0) {
+  if (profile.haptic > 0 && hapticsEnabled) {
     pulseFeedback(profile.haptic)
   }
 }

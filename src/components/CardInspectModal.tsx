@@ -11,12 +11,18 @@ type CardInspectModalProps = {
 export function CardInspectModal({ card, onClose }: CardInspectModalProps) {
   if (!card) return null
   return (
-    <section className="queue-overlay card-inspect-overlay" onClick={onClose}>
+    <section
+      className="queue-overlay card-inspect-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="card-inspect-name"
+      onClick={onClose}
+    >
       <div className="queue-modal card-inspect-modal section-card" onClick={(e) => e.stopPropagation()}>
         <div className="card-inspect-header">
           <span className="cost-pill">{card.cost}</span>
           <div>
-            <h2>
+            <h2 id="card-inspect-name">
               {card.icon} {card.name}
             </h2>
             <span className="badges">

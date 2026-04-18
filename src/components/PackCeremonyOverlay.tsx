@@ -15,6 +15,7 @@ type PackCeremonyOverlayProps = {
   runes: number
   prevCollection: CardCollection
   soundEnabled: boolean
+  hapticsEnabled: boolean
   packOpening: string | null
   onOpenAnother: () => void
   onClose: () => void
@@ -32,6 +33,7 @@ export function PackCeremonyOverlay({
   runes,
   prevCollection,
   soundEnabled,
+  hapticsEnabled,
   packOpening,
   onOpenAnother,
   onClose,
@@ -80,12 +82,12 @@ export function PackCeremonyOverlay({
     timers.push(window.setTimeout(() => {
       setPhase('shake')
       playSound('packOpen', soundEnabled)
-      pulseFeedback(20)
+      pulseFeedback(20, hapticsEnabled)
     }, 180))
     timers.push(window.setTimeout(() => {
       setPhase('burst')
       playSound('lidSplit', soundEnabled)
-      pulseFeedback(28)
+      pulseFeedback(28, hapticsEnabled)
     }, 760))
     timers.push(window.setTimeout(() => {
       setPhase('fan')
@@ -98,7 +100,7 @@ export function PackCeremonyOverlay({
     return () => {
       timers.forEach((id) => clearTimeout(id))
     }
-  }, [cards, reducedMotion, soundEnabled])
+  }, [cards, reducedMotion, soundEnabled, hapticsEnabled])
 
   const allFlipped = flipped.length > 0 && flipped.every(Boolean)
 
@@ -126,13 +128,13 @@ export function PackCeremonyOverlay({
 
       if (isLegendary) {
         playSound('legendaryReveal', soundEnabled)
-        pulseFeedback(40)
+        pulseFeedback(40, hapticsEnabled)
         if (!reducedMotion) {
           setShakeKey((k) => k + 1)
         }
       } else {
         playSound('cardReveal', soundEnabled)
-        pulseFeedback(12)
+        pulseFeedback(12, hapticsEnabled)
       }
 
       if (isFirstTime) {
@@ -140,7 +142,7 @@ export function PackCeremonyOverlay({
         window.setTimeout(() => playSound('firstTime', soundEnabled), 180)
       }
     },
-    [cards, firstTimeMap, flipped, reducedMotion, soundEnabled],
+    [cards, firstTimeMap, flipped, reducedMotion, soundEnabled, hapticsEnabled],
   )
 
   const handleRevealAll = useCallback(() => {

@@ -251,6 +251,7 @@ function AppShell() {
   const [soundEnabled, setSoundEnabled] = useState(() => readStoredValue(STORAGE_KEYS.sound, true))
   const [ambientEnabled, setAmbientEnabled] = useState(() => readStoredValue(STORAGE_KEYS.ambient, false))
   const [gesturesEnabled, setGesturesEnabled] = useState(() => readStoredValue(STORAGE_KEYS.gestures, true))
+  const [hapticsEnabled, setHapticsEnabled] = useState(() => readStoredValue(STORAGE_KEYS.haptics, true))
   const [analyticsConsent, setAnalyticsConsent] = useState(() =>
     readStoredValue(STORAGE_KEYS.analyticsConsent, true),
   )
@@ -422,7 +423,7 @@ function AppShell() {
   function inspectCard(card: InspectedCard) {
     clearLongPressTimer()
     longPressTriggeredRef.current = true
-    feedback('inspect', soundEnabled)
+    feedback('inspect', soundEnabled, hapticsEnabled)
     setInspectedCard(card)
   }
 
@@ -1018,6 +1019,7 @@ function AppShell() {
     window.localStorage.setItem(STORAGE_KEYS.sound, JSON.stringify(soundEnabled))
     window.localStorage.setItem(STORAGE_KEYS.ambient, JSON.stringify(ambientEnabled))
     window.localStorage.setItem(STORAGE_KEYS.gestures, JSON.stringify(gesturesEnabled))
+    window.localStorage.setItem(STORAGE_KEYS.haptics, JSON.stringify(hapticsEnabled))
     window.localStorage.setItem(STORAGE_KEYS.mode, JSON.stringify(preferredMode))
     window.localStorage.setItem(STORAGE_KEYS.aiDifficulty, JSON.stringify(aiDifficultySetting))
     window.localStorage.setItem(STORAGE_KEYS.visitor, JSON.stringify(visitorId))
@@ -1028,6 +1030,7 @@ function AppShell() {
     soundEnabled,
     ambientEnabled,
     gesturesEnabled,
+    hapticsEnabled,
     preferredMode,
     aiDifficultySetting,
     visitorId,
@@ -1227,7 +1230,7 @@ function AppShell() {
         )
         setCollection(data.owned ?? {})
         setToastMessage(`Refunded ${data.refunded ?? 0} Shards.`)
-        feedback('claim', soundEnabled)
+        feedback('claim', soundEnabled, hapticsEnabled)
       })
       .catch(() => setToastMessage('Could not break down card.'))
       .finally(() => setPendingBreakdown(null))
@@ -1274,7 +1277,7 @@ function AppShell() {
             : prev,
         )
         setToastMessage(`${CARD_BORDER_OFFERS.find((b) => b.id === borderId)?.name ?? 'Border'} unlocked.`)
-        feedback('purchase', soundEnabled)
+        feedback('purchase', soundEnabled, hapticsEnabled)
       })
       .catch(() => setToastMessage('Could not purchase border.'))
   }
@@ -1301,7 +1304,7 @@ function AppShell() {
             : prev,
         )
         setToastMessage(`${CARD_BORDER_OFFERS.find((b) => b.id === borderId)?.name ?? 'Border'} equipped.`)
-        feedback('equip', soundEnabled)
+        feedback('equip', soundEnabled, hapticsEnabled)
       })
       .catch(() => setToastMessage('Could not equip border.'))
   }
@@ -1344,9 +1347,9 @@ function AppShell() {
 
   useEffect(() => {
     if (queueState === 'found') {
-      feedback('confirm', soundEnabled)
+      feedback('confirm', soundEnabled, hapticsEnabled)
     }
-  }, [queueState, soundEnabled])
+  }, [queueState, soundEnabled, hapticsEnabled])
 
   // Phase 3V — drive the per-screen ambient bed. setAmbientScene fades the
   // previous scene out and the new scene in; muting either toggle tears
@@ -1735,7 +1738,7 @@ function AppShell() {
   }
 
   function handleResumeBattle() {
-    feedback('tap', soundEnabled)
+    feedback('tap', soundEnabled, hapticsEnabled)
     transitionToScreen('battle')
 
     if (battleKind === 'ranked') {
@@ -1755,7 +1758,7 @@ function AppShell() {
   }
 
   function handleAbandonBattle() {
-    feedback('cancel', soundEnabled)
+    feedback('cancel', soundEnabled, hapticsEnabled)
 
     if (serverBattleActive && hasBattleInProgress && socketClientRef.current?.connected) {
       emitAction({ type: 'surrender' })
@@ -1772,7 +1775,7 @@ function AppShell() {
   }
 
   function handleLeaveBattle() {
-    feedback('cancel', soundEnabled)
+    feedback('cancel', soundEnabled, hapticsEnabled)
 
     if (queueState !== 'idle' && !hasBattleInProgress) {
       handleCancelQueue()
@@ -1799,7 +1802,7 @@ function AppShell() {
       return
     }
 
-    feedback('claim', soundEnabled)
+    feedback('claim', soundEnabled, hapticsEnabled)
     void authFetch('/api/me/daily', authToken, { method: 'POST' })
       .then((r) => r.json())
       .then((data: { ok: boolean; error?: string; runes?: number; totalEarned?: number }) => {
@@ -2175,7 +2178,7 @@ function AppShell() {
   }
 
   function handleModeChange(mode: GameMode) {
-    feedback('select', soundEnabled)
+    feedback('select', soundEnabled, hapticsEnabled)
     setPreferredMode(mode)
     setQueueState('idle')
     setQueueSeconds(0)
@@ -2184,7 +2187,7 @@ function AppShell() {
   }
 
   function handleAIDifficultyChange(level: 'auto' | AIDifficulty) {
-    feedback('select', soundEnabled)
+    feedback('select', soundEnabled, hapticsEnabled)
     setAiDifficultySetting(level)
     setToastMessage(level === 'auto' ? `AI difficulty set to Auto. Recommended tier: ${getRecommendedAIDifficulty(seasonRating)}.` : `${level.charAt(0).toUpperCase() + level.slice(1)} AI selected.`)
   }
@@ -2682,7 +2685,7 @@ function AppShell() {
    * by `startMatch` and is never saved into the player's collection.
    */
   function handleQuickBattle(name: string, config: DeckConfig) {
-    feedback('tap', soundEnabled)
+    feedback('tap', soundEnabled, hapticsEnabled)
     setToastMessage(`Launching quick AI match: ${name} preset.`)
     startMatch('ai', `${name} Sparring Bot`, config)
   }
@@ -2700,7 +2703,7 @@ function AppShell() {
     }
 
     playSound('cardSlam', soundEnabled)
-    pulseFeedback(12)
+    pulseFeedback(12, hapticsEnabled)
 
     if (isRankedBattle) {
       emitAction({ type: 'playCard', handIndex: index })
@@ -2717,7 +2720,7 @@ function AppShell() {
       return
     }
 
-    feedback('select', soundEnabled)
+    feedback('select', soundEnabled, hapticsEnabled)
     setSelectedAttacker((current) => (current === index ? null : index))
   }
 
@@ -2727,7 +2730,7 @@ function AppShell() {
     }
 
     playSound('attackLunge', soundEnabled)
-    pulseFeedback(16)
+    pulseFeedback(16, hapticsEnabled)
 
     if (isRankedBattle) {
       emitAction({ type: 'attack', attackerIndex: selectedAttacker, target })
@@ -2745,7 +2748,7 @@ function AppShell() {
     }
 
     playSound('burst', soundEnabled)
-    pulseFeedback(22)
+    pulseFeedback(22, hapticsEnabled)
 
     if (isRankedBattle) {
       emitAction({ type: 'burst' })
@@ -2765,7 +2768,7 @@ function AppShell() {
       return
     }
 
-    feedback('tap', soundEnabled)
+    feedback('tap', soundEnabled, hapticsEnabled)
     setSelectedAttacker(null)
 
     if (isRankedBattle) {
@@ -2855,6 +2858,7 @@ function AppShell() {
     swUpdateAvailable, handleAcceptUpdate, handleDismissUpdate,
     soundEnabled, setSoundEnabled, ambientEnabled, setAmbientEnabled, analyticsConsent, setAnalyticsConsent, visitorId,
     gesturesEnabled, setGesturesEnabled,
+    hapticsEnabled, setHapticsEnabled,
     // Live service
     backendOnline, dailyQuest, featuredMode,
     // Queue handlers (state lives in QueueProvider)
@@ -3105,12 +3109,14 @@ function AppShell() {
       <RewardCinemaOverlay
         sequence={cinemaSequence}
         soundEnabled={soundEnabled}
+        hapticsEnabled={hapticsEnabled}
         onClose={dismissRewardCinema}
       />
 
       <OnboardingTour
         visible={tourVisible}
         soundEnabled={soundEnabled}
+        hapticsEnabled={hapticsEnabled}
         onComplete={() => dismissOnboardingTour('completed')}
         onSkip={() => dismissOnboardingTour('skipped')}
       />
