@@ -48,9 +48,9 @@ import { NavBar } from './components/NavBar'
 import { TopBar } from './components/TopBar'
 import { BattleIntroOverlay } from './components/BattleIntroOverlay'
 import { RewardOverlay } from './components/RewardOverlay'
-import { OpsScreen } from './screens/OpsScreen'
-import { VaultScreen } from './screens/VaultScreen'
-import { DeckScreen } from './screens/DeckScreen'
+import { SettingsScreen } from './screens/SettingsScreen'
+import { ShopScreen } from './screens/ShopScreen'
+import { CollectionScreen } from './screens/CollectionScreen'
 import { HomeScreen } from './screens/HomeScreen'
 import { BattleScreen } from './screens/BattleScreen'
 import { AppContext, type AppContextValue } from './AppContext'
@@ -607,7 +607,6 @@ function App() {
       setServerProfile((profile) => (profile ? { ...profile, role: nextRole } : profile))
       if (nextRole === 'user') {
         setToastMessage('Your admin privileges were revoked.')
-        setActiveScreen((current) => (current === 'ops' ? 'home' : current))
       } else if (nextRole === 'admin') {
         setToastMessage('You are now an admin.')
       } else if (nextRole === 'owner') {
@@ -1439,13 +1438,13 @@ function App() {
   const screenTitle =
     activeScreen === 'home'
       ? 'Arena Home'
-      : activeScreen === 'deck'
-        ? 'Deck Forge'
+      : activeScreen === 'collection'
+        ? 'Collection'
         : activeScreen === 'battle'
           ? 'Battlefield'
-          : activeScreen === 'vault'
-            ? 'Vault'
-            : 'Operations'
+          : activeScreen === 'shop'
+            ? 'Shop'
+            : 'Settings'
 
 
   function openScreen(screen: AppScreen) {
@@ -1885,7 +1884,7 @@ function App() {
     const deckForMatch = overrideDeckConfig ?? deckConfig
     if (getDeckSize(deckForMatch) < MIN_DECK_SIZE) {
       setToastMessage('Finish building your deck before entering the arena.')
-      setActiveScreen('deck')
+      setActiveScreen('collection')
       return
     }
 
@@ -2323,7 +2322,7 @@ function App() {
   function handleStartQueue() {
     if (!deckReady) {
       setToastMessage('Finish your deck first so matchmaking can start.')
-      setActiveScreen('deck')
+      setActiveScreen('collection')
       return
     }
 
@@ -2851,15 +2850,15 @@ function App() {
       {loggedIn && (<>
       <HomeScreen />
 
-      <DeckScreen />
+      <CollectionScreen />
 
       <BattleScreen />
 
-      <VaultScreen />
+      <ShopScreen />
 
-      <OpsScreen />
+      <SettingsScreen />
 
-      <NavBar activeScreen={activeScreen} isAdminRole={isAdminRole} onNavigate={openScreen} />
+      <NavBar activeScreen={activeScreen} onNavigate={openScreen} />
       </>)}
     </main>
     </AppContext.Provider>

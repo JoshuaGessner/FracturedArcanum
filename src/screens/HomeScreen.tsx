@@ -107,7 +107,7 @@ export function HomeScreen() {
           <button className="secondary" onClick={handleStartQueue} disabled={!deckReady || queueState !== 'idle'}>
             Play Online (Ranked)
           </button>
-          <button className="ghost" onClick={() => openScreen('deck')}>
+          <button className="ghost" onClick={() => openScreen('collection')}>
             Deck Forge
           </button>
         </div>

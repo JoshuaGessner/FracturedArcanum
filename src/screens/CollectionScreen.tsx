@@ -10,7 +10,7 @@ import { DECK_MAX_TOTAL_DISPLAY, DECK_PRESETS, EFFECT_LABELS } from '../constant
 import { cardArtPath, handleCardArtError } from '../utils'
 import { useApp } from '../useApp'
 
-export function DeckScreen() {
+export function CollectionScreen() {
   const {
     activeScreen,
     loggedIn,
@@ -36,7 +36,7 @@ export function DeckScreen() {
   } = useApp()
 
   return (
-    <section className={`meta-grid deck-focus screen-panel ${activeScreen === 'deck' ? 'active' : 'hidden'}`}>
+    <section className={`meta-grid deck-focus screen-panel ${activeScreen === 'collection' ? 'active' : 'hidden'}`}>
       <article className="section-card">
         <div className="section-head">
           <div>

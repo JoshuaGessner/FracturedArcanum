@@ -4,7 +4,7 @@ import { useApp } from '../useApp'
 
 const RARITY_REFUND = { common: 5, rare: 10, epic: 25, legendary: 100 } as const
 
-export function VaultScreen() {
+export function ShopScreen() {
   const {
     activeScreen,
     loggedIn,
@@ -32,7 +32,7 @@ export function VaultScreen() {
   } = useApp()
 
   return (
-    <section className={`vault-grid screen-panel ${activeScreen === 'vault' ? 'active' : 'hidden'}`}>
+    <section className={`vault-grid screen-panel ${activeScreen === 'shop' ? 'active' : 'hidden'}`}>
       <article className="section-card utility-card">
         <div className="section-head">
           <div>

@@ -2,7 +2,7 @@ import { CARD_LIBRARY } from '../game'
 import { cardArtPath, formatTimestamp, handleCardArtError } from '../utils'
 import { useApp } from '../useApp'
 
-export function OpsScreen() {
+export function SettingsScreen() {
   const {
     activeScreen,
     isAdminRole,
@@ -47,7 +47,7 @@ export function OpsScreen() {
   } = useApp()
 
   return (
-    <section className={`ops-grid screen-panel ${activeScreen === 'ops' && isAdminRole ? 'active' : 'hidden'}`}>
+    <section className={`ops-grid screen-panel ${activeScreen === 'settings' ? 'active' : 'hidden'}`}>
       <article className="section-card utility-card">
         <div className="section-head">
           <div>

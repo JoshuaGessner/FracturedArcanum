@@ -2,11 +2,10 @@ import type { AppScreen } from '../types'
 
 type NavBarProps = {
   activeScreen: AppScreen
-  isAdminRole: boolean
   onNavigate: (screen: AppScreen) => void
 }
 
-export function NavBar({ activeScreen, isAdminRole, onNavigate }: NavBarProps) {
+export function NavBar({ activeScreen, onNavigate }: NavBarProps) {
   return (
     <nav className="bottom-nav section-card" aria-label="Primary screens">
       <button
@@ -16,10 +15,10 @@ export function NavBar({ activeScreen, isAdminRole, onNavigate }: NavBarProps) {
         🏠 Home
       </button>
       <button
-        className={activeScreen === 'deck' ? 'nav-chip active' : 'nav-chip'}
-        onClick={() => onNavigate('deck')}
+        className={activeScreen === 'collection' ? 'nav-chip active' : 'nav-chip'}
+        onClick={() => onNavigate('collection')}
       >
-        🃏 Deck
+        📚 Collection
       </button>
       <button
         className={activeScreen === 'battle' ? 'nav-chip active' : 'nav-chip'}
@@ -28,19 +27,17 @@ export function NavBar({ activeScreen, isAdminRole, onNavigate }: NavBarProps) {
         ⚔️ Battle
       </button>
       <button
-        className={activeScreen === 'vault' ? 'nav-chip active' : 'nav-chip'}
-        onClick={() => onNavigate('vault')}
+        className={activeScreen === 'shop' ? 'nav-chip active' : 'nav-chip'}
+        onClick={() => onNavigate('shop')}
       >
-        💎 Vault
+        🛒 Shop
       </button>
-      {isAdminRole && (
-        <button
-          className={activeScreen === 'ops' ? 'nav-chip active' : 'nav-chip'}
-          onClick={() => onNavigate('ops')}
-        >
-          📊 Ops
-        </button>
-      )}
+      <button
+        className={activeScreen === 'settings' ? 'nav-chip active' : 'nav-chip'}
+        onClick={() => onNavigate('settings')}
+      >
+        ⚙️ Settings
+      </button>
     </nav>
   )
 }
