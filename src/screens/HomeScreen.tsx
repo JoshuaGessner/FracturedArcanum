@@ -68,7 +68,9 @@ export function HomeScreen() {
           ))}
         </div>
 
-        <p className={`toast toast-${toastSeverity} toast-line`}>{toastMessage}</p>
+        {toastMessage && (
+          <p className={`toast toast-${toastSeverity} toast-line`}>{toastMessage}</p>
+        )}
       </article>
 
       <div className="home-cards">

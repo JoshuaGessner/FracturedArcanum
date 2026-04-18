@@ -1,7 +1,7 @@
 # Fractured Arcanum — Full Refactor & Redesign Plan
 
 > Generated 2026-04-17. Reference this file at the start of the implementation session.
-> **Current state:** App.tsx = 2,905 lines, provider tree + AppShellContext composition are fully live, 7 renamed screens and 8 shared components are in place, the SVG asset pipeline is verified, and tests/lint/build are green.
+> **Current state:** App.tsx = 2,905 lines, provider tree + AppShellContext composition are fully live, 7 renamed screens and 8 shared components are in place, the SVG asset pipeline is verified, and tests/lint/build are green. Completed structural items are intentionally condensed so this plan stays focused on the remaining UI polish and live-service stability work.
 
 ---
 
@@ -938,6 +938,375 @@ New App.css sections (add at end, before `@media (prefers-reduced-motion)`):
 
 Move the `prefers-reduced-motion` block and production polish block to the very end so they override everything.
 
+### 3M. Mobile-First Full-Viewport Density Pass
+
+**Goal:** Every primary screen should read as a single in-game scene on a 375px mobile viewport, with **no unnecessary vertical page scroll**. Intentional scrolling is allowed only where it is part of the interaction model:
+
+- horizontal hand fan in battle
+- horizontal deck and cosmetic rails
+- pack reveal sequences
+- modal content and long admin/audit lists
+
+**Global density rules:**
+
+1. hero/status chrome should stay within roughly the top 15–20% of the viewport
+2. the primary interaction zone should occupy the visual center of the screen
+3. footer docks should be compact and action-focused
+4. stacked informational cards should be collapsed into tabs, carousels, chips, or compact badges where possible
+5. if a screen needs scrolling, it should be the **content region**, not the whole page shell
+
+#### Planned screen-by-screen density pass
+
+**Home / main menu**
+- keep the nav-tile grid above the fold at phone size
+- compress quest and featured-mode messaging into a tighter utility card
+- keep seasonal progress visible without pushing the primary nav below the fold
+- **Likely files:** `src/screens/HomeScreen.tsx`, `src/App.css`
+
+**Play screen**
+- keep mode cards, queue portal, and the main CTA visible together on a single phone screen when idle
+- reduce explanatory copy while queue/search details are inactive
+- compress queue-found and queue-search states into a dedicated central stage rather than extra stacked cards
+- **Likely files:** `src/screens/PlayScreen.tsx`, `src/App.css`
+
+**Collection screen**
+- keep deck roster and filters prominent while making the card browser the intended scroll surface
+- collapse secondary stats and breakdown content behind compact sections where needed
+- preserve quick battle access without forcing long vertical scrolling
+- **Likely files:** `src/screens/CollectionScreen.tsx`, `src/App.css`
+
+**Social screen**
+- convert the long social stack into denser subsections or tabbed segments so friends, clan, and trades do not all compete vertically at once
+- keep the profile hero and the currently active social action above the fold
+- **Likely files:** `src/screens/SocialScreen.tsx`, `src/App.css`
+
+**Shop screen**
+- keep reward vault and pack purchase actions visible immediately
+- move themes, borders, and post-open breakdowns into rails or compact reveal sections
+- avoid tall stacked cards that push the pack CTA too far down the screen
+- **Likely files:** `src/screens/ShopScreen.tsx`, `src/App.css`
+
+**Settings screen**
+- keep account/preferences visible in the first viewport
+- push complaint and admin subsections into denser grouped panels or tabs
+- long audit/user lists remain intentional scroll surfaces inside their section, not the whole screen shell
+- **Likely files:** `src/screens/SettingsScreen.tsx`, `src/App.css`
+
+#### Battle screen — single-screen combat target
+
+The screenshot review confirms the active combat HUD is still too tall. The next pass should follow a classic digital card-game stack:
+
+1. **Slim top duel ribbon**
+   - enemy name, player name, health, and turn state only
+   - remove nonessential live meta such as rating and win rate from the active battle view
+2. **Board-first arena stage**
+   - enemy row on top
+   - compact clash strip in the center
+   - player row below
+   - all six lanes visible together without page scrolling
+3. **Compact combat dock**
+   - burst, end turn, and leave actions grouped tightly
+   - mana and momentum live near the hand dock instead of in a large status slab
+4. **Hand dock remains horizontal**
+   - preserve the current fan layout and horizontal scroll behavior
+   - keep hand readability without requiring the board to move off-screen
+
+**Battle acceptance target:**
+- active battle should fit in one mobile viewport as much as possible
+- no large health/status panels pushing the board down the page
+- vertical page scrolling should be eliminated during normal combat
+- only the hand may scroll horizontally
+
+**Likely files:** `src/screens/BattleScreen.tsx`, `src/App.tsx`, `src/App.css`
+
+### 3N. Long-Press Inspect Hardening
+
+**Goal:** Long-press card inspection must feel native and reliable without triggering browser or system context menus.
+
+#### Required behavior
+- long-press opens the inspect modal consistently
+- long-press should not open a browser context menu, touch callout, or text selection overlay
+- tap-to-play and tap-to-select must still feel immediate
+- horizontal hand scrolling must continue to work naturally on touch devices
+
+#### Implementation notes
+- keep the existing `onContextMenu` prevention in `getLongPressProps()`
+- add battle-card and slot level CSS hardening:
+  - `-webkit-touch-callout: none`
+  - `user-select: none`
+  - `-webkit-user-select: none`
+- if needed, add gesture-safe cancel logic so a horizontal drag cancels inspect instead of fighting hand scroll
+- verify inspect still works on cards in hand, on units in lanes, and in collection/breakdown contexts
+
+**Likely files:** `src/App.tsx`, `src/App.css`, `src/screens/BattleScreen.tsx`, `src/components/CardInspectModal.tsx`
+
+### 3O. Chrome Normalization & Stray Frame Cleanup
+
+**Goal:** Remove the current frame-within-frame look and any floating or orphaned decorative rectangles across auth, dashboard, nav, and battle.
+
+#### Current findings from the UI audit
+- buttons currently stack a gradient fill, SVG chrome art, and a separate CSS border on the same control
+- framed panels currently combine `panel-frame.svg` with an additional border/radius shell, which reads as a double outline on mobile
+- the bottom nav and battle HUD both nest multiple framed surfaces, which is likely causing the “floating frame” feel visible in the latest screenshots
+- the home spotlight/dashboard shell is carrying status messaging in the same framed region, which creates empty framed space below the main content
+
+#### Planned cleanup pass
+1. define a **single-owner chrome rule**: a surface owns either the SVG frame or the CSS edge treatment, never both
+2. normalize primary, ghost, danger, and auth buttons so their art scales flush to the true button bounds
+3. remove decorative pseudo-element art from any shell where it reads like an unattached box or extra plate
+4. split dashboard hero, nav-tile, and toast/status surfaces so empty framed regions do not linger on screen
+5. compress battle HUD chrome into one intentional duel ribbon rather than stacked framed slabs
+
+**Acceptance target:**
+- no button looks like it has an inner button trapped inside an outer one
+- no empty framed box appears on the home dashboard or battle HUD
+- auth, nav, dashboard, and battle controls all share the same chrome rules
+
+**Likely files:** `src/App.css`, `src/App.tsx`, `src/components/NavBar.tsx`, `src/screens/HomeScreen.tsx`, `src/screens/BattleScreen.tsx`
+
+### 3P. Live Connection Resilience & Rejoin Recovery
+
+**Goal:** Disconnects and reconnects should recover cleanly without requiring the player to close the app or refresh the page.
+
+#### Likely causes identified in the current code review
+1. `disconnect` and `connect_error` currently flip offline state and clear queue state, but they do not promote the UI into a full reconnect workflow with bounded retry/fallback behavior
+2. `game:rejoin_failed` currently only clears the opponent-disconnect indicator; it does not fully restore a safe, non-stuck screen state
+3. the app can emit `game:rejoin` both automatically on socket connect and manually from Resume Battle, so the rejoin flow should be de-duplicated during unstable network conditions
+
+#### Planned resilience pass
+- add an explicit connection lifecycle state: online → reconnecting → rejoining → recovered / failed
+- add a reconnect timeout and a visible recovery CTA such as Retry Now or Return Home
+- guard rejoin requests so only one in-flight rejoin attempt can run at a time
+- keep ranked-battle recovery separate from general queue recovery so queue controls do not stay hung after a transient outage
+- verify server-side room recovery, forfeit timer clearing, and opponent reconnect notifications remain consistent after reconnection
+- improve logging around connect, disconnect, connect_error, and rejoin_failed so the failure path is visible during testing
+
+**Acceptance target:**
+- transient disconnects recover without a hard refresh in normal cases
+- failed rejoin returns the player to a safe recoverable state instead of hanging indefinitely
+- queue and live-match controls become usable again after reconnect succeeds or fails cleanly
+
+**Likely files:** `src/App.tsx`, `src/App.css`, `server/server.js`, `server/game-room.js`
+
+---
+
+## Phase 3Q–3AA — Hearthstone-Style Mobile Direction (Planning Addendum, 2026-04-18)
+
+> Direction recap: every screen is one self-contained scene on a phone-sized viewport, content fits without page scrolling, transitions feel like opening a book or a portal rather than navigating a website, and every interactive element pairs original generated art with a synthesized sound and a haptic pulse. These items extend the existing 3J / 3M / 3O / 3P pass and should be picked up after the remaining density work is done. Nothing here ships until it has a paired sound, motion, and reduced-motion fallback.
+
+### 3Q. One-Screen Scene Shell (no page scroll on primary screens)
+
+**Goal:** Convert the primary player-facing screens (Home, Play, Collection, Social, Shop, Settings, Battle) from "long pages with a sticky bottom-nav" into self-contained "scenes" that fill the viewport exactly once.
+
+#### Scene shell rules
+- the app shell occupies `100dvh` (with `100svh` fallback) on mobile, with no body scroll
+- the active screen is a flex column: header dock (top), scene body (flex 1, owns its own scroll if any), footer dock + bottom nav (bottom)
+- only the **scene body** may scroll, never the page itself
+- horizontal rails (deck spines, pack carousel, hand fan, theme/border carousels) remain horizontally scrollable inside the scene body
+- modals, overlays, and ceremony screens take over the entire shell as full-bleed layers, never letting the underlying scene scroll
+
+#### Implementation notes
+- introduce a top-level `.app-scene` wrapper that sets `height: 100dvh; overflow: hidden`
+- each screen renders `<header className="scene-dock">…</header>`, `<div className="scene-body">…</div>`; the bottom-nav stays in the shell, not in screens
+- existing `.section-card` content reflows into the scene body so it can scroll inside the body without pushing dock chrome offscreen
+- explicit fallbacks for very short viewports (< 600px tall) — collapse second-rank chrome into a peek state
+- desktop (≥ 1024px wide) keeps the same shell but allows a max width and centered layout
+
+**Likely files:** `src/App.tsx`, `src/App.css`, every `src/screens/*.tsx`
+
+### 3R. Hearthstone-Style Scene Transitions
+
+**Goal:** Screen-to-screen movement should feel like a book turning or a curtain pulling, not a router fade.
+
+#### Planned transition vocabulary
+- **Curtain pull** (forward into a content scene): the new scene wipes in from the right behind a parchment-curtain mask, while the previous scene parallax-scrolls left at half speed
+- **Reverse curtain** (back to home): mirror animation right-to-left with a soft book-close sound
+- **Portal slam** (any screen → battle): existing `zoomWhoosh` upgraded — central VS spark expands, the screen darkens around it, then the battle scene irises in from the spark
+- **Rune wipe** (lateral nav, e.g. Social ↔ Shop): a horizontal band of rune particles sweeps across the screen and the new scene materializes in the wake
+- **Modal materialize**: modals scale in from 0.92 with a soft glow ring, accompanied by a `tap` chime; closing collapses back into the trigger element
+- all transitions gated on `prefers-reduced-motion: reduce` — fall back to instant cross-fade
+
+#### New synthesized sounds (extend `src/audio.ts`)
+
+| Trigger | Sound name | Synthesis sketch |
+|---|---|---|
+| Curtain pull forward | `sceneOpen` | Soft parchment whoosh — filtered noise burst 200ms, low-pass sweep 800→200Hz |
+| Reverse curtain | `sceneClose` | Mirror sweep + faint click 60ms |
+| Portal slam | `portalSlam` | Deep sub bass thud 80Hz 120ms layered under existing `summon` |
+| Rune wipe | `runeWipe` | Crystal shimmer — triangle 1760Hz arpeggio of 4 notes, 60ms each |
+| Modal materialize | `modalOpen` | Existing `tap` overlaid with a soft sine 660Hz glow tone |
+| Modal dismiss | `modalClose` | Reversed `modalOpen` |
+
+**Likely files:** `src/audio.ts`, `src/App.css` (new `.scene-transition-*` classes), `src/App.tsx` (`openScreen` / `transitionToScreen` orchestrator), `src/utils.ts` (direction helper)
+
+### 3S. Battle Polish — Card Drag, Card Slam, Combat Telegraphs
+
+**Goal:** Bring the battle interaction closer to Hearthstone's tactile feel — cards lift, drag, and slam onto lanes, attacks telegraph their target, and reactions feel weighty.
+
+#### Card play interactions
+- in addition to tap-to-play, support **drag-from-hand to lane**: pointer down on a hand card → card lifts and follows the cursor with a subtle scale + glow → drop on a valid lane to play; drop outside snaps back
+- valid drop lanes pulse with a gold ring while a draggable card is in flight
+- on play, the card "slams" into the lane: scale 1.0 → 1.15 → 1.0 with a brief ring burst and `cardSlam` sound; the card art briefly covers the lane center, then settles into the slot frame
+- desktop uses mouse drag; touch keeps tap-to-play but adds a **pull-up gesture** on hand cards (drag finger up > 60px from the hand fan to commit the play)
+- must coexist with the long-press inspect cancel guard added in 3N
+
+#### Attack telegraphs
+- when an attacker is selected, draw an SVG arrow from the attacker to the cursor / drag target
+- valid defenders pulse red, invalid defenders desaturate
+- on resolution, the attacker physically lunges toward the target (translate + slight rotate) and recoils back, mirroring the slam-and-return motion
+
+#### Hero portrait reactions
+- low health (< 30%): hero portrait pulses with a red vignette and a slow heartbeat sound (`heroLowHp`, looping low-volume)
+- on damage taken: portrait shakes 4px and an edge-cracks SVG overlay flashes briefly
+- on heal: portrait gets a green halo
+
+#### New synthesized sounds
+
+| Trigger | Sound | Synthesis sketch |
+|---|---|---|
+| Card lifts from hand | `cardLift` | Brief soft swoosh, filtered noise 80ms |
+| Card slams into lane | `cardSlam` | Wood thud + bright top harmonic, 140ms |
+| Attack lunge | `attackLunge` | Existing `attack` extended with a metallic ring tail |
+| Hero damage | `heroHit` | Low impact thud 90Hz + brief crack 1200Hz |
+| Heal pulse | `heroHeal` | Soft sine swell 440→660Hz, 220ms |
+| Low HP heartbeat | `heroLowHp` | 60bpm sine pulse, very low volume, looping while applicable |
+
+**Likely files:** `src/screens/BattleScreen.tsx`, `src/App.tsx` (drag controllers, attack arrow ref), `src/App.css`, `src/audio.ts`
+
+### 3T. Pack Opening Ceremony (full Hearthstone-style flow)
+
+**Goal:** Implement the full pack ceremony already specified in the Phase 3 design, but elevated to a dedicated overlay route on top of the Shop scene.
+
+#### Sequence
+1. tap pack → pack art zooms to center, shop fades behind a darkened veil
+2. pack shakes (CSS keyframe), `packOpen` plays
+3. lid splits, golden light bursts upward
+4. cards arc out into a fan layout, face-down
+5. tap any card to flip — 3D rotateY + rarity glow burst (`glow-*.svg`) sized to card
+6. legendary cards trigger screen-shake + extended `legendaryReveal` fanfare
+7. "NEW!" badge animates in if first-time card
+8. footer actions: `Open Another` (if budget) / `Done`
+
+#### New sounds
+
+| Trigger | Sound | Notes |
+|---|---|---|
+| Pack hover/select | `packHover` | Soft chime 880Hz 60ms |
+| Lid split | `lidSplit` | Sharp crack 200Hz + bright sparkle |
+| Card arc out | `cardArc` | Whoosh per card, slight pitch variance |
+| First-time NEW card | `firstTime` | Bright bell triad |
+
+**Likely files:** new `src/components/PackCeremonyOverlay.tsx`, `src/screens/ShopScreen.tsx`, `src/App.css`, `src/audio.ts`
+
+### 3U. Tactile Micro-Feedback System (sound + haptic + motion library)
+
+**Goal:** Every interactive control in the game has a consistent feedback fingerprint — visual press, sound, and haptic — defined by a single primitive.
+
+#### Plan
+- create `src/feedback.ts`: `function feedback(kind: FeedbackKind): void` that pairs a sound + haptic + optional flash class
+- kinds: `tap`, `confirm`, `cancel`, `error`, `nav`, `select`, `equip`, `claim`, `purchase`, `inspect`
+- replace ad-hoc `playSound(...)` + `pulseFeedback(...)` call sites with `feedback('confirm')` etc.
+- add a `data-feedback="<kind>"` attribute opt-in for buttons so the shell can wire feedback once instead of every component repeating boilerplate
+- consolidate haptic durations and sound mappings in one place so future sound swaps don't require touching each screen
+
+#### Acceptance target
+- one source of truth for "what does pressing an X-kind button feel like"
+- no remaining naked `playSound(...)` call sites in screens (handlers can still call it directly for special cases)
+
+**Likely files:** new `src/feedback.ts`, `src/App.tsx`, every `src/screens/*.tsx`
+
+### 3V. Ambient Scene Loops (subtle background audio per screen)
+
+**Goal:** Each scene gets a subtle synthesized ambient bed that reinforces its theme — not music, just a low atmospheric pulse so silence does not feel sterile on mobile.
+
+#### Plan
+- generate looped low-volume Web Audio beds (oscillator + slow LFO + reverb-style delay):
+  - **Home / Main Menu:** soft wind + distant rune chime every ~12s
+  - **Play / Arena Gate:** distant crowd murmur (filtered noise + slow modulation)
+  - **Collection / Library:** parchment rustle + low choir hum
+  - **Social / Tavern:** crackling fire + faint mug clink every ~20s
+  - **Shop / Bazaar:** wind-chime tinkle + soft drum
+  - **Settings / Scribe Desk:** quill scratch every ~15s
+  - **Battle:** war drum heartbeat synced to turn changes
+- master volume defaults to 0 and ramps up to ~0.015 on enter, fades out on leave
+- gated by the existing `soundEnabled` toggle plus a new `ambientEnabled` toggle in Settings (default off so we never surprise users)
+
+**Likely files:** new `src/ambient.ts`, `src/App.tsx`, `src/screens/SettingsScreen.tsx`
+
+### 3W. Card Reveal & Reward Cinematography
+
+**Goal:** Every reward moment (post-battle, daily claim, pack reveal, rank-up) shares a consistent cinematic vocabulary.
+
+#### Plan
+- introduce `RewardCinemaOverlay` — a single overlay component that takes a sequence of "beats" (icon, label, count-up value, sound, optional shower particles) and plays them with timing
+- replace ad-hoc reward UIs (current `RewardOverlay`, daily-claim toast, rank-up if added, quest-complete celebration) with sequences fed into the same overlay
+- standardize celebratory motions: number count-up animation, golden ember shower (`particle-ember.svg`), banner unfurl from `overlay-victory.svg`
+- always close with an explicit `Continue` call-to-action button instead of auto-dismiss to respect the moment
+
+**Likely files:** new `src/components/RewardCinemaOverlay.tsx`, `src/App.tsx`, `src/components/RewardOverlay.tsx` (collapse into the new overlay), `src/screens/HomeScreen.tsx`, `src/screens/ShopScreen.tsx`
+
+### 3X. Onboarding Tour & First-Time Polish
+
+**Goal:** A first-launch player should be guided through the scene model with a short, skippable tour that demonstrates the Hearthstone-style direction.
+
+#### Plan
+- detect first launch via `localStorage.firstLaunchComplete`
+- present a 5-step tour overlay that highlights: nav tiles → deck builder access → queue button → battle hand → settings
+- each step uses a spotlight cutout (radial mask over a darkened scene), a parchment caption card, and a `Next` / `Skip` action
+- pair each step with a `tap`/`nav` feedback pulse
+- after the final step, fire a one-time `questComplete` flourish and persist completion
+- a "Replay tour" entry lives in Settings
+
+**Likely files:** new `src/components/OnboardingTour.tsx`, `src/App.tsx`, `src/screens/SettingsScreen.tsx`
+
+### 3Y. Mobile Gesture Layer (swipe-between-scenes)
+
+**Goal:** On touch devices, allow horizontal swipe between adjacent primary scenes (Home ↔ Play ↔ Collection ↔ Social ↔ Shop ↔ Settings), mirroring the bottom-nav order, similar to a swipeable carousel of scenes.
+
+#### Plan
+- add a touch listener at the scene shell layer that tracks horizontal swipe distance
+- threshold: > 25% viewport width or > 40% velocity → commit nav to neighbor scene with the curtain transition (3R)
+- guard: do not intercept swipes that originate inside horizontal rails (hand fan, deck spine list, pack carousel, leaderboard, trade picker, etc.) — those own their gestures
+- battle scene opts out entirely
+- pair commit with `runeWipe` sound
+
+**Likely files:** `src/App.tsx`, `src/App.css`, `src/utils.ts`
+
+### 3Z. Accessibility & Reduced-Motion Parity
+
+**Goal:** Every new motion / sound / haptic feature must have a documented reduced or off path so accessibility is not retrofitted.
+
+#### Plan
+- audit every animation added in 3Q–3Y under `prefers-reduced-motion: reduce` — must collapse to instant or simple cross-fade
+- audit every new sound — must respect the `soundEnabled` toggle and the new `ambientEnabled` toggle separately
+- haptics — add a Settings toggle for `hapticsEnabled`, default on; gate `pulseFeedback()` on it
+- ensure focus-visible outlines remain crisp and reachable on every new control
+- ensure the swipe gesture layer has keyboard equivalents (arrow keys when scene shell is focused)
+
+#### Acceptance target
+- a player who turns off motion, sound, ambient, and haptics still has a fully usable game
+- no screen relies on a non-text cue alone for state
+
+**Likely files:** `src/App.css`, `src/audio.ts`, `src/ambient.ts`, `src/feedback.ts`, `src/screens/SettingsScreen.tsx`
+
+### 3AA. Pre-Ship Checklist Additions for the New Direction
+
+Append to the Phase 4D pre-ship checklist when these items ship:
+
+- [ ] Primary scenes never produce body scroll on mobile (only the scene body region, where intended)
+- [ ] All scene transitions use the new vocabulary (curtain / reverse curtain / portal slam / rune wipe / modal materialize)
+- [ ] Each transition has a paired generated sound and respects `prefers-reduced-motion`
+- [ ] Battle supports drag-to-play in addition to tap-to-play, with a snap-back fallback
+- [ ] Battle attack telegraph (arrow + valid/invalid pulsing) is present
+- [ ] Hero portraits react to damage, heal, and low-HP states
+- [ ] Pack opening uses the full ceremony overlay with rarity-tiered glow + sound
+- [ ] All button feedback flows through the unified `feedback()` primitive
+- [ ] Ambient audio toggle exists in Settings, defaults off, and is honored everywhere
+- [ ] Reward moments (battle, daily, pack, rank-up) all use the unified `RewardCinemaOverlay`
+- [ ] First-launch onboarding tour appears once and is replayable from Settings
+- [ ] Swipe gesture between primary scenes works on touch and never hijacks horizontal rails
+- [ ] Settings exposes toggles for sound, ambient, haptics, and respects OS-level reduced-motion
+
 ---
 
 ## Phase 4 — Docs, Index, & Manifest Update
@@ -1007,6 +1376,12 @@ Update `.github/copilot-instructions.md`:
 After all phases complete, verify:
 
 - [ ] Every screen has a full-bleed illustrated background (no plain CSS bg-color)
+- [ ] Primary player-facing screens fit the mobile viewport effectively without unnecessary page scrolling
+- [ ] Battle fits into a single active viewport as much as possible; only the hand uses horizontal scrolling
+- [ ] Long-press inspect never opens a browser or system context menu
+- [ ] Buttons and framed panels use a single intentional chrome layer with no frame-within-frame artifacts
+- [ ] No stray floating frames or empty framed boxes remain on dashboard, nav, auth, or battle surfaces
+- [ ] Reconnect and rejoin flows recover cleanly without requiring a hard refresh
 - [ ] Zero emoji in the rendered UI (all replaced with SVG icons)
 - [ ] Zero browser-default `<button>`, `<input>`, `<select>` styling visible
 - [ ] Zero plain `<hr>` dividers (all use `divider-rune.svg`)
@@ -1026,61 +1401,35 @@ After all phases complete, verify:
 
 ---
 
-## Implementation Sequence (commit-per-step)
+## Active Execution Backlog
 
-> **Sequencing note (April 2026):** During Phase 1A facade migration we
-> confirmed that `App` is currently both the AppContext provider and the
-> consumer of every other context. To extract any real provider, `App` must
-> first be split into `App` (provider tree only) + `AppShell` (body that
-> consumes the contexts). That restructure should land **before** 1C–1F.
-> Recommended order from here:
->
-> 1. **1B** — Split `App` into `App` + `AppShell`; `App` only assembles
->    `<AppContext.Provider><Profile…><Game…><Social…><Queue…><AppShell/>`.
->    No state moves yet; AppShell is renamed App body.
-> 2. **1F** — Move queue state + handlers + queue:* socket events + polling
->    + countdown timer into `QueueProvider`. AppShell reads via `useQueue()`.
-> 3. **1D** — ProfileProvider.
-> 4. **1E** — SocialProvider.
-> 5. **1C** — GameProvider (highest risk, many refs).
-> 6. **1H/1I** — finalize AppContext, retire `AppContextValue` mega-type and
->    `useApp()` facade.
+> Completed Phase 1 architecture work, screen extraction, asset generation, docs refresh, and earlier verification passes have been intentionally removed from this active backlog for brevity. The items below are the remaining high-value polish and stability steps.
 
-| Step | Description | Risk | Est. Files Changed | Status |
-|------|-------------|------|--------------------|--------|
-| **1A** | Create 5 context provider files (empty shells with types) | Low | +5 new files | ✅ done (4d75820, f2fcfda — facade hooks + all 7 screens migrated) |
-| **1B** | Split App into App (thin wrapper) + AppShell (body) | Low | App.tsx | ✅ done (rename — App is now `() => <AppShell />`, body unchanged) |
-| **1C** | Move GameContext state + handlers | High | AppShell.tsx, contexts/GameContext.tsx | ✅ done (battle/game presentation state moved into GameProvider; refs and handlers stay in AppShell) |
-| **1D** | Move ProfileContext state + handlers | Medium | AppShell.tsx, contexts/ProfileContext.tsx | ✅ done (deck/collection/pack-shop state moved into ProfileProvider; handlers stay in AppShell) |
-| **1E** | Move SocialContext state + handlers | Medium | AppShell.tsx, contexts/SocialContext.tsx | ✅ done (friends/clan/challenges/trades + nowTick timer moved into SocialProvider; handlers stay in AppShell) |
-| **1F** | Move QueueContext state + handlers | Low | AppShell.tsx, contexts/QueueContext.tsx | ✅ done (state + countdown timer + liveQueueLabel moved into QueueProvider; handlers stay in AppShell) |
-| **1G** | Remove quick-emote feature (UI, handler, socket, constants, CSS) | Low | HomeScreen, App.tsx, AppContext.ts, constants.ts, server.js, App.css | ✅ done |
-| **1H** | Wire providers in App.tsx, replace facade with AppShellContext composition | Medium | App.tsx, contexts/*, AppShellContext.ts | ✅ done (slice hooks now compose real providers + slim AppShellContext) |
-| **1I** | Delete old AppContext.ts/useApp.ts, verify build/test/lint | Low | -2 files | ✅ done (build + lint + 45 tests green) |
-| **2A** | Update AppScreen type to 7 values | Low | types.ts, NavBar, App.tsx |
-| **2B1** | OpsScreen → SettingsScreen | Low | rename + update refs |
-| **2B2** | VaultScreen → ShopScreen | Low | rename + update refs |
-| **2B3** | DeckScreen → CollectionScreen | Low | rename + move disenchant in |
-| **2B4a** | Create SocialScreen (extract from Home) | Medium | +1 new, HomeScreen shrinks |
-| **2B4b** | Create PlayScreen (extract from Home) | Medium | +1 new, HomeScreen shrinks |
-| **2B4c** | HomeScreen → MainMenuScreen | Low | rename + slim down |
-| **2C** | Update NavBar to 6 tabs | Low | NavBar.tsx |
-| **3A** | Generate ~70 new SVGs (backgrounds, tiles, ranks, packs, gems, chrome, effects, overlays, particles) | Medium | generate-brand-assets.mjs, public/generated/ui/ |
-| **3B** | Add 10 new synthesized sounds to audio.ts | Low | audio.ts |
-| **3C** | Kill browser defaults: button frames, parchment inputs, rune toggles, scrollbars, typography | Medium | App.css (+80 lines) |
-| **3D** | Add transition system + micro-animations CSS + JS | Medium | App.css (+100 lines), AppContext | 🟡 partial — directional screen transitions and battle zoom motion landed |
-| **3E** | Redesign MainMenuScreen (backgrounds, nav tiles, season arc, quest banner) | Medium | MainMenuScreen.tsx, App.css | 🟡 partial — season progress ring and ranked league visual pass landed |
-| **3F** | Redesign PlayScreen (mode cards, portal queue, VS splash) | Medium | PlayScreen.tsx, App.css | 🟡 partial — arena mode cards, live queue portal, and VS found banner landed |
-| **3G** | Redesign CollectionScreen (deck spines, large card browser, filter gems, disenchant particles) | Medium | CollectionScreen.tsx, App.css | 🟡 partial — collection completion ring, rune dividers, gem filter chips, and richer deck-forge presentation landed |
-| **3H** | Redesign SocialScreen (profile hero, podium, friend cards, trading split-screen) | Medium | SocialScreen.tsx, App.css | 🟡 partial — guild profile hero, live challenge CTA, and richer friend, clan, and trade cards landed |
-| **3I** | Redesign ShopScreen (pack ceremony, theme previews, border previews, daily claim) | High | ShopScreen.tsx, App.css | 🟡 partial — pack offer cards and animated reveal-stage styling landed |
-| **3J** | Redesign BattleScreen (fan hand, attack animations, pip SVGs, VS intro, victory/defeat overlays) | Highest | BattleScreen.tsx, BattleIntroOverlay, RewardOverlay, App.css | 🟡 partial — command-dais HUD, richer enemy-turn banner, hand-fan presentation, improved VS intro, and result-overlay ceremony landed |
-| **3K** | Redesign SettingsScreen (parchment forms, tabbed admin, scroll entries) | Low | SettingsScreen.tsx, App.css | 🟡 partial — scribe-desk hero, preference tiles, complaint severity seals, and richer admin console chrome landed |
-| **3L** | Gamification pass (streak fire, rank-up ceremony, count animations, NEW badge, emote pop) | Medium | App.css, various screens | 🟡 partial — daily reward urgency, streak heat badges, seasonal framing, richer victory summary cards, and production UI cleanup landed |
-| **4A** | Regenerate all assets, update asset-manifest.json, update asset-pipeline.md | Low | scripts, docs | ✅ done — generation verified at 168 manifest entries and docs refreshed |
-| **4B** | Rewrite index files (00-overview, 02-client-ui, new 08-assets, 06-styles) | Low | .github/index/ | ✅ done — index now matches the provider architecture and Phase 3 UI systems |
-| **4C** | Update copilot-instructions.md (contexts, screens, asset rules, sound rules, chrome rules) | Low | .github/copilot-instructions.md | ✅ done — rules aligned to the current app shell, asset pipeline, and sound model |
-| **4D** | Full pre-ship audit against Phase 4 checklist | Low | all files | ✅ done — release:check passed, 54 tests green, no errors, no TODO-style placeholders found |
+| Step | Description | Risk | Primary files | Status |
+|------|-------------|------|---------------|--------|
+| **3D** | Finish transition and motion cleanup where screen changes still feel web-like instead of game-like | Medium | App.tsx, App.css | 🟡 partial |
+| **3E** | Tighten Home dashboard so hero, tiles, and utility cards fit the viewport more effectively | High | HomeScreen.tsx, App.css | 🟡 active |
+| **3F** | Compress Play screen and queue states so the central CTA remains above the fold | Medium | PlayScreen.tsx, App.css | 🟡 active |
+| **3G** | Keep Collection filters and deck tools visible while making the card browser the intentional scroll region | Medium | CollectionScreen.tsx, App.css | 🟡 active |
+| **3H** | Convert Social into denser, more segmented panels to reduce page-length sprawl | Medium | SocialScreen.tsx, App.css | 🟡 active |
+| **3I** | Keep Shop purchase actions and reward state visible without long stacked scrolling | Medium | ShopScreen.tsx, App.css | 🟡 active |
+| **3J** | Final battle layout compression pass for one-screen mobile combat | Highest | BattleScreen.tsx, App.css, App.tsx | � first pass landed (HUD trim, status strip removed, turn state inline) |
+| **3K** | Compact Settings and admin surfaces into grouped, tabbed, or sectional layouts | Medium | SettingsScreen.tsx, App.css | 🟡 active |
+| **3L** | Finish remaining gamification and ceremonial polish where it still supports readability | Low | App.css, overlays, screens | 🟡 partial |
+| **3M** | Full-viewport density pass across all player-facing screens | Highest | App.css, all screen files | 🟡 partial (battle landed; home/play/collection/social/shop/settings remaining) |
+| **3N** | Harden long-press inspect and suppress browser/system context menus | Medium | App.tsx, App.css, BattleScreen.tsx | 🟢 done (touch-callout suppression on slot/hand/battle/collection cards + pointer-move cancel guard) |
+| **3O** | Normalize button/panel chrome and remove stray floating frame artifacts | Highest | App.css, NavBar.tsx, HomeScreen.tsx, BattleScreen.tsx | 🟢 done (single-owner chrome on buttons/panels, dropped overlay-vs.svg from dais, nav un-nested, empty Home toast hidden) |
+| **3P** | Stabilize reconnect/rejoin recovery so live play does not require refresh | Highest | App.tsx, server/server.js, server/game-room.js | 🟢 client landed (in-flight rejoin guard, gated auto-rejoin, recovery transition on rejoin_failed). Server-side audit still open. |
+| **3Q** | One-screen scene shell — no body scroll on primary screens, scene-body owns scroll | Highest | App.tsx, App.css, all screen files | 🟡 planned (Hearthstone direction addendum) |
+| **3R** | Hearthstone-style scene transitions (curtain / reverse / portal slam / rune wipe / modal materialize) + paired sounds | High | audio.ts, App.css, App.tsx, utils.ts | 🟡 planned |
+| **3S** | Battle drag-to-play, attack arrow telegraph, hero portrait reactions, low-HP heartbeat | High | BattleScreen.tsx, App.tsx, App.css, audio.ts | 🟡 planned |
+| **3T** | Full pack opening ceremony overlay with rarity-tiered glow + sound | Medium | new PackCeremonyOverlay.tsx, ShopScreen.tsx, App.css, audio.ts | 🟡 planned |
+| **3U** | Unified `feedback()` primitive for sound + haptic + flash on all controls | Medium | new feedback.ts, App.tsx, all screens | 🟡 planned |
+| **3V** | Per-scene synthesized ambient beds gated by a new `ambientEnabled` toggle | Low | new ambient.ts, App.tsx, SettingsScreen.tsx | 🟡 planned |
+| **3W** | Unified `RewardCinemaOverlay` for battle/daily/pack/rank-up reveal beats | Medium | new RewardCinemaOverlay.tsx, App.tsx, RewardOverlay.tsx, screens | 🟡 planned |
+| **3X** | First-launch onboarding tour with spotlight cutouts; replay from Settings | Medium | new OnboardingTour.tsx, App.tsx, SettingsScreen.tsx | 🟡 planned |
+| **3Y** | Touch swipe gesture between adjacent primary scenes, with rail-aware guards | Medium | App.tsx, App.css, utils.ts | 🟡 planned |
+| **3Z** | Accessibility/reduced-motion parity for everything added in 3Q–3Y + haptics toggle | Highest | App.css, audio.ts, ambient.ts, feedback.ts, SettingsScreen.tsx | 🟡 planned |
 
 ---
 
@@ -1103,66 +1452,16 @@ After all phases complete, verify:
 
 ---
 
-## Current File Inventory (for reference)
+## Active Files for the Current Polish Pass
 
-```
-src/
-  App.tsx              2,896 lines  ← shrinks to ~200-400
-  App.css              2,662 lines  ← grows to ~3,380 (+720 lines)
-  audio.ts                91 lines  ← grows to ~160 (+10 sounds)
-  AppContext.ts          275 lines  ← deleted (replaced by contexts/)
-  useApp.ts               10 lines  ← becomes facade or deprecated
-  types.ts               252 lines  ← AppScreen type updated
-  constants.ts           182 lines  ← no change
-  utils.ts               134 lines  ← minor additions possible
-  audio.ts                91 lines  ← no change
-  main.tsx                55 lines  ← no change
-  screens/
-    HomeScreen.tsx       598 lines  ← splits into 3, renamed
-    DeckScreen.tsx       387 lines  ← renamed to CollectionScreen
-    BattleScreen.tsx     546 lines  ← stays, UI polish
-    VaultScreen.tsx      555 lines  ← renamed to ShopScreen
-    OpsScreen.tsx        551 lines  ← renamed to SettingsScreen
-  components/
-    ToastStack.tsx        18 lines  ← no change
-    ConfirmModal.tsx      61 lines  ← no change
-    NavBar.tsx            46 lines  ← updated for 6 tabs
-    TopBar.tsx            48 lines  ← minor updates
-    CardInspectModal.tsx  55 lines  ← no change
-    BattleIntroOverlay.tsx 23 lines ← enhanced for cinematic
-    RewardOverlay.tsx     66 lines  ← enhanced with confetti
-
-New files:
-  contexts/
-    AppContext.tsx        ~300 lines
-    GameContext.tsx       ~400 lines
-    ProfileContext.tsx    ~250 lines
-    SocialContext.tsx     ~300 lines
-    QueueContext.tsx      ~150 lines
-  screens/
-    MainMenuScreen.tsx   ~200 lines (new, from HomeScreen split)
-    PlayScreen.tsx       ~250 lines (new, from HomeScreen split)
-    SocialScreen.tsx     ~400 lines (new, from HomeScreen split)
-
-public/generated/ui/    (existing 4 assets → ~74 assets after Phase 3A)
-  bg-*.svg             7 screen backgrounds
-  tile-*.svg           6 navigation tile illustrations
-  rank-*.svg           4 rank insignia crests
-  pack-*.svg           3 pack cover illustrations
-  gem-*.svg            4 rarity gem icons
-  btn-*.svg            3 button frames (primary, ghost, danger)
-  panel-frame.svg      ornate section panel border
-  divider-rune.svg     horizontal rune divider
-  pip-*.svg            4 mana/momentum pips (empty + filled)
-  icon-*.svg           3 stat icons (health, attack, guard)
-  fx-*.svg             20 ability/effect icons
-  overlay-*.svg        4 battle overlays (VS, victory, defeat, draw)
-  glow-*.svg           4 rarity glow bursts
-  particle-*.svg       4 ambient particle textures
-
-scripts/
-  generate-brand-assets.mjs  734 lines → ~1,400 lines (adds ~70 new SVG generators)
-```
+- `src/App.css` — shared chrome primitives, button/panel styling, battle density, nav layout, touch-callout suppression
+- `src/App.tsx` — socket lifecycle, rejoin recovery, auth shell controls, long-press behavior
+- `src/screens/HomeScreen.tsx` — dashboard density, toast placement, nav-tile framing cleanup
+- `src/screens/PlayScreen.tsx` — queue/search compression and CTA visibility
+- `src/screens/BattleScreen.tsx` — one-screen battle layout and HUD cleanup
+- `src/screens/CollectionScreen.tsx`, `src/screens/SocialScreen.tsx`, `src/screens/ShopScreen.tsx`, `src/screens/SettingsScreen.tsx` — viewport efficiency pass
+- `src/components/NavBar.tsx` — bottom-nav shell cleanup
+- `server/server.js`, `server/game-room.js` — reconnect, rejoin, and grace-period hardening
 
 ---
 
@@ -1178,3 +1477,5 @@ scripts/
 - [ ] Auth flow (login → logout → login) works
 - [ ] `prefers-reduced-motion` respected on new animations
 - [ ] Mobile viewport (375px) tested for new UI
+- [ ] Primary screens use the viewport effectively with minimal vertical scrolling
+- [ ] Long-press inspect works without browser/system context menus or touch callouts

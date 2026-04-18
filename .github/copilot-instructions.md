@@ -32,6 +32,8 @@ A detailed code index lives in `.github/index/`. **Consult it before writing or 
 3. **No partial implementations.** If a feature touches multiple files (engine + server + client), implement all parts in the same pass. Do not leave any file in a broken intermediate state.
 4. **Test every change.** After any code modification, run `npm test` and `npm run lint`. Fix all failures before considering the task complete. If new behavior is added, add corresponding test cases in the appropriate test file.
 5. **Build verification.** After modifying `src/game.ts`, always run `npm run build:engine` to recompile `server/game.js`. After any change, run `npm run build` to verify the full build succeeds.
+6. **No monolithic growth.** Do not keep piling unrelated logic into already-large files, giant handlers, or multi-purpose components. Extract helpers, components, hooks, providers, or server modules in the same pass.
+7. **Refactor before extending crowded files.** When touching hotspots like `src/App.tsx`, `server/server.js`, `server/db.js`, or `src/App.css`, look for the correct seam to split responsibilities instead of adding another long branch, effect, or inline block.
 
 ### TypeScript
 - Strict mode enabled. No `any` types unless interfacing with untyped libraries.
@@ -46,9 +48,18 @@ A detailed code index lives in `.github/index/`. **Consult it before writing or 
 - Prefix event handlers with `handle` (e.g., `handlePlayCard`, `handleEndTurn`).
 - Keep sound effects and haptic feedback in handler functions, not in effects.
 - App-level state, effects, and handlers live in the `AppShell` component inside `src/App.tsx` (the outer `App` is just a thin wrapper). Screens (`src/screens/*`) consume that state via the typed slice hooks in `src/contexts/` (`useGame`, `useProfile`, `useSocial`, `useQueue`, `useAppShell`). Shared components (`src/components/*`) remain prop-driven. Do not introduce app state inside screens or components.
+- Do not let screens or AppShell become god components. If JSX regions, handlers, or derived state begin to sprawl, extract subcomponents, typed hooks, or pure helpers before adding more feature code.
 - New shared UI primitives go in `src/components/`. New full screens go in `src/screens/` (and must be wired into AppShell's screen-panel switch and read state via the appropriate slice hooks from `src/contexts/`).
 - When adding new shared AppShell state in App.tsx, add the corresponding key to `AppShellContextValue` in `src/AppShellContext.ts` and include it in the `appCtx` object literal in App.tsx. Prefer the dedicated Game/Profile/Social/Queue providers when the state belongs to one domain.
 - Pure helpers belong in `src/utils.ts`. Static UI data (themes, presets, labels) belongs in `src/constants.ts`.
+
+### Modularity & Maintainability
+- Favor small, focused units with a single responsibility. New logic should usually land in the smallest appropriate module, not the biggest existing file.
+- Keep functions narrow and intention-revealing. If one function is handling validation, transformation, orchestration, rendering decisions, and side effects, split it.
+- Prefer composition over giant conditionals: lookup maps, config objects, helper functions, and small subcomponents are preferred to sprawling `if`/`switch` trees.
+- If a change introduces a new concern, create or extend the proper file in `src/components/`, `src/screens/`, `src/contexts/`, `src/utils.ts`, `src/constants.ts`, or a focused server helper instead of inflating a catch-all module.
+- Repeated UI must be extracted into shared prop-driven components; repeated business rules must be extracted into pure helpers.
+- Refactors should reduce nesting, branch count, and mental overhead while preserving behavior.
 
 ### Game Engine Rules
 - All game functions must be pure: `(state, ...args) => newState`.
@@ -62,6 +73,7 @@ A detailed code index lives in `.github/index/`. **Consult it before writing or 
 - Validate all inputs at the boundary (API routes and socket handlers).
 - Never trust client-reported game results for duel mode — the server resolves match outcomes.
 - Rate-limit all socket events and API endpoints.
+- Keep route registration, validation, orchestration, and persistence separated. Extract focused helpers/services instead of growing massive inline handlers.
 - Use parameterized queries for all database operations (SQLite).
 - Session tokens are cryptographic random hex strings; passwords use scrypt.
 - New API routes require rate limiting and `requireAuth()` middleware (or stricter).
@@ -115,6 +127,12 @@ A detailed code index lives in `.github/index/`. **Consult it before writing or 
 | `server/db.js` | 1,993 | SQLite data layer | Parameterized queries only |
 | `server/game-room.js` | 348 | Game room manager | Server-authoritative validation |
 | `server/game.js` | — | Auto-generated | **NEVER edit directly** |
+
+### Anti-Monolith Guardrails
+- Before adding code to `src/App.tsx`, `server/server.js`, `server/db.js`, or `src/App.css`, first ask whether the work belongs in a smaller domain file.
+- New client behavior should usually be split between provider state, AppShell orchestration, and presentational screens/components instead of being stacked into one place.
+- New server behavior should prefer dedicated validation helpers, payload shapers, and database functions over long socket or route callbacks.
+- If a diff adds another long conditional ladder, oversized JSX block, or multi-step handler that is hard to scan in one screenful, stop and extract.
 
 ### Multiplayer Protocol
 - **AI mode:** Client runs game engine locally. `generateEnemyTurnSteps()` produces animated AI turns.

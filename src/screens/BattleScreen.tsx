@@ -68,32 +68,13 @@ export function BattleScreen() {
             </div>
             <div className="battle-turn-label">
               <span className="eyebrow">Turn {game.turnNumber}</span>
+              <strong className="battle-turn-state">{battleStatusLabel}</strong>
             </div>
             <div className="hero-compact player">
               <strong>{game.player.name}</strong>
               <span className="hero-health"><StatIcon kind="health" /> {game.player.health}</span>
             </div>
           </div>
-
-          <div className="battle-objective">
-            <div className="battle-medal">
-              <RankBadge rank={rankLabel} />
-            </div>
-            <div>
-              <p className="eyebrow">Arena state</p>
-              <strong>{battleModeLabel}</strong>
-              <p className="note">
-                {battleStatusLabel} • {isMyTurn ? 'Play a unit or strike while the lane is open.' : 'Hold the line while the rival resolves their turn.'}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="badges battle-status-strip">
-          <span className="badge">Rating {seasonRating}</span>
-          <span className="badge">Win Rate {winRate}%</span>
-          <span className="badge">{selectedAttacker === null ? 'Select a unit' : 'Attacker primed'}</span>
-          <span className="badge">{isRankedBattle ? 'Ladder live' : battleKind === 'local' ? 'Local duel' : 'Practice arena'}</span>
         </div>
 
         <div className="battle-action-row">

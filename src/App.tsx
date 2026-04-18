@@ -205,6 +205,17 @@ function AppShell() {
   } = useSocialState()
   const resolvedMatchKeyRef = useRef('')
   const socketClientRef = useRef<Socket | null>(null)
+  // 3P: in-flight rejoin guard so manual Resume + auto reconnect can
+  // not double-emit `game:rejoin`. Cleared by game:start, game:rejoin,
+  // or game:rejoin_failed.
+  const rejoinInFlightRef = useRef(false)
+  // 3P: mirror of serverBattleActive so the rejoin_failed handler
+  // (registered once per auth session) sees the current value rather
+  // than the stale closure from when the socket effect ran.
+  const serverBattleActiveRef = useRef(false)
+  useEffect(() => {
+    serverBattleActiveRef.current = serverBattleActive
+  }, [serverBattleActive])
   const [backendOnline, setBackendOnline] = useState(false)
   const [, setMotd] = useState('Queue up for ranked arena play.')
   const [dailyQuest, setDailyQuest] = useState('Win 1 ranked arena match')
@@ -397,6 +408,14 @@ function AppShell() {
         longPressTriggeredRef.current = false
         longPressTimerRef.current = window.setTimeout(() => inspectCard(card), 420)
       },
+      onPointerMove: (event: React.PointerEvent<HTMLElement>) => {
+        // Cancel if the finger moves more than a few px — lets the
+        // hand fan / lists scroll horizontally without the inspect
+        // modal popping mid-drag.
+        if (longPressTimerRef.current === null) return
+        const movement = Math.abs(event.movementX) + Math.abs(event.movementY)
+        if (movement > 6) clearLongPressTimer()
+      },
       onPointerUp: () => clearLongPressTimer(),
       onPointerLeave: () => clearLongPressTimer(),
       onPointerCancel: () => clearLongPressTimer(),
@@ -571,7 +590,15 @@ function AppShell() {
 
     socket.on('connect', () => {
       setBackendOnline(true)
-      socket.emit('game:rejoin')
+      // 3P: only attempt auto-rejoin if there is actually a server
+      // battle to recover, and only if no rejoin is already in flight.
+      // The server safely no-ops unknown rejoin requests, but skipping
+      // the emit avoids a guaranteed `game:rejoin_failed` round-trip
+      // for every reconnect on the home/play screens.
+      if (!rejoinInFlightRef.current) {
+        rejoinInFlightRef.current = true
+        socket.emit('game:rejoin')
+      }
     })
 
     socket.on('queue:status', (payload: QueuePresence) => {
@@ -599,13 +626,21 @@ function AppShell() {
       setBackendOnline(false)
       setQueueState('idle')
       setQueuedOpponent(null)
-      setToastMessage('Connection lost. Reconnecting to live services...')
+      // 3P: clear in-flight guard so the auto-rejoin on the next
+      // `connect` event is allowed through.
+      rejoinInFlightRef.current = false
+      if (serverBattleActiveRef.current) {
+        setToastMessage('Connection lost. Reconnecting to your match...')
+      } else {
+        setToastMessage('Connection lost. Reconnecting to live services...')
+      }
     })
 
     socket.on('connect_error', () => {
       setBackendOnline(false)
       setQueueState('idle')
       setQueuedOpponent(null)
+      rejoinInFlightRef.current = false
     })
 
     socket.on('server:hello', (payload: { message: string }) => {
@@ -720,6 +755,7 @@ function AppShell() {
     )
 
     socket.on('game:start', (payload: { yourSide: BattleSide; state: GameState }) => {
+      rejoinInFlightRef.current = false
       setGame(payload.state)
       setBattleKind('ranked')
       setBattleSessionActive(true)
@@ -762,6 +798,7 @@ function AppShell() {
 
     // ─── Reconnect / disconnect events ──────────────────────────────
     socket.on('game:rejoin', (payload: { yourSide: BattleSide; state: GameState; roomId: string; opponentDisconnected: boolean }) => {
+      rejoinInFlightRef.current = false
       setGame(payload.state)
       setBattleKind('ranked')
       setBattleSessionActive(true)
@@ -777,7 +814,20 @@ function AppShell() {
     })
 
     socket.on('game:rejoin_failed', () => {
+      // 3P: clear the in-flight guard and recover the UI to a safe
+      // state. The previous handler only cleared the opponent
+      // disconnect indicator, which left ranked players staring at a
+      // dead board with no queue/Resume affordance.
+      rejoinInFlightRef.current = false
       setOpponentDisconnected(false)
+      setDisconnectGraceMs(0)
+      if (serverBattleActiveRef.current) {
+        setServerBattleActive(false)
+        setBattleSessionActive(false)
+        setBattleKind('ai')
+        transitionToScreen('play')
+        setToastMessage('Could not rejoin your ranked match. Returned to the arena gate.')
+      }
     })
 
     socket.on('game:opponent_disconnected', (payload: { gracePeriodMs: number }) => {
@@ -1514,7 +1564,10 @@ function AppShell() {
 
     if (battleKind === 'ranked') {
       if (socketClientRef.current?.connected) {
-        socketClientRef.current.emit('game:rejoin')
+        if (!rejoinInFlightRef.current) {
+          rejoinInFlightRef.current = true
+          socketClientRef.current.emit('game:rejoin')
+        }
         setToastMessage(`Rejoining your live battle against ${game.enemy.name}.`)
       } else {
         setToastMessage('Reconnecting to your live battle...')
