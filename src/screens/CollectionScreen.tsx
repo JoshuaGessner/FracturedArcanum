@@ -6,8 +6,9 @@ import {
   RARITY_COLORS,
   getDeckSize,
 } from '../game'
-import { DECK_MAX_TOTAL_DISPLAY, DECK_PRESETS, EFFECT_LABELS } from '../constants'
-import { cardArtPath, handleCardArtError } from '../utils'
+import { DECK_MAX_TOTAL_DISPLAY, DECK_PRESETS } from '../constants'
+import { cardArtPath, getCompletionPercent, handleCardArtError } from '../utils'
+import { EffectBadge, RarityBadge, StatIcon } from '../components/AssetBadge'
 import { useAppShell, useGame, useProfile, useQueue } from '../contexts'
 
 export function CollectionScreen() {
@@ -20,6 +21,10 @@ export function CollectionScreen() {
   } = useProfile()
   const { startMatch, handleQuickBattle } = useGame()
   const { handleStartQueue, queueState } = useQueue()
+  const ownedUniqueCards = CARD_LIBRARY.filter((card) => (collection[card.id] ?? 0) > 0).length
+  const collectionCompletion = getCompletionPercent(ownedUniqueCards, CARD_LIBRARY.length)
+  const collectionCircumference = 2 * Math.PI * 28
+  const collectionOffset = collectionCircumference * (1 - collectionCompletion / 100)
 
   return (
     <section className={`meta-grid deck-focus collection-screen screen-panel ${activeScreen === 'collection' ? 'active' : 'hidden'}`}>
@@ -33,6 +38,35 @@ export function CollectionScreen() {
             {deckReady ? `Deck ready · ${selectedDeckSize}` : `Add more cards · ${selectedDeckSize}/${MIN_DECK_SIZE}`}
           </span>
         </div>
+
+        <div className="collection-hero">
+          <div className="collection-progress-ring" aria-label={`Collection completion ${collectionCompletion}%`}>
+            <svg className="collection-progress-svg" viewBox="0 0 100 100" role="presentation" aria-hidden="true">
+              <circle className="collection-progress-track" cx="50" cy="50" r="28" />
+              <circle
+                className="collection-progress-value"
+                cx="50"
+                cy="50"
+                r="28"
+                style={{ strokeDasharray: collectionCircumference, strokeDashoffset: collectionOffset }}
+              />
+            </svg>
+            <div className="collection-progress-core">
+              <strong>{collectionCompletion}%</strong>
+              <span>{ownedUniqueCards}/{CARD_LIBRARY.length}</span>
+            </div>
+          </div>
+          <div className="collection-hero-copy">
+            <p className="note">Your library is expanding. Swap decks, tune your mana curve, and keep chasing missing rarities.</p>
+            <div className="badges">
+              <span className="badge">Owned {ownedUniqueCards}/{CARD_LIBRARY.length}</span>
+              <span className="badge">Active Deck {selectedDeckSize}</span>
+              <span className="badge">{deckReady ? 'Battle-ready' : 'Needs more cards'}</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="rune-divider" aria-hidden="true" />
 
         {loggedIn && (
           <div className="deck-roster" aria-label="Saved decks">
@@ -87,6 +121,8 @@ export function CollectionScreen() {
           </div>
         )}
 
+        <div className="rune-divider" aria-hidden="true" />
+
         <div className="builder-toolbar">
           <label className="builder-toggle">
             <input
@@ -114,7 +150,7 @@ export function CollectionScreen() {
                 role="radio"
                 aria-checked={builderFilter.rarity === rarity}
               >
-                {rarity === 'all' ? 'All' : rarity.charAt(0).toUpperCase() + rarity.slice(1)}
+                {rarity === 'all' ? <span>All</span> : <RarityBadge rarity={rarity} />}
               </button>
             ))}
           </div>
@@ -140,10 +176,10 @@ export function CollectionScreen() {
               const maxCurve = Math.max(1, ...Object.values(curve))
               return (
                 <>
-                  <span>● {breakdown.common}</span>
-                  <span style={{ color: RARITY_COLORS.rare }}>◈ {breakdown.rare}</span>
-                  <span style={{ color: RARITY_COLORS.epic }}>◆ {breakdown.epic}</span>
-                  <span style={{ color: RARITY_COLORS.legendary }}>★ {breakdown.legendary}</span>
+                  <span className="deck-rarity-summary"><RarityBadge rarity="common" /> <strong>{breakdown.common}</strong></span>
+                  <span className="deck-rarity-summary"><RarityBadge rarity="rare" /> <strong>{breakdown.rare}</strong></span>
+                  <span className="deck-rarity-summary"><RarityBadge rarity="epic" /> <strong>{breakdown.epic}</strong></span>
+                  <span className="deck-rarity-summary"><RarityBadge rarity="legendary" /> <strong>{breakdown.legendary}</strong></span>
                   <span className="mana-curve" aria-label="Mana curve">
                     {[0, 1, 2, 3, 4, 5, 6, 7].map((cost) => (
                       <span key={cost} className="mana-curve-col" title={`${cost === 7 ? '7+' : cost} mana: ${curve[cost] ?? 0}`}>
@@ -160,6 +196,8 @@ export function CollectionScreen() {
             })()}
           </div>
         )}
+
+        <div className="rune-divider" aria-hidden="true" />
 
         <div className="builder-grid">
           {CARD_LIBRARY.filter((card) => {
@@ -201,15 +239,15 @@ export function CollectionScreen() {
                   <span className="stats">{card.cost} 💧</span>
                 </div>
                 <div className="card-meta-row">
-                  <span className="rarity-gem" style={{ color: RARITY_COLORS[card.rarity] }}>{card.rarity === 'legendary' ? '★' : card.rarity === 'epic' ? '◆' : card.rarity === 'rare' ? '◈' : '●'} {card.rarity}</span>
+                  <RarityBadge rarity={card.rarity} />
                   <span className="tribe-badge">{card.tribe}</span>
                   <span className="tribe-badge">Owned {ownedCount}</span>
                 </div>
                 <div className="card-stats">
-                  <span>⚔️ {card.attack}</span>
-                  <span>❤️ {card.health}</span>
+                  <span><StatIcon kind="attack" /> {card.attack}</span>
+                  <span><StatIcon kind="health" /> {card.health}</span>
                 </div>
-                {card.effect && <span className="effect-badge small">{EFFECT_LABELS[card.effect] ?? card.effect}</span>}
+                {card.effect && <EffectBadge effect={card.effect} compact />}
                 <p className="card-text clamped">{card.text}</p>
               </div>
 
@@ -238,6 +276,8 @@ export function CollectionScreen() {
             Back to Home
           </button>
         </div>
+
+        <div className="rune-divider" aria-hidden="true" />
 
         <div className="deck-quick-battle">
           <div className="section-head compact">

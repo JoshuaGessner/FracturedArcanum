@@ -1,5 +1,6 @@
 import { AI_DIFFICULTY_OPTIONS } from '../constants'
 import { formatTimestamp } from '../utils'
+import { RankBadge } from '../components/AssetBadge'
 import { useAppShell, useGame, useProfile, useQueue } from '../contexts'
 
 export function PlayScreen() {
@@ -35,29 +36,42 @@ export function PlayScreen() {
           </div>
         )}
 
-        <div className="mode-switch">
+        <div className="mode-card-grid" aria-label="Choose a battle mode">
           <button
-            className={preferredMode === 'ai' ? 'primary' : 'ghost'}
+            className={`mode-card mode-card-ai ${preferredMode === 'ai' ? 'active' : ''}`}
             onClick={() => handleModeChange('ai')}
           >
-            AI Skirmish
+            <span className="mode-card-eyebrow">Solo Arena</span>
+            <strong>AI Skirmish</strong>
+            <p className="note">Tune your deck against adaptive rivals with no queue time.</p>
           </button>
           <button
-            className={preferredMode === 'duel' ? 'primary' : 'ghost'}
+            className={`mode-card mode-card-duel ${preferredMode === 'duel' ? 'active' : ''}`}
             onClick={() => handleModeChange('duel')}
           >
-            Pass &amp; Play
+            <span className="mode-card-eyebrow">Couch Clash</span>
+            <strong>Pass &amp; Play</strong>
+            <p className="note">Hand the device across the table and duel instantly.</p>
+          </button>
+          <button
+            className={`mode-card mode-card-ranked ${queueState !== 'idle' ? 'active' : ''}`}
+            onClick={handleStartQueue}
+            disabled={!deckReady || queueState !== 'idle'}
+          >
+            <span className="mode-card-eyebrow">Live Ladder</span>
+            <strong>Ranked Queue</strong>
+            <p className="note">Face real opponents and push your season rank higher.</p>
           </button>
         </div>
 
         {preferredMode === 'ai' && (
           <div className="difficulty-panel">
             <p className="note">AI difficulty: <strong>{resolvedAIDifficulty.charAt(0).toUpperCase() + resolvedAIDifficulty.slice(1)}</strong>{aiDifficultySetting === 'auto' ? ` recommended from your ${seasonRating} rating.` : ' selected manually.'}</p>
-            <div className="controls difficulty-row">
+            <div className="difficulty-chip-row">
               {AI_DIFFICULTY_OPTIONS.map((option) => (
                 <button
                   key={option.id}
-                  className={aiDifficultySetting === option.id ? 'primary' : 'ghost'}
+                  className={`difficulty-chip ${aiDifficultySetting === option.id ? 'active' : ''}`}
                   onClick={() => handleAIDifficultyChange(option.id)}
                 >
                   {option.label}
@@ -80,35 +94,43 @@ export function PlayScreen() {
         </div>
 
         {queueState === 'searching' && (
-          <div className="queue-searching-block">
-            <div className="queue-spinner-row">
-              <span className="spinner spinner-lg" aria-hidden="true" />
-              <p className="card-text" style={{ margin: 0 }}>
-                Searching for a real opponent<span className="thinking-dots" /> <strong style={{ marginLeft: 6 }}>{queueSeconds}s</strong>
-              </p>
+          <div className="queue-search-portal" aria-live="polite">
+            <div className="queue-portal-ring" aria-hidden="true">
+              <div className="queue-portal-core">{queueSeconds}s</div>
             </div>
-            <div className="live-status-grid">
-              <div>
-                <strong>#{queueSearchStatus.position}</strong>
-                <p className="note">your queue spot</p>
+            <div className="queue-portal-copy">
+              <h3>Searching the live ladder</h3>
+              <p className="note">The arena portal is scanning for a fair real-player matchup.</p>
+              <div className="live-status-grid">
+                <div>
+                  <strong>#{queueSearchStatus.position}</strong>
+                  <p className="note">queue spot</p>
+                </div>
+                <div>
+                  <strong>{Math.max(0, queueSearchStatus.connectedPlayers - 1)}</strong>
+                  <p className="note">other players online</p>
+                </div>
               </div>
-              <div>
-                <strong>{Math.max(0, queueSearchStatus.connectedPlayers - 1)}</strong>
-                <p className="note">other players online</p>
-              </div>
+              <p className="note">Queue size: {queueSearchStatus.queueSize || queuePresence.queueSize} • Rating window: ±{queueSearchStatus.ratingWindow} • Estimated wait: {queueSearchStatus.estimatedWaitSeconds}s</p>
+              <button className="ghost" onClick={handleCancelQueue}>Cancel Matchmaking</button>
             </div>
-            <p className="note">Queue size: {queueSearchStatus.queueSize || queuePresence.queueSize} • Rating window: ±{queueSearchStatus.ratingWindow} • Estimated wait: {queueSearchStatus.estimatedWaitSeconds}s</p>
-            <p className="note">Ranked only starts with another live player. No bot fallback is used.</p>
-            <button className="ghost" onClick={handleCancelQueue}>Cancel Matchmaking</button>
           </div>
         )}
 
         {queueState === 'found' && queuedOpponent && (
-          <div className="opponent-preview">
-            <strong>{queuedOpponent.name}</strong>
-            <span className="note">
-              {queuedOpponent.rank} • {queuedOpponent.style} • {queuedOpponent.ping}ms • Live player
-            </span>
+          <div className="queue-found-banner">
+            <img className="vs-sigil-art" src="/generated/ui/overlay-vs.svg" alt="Versus match found" />
+            <div className="versus-grid">
+              <div className="versus-side">
+                <span className="eyebrow">You</span>
+                <RankBadge rank={seasonRating} />
+              </div>
+              <div className="versus-side">
+                <span className="eyebrow">Opponent</span>
+                <strong>{queuedOpponent.name}</strong>
+                <span className="note">{queuedOpponent.rank} • {queuedOpponent.style} • {queuedOpponent.ping}ms</span>
+              </div>
+            </div>
             <div className="controls">
               <button className="primary" onClick={handleAcceptQueue} disabled>Starting Live Match…</button>
             </div>

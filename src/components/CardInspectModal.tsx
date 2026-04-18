@@ -1,6 +1,7 @@
 import type { InspectedCard } from '../types'
-import { EFFECT_DESCRIPTIONS, EFFECT_LABELS } from '../constants'
+import { EFFECT_DESCRIPTIONS } from '../constants'
 import { cardArtPath, handleCardArtError } from '../utils'
+import { EffectBadge, RarityBadge, StatIcon } from './AssetBadge'
 
 type CardInspectModalProps = {
   card: InspectedCard | null
@@ -19,7 +20,7 @@ export function CardInspectModal({ card, onClose }: CardInspectModalProps) {
               {card.icon} {card.name}
             </h2>
             <span className="badges">
-              <span className="badge">{card.rarity}</span>
+              <RarityBadge rarity={card.rarity} />
               <span className="badge">{card.tribe}</span>
             </span>
           </div>
@@ -33,8 +34,8 @@ export function CardInspectModal({ card, onClose }: CardInspectModalProps) {
           />
         </div>
         <div className="card-inspect-stats">
-          <span>⚔️ Attack: {card.attack}</span>
-          <span>❤️ Health: {card.currentHealth ?? card.health}</span>
+          <span><StatIcon kind="attack" /> Attack: {card.attack}</span>
+          <span><StatIcon kind="health" /> Health: {card.currentHealth ?? card.health}</span>
           {card.currentHealth !== undefined && card.currentHealth !== card.health && (
             <span className="note">(Base: {card.health})</span>
           )}
@@ -42,7 +43,7 @@ export function CardInspectModal({ card, onClose }: CardInspectModalProps) {
         <p className="card-text">{card.text}</p>
         {card.effect && (
           <div className="card-inspect-effect">
-            <span className="effect-badge">{EFFECT_LABELS[card.effect] ?? card.effect}</span>
+            <EffectBadge effect={card.effect} />
             <p className="note">{EFFECT_DESCRIPTIONS[card.effect] ?? ''}</p>
           </div>
         )}

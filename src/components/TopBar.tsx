@@ -31,8 +31,8 @@ export function TopBar({
 
       <div className="top-actions">
         <span className="username-label">{serverProfile?.username ?? ''}</span>
-        <button className="ghost" onClick={onToggleSound}>
-          {soundEnabled ? '🔊' : '🔇'}
+        <button className="ghost top-action-toggle" onClick={onToggleSound}>
+          {soundEnabled ? 'Sound On' : 'Sound Off'}
         </button>
         {installPromptEvent && (
           <button className="ghost" onClick={onInstallApp}>

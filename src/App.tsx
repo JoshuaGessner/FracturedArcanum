@@ -36,6 +36,7 @@ import {
   getDeviceFingerprint,
   getRankLabel,
   getScreenBucket,
+  getScreenTransitionClass,
   pulseFeedback,
   readStoredValue,
 } from './utils'
@@ -46,6 +47,7 @@ import { NavBar } from './components/NavBar'
 import { TopBar } from './components/TopBar'
 import { BattleIntroOverlay } from './components/BattleIntroOverlay'
 import { RewardOverlay } from './components/RewardOverlay'
+import { RankBadge } from './components/AssetBadge'
 import { SettingsScreen } from './screens/SettingsScreen'
 import { ShopScreen } from './screens/ShopScreen'
 import { CollectionScreen } from './screens/CollectionScreen'
@@ -151,6 +153,7 @@ function AppShell() {
 
   // ─── Local screen-shell state ─────────────────────────────────────────
   const [activeScreen, setActiveScreen] = useState<AppScreen>('home')
+  const [screenTransitionClass, setScreenTransitionClass] = useState<'screen-enter-forward' | 'screen-enter-back' | 'screen-enter-lateral' | 'screen-enter-battle'>('screen-enter-lateral')
 
   // ─── Phase 1C — active battle/game state lives in GameProvider ───────
   const {
@@ -721,7 +724,7 @@ function AppShell() {
       setBattleKind('ranked')
       setBattleSessionActive(true)
       setServerBattleActive(true)
-      setActiveScreen('battle')
+      transitionToScreen('battle')
       setQueueState('idle')
       setQueueSeconds(0)
       setQueuedOpponent(null)
@@ -763,7 +766,7 @@ function AppShell() {
       setBattleKind('ranked')
       setBattleSessionActive(true)
       setServerBattleActive(true)
-      setActiveScreen('battle')
+      transitionToScreen('battle')
       setQueueState('idle')
       setQueueSeconds(0)
       setQueuedOpponent(null)
@@ -1441,6 +1444,8 @@ function AppShell() {
     100,
     Math.round(((seasonRating - previousRankTarget) / (nextRankTarget - previousRankTarget)) * 100),
   )
+  const seasonProgressCircumference = 2 * Math.PI * 36
+  const seasonProgressOffset = seasonProgressCircumference * (1 - rankProgress / 100)
   const nextRewardLabel =
     seasonRating >= 1500 ? 'Champion Vault' : seasonRating >= 1300 ? 'Gold Chest' : seasonRating >= 1150 ? 'Silver Cache' : 'Bronze Bundle'
   const todayKey = new Date().toISOString().slice(0, 10)
@@ -1462,9 +1467,16 @@ function AppShell() {
                 : 'Settings'
 
 
-  function openScreen(screen: AppScreen) {
-    playSound('navigate', soundEnabled)
+  function transitionToScreen(screen: AppScreen, withSound = false) {
+    setScreenTransitionClass(getScreenTransitionClass(activeScreen, screen))
+    if (withSound) {
+      playSound('navigate', soundEnabled)
+    }
     setActiveScreen(screen)
+  }
+
+  function openScreen(screen: AppScreen) {
+    transitionToScreen(screen, true)
   }
 
   function resetBattleState(mode: GameMode = preferredMode, toast = 'Battle reset. Ready when you are.', nextScreen: AppScreen = 'home') {
@@ -1492,13 +1504,13 @@ function AppShell() {
     setQueueSeconds(0)
     setQueuedOpponent(null)
     setGame(createGame(mode, deckConfig, undefined, nextDifficulty))
-    setActiveScreen(nextScreen)
+    transitionToScreen(nextScreen)
     setToastMessage(toast)
   }
 
   function handleResumeBattle() {
     playSound('tap', soundEnabled)
-    setActiveScreen('battle')
+    transitionToScreen('battle')
 
     if (battleKind === 'ranked') {
       if (socketClientRef.current?.connected) {
@@ -1539,7 +1551,7 @@ function AppShell() {
     }
 
     if (serverBattleActive && hasBattleInProgress) {
-      setActiveScreen('home')
+      transitionToScreen('home')
       setToastMessage(`Battle paused vs ${game.enemy.name}. You can resume or abandon it from the lobby.`)
       return
     }
@@ -1549,7 +1561,7 @@ function AppShell() {
       return
     }
 
-    setActiveScreen('home')
+    transitionToScreen('home')
   }
 
   function handleClaimDailyReward() {
@@ -1899,7 +1911,7 @@ function AppShell() {
     const deckForMatch = overrideDeckConfig ?? deckConfig
     if (getDeckSize(deckForMatch) < MIN_DECK_SIZE) {
       setToastMessage('Finish building your deck before entering the arena.')
-      setActiveScreen('collection')
+      transitionToScreen('collection')
       return
     }
 
@@ -1916,7 +1928,7 @@ function AppShell() {
     setEnemyTurnLabel('')
     prevBoardRef.current = null
     setDamagedSlots(new Set())
-    setActiveScreen('battle')
+    transitionToScreen('battle', true)
     setGame(createGame(mode, deckForMatch, enemyName, aiDifficulty))
     void sendAnalytics(
       'match_start',
@@ -2337,7 +2349,7 @@ function AppShell() {
   function handleStartQueue() {
     if (!deckReady) {
       setToastMessage('Finish your deck first so matchmaking can start.')
-      setActiveScreen('collection')
+      transitionToScreen('collection')
       return
     }
 
@@ -2346,7 +2358,7 @@ function AppShell() {
       return
     }
 
-    setActiveScreen('home')
+    transitionToScreen('play')
     setQueueState('searching')
     setQueueSeconds(0)
     setQueuedOpponent(null)
@@ -2395,7 +2407,7 @@ function AppShell() {
     })
     setToastMessage('Ranked matchmaking canceled.')
     if (activeScreen === 'battle' && !gameInProgress) {
-      setActiveScreen('home')
+      transitionToScreen('home')
     }
   }
 
@@ -2636,7 +2648,7 @@ function AppShell() {
 
   return (
     <AppShellContext.Provider value={appCtx}>
-    <main className={`app-shell theme-${selectedTheme}`}>
+    <main className={`app-shell theme-${selectedTheme} ${screenTransitionClass}`}>
       {/* ─── Floating toast stack (auto-fading) ──────────────────────── */}
       <ToastStack toasts={toastStack} />
 
@@ -2819,12 +2831,31 @@ function AppShell() {
             <div>
               <p className="eyebrow">Season of Whispers</p>
               <h2>{rankLabel} League</h2>
+              <p className="note">Climb the live ladder to reach the next vault reward.</p>
             </div>
-            <div className="progress-column">
-              <div className="progress-shell">
-                <div className="progress-fill" style={{ width: `${rankProgress}%` }}></div>
+            <div className="season-progress-visual">
+              <div className="season-progress-ring" aria-label={`Season progress ${rankProgress}%`}>
+                <svg className="season-progress-svg" viewBox="0 0 100 100" role="presentation" aria-hidden="true">
+                  <circle className="season-progress-track" cx="50" cy="50" r="36" />
+                  <circle
+                    className="season-progress-value"
+                    cx="50"
+                    cy="50"
+                    r="36"
+                    style={{ strokeDasharray: seasonProgressCircumference, strokeDashoffset: seasonProgressOffset }}
+                  />
+                </svg>
+                <div className="season-progress-core">
+                  <RankBadge rank={rankLabel} />
+                  <strong>{rankProgress}%</strong>
+                </div>
               </div>
-              <p className="note">{seasonRating} / {nextRankTarget} rating</p>
+              <div className="progress-column">
+                <div className="progress-shell">
+                  <div className="progress-fill" style={{ width: `${rankProgress}%` }}></div>
+                </div>
+                <p className="note">{seasonRating} / {nextRankTarget} rating</p>
+              </div>
             </div>
           </div>
         </section>

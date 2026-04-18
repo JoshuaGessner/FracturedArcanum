@@ -1,10 +1,12 @@
 import { CARD_LIBRARY } from '../game'
-import { cardArtPath, formatTimestamp, handleCardArtError } from '../utils'
+import { RankBadge } from '../components/AssetBadge'
+import { cardArtPath, formatTimestamp, getComplaintSeverityTone, handleCardArtError } from '../utils'
 import { useAppShell, useProfile } from '../contexts'
 
 export function SettingsScreen() {
   const {
     activeScreen,
+    soundEnabled, setSoundEnabled,
     analyticsConsent, setAnalyticsConsent,
     visitorId, featuredMode, backendOnline,
     complaintForm, setComplaintForm, complaintStatus, handleSubmitComplaint,
@@ -19,25 +21,104 @@ export function SettingsScreen() {
   } = useAppShell()
   const { isAdminRole, isOwnerRole, accountRole, serverProfile } = useProfile()
 
+  const playerDisplayName = serverProfile?.displayName ?? serverProfile?.username ?? 'Guest'
+  const visitorSuffix = (visitorId || 'guest').slice(-6).toUpperCase()
+  const complaintTone = getComplaintSeverityTone(complaintForm.severity)
+  const roleInsignia = isOwnerRole ? 'Diamond' : isAdminRole ? 'Gold' : 'Bronze'
+
   return (
     <section className={`ops-grid settings-screen screen-panel ${activeScreen === 'settings' ? 'active' : 'hidden'}`}>
-      <article className="section-card utility-card">
-        <div className="section-head">
-          <div>
-            <h2>Privacy and Traffic</h2>
+      <article className="section-card hero-card spotlight-card settings-hero-card">
+        <div className="profile-showcase">
+          <div className="profile-medal">
+            <RankBadge rank={roleInsignia} />
+          </div>
+          <div className="hero-copy">
+            <p className="eyebrow">The scribe's desk</p>
+            <h2>{playerDisplayName}</h2>
             <p className="note">
-              Anonymous-only analytics help the team monitor traffic, stability, and queue flow.
+              Tune your device preferences, review privacy posture, and monitor live service status from a single control desk.
             </p>
           </div>
+        </div>
+
+        <div className="insight-grid settings-status-grid">
+          <div className="stat-tile">
+            <span className="mini-text">Role</span>
+            <strong>{accountRole === 'owner' ? 'Owner' : accountRole === 'admin' ? 'Admin' : 'Player'}</strong>
+          </div>
+          <div className="stat-tile">
+            <span className="mini-text">Live service</span>
+            <strong>{backendOnline ? 'Online' : 'Fallback'}</strong>
+          </div>
+          <div className="stat-tile">
+            <span className="mini-text">Featured mode</span>
+            <strong>{featuredMode}</strong>
+          </div>
+          <div className="stat-tile">
+            <span className="mini-text">Visitor key</span>
+            <strong>{visitorSuffix}</strong>
+          </div>
+        </div>
+
+        <div className="badges">
+          <span className="badge">@{serverProfile?.username ?? 'guest'}</span>
+          <span className="badge">{soundEnabled ? 'Sound ready' : 'Sound muted'}</span>
           <span className={`deck-status ${analyticsConsent ? 'ready' : 'warning'}`}>
             {analyticsConsent ? 'Anonymous analytics on' : 'Analytics paused'}
           </span>
         </div>
 
-        <div className="badges">
-          <span className="badge">{serverProfile?.username ?? 'Guest'} ({visitorId.slice(-6).toUpperCase()})</span>
-          <span className="badge">Featured {featuredMode}</span>
-          <span className="badge">{backendOnline ? 'Server Online' : 'Fallback Mode'}</span>
+        <div className="preference-grid">
+          <div className="preference-tile">
+            <div className="section-head">
+              <div>
+                <h3>Soundscape</h3>
+                <p className="note">Keep arena cues, reward stings, and battle feedback enabled on this device.</p>
+              </div>
+              <span className={`deck-status ${soundEnabled ? 'ready' : 'warning'}`}>{soundEnabled ? 'Enabled' : 'Muted'}</span>
+            </div>
+            <div className="controls">
+              <button
+                className={soundEnabled ? 'secondary' : 'primary'}
+                onClick={() => {
+                  const nextValue = !soundEnabled
+                  setSoundEnabled(nextValue)
+                  setToastMessage(nextValue ? 'Arena sound enabled on this device.' : 'Arena sound muted on this device.')
+                }}
+              >
+                {soundEnabled ? 'Mute Arena Audio' : 'Enable Arena Audio'}
+              </button>
+            </div>
+          </div>
+
+          <div className="preference-tile">
+            <div className="section-head">
+              <div>
+                <h3>Privacy and traffic</h3>
+                <p className="note">Anonymous-only analytics help monitor traffic, stability, and queue flow.</p>
+              </div>
+              <span className={`deck-status ${analyticsConsent ? 'ready' : 'warning'}`}>
+                {analyticsConsent ? 'Tracking active' : 'Tracking paused'}
+              </span>
+            </div>
+            <div className="controls">
+              <button
+                className={analyticsConsent ? 'secondary' : 'primary'}
+                onClick={() => {
+                  const nextValue = !analyticsConsent
+                  setAnalyticsConsent(nextValue)
+                  setToastMessage(
+                    nextValue
+                      ? 'Anonymous traffic tracking enabled for quality monitoring.'
+                      : 'Anonymous traffic tracking paused on this device.',
+                  )
+                }}
+              >
+                {analyticsConsent ? 'Pause Anonymous Analytics' : 'Enable Anonymous Analytics'}
+              </button>
+            </div>
+          </div>
         </div>
 
         <p className="note">
@@ -58,34 +139,24 @@ export function SettingsScreen() {
           ))}
         </div>
 
-        <div className="controls">
-          <button
-            className={analyticsConsent ? 'secondary' : 'primary'}
-            onClick={() => {
-              const nextValue = !analyticsConsent
-              setAnalyticsConsent(nextValue)
-              setToastMessage(
-                nextValue
-                  ? 'Anonymous traffic tracking enabled for quality monitoring.'
-                  : 'Anonymous traffic tracking paused on this device.',
-              )
-            }}
-          >
-            {analyticsConsent ? 'Pause Anonymous Analytics' : 'Enable Anonymous Analytics'}
-          </button>
-        </div>
-
         <p className="note toast-line">{complaintStatus}</p>
       </article>
 
-      <article className="section-card utility-card">
+      <article className="section-card utility-card complaint-desk-card">
         <div className="section-head">
           <div>
             <h2>Player Complaint Desk</h2>
             <p className="note">Submit gameplay bugs, fairness issues, or live service complaints.</p>
           </div>
-          <span className="badge">Support</span>
+          <div className="badges">
+            <span className="badge">Support</span>
+            <span className={`support-seal ${complaintTone}`}>{complaintForm.severity}</span>
+          </div>
         </div>
+
+        <p className="note">Include the mode, result, and reproduction steps so the ops team can resolve issues quickly.</p>
+
+        <div className="rune-divider" aria-hidden="true" />
 
         <form className="complaint-form" onSubmit={(event) => void handleSubmitComplaint(event)}>
           <div className="form-row split-fields">
@@ -157,7 +228,7 @@ export function SettingsScreen() {
         </form>
       </article>
 
-      <article className="section-card admin-console">
+      <article className="section-card admin-console scribe-console">
         <img
           className="admin-banner-art"
           src="/generated/ui/admin-ops-banner.svg"
@@ -194,6 +265,8 @@ export function SettingsScreen() {
 
         {adminOverview && (
           <>
+            <div className="rune-divider" aria-hidden="true" />
+
             <div className="insight-grid">
               <div className="stat-tile">
                 <strong>{adminOverview.totals.uniqueVisitors}</strong>
@@ -285,7 +358,7 @@ export function SettingsScreen() {
                     />
                   </label>
 
-                  <label className="checkbox-row">
+                  <label className="checkbox-row maintenance-toggle">
                     <input
                       type="checkbox"
                       checked={adminSettings.maintenanceMode}

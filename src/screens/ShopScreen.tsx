@@ -1,5 +1,7 @@
 import { CARD_LIBRARY, RARITY_COLORS } from '../game'
 import { CARD_BORDER_OFFERS, THEME_OFFERS } from '../constants'
+import { PackArt, RarityBadge } from '../components/AssetBadge'
+import { cardArtPath, handleCardArtError } from '../utils'
 import { useAppShell, useGame, useProfile } from '../contexts'
 
 const RARITY_REFUND = { common: 5, rare: 10, epic: 25, legendary: 100 } as const
@@ -17,7 +19,7 @@ export function ShopScreen() {
 
   return (
     <section className={`vault-grid shop-screen screen-panel ${activeScreen === 'shop' ? 'active' : 'hidden'}`}>
-      <article className="section-card utility-card">
+      <article className={`section-card utility-card reward-vault-card ${canClaimDailyReward ? 'claim-ready' : ''}`}>
         <div className="section-head">
           <div>
             <h2>Reward Vault</h2>
@@ -30,8 +32,14 @@ export function ShopScreen() {
 
         <div className="badges">
           <span className="badge">Next Reward {nextRewardLabel}</span>
-          <span className="badge">Claim {canClaimDailyReward ? 'Ready' : 'Tomorrow'}</span>
+          <span className={`badge ${canClaimDailyReward ? 'new-card-badge' : ''}`}>Claim {canClaimDailyReward ? 'Ready' : 'Tomorrow'}</span>
         </div>
+
+        {canClaimDailyReward && (
+          <div className="daily-claim-banner">
+            A fresh stipend is waiting in the vault — collect it before your next queue.
+          </div>
+        )}
 
         <div className="controls">
           <button className="primary" onClick={handleClaimDailyReward} disabled={!canClaimDailyReward}>
@@ -124,7 +132,8 @@ export function ShopScreen() {
 
         <div className="theme-grid">
           {packOffers.map((pack) => (
-            <div className="theme-offer-card" key={pack.id}>
+            <div className={`theme-offer-card pack-offer-card pack-offer-${pack.id}`} key={pack.id}>
+              <PackArt packId={pack.id} label={`${pack.id} pack artwork`} />
               <strong>{pack.id[0].toUpperCase() + pack.id.slice(1)} Pack</strong>
               <p className="mini-text">{pack.cardCount} random cards with rarity protection.</p>
               <div className="badges">
@@ -142,19 +151,42 @@ export function ShopScreen() {
         </div>
 
         {openedPackCards.length > 0 && (
-          <div className="leaderboard-list">
-            {openedPackCards.map((card, index) => {
-              const cardMeta = CARD_LIBRARY.find((entry) => entry.id === card.id)
-              return (
-                <div className="leaderboard-row" key={`${card.id}-${index}`}>
-                  <span className="badge">{card.rarity}</span>
-                  <div className="leaderboard-meta">
-                    <strong>{cardMeta?.icon} {cardMeta?.name ?? card.id}</strong>
-                    <span className="note">{card.duplicate ? 'Duplicate converted into Shards.' : 'Added to your library.'}</span>
-                  </div>
-                </div>
-              )
-            })}
+          <div className="pack-reveal-stage">
+            <div className="section-head compact">
+              <div>
+                <h3>Latest Pack Reveal</h3>
+                <p className="note">New cards shimmer brighter. Duplicates are converted into Shards automatically.</p>
+              </div>
+            </div>
+            <div className="pack-reveal-grid">
+              {openedPackCards.map((card, index) => {
+                const cardMeta = CARD_LIBRARY.find((entry) => entry.id === card.id)
+                return (
+                  <article
+                    className={`pack-reveal-card rarity-${card.rarity}`}
+                    key={`${card.id}-${index}`}
+                    style={{ '--rarity-color': RARITY_COLORS[card.rarity as keyof typeof RARITY_COLORS] ?? '#9ca3af' } as React.CSSProperties}
+                  >
+                    <div className={`pack-reveal-glow pack-reveal-glow-${card.rarity}`} aria-hidden="true" />
+                    <div className="card-art-shell thumb pack-reveal-art-shell">
+                      <img
+                        className="card-illustration"
+                        src={cardArtPath(card.id)}
+                        alt={`${cardMeta?.name ?? card.id} illustration`}
+                        loading="lazy"
+                        onError={handleCardArtError}
+                      />
+                    </div>
+                    <div className="pack-reveal-meta">
+                      <RarityBadge rarity={card.rarity} />
+                      <strong>{cardMeta?.icon} {cardMeta?.name ?? card.id}</strong>
+                      <span className="note">{card.duplicate ? 'Duplicate converted into Shards.' : 'Added to your library.'}</span>
+                    </div>
+                    <span className={`badge ${card.duplicate ? '' : 'new-card-badge'}`}>{card.duplicate ? 'Duplicate' : 'New'}</span>
+                  </article>
+                )
+              })}
+            </div>
           </div>
         )}
       </article>
@@ -208,9 +240,7 @@ export function ShopScreen() {
                 const refundPer = RARITY_REFUND[entry.meta.rarity]
                 return (
                   <div className="leaderboard-row" key={entry.cardId}>
-                    <span className="badge" style={{ color: RARITY_COLORS[entry.meta.rarity] }}>
-                      {entry.meta.rarity}
-                    </span>
+                    <RarityBadge rarity={entry.meta.rarity} className="badge-with-art" />
                     <div className="leaderboard-meta">
                       <strong>{entry.meta.icon} {entry.meta.name}</strong>
                       <span className="note">

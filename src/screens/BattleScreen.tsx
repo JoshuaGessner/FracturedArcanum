@@ -1,8 +1,8 @@
 import {
   RARITY_COLORS,
 } from '../game'
-import { EFFECT_LABELS } from '../constants'
-import { cardArtPath, handleCardArtError } from '../utils'
+import { cardArtPath, getHandFanTilt, handleCardArtError } from '../utils'
+import { EffectBadge, RankBadge, StatIcon } from '../components/AssetBadge'
 import { useAppShell, useGame, useProfile } from '../contexts'
 
 export function BattleScreen() {
@@ -20,12 +20,30 @@ export function BattleScreen() {
   const { selectedCardBorder, rankLabel, seasonRating, winRate } = useProfile()
 
   const isBattle = activeScreen === 'battle'
+  const battleModeLabel = isRankedBattle ? 'Ranked duel' : battleKind === 'local' ? 'Pass and play' : 'AI skirmish'
+  const battleStatusLabel = game.winner
+    ? game.winner === 'player'
+      ? 'Arena secured'
+      : game.winner === 'enemy'
+        ? 'Rival advantage'
+        : 'Dead heat'
+    : isMyTurn
+      ? 'Your command phase'
+      : 'Enemy pressure'
+  const resultTone = game.winner === 'player' ? 'result-victory' : game.winner === 'enemy' ? 'result-defeat' : 'result-draw'
 
   return (
     <>
       {enemyTurnActive && (
         <div className={`enemy-turn-banner screen-panel ${isBattle ? 'active' : 'hidden'}`}>
-          <span className="enemy-turn-label">{enemyTurnLabel}</span>
+          <div className="enemy-turn-banner-inner">
+            <span className="enemy-turn-crest" aria-hidden="true" />
+            <div className="enemy-turn-copy">
+              <strong>Enemy is thinking</strong>
+              <span className="enemy-turn-label">{enemyTurnLabel}</span>
+            </div>
+            <span className="thinking-dots" aria-hidden="true" />
+          </div>
         </div>
       )}
 
@@ -41,19 +59,41 @@ export function BattleScreen() {
         </div>
       )}
 
-      <section className={`battle-topbar section-card screen-panel ${isBattle ? 'active' : 'hidden'}`}>
-        <div className="battle-heroes-compact">
-          <div className="hero-compact enemy">
-            <strong>{game.enemy.name}</strong>
-            <span className="hero-health">❤️ {game.enemy.health}</span>
+      <section className={`battle-topbar section-card battle-command-dais screen-panel ${isBattle ? 'active' : 'hidden'}`}>
+        <div className="battle-hud-main">
+          <div className="battle-heroes-compact">
+            <div className="hero-compact enemy">
+              <strong>{game.enemy.name}</strong>
+              <span className="hero-health"><StatIcon kind="health" /> {game.enemy.health}</span>
+            </div>
+            <div className="battle-turn-label">
+              <span className="eyebrow">Turn {game.turnNumber}</span>
+            </div>
+            <div className="hero-compact player">
+              <strong>{game.player.name}</strong>
+              <span className="hero-health"><StatIcon kind="health" /> {game.player.health}</span>
+            </div>
           </div>
-          <div className="battle-turn-label">
-            <span className="eyebrow">Turn {game.turnNumber}</span>
+
+          <div className="battle-objective">
+            <div className="battle-medal">
+              <RankBadge rank={rankLabel} />
+            </div>
+            <div>
+              <p className="eyebrow">Arena state</p>
+              <strong>{battleModeLabel}</strong>
+              <p className="note">
+                {battleStatusLabel} • {isMyTurn ? 'Play a unit or strike while the lane is open.' : 'Hold the line while the rival resolves their turn.'}
+              </p>
+            </div>
           </div>
-          <div className="hero-compact player">
-            <strong>{game.player.name}</strong>
-            <span className="hero-health">❤️ {game.player.health}</span>
-          </div>
+        </div>
+
+        <div className="badges battle-status-strip">
+          <span className="badge">Rating {seasonRating}</span>
+          <span className="badge">Win Rate {winRate}%</span>
+          <span className="badge">{selectedAttacker === null ? 'Select a unit' : 'Attacker primed'}</span>
+          <span className="badge">{isRankedBattle ? 'Ladder live' : battleKind === 'local' ? 'Local duel' : 'Practice arena'}</span>
         </div>
 
         <div className="battle-resource-row">
@@ -152,16 +192,19 @@ export function BattleScreen() {
                     <strong>
                       {unit.icon} {unit.name}
                     </strong>
-                    <span className="stats">
-                      ⚔️{unit.attack} ❤️{unit.currentHealth}
+                    <span className="stats battle-stats-inline">
+                      <span><StatIcon kind="attack" />{unit.attack}</span>
+                      <span><StatIcon kind="health" />{unit.currentHealth}</span>
                     </span>
                   </div>
-                  {unit.effect && <span className="effect-badge small">{EFFECT_LABELS[unit.effect] ?? unit.effect}</span>}
+                  {unit.effect && <EffectBadge effect={unit.effect} compact />}
                 </button>
               )
             })}
           </div>
         </article>
+
+        <div className="rune-divider battlefield-divider" aria-hidden="true" />
 
         <article className="section-card">
           <div className="section-head">
@@ -210,11 +253,12 @@ export function BattleScreen() {
                     <strong>
                       {unit.icon} {unit.name}
                     </strong>
-                    <span className="stats">
-                      ⚔️{unit.attack} ❤️{unit.currentHealth}
+                    <span className="stats battle-stats-inline">
+                      <span><StatIcon kind="attack" />{unit.attack}</span>
+                      <span><StatIcon kind="health" />{unit.currentHealth}</span>
                     </span>
                   </div>
-                  {unit.effect && <span className="effect-badge small">{EFFECT_LABELS[unit.effect] ?? unit.effect}</span>}
+                  {unit.effect && <EffectBadge effect={unit.effect} compact />}
                 </button>
               )
             })}
@@ -223,7 +267,7 @@ export function BattleScreen() {
       </section>
 
       {game.winner && (
-        <section className={`summary-card section-card screen-panel ${isBattle ? 'active' : 'hidden'}`}>
+        <section className={`summary-card section-card battle-result-card ${resultTone} screen-panel ${isBattle ? 'active' : 'hidden'}`}>
           <div className="section-head">
             <div>
               <h2>{game.winner === 'player' ? 'Victory Screen' : game.winner === 'enemy' ? 'Defeat Screen' : 'Draw Screen'}</h2>
@@ -241,10 +285,11 @@ export function BattleScreen() {
           </div>
 
           <div className="summary-grid">
-            <div className="badges">
-              <span className="badge">Rank {rankLabel}</span>
+            <div className="badges battle-status-strip">
+              <span className="badge badge-with-art"><RankBadge rank={rankLabel} /></span>
               <span className="badge">Rating {seasonRating}</span>
               <span className="badge">Win Rate {winRate}%</span>
+              <span className="badge">{battleModeLabel}</span>
             </div>
             <div className="controls">
               <button className="primary" onClick={() => startMatch(game.mode)}>
@@ -265,13 +310,16 @@ export function BattleScreen() {
       )}
 
       <section className={`hand-section screen-panel ${isBattle ? 'active' : 'hidden'}`}>
-        <article className="section-card">
+        <article className="section-card hand-fan-stage">
           <div className="section-head">
-            <h2>{activePlayer.name} Hand</h2>
+            <div>
+              <h2>{activePlayer.name} Hand</h2>
+              <p className="note">Tap a card to cast it or long-press to inspect its art and effect details.</p>
+            </div>
             <span className="badge">Mana {activePlayer.mana}</span>
           </div>
 
-          <div className="hand-grid">
+          <div className="hand-grid hand-fan-grid">
             {activePlayer.hand.map((card, index) => {
               const canPlay = !game.winner && activeBoardHasOpenLane && card.cost <= activePlayer.mana
               const needMana = card.cost - activePlayer.mana
@@ -286,6 +334,8 @@ export function BattleScreen() {
                       : 'Cannot play'
                 : ''
 
+              const fanTilt = getHandFanTilt(index, activePlayer.hand.length)
+
               return (
                 <button
                   className={['hand-card', `rarity-${card.rarity}`, `border-${selectedCardBorder}`, canPlay ? '' : 'unplayable'].filter(Boolean).join(' ')}
@@ -298,7 +348,7 @@ export function BattleScreen() {
                   {...getLongPressProps({ name: card.name, icon: card.icon, id: card.id, cost: card.cost, attack: card.attack, health: card.health, rarity: card.rarity, tribe: card.tribe, text: card.text, effect: card.effect ?? null })}
                   aria-disabled={!canPlay}
                   title={canPlay ? 'Tap to play or long press to inspect' : `${overlayLabel}. Long press to inspect.`}
-                  style={{ '--rarity-color': RARITY_COLORS[card.rarity] } as React.CSSProperties}
+                  style={{ '--rarity-color': RARITY_COLORS[card.rarity], '--fan-tilt': `${fanTilt}deg`, '--fan-order': index + 1 } as React.CSSProperties}
                 >
                   <div className="card-top">
                     <span className="cost-pill">{card.cost}</span>
@@ -309,11 +359,11 @@ export function BattleScreen() {
                   </div>
                   <div>
                     <strong className="card-name">{card.name}</strong>
-                    {card.effect && <span className="effect-badge">{EFFECT_LABELS[card.effect] ?? card.effect}</span>}
+                    {card.effect && <EffectBadge effect={card.effect} />}
                   </div>
                   <div className="card-stats">
-                    <span>⚔️ {card.attack}</span>
-                    <span>❤️ {card.health}</span>
+                    <span><StatIcon kind="attack" /> {card.attack}</span>
+                    <span><StatIcon kind="health" /> {card.health}</span>
                   </div>
                 </button>
               )

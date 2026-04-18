@@ -1,4 +1,5 @@
 import type { GameState } from '../game'
+import { RankBadge } from './AssetBadge'
 
 type BattleIntroOverlayProps = {
   visible: boolean
@@ -10,12 +11,22 @@ export function BattleIntroOverlay({ visible, game }: BattleIntroOverlayProps) {
   return (
     <section className="queue-overlay intro-overlay" aria-live="polite">
       <div className="queue-modal intro-modal section-card">
-        <p className="eyebrow">Fractured Arcanum Battle Intro</p>
-        <h2>
-          {game.player.name} vs {game.enemy.name}
-        </h2>
-        <p className="note">
-          {game.mode === 'ai' ? 'The arena gates open.' : 'Pass the device and prepare for the duel.'}
+        <p className="eyebrow">Arena Clash</p>
+        <div className="intro-versus-grid">
+          <div className="intro-side intro-side-card">
+            <span className="eyebrow">Challenger</span>
+            <strong>{game.player.name}</strong>
+            <RankBadge rank="Gold" className="rank-badge-inline" />
+          </div>
+          <img className="intro-vs-art" src="/generated/ui/overlay-vs.svg" alt="Versus" />
+          <div className="intro-side intro-side-card">
+            <span className="eyebrow">Rival</span>
+            <strong>{game.enemy.name}</strong>
+            <RankBadge rank={game.mode === 'ai' ? 'Silver' : 'Gold'} className="rank-badge-inline" />
+          </div>
+        </div>
+        <p className="note intro-callout">
+          {game.mode === 'ai' ? 'The arena gates open and the rune circle flares to life.' : 'Pass the device and prepare for the duel.'}
         </p>
       </div>
     </section>

@@ -1,4 +1,5 @@
 import { CARD_LIBRARY } from '../game'
+import { RankBadge } from '../components/AssetBadge'
 import { useAppShell, useProfile, useQueue, useSocial } from '../contexts'
 
 type ToastSeverity = 'info' | 'success' | 'warning' | 'error'
@@ -30,28 +31,57 @@ export function SocialScreen() {
   const {
     friends, friendUsernameInput, setFriendUsernameInput, handleAddFriend, socialLoading,
     onlineFriendIds, outgoingChallenge, incomingChallenge, handleChallengeFriend, handleRemoveFriend,
-    challengeStatus, handleCancelOutgoingChallenge,
+    challengeStatus, handleAcceptChallenge, handleDeclineChallenge, handleCancelOutgoingChallenge,
     clan, handleLeaveClan, clanForm, setClanForm, handleCreateClan, handleJoinClan, socialStatus,
     tradeForm, setTradeForm, handleProposeTrade, tradeSubmitting,
     tradePickerDraft, setTradePickerDraft, addTradeChip, removeTradeChip,
     formatCountdown, tradeStatus, trades, handleTradeAction,
   } = useSocial()
 
+  const profileName = serverProfile?.displayName ?? serverProfile?.username ?? 'Player'
+  const onlineFriends = friends.filter((friend) => onlineFriendIds.has(friend.accountId)).length
+  const pendingTrades = trades.filter((trade) => trade.status === 'pending').length
+  const uniqueOwnedCards = Object.values(collection).filter((count) => count > 0).length
+
   return (
     <section className={`home-screen social-screen screen-panel ${activeScreen === 'social' ? 'active' : 'hidden'}`}>
       <div className="home-cards">
-        <article className="section-card utility-card">
-          <div className="section-head">
-            <h2>Profile</h2>
-            <span className="badge">{serverProfile?.username ?? 'Guest'}</span>
+        <article className="section-card hero-card spotlight-card social-command-card">
+          <div className="profile-showcase">
+            <div className="profile-medal">
+              <RankBadge rank={rankLabel} />
+            </div>
+            <div className="hero-copy">
+              <p className="eyebrow">Guild command</p>
+              <h2>{profileName}</h2>
+              <p className="note">Track your allies, clan links, and live trade traffic from a single war table.</p>
+            </div>
+          </div>
+          <div className="insight-grid social-insight-grid">
+            <div className="stat-tile">
+              <span className="mini-text">Online allies</span>
+              <strong>{onlineFriends}</strong>
+            </div>
+            <div className="stat-tile">
+              <span className="mini-text">Pending trades</span>
+              <strong>{pendingTrades}</strong>
+            </div>
+            <div className="stat-tile">
+              <span className="mini-text">Clan status</span>
+              <strong>{clan ? clan.tag : 'Solo'}</strong>
+            </div>
+            <div className="stat-tile">
+              <span className="mini-text">Unique cards</span>
+              <strong>{uniqueOwnedCards}</strong>
+            </div>
           </div>
           <div className="badges">
             <span className="badge">@{serverProfile?.username ?? 'guest'}</span>
-            <span className="badge">{serverProfile?.displayName ?? serverProfile?.username ?? 'Player'}</span>
-            <span className="badge">{rankLabel}</span>
+            <span className="badge">{profileName}</span>
+            <RankBadge rank={rankLabel} />
             <span className="badge">{totalGames} games</span>
             <span className="badge">{winRate}% WR</span>
-            <span className="badge">{runes} 💎</span>
+            <span className="badge">{runes} Runes</span>
           </div>
         </article>
 
@@ -72,6 +102,7 @@ export function SocialScreen() {
                     <strong>{entry.display_name}</strong>
                     <span className="note">{entry.season_rating} rating • {entryWinRate}% WR</span>
                   </div>
+                  <RankBadge rank={entry.season_rating} className="rank-badge-inline" />
                 </div>
               )
             })}
@@ -140,7 +171,20 @@ export function SocialScreen() {
                 <button className="ghost mini" onClick={handleCancelOutgoingChallenge}>Cancel</button>
               </div>
             )}
+            {incomingChallenge && (
+              <div className="challenge-banner incoming">
+                <span>
+                  <strong>{incomingChallenge.fromName}</strong> is challenging you to an unranked duel.
+                </span>
+                <div className="controls">
+                  <button className="primary mini" onClick={handleAcceptChallenge}>Accept</button>
+                  <button className="ghost mini" onClick={handleDeclineChallenge}>Decline</button>
+                </div>
+              </div>
+            )}
           </div>
+
+          <div className="rune-divider" aria-hidden="true" />
 
           {clan ? (
             <div className="social-clan-block">
@@ -204,6 +248,8 @@ export function SocialScreen() {
           )}
 
           <p className="note toast-line">{socialStatus}</p>
+
+          <div className="rune-divider" aria-hidden="true" />
 
           {/* ─── Card trading (friends only) ──────────────────── */}
           <div className="social-trade-block">

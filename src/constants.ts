@@ -69,6 +69,109 @@ export const CARD_BORDER_OFFERS: CardBorderOffer[] = [
   { id: 'void',    name: 'Voidweave',       cost: 420, description: 'Animated dark-matter weave with a violet halo.' },
 ]
 
+const toUiAsset = (fileName: string): string => `/generated/ui/${fileName}`
+
+export const UI_ASSETS = {
+  backgrounds: {
+    home: toUiAsset('bg-main-menu.svg'),
+    play: toUiAsset('bg-play.svg'),
+    collection: toUiAsset('bg-collection.svg'),
+    social: toUiAsset('bg-social.svg'),
+    shop: toUiAsset('bg-shop.svg'),
+    battle: toUiAsset('bg-battle.svg'),
+    settings: toUiAsset('bg-settings.svg'),
+  },
+  tiles: {
+    play: toUiAsset('tile-play.svg'),
+    collection: toUiAsset('tile-collection.svg'),
+    social: toUiAsset('tile-social.svg'),
+    shop: toUiAsset('tile-shop.svg'),
+    settings: toUiAsset('tile-settings.svg'),
+    battle: toUiAsset('tile-battle.svg'),
+  },
+  ranks: {
+    bronze: toUiAsset('rank-bronze.svg'),
+    silver: toUiAsset('rank-silver.svg'),
+    gold: toUiAsset('rank-gold.svg'),
+    diamond: toUiAsset('rank-diamond.svg'),
+  },
+  packs: {
+    standard: toUiAsset('pack-standard.svg'),
+    premium: toUiAsset('pack-premium.svg'),
+    legendary: toUiAsset('pack-legendary.svg'),
+  },
+  rarityGems: {
+    common: toUiAsset('gem-common.svg'),
+    rare: toUiAsset('gem-rare.svg'),
+    epic: toUiAsset('gem-epic.svg'),
+    legendary: toUiAsset('gem-legendary.svg'),
+  },
+  chrome: {
+    primaryButton: toUiAsset('btn-primary.svg'),
+    ghostButton: toUiAsset('btn-ghost.svg'),
+    dangerButton: toUiAsset('btn-danger.svg'),
+    panelFrame: toUiAsset('panel-frame.svg'),
+    dividerRune: toUiAsset('divider-rune.svg'),
+  },
+  pips: {
+    manaEmpty: toUiAsset('pip-mana-empty.svg'),
+    manaFilled: toUiAsset('pip-mana-filled.svg'),
+    momentumEmpty: toUiAsset('pip-momentum-empty.svg'),
+    momentumFilled: toUiAsset('pip-momentum-filled.svg'),
+  },
+  stats: {
+    attack: toUiAsset('icon-attack.svg'),
+    health: toUiAsset('icon-health.svg'),
+    guard: toUiAsset('icon-guard.svg'),
+  },
+  overlays: {
+    versus: toUiAsset('overlay-vs.svg'),
+    victory: toUiAsset('overlay-victory.svg'),
+    defeat: toUiAsset('overlay-defeat.svg'),
+    draw: toUiAsset('overlay-draw.svg'),
+  },
+  glows: {
+    common: toUiAsset('glow-common.svg'),
+    rare: toUiAsset('glow-rare.svg'),
+    epic: toUiAsset('glow-epic.svg'),
+    legendary: toUiAsset('glow-legendary.svg'),
+  },
+  particles: {
+    rune: toUiAsset('particle-rune.svg'),
+    ember: toUiAsset('particle-ember.svg'),
+    dust: toUiAsset('particle-dust.svg'),
+    frost: toUiAsset('particle-frost.svg'),
+  },
+  effects: {
+    charge: toUiAsset('fx-charge.svg'),
+    guard: toUiAsset('fx-guard.svg'),
+    rally: toUiAsset('fx-rally.svg'),
+    blast: toUiAsset('fx-blast.svg'),
+    heal: toUiAsset('fx-heal.svg'),
+    draw: toUiAsset('fx-draw.svg'),
+    fury: toUiAsset('fx-fury.svg'),
+    drain: toUiAsset('fx-drain.svg'),
+    empower: toUiAsset('fx-empower.svg'),
+    poison: toUiAsset('fx-poison.svg'),
+    shield: toUiAsset('fx-shield.svg'),
+    siphon: toUiAsset('fx-siphon.svg'),
+    bolster: toUiAsset('fx-bolster.svg'),
+    cleave: toUiAsset('fx-cleave.svg'),
+    lifesteal: toUiAsset('fx-lifesteal.svg'),
+    summon: toUiAsset('fx-summon.svg'),
+    silence: toUiAsset('fx-silence.svg'),
+    frostbite: toUiAsset('fx-frostbite.svg'),
+    enrage: toUiAsset('fx-enrage.svg'),
+    deathrattle: toUiAsset('fx-deathrattle.svg'),
+  },
+} as const
+
+export const NAV_TILE_ART = UI_ASSETS.tiles
+export const RANK_INSIGNIA = UI_ASSETS.ranks
+export const PACK_ART = UI_ASSETS.packs
+export const RARITY_GEM_ICONS = UI_ASSETS.rarityGems
+export const EFFECT_ICONS = UI_ASSETS.effects
+
 export const STORAGE_KEYS = {
   deck: 'fractured-arcanum.deck',
   sound: 'fractured-arcanum.sound',
@@ -133,27 +236,27 @@ export const CARD_ART_ALIASES: Record<string, string> = {
 }
 
 export const EFFECT_LABELS: Record<string, string> = {
-  charge: '⚡ Charge',
-  guard: '🛡️ Guard',
-  rally: '📣 Rally',
-  blast: '💥 Blast',
-  heal: '💚 Heal',
-  draw: '📜 Draw',
-  fury: '🔥 Fury',
-  drain: '🩸 Drain',
-  empower: '📯 Empower',
-  poison: '☠️ Poison',
-  shield: '⚜️ Shield',
-  siphon: '💀 Siphon',
-  bolster: '🌊 Bolster',
-  cleave: '⚔️ Cleave',
-  lifesteal: '🧛 Lifesteal',
-  summon: '✨ Summon',
-  silence: '🔇 Silence',
-  frostbite: '❄️ Frostbite',
-  enrage: '😡 Enrage',
-  deathrattle: '💀 Deathrattle',
-  overwhelm: '🦣 Overwhelm',
+  charge: 'Charge',
+  guard: 'Guard',
+  rally: 'Rally',
+  blast: 'Blast',
+  heal: 'Heal',
+  draw: 'Draw',
+  fury: 'Fury',
+  drain: 'Drain',
+  empower: 'Empower',
+  poison: 'Poison',
+  shield: 'Shield',
+  siphon: 'Siphon',
+  bolster: 'Bolster',
+  cleave: 'Cleave',
+  lifesteal: 'Lifesteal',
+  summon: 'Summon',
+  silence: 'Silence',
+  frostbite: 'Frostbite',
+  enrage: 'Enrage',
+  deathrattle: 'Deathrattle',
+  overwhelm: 'Overwhelm',
 }
 
 export const EFFECT_DESCRIPTIONS: Record<string, string> = {

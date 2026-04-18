@@ -1,6 +1,6 @@
 import React from 'react'
-import { ARENA_URL, CARD_ART_ALIASES } from './constants'
-import type { ToastSeverity } from './types'
+import { ARENA_URL, CARD_ART_ALIASES, EFFECT_ICONS, PACK_ART, RANK_INSIGNIA, RARITY_GEM_ICONS } from './constants'
+import type { AppScreen, ToastSeverity } from './types'
 
 export function readStoredValue<T>(key: string, fallback: T): T {
   if (typeof window === 'undefined') {
@@ -111,6 +111,118 @@ export function getRankLabel(rating: number): string {
   }
 
   return 'Bronze'
+}
+
+export function getRankAssetPath(rankOrRating: string | number): string {
+  const rankLabel = typeof rankOrRating === 'number' ? getRankLabel(rankOrRating) : rankOrRating
+  switch (rankLabel.toLowerCase()) {
+    case 'diamond':
+      return RANK_INSIGNIA.diamond
+    case 'gold':
+      return RANK_INSIGNIA.gold
+    case 'silver':
+      return RANK_INSIGNIA.silver
+    default:
+      return RANK_INSIGNIA.bronze
+  }
+}
+
+export function getPackArtPath(packId: string): string {
+  switch (packId.toLowerCase()) {
+    case 'premium':
+      return PACK_ART.premium
+    case 'legendary':
+      return PACK_ART.legendary
+    default:
+      return PACK_ART.standard
+  }
+}
+
+export function getRarityGemPath(rarity: string): string {
+  switch (rarity.toLowerCase()) {
+    case 'rare':
+      return RARITY_GEM_ICONS.rare
+    case 'epic':
+      return RARITY_GEM_ICONS.epic
+    case 'legendary':
+      return RARITY_GEM_ICONS.legendary
+    default:
+      return RARITY_GEM_ICONS.common
+  }
+}
+
+export function getEffectIconPath(effect: string | null | undefined): string | null {
+  if (!effect) {
+    return null
+  }
+
+  return EFFECT_ICONS[effect as keyof typeof EFFECT_ICONS] ?? null
+}
+
+export function getScreenTransitionClass(fromScreen: AppScreen, toScreen: AppScreen): 'screen-enter-forward' | 'screen-enter-back' | 'screen-enter-lateral' | 'screen-enter-battle' {
+  if (toScreen === 'battle') {
+    return 'screen-enter-battle'
+  }
+
+  if (fromScreen === 'battle' || toScreen === 'home') {
+    return 'screen-enter-back'
+  }
+
+  if (fromScreen === 'home') {
+    return 'screen-enter-forward'
+  }
+
+  const orderedScreens: AppScreen[] = ['home', 'play', 'collection', 'social', 'shop', 'settings']
+  const fromIndex = orderedScreens.indexOf(fromScreen)
+  const toIndex = orderedScreens.indexOf(toScreen)
+
+  if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) {
+    return 'screen-enter-lateral'
+  }
+
+  return toIndex > fromIndex ? 'screen-enter-forward' : 'screen-enter-back'
+}
+
+export function getCompletionPercent(current: number, total: number): number {
+  if (total <= 0) {
+    return 0
+  }
+
+  return Math.max(0, Math.min(100, Math.round((current / total) * 100)))
+}
+
+export function getComplaintSeverityTone(severity: string): 'severity-low' | 'severity-normal' | 'severity-high' | 'severity-urgent' {
+  switch (severity.toLowerCase()) {
+    case 'low':
+      return 'severity-low'
+    case 'high':
+      return 'severity-high'
+    case 'urgent':
+      return 'severity-urgent'
+    default:
+      return 'severity-normal'
+  }
+}
+
+export function getStreakTier(streak: number): 'calm' | 'ember' | 'inferno' {
+  if (streak >= 5) {
+    return 'inferno'
+  }
+
+  if (streak >= 3) {
+    return 'ember'
+  }
+
+  return 'calm'
+}
+
+export function getHandFanTilt(index: number, total: number): number {
+  if (total <= 1) {
+    return 0
+  }
+
+  const midpoint = (total - 1) / 2
+  return Math.round((index - midpoint) * 4)
 }
 
 export function inferToastSeverity(text: string): ToastSeverity {
