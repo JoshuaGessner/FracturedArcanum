@@ -113,18 +113,18 @@ A detailed code index lives in `.github/index/`. **Consult it before writing or 
 | File | Lines | Role | Edit Rules |
 |------|-------|------|------------|
 | `src/game.ts` | 1,410 | Game engine — single source of truth for all mechanics | Pure functions only. After edit: `npm run build:engine` |
-| `src/App.tsx` | 2,800+ | `App` (provider tree: `<QueueProvider><ProfileProvider><SocialProvider><GameProvider><AppShell/></GameProvider></SocialProvider></ProfileProvider></QueueProvider>`) + `AppShell` (effects, handlers, refs, builds `AppShellContextValue`, provides via `<AppShellContext.Provider>`) | All AppShell-owned refs/handlers live in AppShell. Queue/Profile/Social/Game state live in their respective providers. Screens read all slices via hooks from `src/contexts/`. |
+| `src/App.tsx` | 3,100+ | `App` (provider tree: `<QueueProvider><ProfileProvider><SocialProvider><GameProvider><AppShell/></GameProvider></SocialProvider></ProfileProvider></QueueProvider>`) + `AppShell` (effects, handlers, refs, builds `AppShellContextValue`, provides via `<AppShellContext.Provider>`) | All AppShell-owned refs/handlers live in AppShell. Queue/Profile/Social/Game state live in their respective providers. Screens read all slices via hooks from `src/contexts/`. |
 | `src/contexts/*.ts(x)` | 16–190 each | Real provider modules + typed slice hooks: `useGame`, `useProfile`, `useSocial`, `useQueue`, `useAppShell` + `GameProvider` + `ProfileProvider` + `SocialProvider` + `QueueProvider` | Screens import slice hooks. AppShell uses internal `useGameState()` / `useProfileState()` / `useSocialState()` / `useQueueState()` from providers for setters. |
-| `src/AppShellContext.ts` | 200+ | Slim `AppShellContextValue` + `createContext` for auth/nav/toasts/admin and cross-provider handlers | Update when adding shared AppShell-only state |
+| `src/AppShellContext.ts` | 244 | Slim `AppShellContextValue` + `createContext` for auth/nav/toasts/admin and cross-provider handlers | Update when adding shared AppShell-only state |
 | `src/types.ts` | 252 | UI-only TypeScript types | Add new UI types here |
 | `src/constants.ts` | 284 | Static UI constants, theme offers, labels, and semantic asset registry | No functions — data only |
-| `src/utils.ts` | 246 | Pure helper functions for asset lookup, transitions, completion, severity, and fan layout | No React, no app state |
-| `src/screens/*.tsx` | 97–600 each | Presentational screens (Home, Play, Collection, Battle, Social, Shop, Settings) | Propless — read state via slice hooks from `src/contexts/` |
-| `src/components/*.tsx` | 18–89 each | Shared UI primitives (modals, nav, overlays, asset badges) | Prop-driven only |
-| `src/App.css` | 3,819 | All styles and motion systems | Add to correct section per `06-styles.md` |
-| `src/audio.ts` | 160 | Sound synthesis | 17 sound types via Web Audio API |
-| `server/server.js` | 2,321 | Express API + Socket.IO + matchmaking | Rate-limit all new endpoints |
-| `server/db.js` | 1,993 | SQLite data layer | Parameterized queries only |
+| `src/utils.ts` | 277 | Pure helper functions for asset lookup, transitions, completion, severity, and fan layout | No React, no app state |
+| `src/screens/*.tsx` | 119–780 each | Presentational screens (Home, Play, Collection, Battle, Social, Shop, Settings) | Propless — read state via slice hooks from `src/contexts/` |
+| `src/components/*.tsx` | 22–303 each | Shared UI primitives (modals, nav, overlays, asset badges, ceremony flows) | Prop-driven only |
+| `src/App.css` | 5,440 | All styles and motion systems | Add to correct section per `06-styles.md` |
+| `src/audio.ts` | 338 | Sound synthesis | Expanded Web Audio cue library for UI, scenes, packs, and battle |
+| `server/server.js` | 2,328 | Express API + Socket.IO + matchmaking | Rate-limit all new endpoints |
+| `server/db.js` | 1,999 | SQLite data layer | Parameterized queries only |
 | `server/game-room.js` | 348 | Game room manager | Server-authoritative validation |
 | `server/game.js` | — | Auto-generated | **NEVER edit directly** |
 

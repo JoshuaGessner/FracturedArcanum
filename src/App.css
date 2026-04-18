@@ -909,6 +909,53 @@ button:disabled {
   background: rgba(255, 255, 255, 0.05);
 }
 
+/* ─── Play Action Row & Live Strip ──────────────────────────────── */
+
+.play-action-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.play-action-row .primary {
+  flex: 1 1 auto;
+}
+
+.play-action-row .ghost {
+  flex: 0 0 auto;
+}
+
+.play-live-strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  font-size: 0.78rem;
+  color: #b9c2dd;
+}
+
+.play-live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 6px rgba(34, 197, 94, 0.4);
+  flex: 0 0 auto;
+}
+
+.play-live-label {
+  font-weight: 600;
+  color: #e6ecff;
+}
+
+.play-live-stat {
+  margin-left: auto;
+  white-space: nowrap;
+}
+
 .leaderboard-list {
   display: grid;
   gap: 8px;
@@ -961,12 +1008,19 @@ button:disabled {
   z-index: 1;
 }
 
-.social-insight-grid {
-  margin-top: 12px;
+.social-hero {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 8px 10px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(160deg, rgba(10, 18, 36, 0.9), rgba(32, 24, 58, 0.8));
+  border: 1px solid var(--border);
 }
 
-.social-insight-grid .stat-tile {
-  background: linear-gradient(135deg, rgba(23, 31, 58, 0.95), rgba(54, 44, 96, 0.74));
+.social-hero strong {
+  font-size: var(--font-md);
 }
 
 .badge, .deck-status {
@@ -989,8 +1043,48 @@ button:disabled {
 
 .streak-badge.streak-inferno {
   background: linear-gradient(135deg, rgba(251, 191, 36, 0.26), rgba(239, 68, 68, 0.26));
-  border: 1px solid rgba(251, 191, 36, 0.34);
-  box-shadow: 0 0 18px rgba(245, 158, 11, 0.2);
+  border: 1px solid rgba(251, 191, 36, 0.52);
+  box-shadow:
+    0 0 8px rgba(245, 158, 11, 0.28),
+    0 0 18px rgba(245, 158, 11, 0.14),
+    inset 0 0 12px rgba(251, 191, 36, 0.1);
+  animation: fireGlow 1.8s ease-in-out infinite alternate;
+}
+
+@keyframes fireGlow {
+  0% { box-shadow: 0 0 8px rgba(245,158,11,0.28), 0 0 18px rgba(245,158,11,0.14), inset 0 0 12px rgba(251,191,36,0.1); }
+  100% { box-shadow: 0 0 12px rgba(239,68,68,0.32), 0 0 24px rgba(245,158,11,0.22), inset 0 0 14px rgba(251,191,36,0.16); }
+}
+
+.streak-badge.streak-ember::before,
+.streak-badge.streak-inferno::before {
+  content: '';
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: rgba(251, 191, 36, 0.7);
+  top: 50%;
+  left: 20%;
+  box-shadow:
+    8px -4px 0 rgba(239, 68, 68, 0.6),
+    16px 2px 0 rgba(245, 158, 11, 0.5),
+    24px -6px 0 rgba(251, 191, 36, 0.4);
+  animation: emberFloat 2.2s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.streak-badge.streak-inferno::before {
+  box-shadow:
+    6px -5px 0 rgba(239, 68, 68, 0.7),
+    14px 3px 0 rgba(245, 158, 11, 0.65),
+    22px -7px 0 rgba(251, 191, 36, 0.6),
+    30px -2px 0 rgba(239, 68, 68, 0.5);
+}
+
+@keyframes emberFloat {
+  0%, 100% { transform: translateY(0) scale(1); opacity: 0.7; }
+  50% { transform: translateY(-3px) scale(1.2); opacity: 1; }
 }
 
 .streak-badge.streak-ember::after,
@@ -1628,14 +1722,19 @@ button:disabled {
   animation: urgencyPulse 1.8s ease-in-out infinite;
 }
 
-.daily-claim-banner {
-  margin: 10px 0 2px;
-  padding: 10px 12px;
-  border-radius: 12px;
-  border: 1px solid rgba(251, 191, 36, 0.24);
-  background: linear-gradient(135deg, rgba(120, 53, 15, 0.28), rgba(146, 64, 14, 0.18));
-  color: #fde68a;
-  font-size: 0.9rem;
+.shop-hero {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 8px 10px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(160deg, rgba(10, 18, 36, 0.9), rgba(32, 24, 58, 0.8));
+  border: 1px solid var(--border);
+}
+
+.shop-hero strong {
+  font-size: var(--font-md);
 }
 
 .pack-offer-card::after {
@@ -1748,7 +1847,7 @@ button:disabled {
 .preset-row { margin-top: 12px; }
 
 .builder-grid {
-  margin-top: 12px;
+  margin-top: 6px;
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 10px;
@@ -1908,6 +2007,14 @@ button:disabled {
   color: #fcd34d;
 }
 
+.season-countdown {
+  font-size: var(--font-xs);
+  color: rgba(252, 211, 77, 0.7);
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
 .log-heading { margin-top: 16px; }
 .log-list li { color: #edf3ff; }
 
@@ -1945,6 +2052,88 @@ button:disabled {
 
 .quest-check.pending {
   background: rgba(71, 85, 105, 0.7);
+}
+
+/* ─── Quest Summary Strip (Home density) ─────────────────────── */
+
+.quest-summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  margin-top: 12px;
+  border-radius: 12px;
+  background: rgba(30, 41, 59, 0.5);
+  border: 1px solid rgba(147, 197, 253, 0.1);
+}
+
+.quest-summary.claim-ready {
+  border-color: rgba(251, 191, 36, 0.24);
+  background: rgba(60, 50, 20, 0.25);
+}
+
+.quest-summary.just-claimed {
+  position: relative;
+}
+
+.quest-summary.just-claimed::before {
+  content: '✓';
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: rgba(34, 197, 94, 0.9);
+  background: rgba(10, 16, 31, 0.75);
+  border-radius: inherit;
+  z-index: 2;
+  animation: claimCheck 1.8s ease-out forwards;
+  pointer-events: none;
+}
+
+@keyframes claimCheck {
+  0% { transform: scale(0); opacity: 0; }
+  20% { transform: scale(1.2); opacity: 1; }
+  30% { transform: scale(1); }
+  70% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+.quest-pips {
+  display: flex;
+  gap: 5px;
+  flex: 0 0 auto;
+}
+
+.quest-pip {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1px solid rgba(147, 197, 253, 0.22);
+  background: rgba(71, 85, 105, 0.7);
+  transition: background 0.2s, box-shadow 0.2s;
+}
+
+.quest-pip.complete {
+  background: radial-gradient(circle, #86efac 0%, #22c55e 60%, #166534 100%);
+  box-shadow: 0 0 6px rgba(34, 197, 94, 0.3);
+  border-color: rgba(34, 197, 94, 0.3);
+}
+
+.quest-count {
+  flex: 1 1 auto;
+  font-size: 0.82rem;
+  color: #b9c2dd;
+  white-space: nowrap;
+}
+
+.quest-summary button {
+  flex: 0 0 auto;
+  padding: 8px 14px;
+  min-height: 36px;
+  font-size: 0.82rem;
 }
 
 .log-panel { min-width: 0; }
@@ -2164,8 +2353,41 @@ button:disabled {
   z-index: 1;
 }
 
-.settings-status-grid {
-  margin-top: 12px;
+.settings-hero {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 8px 10px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(160deg, rgba(10, 18, 36, 0.9), rgba(32, 24, 58, 0.8));
+  border: 1px solid var(--border);
+}
+
+.settings-hero strong {
+  font-size: var(--font-md);
+}
+
+.settings-toggle-list {
+  display: grid;
+  gap: 4px;
+  margin: 6px 0;
+}
+
+.settings-toggle-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  background: rgba(0, 0, 0, 0.12);
+  border: 1px solid var(--border);
+  font-size: var(--font-sm);
+}
+
+.settings-toggle-row .muted,
+.settings-toggle-row button.muted {
+  color: var(--muted);
 }
 
 .preference-grid {
@@ -2294,8 +2516,8 @@ button:disabled {
 }
 
 .social-clan-block {
-  margin-top: 10px;
-  padding: 12px;
+  margin-top: 8px;
+  padding: 10px;
   border-radius: 14px;
   border: 1px solid rgba(147, 197, 253, 0.16);
   background: rgba(8, 14, 30, 0.36);
@@ -2543,12 +2765,12 @@ button.danger:hover { filter: brightness(1.08); }
 
 .social-trade-block {
   display: grid;
-  gap: 10px;
-  padding: 12px;
+  gap: 8px;
+  padding: 10px;
   border-radius: 14px;
   border: 1px solid rgba(147, 197, 253, 0.18);
   background: linear-gradient(135deg, rgba(10, 16, 31, 0.9), rgba(29, 36, 62, 0.76));
-  margin-top: 12px;
+  margin-top: 8px;
   box-shadow: inset 0 1px 0 rgba(251, 191, 36, 0.08);
 }
 
@@ -2682,9 +2904,69 @@ button.danger:hover { filter: brightness(1.08); }
 }
 
 @media (max-width: 640px) {
-  .app-shell { padding: 12px 12px calc(92px + env(safe-area-inset-bottom, 0px)); }
+  .app-shell {
+    gap: 8px;
+    padding: 10px 10px calc(88px + env(safe-area-inset-bottom, 0px));
+  }
   .subtitle { display: none; }
-  .brand-logo { width: min(160px, 46vw); }
+  .brand-logo { width: min(156px, 44vw); }
+  .section-card, .hero-card {
+    padding: 10px;
+    border-radius: 14px;
+    box-shadow: 0 10px 26px rgba(10, 14, 30, 0.22);
+  }
+  .section-head, .hero-header { gap: 6px; }
+  .nav-strip { padding: 10px; }
+  .season-progress-block {
+    grid-template-columns: 1fr auto;
+    gap: 10px;
+    margin-top: 8px;
+  }
+  .season-progress-visual { gap: 10px; }
+  .season-progress-ring,
+  .season-progress-svg { width: 72px; height: 72px; }
+  .season-progress-core { inset: 8px; }
+  .season-progress-core strong { font-size: 0.75rem; }
+  .season-progress-block > div:first-child .note { display: none; }
+  .progress-shell { height: 10px; }
+  .play-live-strip { flex-wrap: wrap; gap: 6px; padding: 6px 8px; }
+  .play-live-stat { margin-left: 0; }
+
+  /* Home density — 3-col tile grid, shorter tiles, hide descriptions */
+  .nav-tile-row {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-top: 10px;
+  }
+  .nav-tile {
+    min-height: 80px;
+    padding: 12px 8px;
+    gap: 4px;
+  }
+  .nav-tile-label { font-size: 0.88rem; }
+  .nav-tile-description { display: none; }
+
+  .game-resume-block {
+    padding: 10px;
+    margin: 6px 0;
+  }
+
+  .quest-summary { padding: 8px 10px; margin-top: 8px; }
+
+  /* Play density — shorter mode cards, hide long notes */
+  .mode-card {
+    min-height: 90px;
+    padding: 10px;
+    gap: 4px;
+  }
+  .mode-card .note { display: none; }
+  .mode-card-grid { gap: 8px; margin-top: 10px; }
+  .difficulty-panel { margin-top: 8px; padding: 8px 10px; }
+  .play-action-row { margin-top: 8px; }
+  .queue-search-portal { margin-top: 8px; padding: 10px; gap: 10px; }
+  .queue-portal-ring { width: 80px; height: 80px; }
+  .queue-portal-core { inset: 18px; font-size: 0.88rem; }
+
   .mode-switch, .stepper { flex-wrap: wrap; }
   .slot { min-height: 110px; padding: 8px; }
   .board-grid-battle .slot {
@@ -2711,6 +2993,93 @@ button.danger:hover { filter: brightness(1.08); }
   .builder-grid {
     grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   }
+
+  /* Collection density — compact roster, tighter hero */
+  .collection-hero { padding: 6px 8px; gap: 8px; }
+  .collection-progress-ring,
+  .collection-progress-svg { width: 40px; height: 40px; }
+  .collection-progress-core { inset: 4px; }
+  .collection-progress-core strong { font-size: 0.6rem; }
+  .collection-hero-stats { gap: 6px; font-size: var(--font-xs); }
+  .collection-rarity-chips { gap: 4px; }
+  .deck-roster {
+    padding: 6px 8px;
+    max-height: 176px;
+    overflow-y: auto;
+  }
+  .deck-roster-list { grid-template-columns: 1fr; gap: 4px; }
+  .builder-toolbar { padding: 4px 8px; gap: 6px; }
+  .deck-stats { padding: 4px 8px; gap: 6px; }
+  .builder-grid { gap: 6px; }
+  .collection-action-row { margin: 6px 0 4px; }
+  .collection-quick-strip { padding: 4px 8px; }
+
+  /* Social density — compact hero, segmented scroll areas */
+  .social-hero { padding: 6px 8px; gap: 6px; }
+  .social-hero strong { font-size: var(--font-sm); }
+  .leaderboard-list,
+  .social-list {
+    margin-top: 6px;
+    gap: 4px;
+    max-height: 180px;
+    overflow-y: auto;
+    padding-right: 2px;
+  }
+  .social-clan-block {
+    padding: 8px;
+    margin-top: 6px;
+    max-height: 220px;
+    overflow-y: auto;
+  }
+  .social-trade-block {
+    padding: 8px;
+    margin-top: 6px;
+    max-height: 220px;
+    overflow-y: auto;
+  }
+  .social-row { padding: 6px 8px; gap: 6px; }
+
+  /* Shop density — compact hero, convert offer stacks to rails */
+  .shop-hero { padding: 6px 8px; gap: 6px; }
+  .shop-hero strong { font-size: var(--font-sm); }
+  .theme-grid {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    grid-template-columns: none;
+    scroll-snap-type: x proximity;
+  }
+  .theme-offer-card {
+    padding: 8px;
+    gap: 6px;
+    min-width: 176px;
+    flex: 0 0 176px;
+    scroll-snap-align: start;
+  }
+  .pack-reveal-grid {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+  }
+  .pack-reveal-card {
+    min-width: 160px;
+    flex: 0 0 160px;
+  }
+
+  /* Settings density — compact hero, tighter toggles */
+  .settings-hero { padding: 6px 8px; gap: 6px; }
+  .settings-hero strong { font-size: var(--font-sm); }
+  .settings-toggle-list { gap: 2px; margin: 4px 0; }
+  .settings-toggle-row { padding: 4px 8px; font-size: var(--font-xs); }
+  .complaint-desk-card .complaint-form { padding: 8px; }
+  .admin-panel-block {
+    padding: 8px;
+    gap: 8px;
+    max-height: 240px;
+    overflow-y: auto;
+  }
+  .role-list { max-height: 180px; overflow-y: auto; }
 
   .social-inline-form {
     grid-template-columns: 1fr;
@@ -2953,6 +3322,26 @@ button.danger:hover { filter: brightness(1.08); }
 .arena-title-block {
   text-align: center;
   padding: 12px 0 8px;
+}
+
+.arena-title-block.home-hero {
+  padding: 6px 0 4px;
+}
+
+.arena-title-block.home-hero h2 {
+  font-size: 1.25rem;
+}
+
+.arena-title-block.home-hero .badges {
+  margin-top: 8px;
+}
+
+.arena-title-block.play-hero {
+  padding: 6px 0 4px;
+}
+
+.arena-title-block.play-hero h2 {
+  font-size: 1.25rem;
 }
 
 .arena-title-block .eyebrow {
@@ -3782,7 +4171,11 @@ button.danger:disabled { opacity: 0.55; transform: none; box-shadow: none; }
   .screen-panel.active,
   .nav-tile-notice,
   .reward-vault-card.claim-ready .primary,
-  .streak-badge::after { animation: none !important; }
+  .streak-badge::after,
+  .streak-badge::before,
+  .streak-badge.streak-inferno,
+  .quest-summary.just-claimed::before,
+  .rarity-chip.rarity-celebrate { animation: none !important; }
   .hand-card.unplayable::after,
   .mode-card,
   .nav-tile,
@@ -3858,32 +4251,68 @@ button, [role="button"], .nav-chip, .chip {
 /* ─── Collection overview + rune dividers ────────────────────────── */
 
 .collection-hero {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 14px;
+  display: flex;
   align-items: center;
-  margin: 12px 0 16px;
-  padding: 12px;
+  gap: 10px;
+  margin: 0 0 8px;
+  padding: 8px 10px;
   border-radius: var(--radius-md);
   background: linear-gradient(160deg, rgba(10, 18, 36, 0.9), rgba(32, 24, 58, 0.8));
   border: 1px solid var(--border);
 }
 
-.collection-hero-copy {
-  display: grid;
+.collection-hero-stats {
+  display: flex;
+  align-items: center;
   gap: 8px;
+  flex-wrap: wrap;
+  font-size: var(--font-sm);
+}
+
+.collection-rarity-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  font-size: var(--font-xs);
+}
+
+.rarity-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.18);
+  border: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.rarity-chip.rarity-complete {
+  border-color: rgba(34, 197, 94, 0.4);
+  background: rgba(34, 197, 94, 0.1);
+}
+
+.rarity-chip.rarity-celebrate {
+  animation: raritySpark 1.4s ease-out;
+  box-shadow: 0 0 0 1px rgba(250, 204, 21, 0.22), 0 0 18px rgba(250, 204, 21, 0.18);
+}
+
+@keyframes raritySpark {
+  0% { transform: scale(0.96); box-shadow: 0 0 0 rgba(250, 204, 21, 0); }
+  30% { transform: scale(1.06); box-shadow: 0 0 18px rgba(250, 204, 21, 0.32); }
+  100% { transform: scale(1); box-shadow: 0 0 18px rgba(250, 204, 21, 0.12); }
 }
 
 .collection-progress-ring {
   position: relative;
-  width: 88px;
-  height: 88px;
+  width: 48px;
+  height: 48px;
   flex: 0 0 auto;
 }
 
 .collection-progress-svg {
-  width: 88px;
-  height: 88px;
+  width: 48px;
+  height: 48px;
   transform: rotate(-90deg);
 }
 
@@ -3905,7 +4334,7 @@ button, [role="button"], .nav-chip, .chip {
 
 .collection-progress-core {
   position: absolute;
-  inset: 10px;
+  inset: 6px;
   border-radius: 50%;
   display: grid;
   place-items: center;
@@ -3914,13 +4343,8 @@ button, [role="button"], .nav-chip, .chip {
 }
 
 .collection-progress-core strong {
-  font-size: 0.95rem;
+  font-size: 0.7rem;
   color: var(--text);
-}
-
-.collection-progress-core span {
-  font-size: 0.68rem;
-  color: var(--muted);
 }
 
 .rune-divider {
@@ -3934,8 +4358,8 @@ button, [role="button"], .nav-chip, .chip {
 /* ─── Multi-deck roster ───────────────────────────────────────────── */
 
 .deck-roster {
-  margin: 12px 0 16px;
-  padding: 12px;
+  margin: 0 0 6px;
+  padding: 8px 10px;
   background: var(--surface-alt);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
@@ -3945,7 +4369,7 @@ button, [role="button"], .nav-chip, .chip {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
 }
 
 .deck-roster-list {
@@ -4031,9 +4455,9 @@ button.icon-only {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
-  margin: 10px 0 12px;
-  padding: 8px 10px;
+  gap: 8px;
+  margin: 0 0 6px;
+  padding: 6px 10px;
   background: var(--surface-alt);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
@@ -4101,14 +4525,14 @@ button.icon-only {
 .deck-stats {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 8px;
   align-items: flex-end;
-  margin: 0 0 12px;
-  padding: 8px 12px;
+  margin: 0 0 6px;
+  padding: 6px 10px;
   background: rgba(0, 0, 0, 0.18);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  font-size: var(--font-sm);
+  font-size: var(--font-xs);
   color: var(--muted);
 }
 
@@ -4148,16 +4572,35 @@ button.icon-only {
   line-height: 1;
 }
 
-/* ─── Quick Battle template row ──────────────────────────────────── */
+/* ─── Collection action row + quick-strip ────────────────────────── */
 
-.deck-quick-battle {
-  margin-top: 16px;
-  padding-top: 12px;
-  border-top: 1px dashed var(--border);
+.collection-action-row {
+  display: flex;
+  gap: 8px;
+  margin: 10px 0 6px;
 }
 
-.section-head.compact { margin-bottom: 6px; }
-.section-head.compact h3 { margin: 0 0 2px; font-size: var(--font-md); }
+.collection-action-row button {
+  flex: 1;
+}
+
+.collection-quick-strip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 6px 10px;
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-size: var(--font-xs);
+}
+
+.collection-quick-strip strong {
+  color: var(--muted);
+  font-size: var(--font-xs);
+  margin-right: 2px;
+}
 
 /* ─── Card border cosmetics ──────────────────────────────────────── */
 /*

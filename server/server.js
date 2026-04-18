@@ -1790,6 +1790,8 @@ io.on('connection', (socket) => {
     message: adminStore.settings.maintenanceMode
       ? 'Arena maintenance is active. You can still test local matches.'
       : 'Live arena service connected.',
+    seasonName: serverConfig.seasonName ?? 'Season of Whispers',
+    seasonEnd: serverConfig.seasonEnd ?? null,
   })
   emitLiveArenaState(socket)
 
@@ -1840,16 +1842,34 @@ io.on('connection', (socket) => {
 
   // ─── Manual rejoin request ───────────────────────────────────────────
   socket.on('game:rejoin', () => {
+    if (!checkSocketRate(socket.id, 'game:rejoin', 20)) return
+
     const room = getRoomByAccount(socket.data.accountId)
     if (!room || !room.state || room.state.winner) {
       socket.emit('game:rejoin_failed', { error: 'No active game to rejoin.' })
       return
     }
+
+    const currentSide = room.getSideForSocket(socket.id)
+    if (currentSide && !room.isDisconnected(currentSide)) {
+      socket.join(room.roomId)
+      const view = room.getViewForSocket(socket.id)
+      const opponentSide = currentSide === 'player' ? 'enemy' : 'player'
+      const opponentDisconnected = room.isDisconnected(opponentSide)
+      socket.emit('game:rejoin', {
+        ...view,
+        roomId: room.roomId,
+        opponentDisconnected,
+      })
+      return
+    }
+
     const side = room.reconnect(socket.data.accountId, socket.id)
     if (!side) {
       socket.emit('game:rejoin_failed', { error: 'Could not rejoin game.' })
       return
     }
+
     socket.join(room.roomId)
     const view = room.getViewForSocket(socket.id)
     const opponentSide = side === 'player' ? 'enemy' : 'player'
@@ -1859,8 +1879,9 @@ io.on('connection', (socket) => {
       roomId: room.roomId,
       opponentDisconnected,
     })
+
     const opponentSocketId = room.sockets[opponentSide]
-    if (opponentSocketId) {
+    if (opponentSocketId && opponentSocketId !== socket.id) {
       const opponentSocket = io.sockets.sockets.get(opponentSocketId)
       opponentSocket?.emit('game:opponent_reconnected')
     }

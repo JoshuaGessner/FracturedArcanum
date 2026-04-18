@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { RankBadge } from '../components/AssetBadge'
 import { useAppShell, useGame, useProfile } from '../contexts'
 import { getStreakTier } from '../utils'
@@ -9,46 +10,79 @@ type NavTile = {
 }
 
 const NAV_TILES: NavTile[] = [
-  { id: 'play', label: 'Play', description: 'Solo skirmish, ranked queue, or pass-and-play.' },
-  { id: 'collection', label: 'Collection', description: 'Build decks and browse every card you own.' },
-  { id: 'social', label: 'Social', description: 'Friends, leaderboard, clans, and trades.' },
-  { id: 'shop', label: 'Shop', description: 'Open packs and unlock cosmetic flair.' },
-  { id: 'settings', label: 'Settings', description: 'Account, preferences, and admin tools.' },
+  { id: 'play', label: 'Play', description: 'Solo, ranked, or pass-and-play.' },
+  { id: 'collection', label: 'Collection', description: 'Build decks and browse cards.' },
+  { id: 'social', label: 'Social', description: 'Friends, clans, and trades.' },
+  { id: 'shop', label: 'Shop', description: 'Packs and cosmetic flair.' },
+  { id: 'settings', label: 'Settings', description: 'Account and preferences.' },
 ]
 
 export function HomeScreen() {
-  const { activeScreen, openScreen, toastSeverity, toastMessage, dailyQuest } = useAppShell()
+  const { activeScreen, openScreen, dailyQuest, justClaimedDaily, seasonName, seasonEnd } = useAppShell()
   const { gameInProgress, game, handleResumeBattle, handleAbandonBattle } = useGame()
   const { record, winRate, selectedDeckSize, serverProfile, rankLabel, runes, canClaimDailyReward, nextRewardLabel } = useProfile()
 
   const streakTier = getStreakTier(record.streak)
+  const [seasonCountdown, setSeasonCountdown] = useState<string | null>(null)
+
+  useEffect(() => {
+    const updateCountdown = () => {
+      if (!seasonEnd) {
+        setSeasonCountdown(null)
+        return
+      }
+
+      const ms = new Date(seasonEnd).getTime() - Date.now()
+      if (ms <= 0) {
+        setSeasonCountdown('Season ended')
+        return
+      }
+
+      const days = Math.floor(ms / 86_400_000)
+      if (days > 0) {
+        setSeasonCountdown(`${days}d left`)
+        return
+      }
+
+      const hours = Math.max(1, Math.floor(ms / 3_600_000))
+      setSeasonCountdown(`${hours}h left`)
+    }
+
+    const timeoutId = window.setTimeout(updateCountdown, 0)
+    const intervalId = seasonEnd ? window.setInterval(updateCountdown, 60_000) : null
+    return () => {
+      window.clearTimeout(timeoutId)
+      if (intervalId) window.clearInterval(intervalId)
+    }
+  }, [seasonEnd])
+
   const questItems = [
     { complete: record.wins >= 1, label: dailyQuest },
     { complete: winRate >= 50, label: '50% win rate' },
     { complete: selectedDeckSize >= 14, label: 'Full deck' },
-    { complete: canClaimDailyReward, label: `Daily vault reward • ${nextRewardLabel}` },
+    { complete: canClaimDailyReward, label: `Daily reward • ${nextRewardLabel}` },
   ]
+  const questsDone = questItems.filter(q => q.complete).length
 
   return (
     <section className={`home-screen screen-panel ${activeScreen === 'home' ? 'active' : 'hidden'}`}>
       <article className="section-card utility-card spotlight-card">
-        <div className="arena-title-block">
-          <p className="eyebrow">Season of Whispers</p>
+        <div className="arena-title-block home-hero">
+          <p className="eyebrow">{seasonName}{seasonCountdown && <span className="season-countdown"> · {seasonCountdown}</span>}</p>
           <h2>Welcome, {serverProfile?.displayName ?? serverProfile?.username ?? 'Champion'}</h2>
-          <p className="note">Choose your path through the arcanum with a fully skinned, swap-friendly UI layer.</p>
           <div className="badges">
             <RankBadge rank={rankLabel} />
             <span className="badge">{runes} Runes</span>
-            <span className={`badge streak-badge streak-${streakTier}`}>Win Streak {record.streak}</span>
+            <span className={`badge streak-badge streak-${streakTier}`}>Streak {record.streak}</span>
           </div>
         </div>
 
         {gameInProgress && (
           <div className="game-resume-block">
-            <p className="note">You have a battle in progress vs <strong>{game.enemy.name}</strong> (Turn {game.turnNumber})</p>
+            <p className="note">Battle in progress vs <strong>{game.enemy.name}</strong> · Turn {game.turnNumber}</p>
             <div className="controls">
               <button className="primary" onClick={handleResumeBattle}>Resume Battle</button>
-              <button className="ghost" onClick={handleAbandonBattle}>Abandon &amp; Reset</button>
+              <button className="ghost" onClick={handleAbandonBattle}>Abandon</button>
             </div>
           </div>
         )}
@@ -68,32 +102,18 @@ export function HomeScreen() {
           ))}
         </div>
 
-        {toastMessage && (
-          <p className={`toast toast-${toastSeverity} toast-line`}>{toastMessage}</p>
-        )}
-      </article>
-
-      <div className="home-cards">
-        <article className={`section-card utility-card ${canClaimDailyReward ? 'claim-ready' : ''}`}>
-          <div className="section-head">
-            <h2>Quests</h2>
-            <span className={`deck-status ${canClaimDailyReward ? 'ready' : 'warning'}`}>{canClaimDailyReward ? 'Reward Ready' : 'Live'}</span>
-          </div>
-          <ul className="quest-list">
-            {questItems.map((item) => (
-              <li className="quest-item" key={item.label}>
-                <span className={`quest-check ${item.complete ? 'complete' : 'pending'}`} aria-hidden="true" />
-                <span>{item.label}</span>
-              </li>
+        <div className={`quest-summary ${canClaimDailyReward ? 'claim-ready' : ''} ${justClaimedDaily ? 'just-claimed' : ''}`}>
+          <div className="quest-pips" role="img" aria-label={`${questsDone} of ${questItems.length} quests complete`}>
+            {questItems.map((item, i) => (
+              <span key={i} className={`quest-pip ${item.complete ? 'complete' : 'pending'}`} title={item.label} />
             ))}
-          </ul>
-          <div className="controls">
-            <button className={canClaimDailyReward ? 'primary' : 'ghost'} onClick={() => openScreen('shop')}>
-              {canClaimDailyReward ? 'Collect Reward' : 'Open Shop'}
-            </button>
           </div>
-        </article>
-      </div>
+          <span className="quest-count">{questsDone}/{questItems.length} Quests</span>
+          <button className={canClaimDailyReward ? 'primary' : 'ghost'} onClick={() => openScreen('shop')}>
+            {canClaimDailyReward ? 'Collect Reward' : 'Shop'}
+          </button>
+        </div>
+      </article>
     </section>
   )
 }

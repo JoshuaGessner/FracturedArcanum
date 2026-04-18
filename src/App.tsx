@@ -183,6 +183,9 @@ function AppShell() {
   const [tourVisible, setTourVisible] = useState(false)
   const tourAutoTriggeredRef = useRef(false)
 
+  // ─── Phase 3L — Transient post-claim checkmark flag ──────────────────
+  const [justClaimedDaily, setJustClaimedDaily] = useState(false)
+
   // ─── Phase 1C — active battle/game state lives in GameProvider ───────
   const {
     preferredMode, setPreferredMode,
@@ -248,6 +251,8 @@ function AppShell() {
   const [dailyQuest, setDailyQuest] = useState('Win 1 ranked arena match')
   const [featuredMode, setFeaturedMode] = useState('Ranked Blitz')
   const [, setMaintenanceMode] = useState(false)
+  const [seasonName, setSeasonName] = useState('Season of Whispers')
+  const [seasonEnd, setSeasonEnd] = useState<string | null>(null)
   const [soundEnabled, setSoundEnabled] = useState(() => readStoredValue(STORAGE_KEYS.sound, true))
   const [ambientEnabled, setAmbientEnabled] = useState(() => readStoredValue(STORAGE_KEYS.ambient, false))
   const [gesturesEnabled, setGesturesEnabled] = useState(() => readStoredValue(STORAGE_KEYS.gestures, true))
@@ -620,14 +625,8 @@ function AppShell() {
 
     socket.on('connect', () => {
       setBackendOnline(true)
-      // 3P: only attempt auto-rejoin if there is actually a server
-      // battle to recover, and only if no rejoin is already in flight.
-      // The server safely no-ops unknown rejoin requests, but skipping
-      // the emit avoids a guaranteed `game:rejoin_failed` round-trip
-      // for every reconnect on the home/play screens.
-      if (!rejoinInFlightRef.current) {
-        rejoinInFlightRef.current = true
-        socket.emit('game:rejoin')
+      if (serverBattleActiveRef.current) {
+        setToastMessage('Connected. Restoring your live match…')
       }
     })
 
@@ -673,8 +672,10 @@ function AppShell() {
       rejoinInFlightRef.current = false
     })
 
-    socket.on('server:hello', (payload: { message: string }) => {
+    socket.on('server:hello', (payload: { message: string; seasonName?: string; seasonEnd?: string | null }) => {
       setMotd(payload.message)
+      if (payload.seasonName) setSeasonName(payload.seasonName)
+      if (payload.seasonEnd !== undefined) setSeasonEnd(payload.seasonEnd)
     })
 
     socket.on('server:role_changed', (payload: { role?: unknown }) => {
@@ -1809,6 +1810,8 @@ function AppShell() {
         if (data.ok) {
           setServerProfile((prev) => prev ? { ...prev, runes: data.runes ?? prev.runes, lastDaily: todayKey, totalEarned: data.totalEarned ?? prev.totalEarned } : prev)
           setToastMessage('Daily reward claimed: +50 Shards.')
+          setJustClaimedDaily(true)
+          window.setTimeout(() => setJustClaimedDaily(false), 2000)
           presentRewardCinema(
             buildDailyClaimSequence({ shards: 50, totalEarned: data.totalEarned }),
           )
@@ -2839,7 +2842,7 @@ function AppShell() {
     ownedThemes, selectedTheme, ownedCardBorders, selectedCardBorder,
     lastDailyClaim, accountRole, isAdminRole, isOwnerRole,
     rankLabel, totalGames, winRate, rankProgress, nextRankTarget, nextRewardLabel,
-    todayKey, canClaimDailyReward, totalOwnedCards,
+    todayKey, canClaimDailyReward, justClaimedDaily, totalOwnedCards,
     // Deck / collection handlers + derived (state lives in ProfileProvider)
     selectedDeckSize, deckReady, savedDecks, activeDeckId,
     handleCreateDeck, handleRenameDeck, handleDeleteDeck, handleSelectDeck,
@@ -2860,7 +2863,7 @@ function AppShell() {
     gesturesEnabled, setGesturesEnabled,
     hapticsEnabled, setHapticsEnabled,
     // Live service
-    backendOnline, dailyQuest, featuredMode,
+    backendOnline, dailyQuest, featuredMode, seasonName, seasonEnd,
     // Queue handlers (state lives in QueueProvider)
     handleStartQueue, handleCancelQueue, handleAcceptQueue,
     // Battle handlers + derived (state lives in GameProvider)
@@ -3072,7 +3075,7 @@ function AppShell() {
         <section className="nav-strip section-card">
           <div className="season-progress-block">
             <div>
-              <p className="eyebrow">Season of Whispers</p>
+              <p className="eyebrow">{seasonName}</p>
               <h2>{rankLabel} League</h2>
               <p className="note">Climb the live ladder to reach the next vault reward.</p>
             </div>

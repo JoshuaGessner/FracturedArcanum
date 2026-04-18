@@ -209,6 +209,19 @@ export function getCompletionPercent(current: number, total: number): number {
   return Math.max(0, Math.min(100, Math.round((current / total) * 100)))
 }
 
+export function getRarityCompletion(
+  collection: Record<string, number>,
+  library: { id: string; rarity: string }[],
+): Record<string, { owned: number; total: number }> {
+  const result: Record<string, { owned: number; total: number }> = {}
+  for (const card of library) {
+    if (!result[card.rarity]) result[card.rarity] = { owned: 0, total: 0 }
+    result[card.rarity].total++
+    if ((collection[card.id] ?? 0) > 0) result[card.rarity].owned++
+  }
+  return result
+}
+
 export function getComplaintSeverityTone(severity: string): 'severity-low' | 'severity-normal' | 'severity-high' | 'severity-urgent' {
   switch (severity.toLowerCase()) {
     case 'low':

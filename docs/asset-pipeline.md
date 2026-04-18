@@ -1,20 +1,20 @@
 # Fractured Arcanum Asset Pipeline
 
-This project uses a commercial-safe, fully local SVG generation pipeline for both brand art and the Phase 3 UI skinning system.
+This project uses a commercial-safe, fully local SVG generation pipeline for both the brand identity and the full Phase 3 UI direction.
 
 ## Current verified output
 
-After the latest regeneration pass, the pipeline produces:
+After the latest regeneration pass, the shipped output includes:
 
-- 168 generated assets total
-- 72 UI assets under [public/generated/ui](public/generated/ui)
+- 173 generated assets total
+- 77 UI assets under [public/generated/ui](public/generated/ui)
 - 90 card illustrations under [public/generated/cards](public/generated/cards)
 - 6 root brand and shared art files at the public root
 - a manifest at [public/generated/asset-manifest.json](public/generated/asset-manifest.json)
 
 Run the generator with:
 
-- npm run assets:generate
+- `npm run assets:generate`
 
 ## Asset policy
 
@@ -26,16 +26,16 @@ Run the generator with:
 
 ## Asset categories
 
-The generator now covers all major release surfaces:
+The generator covers all release surfaces used by the current client:
 
-- screen backgrounds
-- navigation tile art
-- rank insignia
-- pack covers
-- rarity gems
+- full-screen scene backgrounds
+- home and battle navigation tile art
+- rank insignia crests
+- pack covers and ceremony burst art
+- rarity gems and badge ribbons
 - UI chrome such as panel frames, button frames, dividers, pips, and stat icons
 - effect icons for card abilities
-- battle and reward overlays
+- battle, reward, and ceremony overlays
 - ambient particle textures
 - full card illustration SVGs for the live playable card set
 
@@ -54,7 +54,7 @@ If art direction changes later, update the generator output and registry first i
 ## Output layout
 
 - [public/generated/cards](public/generated/cards) — generated card art by card id
-- [public/generated/ui](public/generated/ui) — backgrounds, tiles, ranks, packs, gems, chrome, effects, overlays, particles, banners
+- [public/generated/ui](public/generated/ui) — backgrounds, tiles, ranks, packs, gems, chrome, effects, overlays, particles, banners, and ceremony support art
 - [public/generated/asset-manifest.json](public/generated/asset-manifest.json) — source-of-truth manifest for shipped generated art
 
 ## Release workflow
@@ -66,7 +66,7 @@ If art direction changes later, update the generator output and registry first i
    - rank badges
    - rarity gems
    - effect icons
-   - pack art
+   - pack art and ceremony assets
    - button and panel chrome
    - screen background overlays
 5. Confirm the UI remains readable at mobile width.
@@ -82,6 +82,16 @@ When a new card is introduced:
 4. confirm any aliases or fallbacks in [src/constants.ts](src/constants.ts) still map correctly
 5. test the card in battle, collection, inspect modal, and pack reveal surfaces
 
+## Adding new UI assets
+
+When new UI chrome or ceremony art is needed:
+
+1. add the SVG blueprint logic to [scripts/generate-brand-assets.mjs](scripts/generate-brand-assets.mjs)
+2. regenerate assets and review [public/generated/asset-manifest.json](public/generated/asset-manifest.json)
+3. register the semantic role in [src/constants.ts](src/constants.ts) if it is reused across screens
+4. route repeated visuals through shared primitives such as [src/components/AssetBadge.tsx](src/components/AssetBadge.tsx)
+5. verify reduced-motion and mobile readability still hold
+
 ## Replaceability rules
 
 To keep the UI easy to reskin later:
@@ -93,7 +103,7 @@ To keep the UI easy to reskin later:
 
 ## Audio strategy
 
-Release audio remains procedural and synthesized in the browser. The current set covers navigation, taps, summons, attacks, bursts, match found, victory, defeat, pack and reward moments without shipping external media files.
+Release audio remains procedural and synthesized in the browser. The current set covers navigation, taps, summons, attacks, bursts, match found, victory, defeat, queue recovery, pack ceremony, rank-up, reward cinema, and scene transitions without shipping external media files.
 
 ## Prompt style guide
 

@@ -1,14 +1,15 @@
-# Styles Index — `src/App.css` (3,819 lines)
+# Styles Index — `src/App.css` (5,440 lines)
 
 ## Overview
 
-`src/App.css` now contains the full Phase 3 presentation layer:
+`src/App.css` contains the finalized Phase 3 presentation layer:
 
+- one-scene app shell and viewport ownership rules
 - per-screen illustrated backdrops
 - semantic fantasy chrome for cards, buttons, panels, and dividers
-- queue, reward, and battle ceremony surfaces
-- collection, social, shop, and settings redesign blocks
-- gamification and urgency effects
+- queue, reward, onboarding, pack ceremony, and battle surfaces
+- collection, social, shop, and settings density passes
+- gamification, urgency, and celebration effects
 - responsive and reduced-motion safeguards at the end of the file
 
 ## Major section map
@@ -16,52 +17,40 @@
 | Section | Approx. Range | Key Classes |
 |---------|---------------|-------------|
 | Root tokens | 1–90 | `:root`, spacing, palette, motion variables |
-| App shell and ambient backdrop | 90–180 | `.app-shell`, ambient gradients, shell motion |
-| Screen transitions | 180–250 | `.screen-panel.active`, forward, back, lateral, battle entry classes |
-| Screen backdrops | 180–260 | `.home-screen.active::before` through `.battlefield.active::before` |
-| Navigation and nav tiles | 260–380 | `.bottom-nav`, `.nav-chip`, `.nav-tile-*`, urgency notice dot |
-| Brand and topbar | 380–460 | `.topbar-art`, `.brand-logo`, `.top-action-toggle` |
-| Season and hero presentation | 460–560 | `.season-progress-*`, `.profile-showcase`, `.battle-objective` |
-| Badges, status, and gamified strips | 560–720 | `.badge`, `.deck-status`, `.streak-badge`, leaderboard rows |
-| Buttons and action chrome | 720–820 | `.primary`, `.secondary`, `.ghost`, `.btn-danger` |
-| Battle HUD and arena status | 820–980 | `.battle-topbar`, `.battle-command-dais`, `.battle-status-strip` |
-| Pips and enemy-turn banner | 980–1110 | `.pip-*`, `.enemy-turn-banner-*` |
-| Board, slots, rarity, effects | 1110–1400 | `.board-grid`, `.slot`, `.rarity-*`, `.effect-badge` |
-| Hand fan and card presentation | 1280–1500 | `.hand-fan-stage`, `.hand-fan-grid`, `.hand-card`, overlays |
-| Summary and reward surfaces | 1500–1700 | `.summary-card`, `.reward-summary-grid`, `.season-framing` |
-| Queue, battle intro, reward overlays | 1700–1960 | `.queue-overlay`, `.intro-modal`, `.reward-modal`, VS art |
-| Play, collection, shop, settings chrome | 1960–3200 | mode cards, collection ring, pack reveal, settings desk, admin console |
-| Modal and support systems | 2860–3045 | confirmation modal, trade chips, audit expansion |
-| Responsive overrides | 3045–end | tablet, mobile, small phone, reduced motion |
+| App shell and viewport ownership | 90–240 | `.app-shell`, `.scene-stage`, `.screen-panel.active`, shell motion |
+| Screen backdrops and transitions | 240–380 | scene `::before` backgrounds, transition classes, nav tile framing |
+| Brand, topbar, and season progress | 380–690 | `.topbar-art`, `.brand-logo`, `.season-progress-*`, hero strips |
+| Status, badges, buttons, and game chrome | 690–1120 | `.badge`, `.deck-status`, `.streak-badge`, `.primary`, `.ghost`, pips |
+| Battle HUD, board, hand, and reactions | 1120–1680 | duel ribbon, board slots, drag states, attack telegraph, hand fan |
+| Reward, queue, and ceremony surfaces | 1680–2120 | vault urgency, pack reveal, battle intro, reward cinema, banners |
+| Screen-specific density blocks | 2120–3200 | play, collection, social, shop, settings, admin surfaces |
+| Overlays, tours, and support systems | 3200–4080 | confirm modal, onboarding, pack ceremony, reward cinema, toast stack |
+| Reduced-motion and polish overrides | 4080–end | responsive breakpoints, reduced motion, final shell polish |
 
 ## Key visual systems
 
-### Screen backgrounds
-Every main screen uses a dedicated generated SVG background wired through a scoped `::before` rule:
+### Scene shell
+Every primary screen now renders inside a fixed-height shell:
 
-- home
-- play
-- collection
-- social
-- shop
-- settings
-- battle
+- the app owns the viewport height
+- only the active content surface may scroll vertically
+- battle keeps vertical scroll minimized while preserving horizontal hand movement
+- secondary rails such as decks, themes, borders, and reveals stay horizontal
 
 ### Chrome strategy
-- panels use `panel-frame.svg`
+- panels use a single intentional chrome owner instead of nested frames
 - action buttons use `btn-primary.svg`, `btn-ghost.svg`, and `btn-danger.svg`
 - dividers use `divider-rune.svg`
 - mana and momentum are art-backed pips rather than plain circles
 
-### Gamification and reward cues
-The stylesheet now includes:
+### Gamification and ceremony cues
+The stylesheet includes:
 
-- streak heat badge states
-- reward urgency pulses
-- collection progress rings
-- pack reveal glow layers
-- victory summary tiles
-- battle intro and reward ceremony framing
+- streak heat badge states with ember and inferno treatment
+- reward urgency pulses and post-claim confirmation
+- collection progress rings and rarity completion celebration
+- pack reveal glow layers and ceremony motion
+- rank-up and reward-cinema framing
 
 ## Keyframe animations in active use
 
@@ -69,8 +58,11 @@ The stylesheet now includes:
 |-----------|---------|
 | `ambientFloat` | Background drift and shell ambience |
 | `logoPulse` | Brand logo pulse |
-| `banner-pulse` | Enemy-turn banner emphasis |
-| `selectPulse` | Selected unit targeting emphasis |
+| `fireGlow` | High-streak inferno emphasis |
+| `emberFloat` | Streak ember motion |
+| `claimCheck` | Daily reward satisfied checkmark |
+| `raritySpark` | Collection rarity completion celebration |
+| `selectPulse` | Selected unit and targeting emphasis |
 | `cardPlay` | Card and slot entrance motion |
 | `damageFlash` | Damage feedback on impacted units |
 | `deathFade` | Unit death dissolve |
@@ -85,7 +77,7 @@ The stylesheet now includes:
 ## Responsive and motion policy
 
 - `@media (max-width: 900px)` stacks multi-column layouts into single-column reading order
-- `@media (max-width: 640px)` tightens battle, shop, and form spacing for touch comfort
+- `@media (max-width: 640px)` tightens screen chrome, converts secondary stacks to rails, and caps long admin/social lists as internal scroll surfaces
 - `@media (max-width: 400px)` further compresses dense card and header surfaces
 - `@media (prefers-reduced-motion: reduce)` disables decorative animations and pulse effects while preserving state clarity
 

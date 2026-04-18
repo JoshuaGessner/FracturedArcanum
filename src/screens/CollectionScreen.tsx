@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react'
 import {
   CARD_LIBRARY,
   MAX_COPIES,
@@ -7,12 +8,13 @@ import {
   getDeckSize,
 } from '../game'
 import { DECK_MAX_TOTAL_DISPLAY, DECK_PRESETS } from '../constants'
-import { cardArtPath, getCompletionPercent, handleCardArtError } from '../utils'
+import { cardArtPath, getCompletionPercent, getRarityCompletion, handleCardArtError } from '../utils'
 import { EffectBadge, RarityBadge, StatIcon } from '../components/AssetBadge'
 import { useAppShell, useGame, useProfile, useQueue } from '../contexts'
+import { feedback } from '../feedback'
 
 export function CollectionScreen() {
-  const { activeScreen, loggedIn, openScreen } = useAppShell()
+  const { activeScreen, loggedIn, setToastMessage, soundEnabled, hapticsEnabled } = useAppShell()
   const {
     deckReady, selectedDeckSize, savedDecks, activeDeckId,
     handleCreateDeck, handleSelectDeck, handleRenameDeck, handleDeleteDeck,
@@ -23,50 +25,88 @@ export function CollectionScreen() {
   const { handleStartQueue, queueState } = useQueue()
   const ownedUniqueCards = CARD_LIBRARY.filter((card) => (collection[card.id] ?? 0) > 0).length
   const collectionCompletion = getCompletionPercent(ownedUniqueCards, CARD_LIBRARY.length)
-  const collectionCircumference = 2 * Math.PI * 28
+  const collectionCircumference = 2 * Math.PI * 20
   const collectionOffset = collectionCircumference * (1 - collectionCompletion / 100)
+  const rarityStats = getRarityCompletion(collection, CARD_LIBRARY)
+  const previousCompletionRef = useRef<Record<string, boolean> | null>(null)
+  const [celebratingRarity, setCelebratingRarity] = useState<string | null>(null)
+
+  useEffect(() => {
+    const completionState = Object.fromEntries(
+      Object.entries(rarityStats).map(([rarity, stats]) => [rarity, stats.total > 0 && stats.owned >= stats.total]),
+    )
+
+    if (!previousCompletionRef.current) {
+      previousCompletionRef.current = completionState
+      return
+    }
+
+    const newlyCompleted = Object.entries(completionState).find(
+      ([rarity, complete]) => complete && !previousCompletionRef.current?.[rarity],
+    )
+
+    previousCompletionRef.current = completionState
+
+    if (!newlyCompleted) {
+      return
+    }
+
+    const [rarity] = newlyCompleted
+    const startTimerId = window.setTimeout(() => {
+      setCelebratingRarity(rarity)
+      feedback('claim', soundEnabled, hapticsEnabled)
+      setToastMessage(`${rarity.charAt(0).toUpperCase() + rarity.slice(1)} collection set complete!`)
+    }, 0)
+    const clearTimerId = window.setTimeout(() => {
+      setCelebratingRarity((current) => (current === rarity ? null : current))
+    }, 1600)
+    return () => {
+      window.clearTimeout(startTimerId)
+      window.clearTimeout(clearTimerId)
+    }
+  }, [hapticsEnabled, rarityStats, setToastMessage, soundEnabled])
 
   return (
     <section className={`meta-grid deck-focus collection-screen screen-panel ${activeScreen === 'collection' ? 'active' : 'hidden'}`}>
       <article className="section-card">
-        <div className="section-head">
-          <div>
-            <h2>Deck Builder</h2>
-            <p className="note">Choose 10–16 cards, with up to 3 copies of each. Saved decks sync to your account.</p>
-          </div>
-          <span className={`deck-status ${deckReady ? 'ready' : 'warning'}`}>
-            {deckReady ? `Deck ready · ${selectedDeckSize}` : `Add more cards · ${selectedDeckSize}/${MIN_DECK_SIZE}`}
-          </span>
-        </div>
-
         <div className="collection-hero">
           <div className="collection-progress-ring" aria-label={`Collection completion ${collectionCompletion}%`}>
             <svg className="collection-progress-svg" viewBox="0 0 100 100" role="presentation" aria-hidden="true">
-              <circle className="collection-progress-track" cx="50" cy="50" r="28" />
+              <circle className="collection-progress-track" cx="50" cy="50" r="20" />
               <circle
                 className="collection-progress-value"
                 cx="50"
                 cy="50"
-                r="28"
+                r="20"
                 style={{ strokeDasharray: collectionCircumference, strokeDashoffset: collectionOffset }}
               />
             </svg>
             <div className="collection-progress-core">
               <strong>{collectionCompletion}%</strong>
-              <span>{ownedUniqueCards}/{CARD_LIBRARY.length}</span>
             </div>
           </div>
-          <div className="collection-hero-copy">
-            <p className="note">Your library is expanding. Swap decks, tune your mana curve, and keep chasing missing rarities.</p>
-            <div className="badges">
-              <span className="badge">Owned {ownedUniqueCards}/{CARD_LIBRARY.length}</span>
-              <span className="badge">Active Deck {selectedDeckSize}</span>
-              <span className="badge">{deckReady ? 'Battle-ready' : 'Needs more cards'}</span>
-            </div>
+          <div className="collection-hero-stats">
+            <strong>Deck Builder</strong>
+            <span className="badge">{ownedUniqueCards}/{CARD_LIBRARY.length} owned</span>
+            <span className={`deck-status ${deckReady ? 'ready' : 'warning'}`}>
+              {deckReady ? `Ready · ${selectedDeckSize}` : `${selectedDeckSize}/${MIN_DECK_SIZE}`}
+            </span>
+          </div>
+          <div className="collection-rarity-chips">
+            {(['common', 'rare', 'epic', 'legendary'] as const).map((r) => {
+              const s = rarityStats[r]
+              if (!s) return null
+              return (
+                <span
+                  key={r}
+                  className={`rarity-chip rarity-${r} ${s.owned >= s.total ? 'rarity-complete' : ''} ${celebratingRarity === r ? 'rarity-celebrate' : ''}`}
+                >
+                  <RarityBadge rarity={r} /> {s.owned}/{s.total}
+                </span>
+              )
+            })}
           </div>
         </div>
-
-        <div className="rune-divider" aria-hidden="true" />
 
         {loggedIn && (
           <div className="deck-roster" aria-label="Saved decks">
@@ -120,8 +160,6 @@ export function CollectionScreen() {
             </ul>
           </div>
         )}
-
-        <div className="rune-divider" aria-hidden="true" />
 
         <div className="builder-toolbar">
           <label className="builder-toggle">
@@ -197,8 +235,6 @@ export function CollectionScreen() {
           </div>
         )}
 
-        <div className="rune-divider" aria-hidden="true" />
-
         <div className="builder-grid">
           {CARD_LIBRARY.filter((card) => {
             if (builderFilter.rarity !== 'all' && card.rarity !== builderFilter.rarity) return false
@@ -265,42 +301,27 @@ export function CollectionScreen() {
           })}
         </div>
 
-        <div className="controls">
+        <div className="collection-action-row">
           <button className="primary" onClick={() => startMatch()} disabled={!deckReady}>
-            Play With This Deck
+            Play Deck
           </button>
           <button className="secondary" onClick={handleStartQueue} disabled={!deckReady || queueState !== 'idle'}>
             Play Online
           </button>
-          <button className="ghost" onClick={() => openScreen('home')}>
-            Back to Home
-          </button>
         </div>
 
-        <div className="rune-divider" aria-hidden="true" />
-
-        <div className="deck-quick-battle">
-          <div className="section-head compact">
-            <div>
-              <h3>Quick Battle Templates</h3>
-              <p className="note">
-                Try a curated full deck against the AI. Templates do not require ownership and are not saved
-                to your collection — perfect for sampling new strategies.
-              </p>
-            </div>
-          </div>
-          <div className="controls preset-row">
-            {DECK_PRESETS.map((preset) => (
-              <button
-                className="ghost"
-                key={preset.name}
-                onClick={() => handleQuickBattle(preset.name, preset.config)}
-                title={`Instantly battle the AI using a curated ${preset.name} deck`}
-              >
-                ⚔ {preset.name}
-              </button>
-            ))}
-          </div>
+        <div className="collection-quick-strip">
+          <strong>Templates</strong>
+          {DECK_PRESETS.map((preset) => (
+            <button
+              className="ghost mini"
+              key={preset.name}
+              onClick={() => handleQuickBattle(preset.name, preset.config)}
+              title={`Battle AI with a curated ${preset.name} deck`}
+            >
+              ⚔ {preset.name}
+            </button>
+          ))}
         </div>
       </article>
     </section>

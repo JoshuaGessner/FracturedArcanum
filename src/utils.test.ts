@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { getCompletionPercent, getComplaintSeverityTone, getEffectIconPath, getHandFanTilt, getPackArtPath, getRankAssetPath, getRarityGemPath, getScreenTransitionClass, getScreenTransitionSound, getStreakTier } from './utils'
+import { getCompletionPercent, getComplaintSeverityTone, getEffectIconPath, getHandFanTilt, getPackArtPath, getRankAssetPath, getRarityCompletion, getRarityGemPath, getScreenTransitionClass, getScreenTransitionSound, getStreakTier } from './utils'
 
 describe('UI asset helpers', () => {
   it('resolves rank insignia from labels and ratings', () => {
@@ -41,6 +41,20 @@ describe('UI asset helpers', () => {
     expect(getCompletionPercent(21, 70)).toBe(30)
     expect(getCompletionPercent(80, 70)).toBe(100)
     expect(getCompletionPercent(5, 0)).toBe(0)
+  })
+
+  it('derives owned-vs-total counts per rarity bucket', () => {
+    const result = getRarityCompletion(
+      { a: 1, b: 0, c: 2 },
+      [
+        { id: 'a', rarity: 'common' },
+        { id: 'b', rarity: 'common' },
+        { id: 'c', rarity: 'rare' },
+      ],
+    )
+
+    expect(result.common).toEqual({ owned: 1, total: 2 })
+    expect(result.rare).toEqual({ owned: 1, total: 1 })
   })
 
   it('maps complaint severities to stable UI tones', () => {

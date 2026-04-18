@@ -1,10 +1,10 @@
 # Client UI Index
 
-The client is now fully organized around a thin provider tree, typed slice hooks, and seven presentational screens. The current UI layer is heavily asset-backed and designed to stay easy to reskin later.
+The client is organized around a thin provider tree, typed slice hooks, and seven presentational screens. The shipped UI layer is asset-backed, mobile-first, and built around a one-scene shell model.
 
 ## Provider and shell structure
 
-```
+```text
 App
 └── QueueProvider
     └── ProfileProvider
@@ -13,7 +13,9 @@ App
                 └── AppShell
                     ├── TopBar
                     ├── BattleIntroOverlay
-                    ├── RewardOverlay
+                    ├── RewardCinemaOverlay
+                    ├── OnboardingTour
+                    ├── PackCeremonyOverlay
                     ├── ToastStack / modals
                     ├── 7 mounted screens
                     └── NavBar
@@ -23,11 +25,11 @@ App
 
 | File | Lines | Purpose |
 |------|------:|---------|
-| `src/App.tsx` | 2,905 | Provider composition, AppShell state/effects, screen routing, handler wiring |
-| `src/AppShellContext.ts` | 222 | Shared shell context type and access |
+| `src/App.tsx` | 3,156 | Provider composition, AppShell state/effects, screen routing, reconnect recovery, and shared handler wiring |
+| `src/AppShellContext.ts` | 244 | Shared shell context type and access |
 | `src/constants.ts` | 284 | Static UI data and semantic asset registry |
-| `src/utils.ts` | 246 | Pure helpers for asset lookups, transitions, completion, severity, streaks, and hand fan tilt |
-| `src/audio.ts` | 160 | Synthesized sound library |
+| `src/utils.ts` | 277 | Pure helpers for asset lookups, transitions, completion, severity, streaks, and hand fan tilt |
+| `src/audio.ts` | 338 | Synthesized sound library |
 
 ## Screen index
 
@@ -35,13 +37,13 @@ All screens are propless and read from the typed hooks in `src/contexts/`.
 
 | Screen | Lines | Hooks used | Key visual elements |
 |--------|------:|------------|---------------------|
-| `HomeScreen.tsx` | 97 | `useAppShell`, `useGame`, `useProfile` | season framing, reward-ready quests, nav tiles, streak badge, resume battle |
-| `PlayScreen.tsx` | 164 | `useGame`, `useQueue` | mode cards, difficulty chips, queue portal, VS found banner |
-| `CollectionScreen.tsx` | 308 | `useProfile`, `useGame` | collection ring, rune dividers, rarity gem filters, deck forge cards |
-| `SocialScreen.tsx` | 428 | `useAppShell`, `useProfile`, `useQueue`, `useSocial` | guild command hero, leaderboard, live challenge CTA, clan and trade surfaces |
-| `ShopScreen.tsx` | 302 | `useAppShell`, `useGame`, `useProfile` | reward vault urgency, theme and border cards, pack reveal stage |
-| `SettingsScreen.tsx` | 600 | `useAppShell`, `useProfile` | scribe-desk hero, preference tiles, complaint desk, admin console |
-| `BattleScreen.tsx` | 376 | `useAppShell`, `useGame`, `useProfile` | command-dais HUD, enemy-turn banner, frontlines, reward summary, hand-fan layout |
+| `HomeScreen.tsx` | 119 | `useAppShell`, `useGame`, `useProfile` | season framing, reward-ready quests, streak fire, nav tiles, resume battle |
+| `PlayScreen.tsx` | 140 | `useAppShell`, `useGame`, `useProfile`, `useQueue` | mode cards, difficulty chips, queue portal, VS found banner, live ladder strip |
+| `CollectionScreen.tsx` | 329 | `useAppShell`, `useGame`, `useProfile`, `useQueue` | collection ring, rarity completion chips, deck forge cards, breakdown flow |
+| `SocialScreen.tsx` | 391 | `useAppShell`, `useProfile`, `useQueue`, `useSocial` | command hero, leaderboard, friend challenge CTA, clan and trade surfaces |
+| `ShopScreen.tsx` | 321 | `useAppShell`, `useGame`, `useProfile` | reward vault urgency, theme and border cards, pack ceremony and reveal summary |
+| `SettingsScreen.tsx` | 565 | `useAppShell`, `useProfile` | compact preference hero, complaint desk, and role-gated admin console |
+| `BattleScreen.tsx` | 780 | `useAppShell`, `useGame`, `useProfile` | slim duel ribbon, board-first arena, drag-to-play, attack arrow, hand-fan layout |
 
 ## Shared components
 
@@ -49,12 +51,14 @@ All screens are propless and read from the typed hooks in `src/contexts/`.
 |-----------|------:|---------|
 | `src/components/AssetBadge.tsx` | 66 | Shared effect, rarity, rank, stat, and pack visuals |
 | `src/components/BattleIntroOverlay.tsx` | 34 | Cinematic battle-entry overlay |
-| `src/components/RewardOverlay.tsx` | 89 | Victory ceremony and reward summary overlay |
+| `src/components/RewardCinemaOverlay.tsx` | 238 | Unified reward presentation across battle, daily, pack, and rank-up moments |
+| `src/components/PackCeremonyOverlay.tsx` | 303 | Full-screen pack opening ceremony |
+| `src/components/OnboardingTour.tsx` | 303 | First-launch and replayable spotlight tour |
 | `src/components/TopBar.tsx` | 48 | Shell header and device actions |
-| `src/components/NavBar.tsx` | 32 | Bottom 6-tab navigation |
-| `src/components/CardInspectModal.tsx` | 56 | Long-press card inspect modal |
-| `src/components/ConfirmModal.tsx` | 61 | Shared confirmation surface |
-| `src/components/ToastStack.tsx` | 18 | Toast renderer |
+| `src/components/NavBar.tsx` | 33 | Bottom 6-tab navigation |
+| `src/components/CardInspectModal.tsx` | 62 | Long-press card inspect modal |
+| `src/components/ConfirmModal.tsx` | 79 | Shared confirmation surface |
+| `src/components/ToastStack.tsx` | 22 | Toast renderer |
 
 ## Navigation flow map
 
@@ -66,7 +70,7 @@ All screens are propless and read from the typed hooks in `src/contexts/`.
 | Play / Settings / Shop / Social | Home | back |
 | Battle result | Home or replay | battle exit / replay loop |
 
-The transition class selection is centralized in `getScreenTransitionClass()` inside `src/utils.ts`.
+The transition class selection is centralized in `getScreenTransitionClass()` inside `src/utils.ts`, and swipe gestures route through the same neighbor mapping.
 
 ## Screen background mapping
 
@@ -82,47 +86,30 @@ The transition class selection is centralized in `getScreenTransitionClass()` in
 
 ## Current visual systems
 
-### Main shell
+### Scene shell
+- `100dvh` app shell with no body scroll
+- active screen owns the content scroll region
+- bottom nav and header stay docked
+
+### Main shell and feedback
 - generated nav tiles and bottom nav chrome
-- topbar branding and control actions
-- season progress and reward urgency
+- topbar branding and device actions
+- scene transitions, ambient audio, and tactile feedback wiring
 
-### Play flow
-- mode card chooser
-- queue portal search state
-- opponent found VS reveal
-
-### Collection flow
-- completion ring
-- rune dividers
-- gem-based rarity filters
-- richer deck roster presentation
-
-### Social flow
-- guild command hero card
-- leaderboard rows with rank art
-- live friend challenge actions
-- clan and trading surfaces
-
-### Shop flow
-- reward vault callout
-- pack art and reveal stage
-- border and theme presentation cards
-
-### Settings flow
-- scribe-desk preference tiles
-- complaint severity seals
-- admin analytics, user roles, and audit views
+### Reward and ceremony flow
+- unified reward cinema overlay
+- daily claim and rank-up beats
+- pack ceremony overlay with rarity reveals
 
 ### Battle flow
 - cinematic VS intro
-- enemy-turn banner with crest styling
-- hand-fan layout
-- victory and reward summary overlay
+- board-first arena layout
+- drag-to-play and attack telegraph
+- hero reactions, low-HP heartbeat, and hand-fan layout
 
 ## Conventions
 
 - screens stay mounted and are toggled with `screen-panel active` state classes
 - game logic stays in `src/game.ts`; UI only reads state and triggers handlers
-- shared UI art should route through the semantic asset registry and `AssetBadge` primitives
+- shared UI art routes through the semantic asset registry and `AssetBadge` primitives
 - long-press inspect still goes through `getLongPressProps()` from the game slice

@@ -80,6 +80,7 @@ export type AppShellContextValue = {
   nextRewardLabel: string
   todayKey: string
   canClaimDailyReward: boolean
+  justClaimedDaily: boolean
   totalOwnedCards: number
 
   // ─── Deck/collection handlers + derived (state in ProfileProvider) ────
@@ -150,6 +151,8 @@ export type AppShellContextValue = {
   backendOnline: boolean
   dailyQuest: string
   featuredMode: string
+  seasonName: string
+  seasonEnd: string | null
 
   // ─── Queue handlers (state in QueueProvider) ──────────────────────────
   handleStartQueue: () => void

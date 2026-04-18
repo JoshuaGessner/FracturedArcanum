@@ -64,44 +64,23 @@ export function ShopScreen() {
     <>
     <section className={`vault-grid shop-screen screen-panel ${activeScreen === 'shop' ? 'active' : 'hidden'}`}>
       <article className={`section-card utility-card reward-vault-card ${canClaimDailyReward ? 'claim-ready' : ''}`}>
-        <div className="section-head">
-          <div>
-            <h2>Reward Vault</h2>
-            <p className="note">Claim daily rewards, earn Shards, and build your card library over time.</p>
-          </div>
-          <span className="deck-status ready">Balance {runes}</span>
-        </div>
-
-        <img className="reward-art vault-hero" src="/generated/ui/reward-chest.svg" alt="Vault reward chest" />
-
-        <div className="badges">
-          <span className="badge">Next Reward {nextRewardLabel}</span>
-          <span className={`badge ${canClaimDailyReward ? 'new-card-badge' : ''}`}>Claim {canClaimDailyReward ? 'Ready' : 'Tomorrow'}</span>
-        </div>
-
-        {canClaimDailyReward && (
-          <div className="daily-claim-banner">
-            A fresh stipend is waiting in the vault — collect it before your next queue.
-          </div>
-        )}
-
-        <div className="controls">
-          <button className="primary" onClick={handleClaimDailyReward} disabled={!canClaimDailyReward}>
-            Claim Daily +50
+        <div className="shop-hero">
+          <strong>Reward Vault</strong>
+          <span className="badge">{runes} Shards</span>
+          <span className="badge">Next: {nextRewardLabel}</span>
+          <button className="primary mini" onClick={handleClaimDailyReward} disabled={!canClaimDailyReward}>
+            Claim +50
           </button>
-          <button className="ghost" onClick={() => startMatch('ai')}>
-            Earn More in Battle
+          <button className="ghost mini" onClick={() => startMatch('ai')}>
+            Earn in Battle
           </button>
         </div>
       </article>
 
       <article className="section-card utility-card">
-        <div className="section-head">
-          <div>
-            <h2>Cosmetic Themes</h2>
-            <p className="note">Unlock or equip visual themes for the app shell and profile framing.</p>
-          </div>
-          <span className="badge">Cosmetics Only</span>
+        <div className="section-head compact">
+          <h3>Cosmetic Themes</h3>
+          <span className="badge">Cosmetics</span>
         </div>
 
         <div className="theme-grid">
@@ -128,12 +107,9 @@ export function ShopScreen() {
       </article>
 
       <article className="section-card utility-card">
-        <div className="section-head">
-          <div>
-            <h2>Card Borders</h2>
-            <p className="note">Equip a cosmetic frame for every card you draw, in your deck builder, hand, and on the battlefield.</p>
-          </div>
-          <span className="badge">Cosmetics Only</span>
+        <div className="section-head compact">
+          <h3>Card Borders</h3>
+          <span className="badge">Cosmetics</span>
         </div>
 
         <div className="theme-grid">
@@ -166,11 +142,8 @@ export function ShopScreen() {
       </article>
 
       <article className="section-card utility-card">
-        <div className="section-head">
-          <div>
-            <h2>Card Packs & Collection</h2>
-            <p className="note">New accounts start with a starter library. Open packs with Shards to unlock more cards by rarity.</p>
-          </div>
+        <div className="section-head compact">
+          <h3>Card Packs</h3>
           <span className="badge">Owned {totalOwnedCards}</span>
         </div>
 
@@ -197,10 +170,7 @@ export function ShopScreen() {
         {openedPackCards.length > 0 && !ceremonyVisible && (
           <div className="pack-reveal-stage">
             <div className="section-head compact">
-              <div>
-                <h3>Latest Pack Reveal</h3>
-                <p className="note">New cards shimmer brighter. Duplicates are converted into Shards automatically.</p>
-              </div>
+              <h3>Latest Reveal</h3>
             </div>
             <div className="pack-reveal-grid">
               {openedPackCards.map((card, index) => {
@@ -236,15 +206,9 @@ export function ShopScreen() {
       </article>
 
       <article className="section-card utility-card">
-        <div className="section-head">
-          <div>
-            <h2>Break Down Excess Cards</h2>
-            <p className="note">
-              Reduce duplicate copies into Shards. Refunds are based on rarity (Common 5 · Rare 10 · Epic 25 · Legendary 100).
-              Cards required by any saved deck are protected.
-            </p>
-          </div>
-          <span className="badge">Owned {totalOwnedCards}</span>
+        <div className="section-head compact">
+          <h3>Break Down Cards</h3>
+          <span className="badge">{totalOwnedCards} owned</span>
         </div>
 
         {(() => {
@@ -270,12 +234,7 @@ export function ShopScreen() {
             })
 
           if (breakable.length === 0) {
-            return (
-              <p className="note">
-                No excess cards to break down right now. Open more packs to collect duplicates, or rebuild
-                your saved decks to free up copies.
-              </p>
-            )
+            return <p className="note">No excess cards to break down.</p>
           }
 
           return (

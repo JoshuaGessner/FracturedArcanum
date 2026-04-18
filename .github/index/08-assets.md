@@ -1,15 +1,15 @@
 # Generated Asset Pipeline
 
-All shipped visual art is produced by [scripts/generate-brand-assets.mjs](../../scripts/generate-brand-assets.mjs) and written into [public/generated](../../public/generated). The latest verified generation pass produced **168 manifest entries**.
+All shipped visual art is produced by [scripts/generate-brand-assets.mjs](../../scripts/generate-brand-assets.mjs) and written into [public/generated](../../public/generated). The latest verified generation pass produced **173 manifest entries**.
 
 ## Verified asset counts
 
 | Category | Count |
 |---------|------:|
 | Root brand and shared art | 6 |
-| UI assets | 72 |
+| UI assets | 77 |
 | Card art files | 90 |
-| Manifest entries | 168 |
+| Manifest entries | 173 |
 
 ## Regeneration
 
@@ -31,7 +31,7 @@ All shipped visual art is produced by [scripts/generate-brand-assets.mjs](../../
 | `bg-` | full-screen backdrops | `bg-play.svg`, `bg-settings.svg` |
 | `tile-` | home and battle navigation art | `tile-shop.svg`, `tile-battle.svg` |
 | `rank-` | rank insignia crests | `rank-gold.svg` |
-| `pack-` | pack cover art | `pack-legendary.svg` |
+| `pack-` | pack cover and ceremony burst art | `pack-legendary.svg`, `pack-burst.svg` |
 | `gem-` | rarity gem chips | `gem-epic.svg` |
 | `btn-` | button frames | `btn-primary.svg`, `btn-danger.svg` |
 | `pip-` | mana and momentum pips | `pip-mana-filled.svg` |
@@ -40,6 +40,7 @@ All shipped visual art is produced by [scripts/generate-brand-assets.mjs](../../
 | `overlay-` | cinematic battle and reward art | `overlay-victory.svg`, `overlay-vs.svg` |
 | `glow-` | rarity glow bursts | `glow-legendary.svg` |
 | `particle-` | ambient effect textures | `particle-rune.svg`, `particle-ember.svg` |
+| `ribbon-` | reveal ribbons and badge overlays | `ribbon-new.svg` |
 
 ## UI asset groups
 
@@ -48,13 +49,16 @@ All shipped visual art is produced by [scripts/generate-brand-assets.mjs](../../
 | Backgrounds | 7 | One for each main screen surface |
 | Navigation tiles | 6 | Play, collection, social, shop, settings, battle |
 | Rank insignia | 4 | Bronze, silver, gold, diamond |
-| Pack covers | 3 | Standard, premium, legendary |
+| Pack and ceremony art | 4 | Standard, premium, legendary, burst |
 | Rarity gems | 4 | Common through legendary |
-| UI chrome | 12 | Button frames, panel frame, divider, pips, stat icons |
+| Button frames | 3 | Primary, ghost, danger |
+| Mana and momentum pips | 4 | Empty and filled variants |
+| Stat icons | 3 | Health, attack, guard |
 | Effect icons | 20 | Card-effect icon set |
-| Overlays and glows | 8 | VS, victory, defeat, draw, plus rarity glow bursts |
+| Cinematic overlays | 7 | VS, victory, defeat, draw, arrow, hero crack, hero halo |
+| Rarity glow bursts | 4 | Common through legendary |
 | Particles | 4 | Rune, ember, dust, frost |
-| Banners and support art | 4 | Reward chest and ops banner surfaces |
+| Reveal ribbons | 1 | New-card ribbon |
 
 ## How the app consumes assets
 

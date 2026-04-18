@@ -1,6 +1,5 @@
-import { CARD_LIBRARY } from '../game'
 import { RankBadge } from '../components/AssetBadge'
-import { cardArtPath, formatTimestamp, getComplaintSeverityTone, handleCardArtError } from '../utils'
+import { formatTimestamp, getComplaintSeverityTone } from '../utils'
 import { useAppShell, useProfile } from '../contexts'
 import { feedback } from '../feedback'
 
@@ -10,7 +9,7 @@ export function SettingsScreen() {
     soundEnabled, setSoundEnabled,
     ambientEnabled, setAmbientEnabled,
     analyticsConsent, setAnalyticsConsent,
-    visitorId, featuredMode, backendOnline,
+    visitorId, backendOnline,
     complaintForm, setComplaintForm, complaintStatus, handleSubmitComplaint,
     adminLoading, adminOverview, adminError, refreshAdminOverview,
     adminSettings, setAdminSettings, handleSaveAdminSettings, handleUpdateComplaintStatus,
@@ -33,239 +32,111 @@ export function SettingsScreen() {
 
   return (
     <section className={`ops-grid settings-screen screen-panel ${activeScreen === 'settings' ? 'active' : 'hidden'}`}>
-      <article className="section-card hero-card spotlight-card settings-hero-card">
-        <div className="profile-showcase">
-          <div className="profile-medal">
-            <RankBadge rank={roleInsignia} />
+      <article className="section-card settings-hero-card">
+        <div className="settings-hero">
+          <RankBadge rank={roleInsignia} />
+          <strong>{playerDisplayName}</strong>
+          <span className="badge">{accountRole === 'owner' ? 'Owner' : accountRole === 'admin' ? 'Admin' : 'Player'}</span>
+          <span className="badge">{backendOnline ? 'Online' : 'Fallback'}</span>
+          <span className="badge">{visitorSuffix}</span>
+        </div>
+
+        <div className="settings-toggle-list">
+          <div className="settings-toggle-row">
+            <span>Arena Audio</span>
+            <button
+              className={`ghost mini ${soundEnabled ? '' : 'muted'}`}
+              onClick={() => {
+                const nextValue = !soundEnabled
+                setSoundEnabled(nextValue)
+                setToastMessage(nextValue ? 'Arena sound enabled.' : 'Arena sound muted.')
+              }}
+            >
+              {soundEnabled ? 'On' : 'Off'}
+            </button>
           </div>
-          <div className="hero-copy">
-            <p className="eyebrow">The scribe's desk</p>
-            <h2>{playerDisplayName}</h2>
-            <p className="note">
-              Tune your device preferences, review privacy posture, and monitor live service status from a single control desk.
-            </p>
+
+          <div className="settings-toggle-row">
+            <span>Ambient Loops</span>
+            <button
+              className={`ghost mini ${ambientEnabled && soundEnabled ? '' : 'muted'}`}
+              disabled={!soundEnabled}
+              onClick={() => {
+                const nextValue = !ambientEnabled
+                setAmbientEnabled(nextValue)
+                setToastMessage(nextValue ? 'Ambient loops enabled.' : 'Ambient loops disabled.')
+              }}
+            >
+              {!soundEnabled ? 'Audio off' : ambientEnabled ? 'On' : 'Off'}
+            </button>
+          </div>
+
+          <div className="settings-toggle-row">
+            <span>Analytics</span>
+            <button
+              className={`ghost mini ${analyticsConsent ? '' : 'muted'}`}
+              onClick={() => {
+                const nextValue = !analyticsConsent
+                setAnalyticsConsent(nextValue)
+                setToastMessage(nextValue ? 'Anonymous tracking enabled.' : 'Anonymous tracking paused.')
+              }}
+            >
+              {analyticsConsent ? 'On' : 'Off'}
+            </button>
+          </div>
+
+          <div className="settings-toggle-row">
+            <span>Scene Swipe</span>
+            <button
+              className={`ghost mini ${gesturesEnabled ? '' : 'muted'}`}
+              onClick={() => {
+                const nextValue = !gesturesEnabled
+                feedback('tap', soundEnabled, hapticsEnabled)
+                setGesturesEnabled(nextValue)
+                setToastMessage(nextValue ? 'Scene swipe enabled.' : 'Scene swipe disabled.')
+              }}
+            >
+              {gesturesEnabled ? 'On' : 'Off'}
+            </button>
+          </div>
+
+          <div className="settings-toggle-row">
+            <span>Haptics</span>
+            <button
+              className={`ghost mini ${hapticsEnabled ? '' : 'muted'}`}
+              onClick={() => {
+                const nextValue = !hapticsEnabled
+                feedback('tap', soundEnabled, nextValue)
+                setHapticsEnabled(nextValue)
+                setToastMessage(nextValue ? 'Haptics enabled.' : 'Haptics disabled.')
+              }}
+            >
+              {hapticsEnabled ? 'On' : 'Off'}
+            </button>
+          </div>
+
+          <div className="settings-toggle-row">
+            <span>Onboarding Tour</span>
+            <button
+              className="ghost mini"
+              onClick={() => {
+                feedback('tap', soundEnabled, hapticsEnabled)
+                startOnboardingTour()
+              }}
+            >
+              Replay
+            </button>
           </div>
         </div>
 
-        <div className="insight-grid settings-status-grid">
-          <div className="stat-tile">
-            <span className="mini-text">Role</span>
-            <strong>{accountRole === 'owner' ? 'Owner' : accountRole === 'admin' ? 'Admin' : 'Player'}</strong>
-          </div>
-          <div className="stat-tile">
-            <span className="mini-text">Live service</span>
-            <strong>{backendOnline ? 'Online' : 'Fallback'}</strong>
-          </div>
-          <div className="stat-tile">
-            <span className="mini-text">Featured mode</span>
-            <strong>{featuredMode}</strong>
-          </div>
-          <div className="stat-tile">
-            <span className="mini-text">Visitor key</span>
-            <strong>{visitorSuffix}</strong>
-          </div>
-        </div>
-
-        <div className="badges">
-          <span className="badge">@{serverProfile?.username ?? 'guest'}</span>
-          <span className="badge">{soundEnabled ? 'Sound ready' : 'Sound muted'}</span>
-          <span className={`deck-status ${analyticsConsent ? 'ready' : 'warning'}`}>
-            {analyticsConsent ? 'Anonymous analytics on' : 'Analytics paused'}
-          </span>
-        </div>
-
-        <div className="preference-grid">
-          <div className="preference-tile">
-            <div className="section-head">
-              <div>
-                <h3>Soundscape</h3>
-                <p className="note">Keep arena cues, reward stings, and battle feedback enabled on this device.</p>
-              </div>
-              <span className={`deck-status ${soundEnabled ? 'ready' : 'warning'}`}>{soundEnabled ? 'Enabled' : 'Muted'}</span>
-            </div>
-            <div className="controls">
-              <button
-                className={soundEnabled ? 'secondary' : 'primary'}
-                onClick={() => {
-                  const nextValue = !soundEnabled
-                  setSoundEnabled(nextValue)
-                  setToastMessage(nextValue ? 'Arena sound enabled on this device.' : 'Arena sound muted on this device.')
-                }}
-              >
-                {soundEnabled ? 'Mute Arena Audio' : 'Enable Arena Audio'}
-              </button>
-            </div>
-          </div>
-
-          <div className="preference-tile">
-            <div className="section-head">
-              <div>
-                <h3>Ambient atmosphere</h3>
-                <p className="note">Subtle scene-by-scene background beds — wind, distant crowd, parchment hum, war drum. Off by default; needs Arena Audio enabled.</p>
-              </div>
-              <span className={`deck-status ${ambientEnabled && soundEnabled ? 'ready' : 'warning'}`}>
-                {!soundEnabled ? 'Audio muted' : ambientEnabled ? 'Playing' : 'Silent'}
-              </span>
-            </div>
-            <div className="controls">
-              <button
-                className={ambientEnabled ? 'secondary' : 'primary'}
-                disabled={!soundEnabled}
-                onClick={() => {
-                  const nextValue = !ambientEnabled
-                  setAmbientEnabled(nextValue)
-                  setToastMessage(nextValue ? 'Ambient scene loops enabled.' : 'Ambient scene loops disabled.')
-                }}
-              >
-                {ambientEnabled ? 'Disable Ambient Loops' : 'Enable Ambient Loops'}
-              </button>
-            </div>
-          </div>
-
-          <div className="preference-tile">
-            <div className="section-head">
-              <div>
-                <h3>Privacy and traffic</h3>
-                <p className="note">Anonymous-only analytics help monitor traffic, stability, and queue flow.</p>
-              </div>
-              <span className={`deck-status ${analyticsConsent ? 'ready' : 'warning'}`}>
-                {analyticsConsent ? 'Tracking active' : 'Tracking paused'}
-              </span>
-            </div>
-            <div className="controls">
-              <button
-                className={analyticsConsent ? 'secondary' : 'primary'}
-                onClick={() => {
-                  const nextValue = !analyticsConsent
-                  setAnalyticsConsent(nextValue)
-                  setToastMessage(
-                    nextValue
-                      ? 'Anonymous traffic tracking enabled for quality monitoring.'
-                      : 'Anonymous traffic tracking paused on this device.',
-                  )
-                }}
-              >
-                {analyticsConsent ? 'Pause Anonymous Analytics' : 'Enable Anonymous Analytics'}
-              </button>
-            </div>
-          </div>
-
-          <div className="preference-tile">
-            <div className="section-head">
-              <div>
-                <h3>Onboarding tour</h3>
-                <p className="note">Replay the 5-step spotlight walkthrough that introduces every scene of the arena.</p>
-              </div>
-              <span className="deck-status ready">Available</span>
-            </div>
-            <div className="controls">
-              <button
-                className="primary"
-                onClick={() => {
-                  feedback('tap', soundEnabled, hapticsEnabled)
-                  startOnboardingTour()
-                }}
-              >
-                Replay onboarding tour
-              </button>
-            </div>
-          </div>
-
-          <div className="preference-tile">
-            <div className="section-head">
-              <div>
-                <h3>Swipe between scenes</h3>
-                <p className="note">Drag horizontally on touch devices to switch primary scenes. Battle is unaffected.</p>
-              </div>
-              <span className={`deck-status ${gesturesEnabled ? 'ready' : 'warning'}`}>
-                {gesturesEnabled ? 'Enabled' : 'Disabled'}
-              </span>
-            </div>
-            <div className="controls">
-              <button
-                className={gesturesEnabled ? 'secondary' : 'primary'}
-                onClick={() => {
-                  const nextValue = !gesturesEnabled
-                  feedback('tap', soundEnabled, hapticsEnabled)
-                  setGesturesEnabled(nextValue)
-                  setToastMessage(
-                    nextValue
-                      ? 'Swipe between scenes enabled.'
-                      : 'Swipe between scenes disabled.',
-                  )
-                }}
-              >
-                {gesturesEnabled ? 'Disable Scene Swipe' : 'Enable Scene Swipe'}
-              </button>
-            </div>
-          </div>
-
-          <div className="preference-tile">
-            <div className="section-head">
-              <div>
-                <h3>Tactile feedback</h3>
-                <p className="note">Vibrate on button taps, card plays, attack impacts, and pack reveals. Requires device vibration support.</p>
-              </div>
-              <span className={`deck-status ${hapticsEnabled ? 'ready' : 'warning'}`}>
-                {hapticsEnabled ? 'Enabled' : 'Disabled'}
-              </span>
-            </div>
-            <div className="controls">
-              <button
-                className={hapticsEnabled ? 'secondary' : 'primary'}
-                onClick={() => {
-                  const nextValue = !hapticsEnabled
-                  feedback('tap', soundEnabled, nextValue)
-                  setHapticsEnabled(nextValue)
-                  setToastMessage(
-                    nextValue
-                      ? 'Tactile feedback enabled.'
-                      : 'Tactile feedback disabled.',
-                  )
-                }}
-              >
-                {hapticsEnabled ? 'Disable Tactile Feedback' : 'Enable Tactile Feedback'}
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <p className="note">
-          Stored data is limited to a random guest id, aggregate traffic counters, match events,
-          and any complaint tickets you explicitly submit.
-        </p>
-
-        <div className="asset-preview-row">
-          {CARD_LIBRARY.slice(0, 4).map((card) => (
-            <img
-              key={card.id}
-              className="asset-preview-thumb"
-              src={cardArtPath(card.id)}
-              alt={`${card.name} artwork`}
-              loading="lazy"
-              onError={handleCardArtError}
-            />
-          ))}
-        </div>
-
-        <p className="note toast-line">{complaintStatus}</p>
+        {complaintStatus && <p className="note toast-line">{complaintStatus}</p>}
       </article>
 
       <article className="section-card utility-card complaint-desk-card">
-        <div className="section-head">
-          <div>
-            <h2>Player Complaint Desk</h2>
-            <p className="note">Submit gameplay bugs, fairness issues, or live service complaints.</p>
-          </div>
-          <div className="badges">
-            <span className="badge">Support</span>
-            <span className={`support-seal ${complaintTone}`}>{complaintForm.severity}</span>
-          </div>
+        <div className="section-head compact">
+          <h3>Complaint Desk</h3>
+          <span className={`support-seal ${complaintTone}`}>{complaintForm.severity}</span>
         </div>
-
-        <p className="note">Include the mode, result, and reproduction steps so the ops team can resolve issues quickly.</p>
-
-        <div className="rune-divider" aria-hidden="true" />
 
         <form className="complaint-form" onSubmit={(event) => void handleSubmitComplaint(event)}>
           <div className="form-row split-fields">
@@ -338,21 +209,8 @@ export function SettingsScreen() {
       </article>
 
       <article className="section-card admin-console scribe-console">
-        <img
-          className="admin-banner-art"
-          src="/generated/ui/admin-ops-banner.svg"
-          alt="Arena operations banner"
-        />
-
-        <div className="section-head">
-          <div>
-            <h2>Admin Operations Console</h2>
-            <p className="note">
-              {isAdminRole
-                ? 'Monitor traffic, review complaints, and control live service messaging.'
-                : 'This console is only available to owner and admin accounts.'}
-            </p>
-          </div>
+        <div className="section-head compact">
+          <h3>Admin Console</h3>
           <span className={`badge role-badge role-${accountRole}`}>
             {accountRole === 'owner' ? 'Owner' : accountRole === 'admin' ? 'Admin' : 'Player'}
           </span>
@@ -374,8 +232,6 @@ export function SettingsScreen() {
 
         {adminOverview && (
           <>
-            <div className="rune-divider" aria-hidden="true" />
-
             <div className="insight-grid">
               <div className="stat-tile">
                 <strong>{adminOverview.totals.uniqueVisitors}</strong>

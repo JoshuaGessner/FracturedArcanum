@@ -41,56 +41,27 @@ export function SocialScreen() {
   const profileName = serverProfile?.displayName ?? serverProfile?.username ?? 'Player'
   const onlineFriends = friends.filter((friend) => onlineFriendIds.has(friend.accountId)).length
   const pendingTrades = trades.filter((trade) => trade.status === 'pending').length
-  const uniqueOwnedCards = Object.values(collection).filter((count) => count > 0).length
 
   return (
     <section className={`home-screen social-screen screen-panel ${activeScreen === 'social' ? 'active' : 'hidden'}`}>
       <div className="home-cards">
-        <article className="section-card hero-card spotlight-card social-command-card">
-          <div className="profile-showcase">
-            <div className="profile-medal">
-              <RankBadge rank={rankLabel} />
-            </div>
-            <div className="hero-copy">
-              <p className="eyebrow">Guild command</p>
-              <h2>{profileName}</h2>
-              <p className="note">Track your allies, clan links, and live trade traffic from a single war table.</p>
-            </div>
-          </div>
-          <div className="insight-grid social-insight-grid">
-            <div className="stat-tile">
-              <span className="mini-text">Online allies</span>
-              <strong>{onlineFriends}</strong>
-            </div>
-            <div className="stat-tile">
-              <span className="mini-text">Pending trades</span>
-              <strong>{pendingTrades}</strong>
-            </div>
-            <div className="stat-tile">
-              <span className="mini-text">Clan status</span>
-              <strong>{clan ? clan.tag : 'Solo'}</strong>
-            </div>
-            <div className="stat-tile">
-              <span className="mini-text">Unique cards</span>
-              <strong>{uniqueOwnedCards}</strong>
-            </div>
-          </div>
-          <div className="badges">
-            <span className="badge">@{serverProfile?.username ?? 'guest'}</span>
-            <span className="badge">{profileName}</span>
+        <article className="section-card social-command-card">
+          <div className="social-hero">
             <RankBadge rank={rankLabel} />
-            <span className="badge">{totalGames} games</span>
-            <span className="badge">{winRate}% WR</span>
-            <span className="badge">{runes} Runes</span>
+            <strong>{profileName}</strong>
+            <span className="badge">@{serverProfile?.username ?? 'guest'}</span>
+            <span className="badge">{onlineFriends} online</span>
+            <span className="badge">{pendingTrades} trades</span>
+            <span className="badge">{clan ? clan.tag : 'Solo'}</span>
+            <span className="badge">{totalGames}G · {winRate}%W · {runes}R</span>
           </div>
         </article>
 
         <article className="section-card utility-card">
-          <div className="section-head">
-            <h2>Leaderboard</h2>
+          <div className="section-head compact">
+            <h3>Leaderboard</h3>
             <span className="badge">Top 5</span>
           </div>
-          <p className="note">Online ranked matches update the live ladder automatically.</p>
           <div className="leaderboard-list">
             {leaderboardEntries.slice(0, 5).map((entry, index) => {
               const entryGames = Math.max(1, entry.wins + entry.losses)
@@ -111,8 +82,8 @@ export function SocialScreen() {
         </article>
 
         <article className="section-card utility-card">
-          <div className="section-head">
-            <h2>Social Hub</h2>
+          <div className="section-head compact">
+            <h3>Social Hub</h3>
             <span className="badge">{friends.length} friend{friends.length === 1 ? '' : 's'}</span>
           </div>
 
@@ -184,8 +155,6 @@ export function SocialScreen() {
             )}
           </div>
 
-          <div className="rune-divider" aria-hidden="true" />
-
           {clan ? (
             <div className="social-clan-block">
               <div className="section-head">
@@ -247,19 +216,13 @@ export function SocialScreen() {
             </div>
           )}
 
-          <p className="note toast-line">{socialStatus}</p>
+          {socialStatus && <p className="note toast-line">{socialStatus}</p>}
 
-          <div className="rune-divider" aria-hidden="true" />
-
-          {/* ─── Card trading (friends only) ──────────────────── */}
           <div className="social-trade-block">
-            <div className="section-head">
+            <div className="section-head compact">
               <h3>Card Trades</h3>
-              <span className="badge">Friends Only</span>
+              <span className="badge">Friends</span>
             </div>
-            <p className="note">
-              Pick a friend, then add cards to each side of the trade. Up to 6 distinct cards per side, max 3 copies of any card. Trades expire 7 days after they're sent.
-            </p>
 
             <form className="form-stack" onSubmit={handleProposeTrade}>
               <label className="form-field">
