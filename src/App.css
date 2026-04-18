@@ -117,20 +117,42 @@ button:disabled {
 /* ─── App Shell ─────────────────────────────────────────────────── */
 
 .app-shell {
+  height: 100dvh;
   min-height: 100svh;
   width: 100%;
   max-width: 1180px;
   margin: 0 auto;
-  padding: 16px 16px calc(100px + env(safe-area-inset-bottom, 0px));
-  display: grid;
-  gap: 16px;
+  padding: 12px 12px calc(8px + env(safe-area-inset-bottom, 0px));
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
   position: relative;
+  overflow: hidden;
 }
 
 .app-shell.battle-shell-active {
   max-width: 1320px;
-  gap: 12px;
-  padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+  gap: 8px;
+  padding: 8px 8px calc(8px + env(safe-area-inset-bottom, 0px));
+}
+
+/* Lock dock chrome to natural height; only the scene stage may grow. */
+.app-shell > .topbar,
+.app-shell > .nav-strip,
+.app-shell > .bottom-nav,
+.app-shell > .update-banner,
+.app-shell > .challenge-banner {
+  flex: 0 0 auto;
+}
+
+/* The scene stage owns vertical scroll for the active screen. The shell
+   itself never scrolls so dock chrome (TopBar, NavBar) stays pinned. */
+.scene-stage {
+  flex: 1 1 auto;
+  min-height: 0;
+  position: relative;
+  display: flex;
+  flex-direction: column;
 }
 
 .app-shell::before {
@@ -166,6 +188,41 @@ button:disabled {
 .screen-panel.active {
   animation: screenIn 240ms ease;
   align-content: start;
+}
+
+/* Non-battle screens: the single active panel owns vertical scroll. */
+.app-shell:not(.battle-shell-active) .scene-stage > .screen-panel.active {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(147, 197, 253, 0.35) transparent;
+}
+
+.app-shell:not(.battle-shell-active) .scene-stage > .screen-panel.active::-webkit-scrollbar { width: 6px; }
+.app-shell:not(.battle-shell-active) .scene-stage > .screen-panel.active::-webkit-scrollbar-thumb {
+  background: rgba(147, 197, 253, 0.35);
+  border-radius: 999px;
+}
+.app-shell:not(.battle-shell-active) .scene-stage > .screen-panel.active::-webkit-scrollbar-track { background: transparent; }
+
+/* Battle: the stage stacks all battle subsections naturally without
+   per-section scroll. The hand section may still scroll horizontally. */
+.app-shell.battle-shell-active .scene-stage {
+  gap: 8px;
+  overflow: hidden;
+}
+
+.app-shell.battle-shell-active .scene-stage > .screen-panel.active {
+  flex: 0 0 auto;
+}
+
+.app-shell.battle-shell-active .scene-stage > .battlefield.active {
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .screen-panel.hidden {
@@ -296,11 +353,11 @@ button:disabled {
 /* ─── Navigation ────────────────────────────────────────────────── */
 
 .nav-strip {
-  position: sticky;
-  top: 8px;
+  position: relative;
   z-index: 6;
   background: linear-gradient(135deg, rgba(15, 23, 44, 0.94), rgba(30, 47, 89, 0.88));
   backdrop-filter: blur(12px);
+  flex: 0 0 auto;
 }
 
 .nav-row {
@@ -310,8 +367,7 @@ button:disabled {
 }
 
 .bottom-nav {
-  position: sticky;
-  bottom: 10px;
+  position: relative;
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 6px;
@@ -323,6 +379,7 @@ button:disabled {
   border-top: 1px solid rgba(147, 197, 253, 0.12);
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.32);
   padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+  flex: 0 0 auto;
 }
 
 .nav-chip {

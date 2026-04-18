@@ -2934,19 +2934,21 @@ function AppShell() {
 
 
       {loggedIn && (<>
-      <HomeScreen />
+      <div className="scene-stage">
+        <HomeScreen />
 
-      <PlayScreen />
+        <PlayScreen />
 
-      <CollectionScreen />
+        <CollectionScreen />
 
-      <SocialScreen />
+        <SocialScreen />
 
-      <BattleScreen />
+        <BattleScreen />
 
-      <ShopScreen />
+        <ShopScreen />
 
-      <SettingsScreen />
+        <SettingsScreen />
+      </div>
 
       {!isBattleScreen && <NavBar activeScreen={activeScreen} onNavigate={openScreen} />}
       </>)}
