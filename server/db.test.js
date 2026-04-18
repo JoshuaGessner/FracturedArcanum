@@ -3,6 +3,7 @@
 // under a temporary DATA_DIR so production data is not touched.
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
+import Database from 'better-sqlite3'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -25,6 +26,43 @@ function makeAccount(username) {
   expect(r.ok, `failed to create ${username}: ${r.error}`).toBe(true)
   return r.accountId
 }
+
+describe('schema migration compatibility', () => {
+  it('opens a legacy accounts table without anti-abuse columns', async () => {
+    const legacyDir = mkdtempSync(path.join(tmpdir(), 'fa-db-legacy-'))
+    const previousDataDir = process.env.DATA_DIR
+
+    try {
+      const legacyDb = new Database(path.join(legacyDir, 'fractured-arcanum.db'))
+      legacyDb.exec(`
+        CREATE TABLE accounts (
+          id TEXT PRIMARY KEY,
+          username TEXT UNIQUE NOT NULL COLLATE NOCASE,
+          password_hash TEXT NOT NULL,
+          display_name TEXT NOT NULL,
+          created_at TEXT NOT NULL DEFAULT (datetime('now')),
+          last_login TEXT,
+          device_fp TEXT,
+          flags TEXT NOT NULL DEFAULT ''
+        );
+      `)
+      legacyDb.close()
+
+      process.env.DATA_DIR = legacyDir
+      const migrated = await import('./db.js?legacy-test')
+      const columns = migrated.default.prepare('PRAGMA table_info(accounts)').all()
+
+      expect(columns.some((column) => column.name === 'created_ip_hash')).toBe(true)
+      expect(columns.some((column) => column.name === 'created_ua_hash')).toBe(true)
+      expect(columns.some((column) => column.name === 'role')).toBe(true)
+
+      migrated.default.close()
+    } finally {
+      process.env.DATA_DIR = previousDataDir
+      try { rmSync(legacyDir, { recursive: true, force: true }) } catch { /* ignore */ }
+    }
+  })
+})
 
 describe('admin roles', () => {
   it('defaults new accounts to role=user', () => {

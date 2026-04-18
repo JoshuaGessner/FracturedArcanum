@@ -121,8 +121,6 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_clan_members_clan ON clan_members(clan_id);
   CREATE INDEX IF NOT EXISTS idx_rate_limits_window ON rate_limits(window_start);
   CREATE INDEX IF NOT EXISTS idx_accounts_device_fp ON accounts(device_fp);
-  CREATE INDEX IF NOT EXISTS idx_accounts_created_ip ON accounts(created_ip_hash);
-  CREATE INDEX IF NOT EXISTS idx_accounts_created_ip_ua_created_at ON accounts(created_ip_hash, created_ua_hash, created_at);
   CREATE INDEX IF NOT EXISTS idx_player_decks_account ON player_decks(account_id);
   CREATE UNIQUE INDEX IF NOT EXISTS idx_player_decks_active
     ON player_decks(account_id) WHERE is_active = 1;
@@ -143,6 +141,14 @@ ensureColumn('accounts', 'role', "TEXT NOT NULL DEFAULT 'user'")
 ensureColumn('player_profiles', 'owned_cards', "TEXT NOT NULL DEFAULT '{}' ")
 ensureColumn('player_profiles', 'owned_card_borders', "TEXT NOT NULL DEFAULT '[\"default\"]'")
 ensureColumn('player_profiles', 'selected_card_border', "TEXT NOT NULL DEFAULT 'default'")
+
+// Create indexes that depend on migrated columns only after the ALTER TABLE
+// compatibility pass above. This keeps startup safe for older databases whose
+// existing `accounts` table predates the anti-abuse fields.
+db.exec(`
+  CREATE INDEX IF NOT EXISTS idx_accounts_created_ip ON accounts(created_ip_hash);
+  CREATE INDEX IF NOT EXISTS idx_accounts_created_ip_ua_created_at ON accounts(created_ip_hash, created_ua_hash, created_at);
+`)
 
 // ─── Admin role schema ───────────────────────────────────────────────────────
 // Exactly one account may have role='owner'. Enforced at the DB layer via a
