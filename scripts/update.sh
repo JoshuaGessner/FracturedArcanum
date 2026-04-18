@@ -12,6 +12,7 @@ SKIP_BUILD=0
 FORCE=0
 DRY_RUN=0
 DID_RESTART=0
+NO_CACHE=1
 COMPOSE_SERVICE="${COMPOSE_SERVICE:-fractured-arcanum}"
 SYSTEM_SERVICE_NAME="${SYSTEM_SERVICE_NAME:-fractured-arcanum}"
 DOCKER_VOLUME_NAME="${DOCKER_VOLUME_NAME:-fractured-arcanum-data}"
@@ -37,6 +38,8 @@ Options:
   --skip-pull               Skip git fetch/pull and only rebuild/restart.
   --skip-build              Skip the build step in node mode.
   --force                   Continue even if the repo has local changes.
+  --no-cache                Force a Docker rebuild without using cache (default).
+  --allow-cache             Allow Docker to reuse build cache.
   --dry-run                 Print actions without executing them.
   -h, --help                Show this help.
 
@@ -110,6 +113,14 @@ while [[ $# -gt 0 ]]; do
       ;;
     --force)
       FORCE=1
+      shift
+      ;;
+    --no-cache)
+      NO_CACHE=1
+      shift
+      ;;
+    --allow-cache)
+      NO_CACHE=0
       shift
       ;;
     --dry-run)
@@ -315,7 +326,12 @@ run_docker_update() {
   cd "$REPO_ROOT"
 
   run "${COMPOSE_CMD[@]}" config -q
-  run "${COMPOSE_CMD[@]}" up -d --build --remove-orphans
+  if [[ "$NO_CACHE" -eq 1 ]]; then
+    run "${COMPOSE_CMD[@]}" build --no-cache
+    run "${COMPOSE_CMD[@]}" up -d --remove-orphans
+  else
+    run "${COMPOSE_CMD[@]}" up -d --build --remove-orphans
+  fi
   DID_RESTART=1
 }
 
