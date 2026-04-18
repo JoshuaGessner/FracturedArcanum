@@ -85,7 +85,7 @@ export function PlayScreen() {
           <button className="primary" onClick={() => startMatch()} disabled={!deckReady}>
             {gameInProgress ? 'Start Fresh Battle' : 'Enter Arena'}
           </button>
-          <button className="secondary" onClick={handleStartQueue} disabled={!deckReady || queueState !== 'idle'}>
+          <button className="secondary" onClick={handleStartQueue} disabled={!deckReady || queueState !== 'idle'} data-tour-id="queue-button">
             Play Online (Ranked)
           </button>
           <button className="ghost" onClick={() => openScreen('collection')}>

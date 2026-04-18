@@ -4835,3 +4835,109 @@ button.icon-only {
   }
   .reward-cinema-ember { display: none; }
 }
+
+/* ─── Phase 3X — Onboarding Tour ───────────────────────────────── */
+.onboarding-tour {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  pointer-events: auto;
+}
+
+.onboarding-tour-veil {
+  position: absolute;
+  inset: 0;
+  transition: background 240ms ease-out;
+}
+.onboarding-tour-veil.centered {
+  background: rgba(6, 7, 14, 0.78);
+}
+
+.onboarding-tour-caption {
+  position: absolute;
+  max-width: 320px;
+  padding: 18px 18px 16px;
+  border-radius: 16px;
+  background: rgba(20, 17, 36, 0.96);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.55);
+  animation: onboardingCaptionIn 260ms ease-out;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.onboarding-tour-caption.centered {
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(320px, calc(100vw - 32px));
+}
+
+.onboarding-tour-title {
+  margin: 0;
+  font-size: 1.15rem;
+  line-height: 1.25;
+}
+.onboarding-tour-body {
+  margin: 0;
+  line-height: 1.4;
+}
+
+.onboarding-tour-progress {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  margin-top: 4px;
+}
+.onboarding-tour-pip {
+  width: 24px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.18);
+  transition: background 200ms ease-out;
+}
+.onboarding-tour-pip.active {
+  background: var(--accent, #d4a548);
+}
+
+.onboarding-tour-controls {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 6px;
+}
+.onboarding-tour-controls button {
+  min-height: 44px;
+  flex: 1 1 auto;
+}
+
+@keyframes onboardingCaptionIn {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.onboarding-tour-caption.centered {
+  animation-name: onboardingCaptionInCentered;
+}
+@keyframes onboardingCaptionInCentered {
+  from { opacity: 0; transform: translate(-50%, calc(-50% + 8px)) scale(0.98); }
+  to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+.onboarding-tour.reduced-motion .onboarding-tour-veil,
+.onboarding-tour.reduced-motion .onboarding-tour-caption {
+  animation: none !important;
+  transition: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .onboarding-tour-veil,
+  .onboarding-tour-caption {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+@media (max-width: 600px) {
+  .onboarding-tour-caption {
+    max-width: min(320px, calc(100vw - 24px));
+  }
+}

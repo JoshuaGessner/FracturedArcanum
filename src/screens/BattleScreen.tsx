@@ -690,7 +690,7 @@ export function BattleScreen() {
       )}
 
       <section className={`hand-section screen-panel ${isBattle ? 'active' : 'hidden'}`}>
-        <article className="section-card hand-fan-stage">
+        <article className="section-card hand-fan-stage" data-tour-id="battle-hand">
           <div className="section-head battle-hand-head">
             <div>
               <h2>Hand</h2>

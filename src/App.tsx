@@ -50,6 +50,7 @@ import { NavBar } from './components/NavBar'
 import { TopBar } from './components/TopBar'
 import { BattleIntroOverlay } from './components/BattleIntroOverlay'
 import { RewardCinemaOverlay } from './components/RewardCinemaOverlay'
+import { OnboardingTour } from './components/OnboardingTour'
 import {
   buildBattleVictorySequence,
   buildDailyClaimSequence,
@@ -175,6 +176,10 @@ function AppShell() {
   // Tracks the most recent pack open's duplicate refund so ShopScreen can
   // build an accurate finisher cinema after the ceremony overlay closes.
   const [lastPackRefund, setLastPackRefund] = useState<number>(0)
+
+  // ─── Phase 3X — First-launch onboarding tour visibility ──────────────
+  const [tourVisible, setTourVisible] = useState(false)
+  const tourAutoTriggeredRef = useRef(false)
 
   // ─── Phase 1C — active battle/game state lives in GameProvider ───────
   const {
@@ -1595,6 +1600,57 @@ function AppShell() {
     transitionToScreen(screen, true)
   }
 
+  // ─── Phase 3X — Onboarding tour control ──────────────────────────────
+  const dismissOnboardingTour = useCallback((reason: 'completed' | 'skipped') => {
+    setTourVisible(false)
+    if (typeof window !== 'undefined') {
+      try {
+        window.localStorage.setItem(STORAGE_KEYS.firstLaunch, '1')
+      } catch {
+        // Storage may be unavailable (private mode); the tour will simply
+        // re-open on next launch in that case.
+      }
+    }
+    if (reason === 'completed') {
+      setToastMessage('Tour complete — welcome to the arena.')
+    }
+  }, [setToastMessage])
+
+  const startOnboardingTour = useCallback(() => {
+    // Always navigate to Home first so the spotlight targets exist.
+    transitionToScreen('home', false)
+    if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+      window.requestAnimationFrame(() => setTourVisible(true))
+    } else {
+      setTourVisible(true)
+    }
+  // transitionToScreen is defined inline in AppShell so it isn't a stable
+  // ref; we intentionally rely on the closure capture here.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // First-launch auto-trigger: only on a fresh authenticated landing on
+  // Home. Skipped during the legacy admin/owner setup flow.
+  useEffect(() => {
+    if (!loggedIn || setupRequired) return
+    if (activeScreen !== 'home') return
+    if (tourAutoTriggeredRef.current) return
+    if (typeof window === 'undefined') return
+    let alreadyDone = false
+    try {
+      alreadyDone = window.localStorage.getItem(STORAGE_KEYS.firstLaunch) === '1'
+    } catch {
+      alreadyDone = true
+    }
+    if (alreadyDone) {
+      tourAutoTriggeredRef.current = true
+      return
+    }
+    tourAutoTriggeredRef.current = true
+    const id = window.setTimeout(() => setTourVisible(true), 1100)
+    return () => window.clearTimeout(id)
+  }, [loggedIn, setupRequired, activeScreen])
+
   function resetBattleState(mode: GameMode = preferredMode, toast = 'Battle reset. Ready when you are.', nextScreen: AppScreen = 'home') {
     const nextDifficulty = mode === 'ai' ? resolvedAIDifficulty : 'legend'
     setBattleKind(mode === 'duel' ? 'local' : 'ai')
@@ -2739,6 +2795,7 @@ function AppShell() {
     consumeLongPressAction, getLongPressProps,
     cinemaSequence, presentRewardCinema, dismissRewardCinema,
     lastPackRefund, setLastPackRefund,
+    tourVisible, startOnboardingTour, dismissOnboardingTour,
     installPromptEvent, handleInstallApp,
     swUpdateAvailable, handleAcceptUpdate, handleDismissUpdate,
     soundEnabled, setSoundEnabled, ambientEnabled, setAmbientEnabled, analyticsConsent, setAnalyticsConsent, visitorId,
@@ -2993,6 +3050,13 @@ function AppShell() {
         sequence={cinemaSequence}
         soundEnabled={soundEnabled}
         onClose={dismissRewardCinema}
+      />
+
+      <OnboardingTour
+        visible={tourVisible}
+        soundEnabled={soundEnabled}
+        onComplete={() => dismissOnboardingTour('completed')}
+        onSkip={() => dismissOnboardingTour('skipped')}
       />
 
       {inspectedCard && (

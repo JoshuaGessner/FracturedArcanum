@@ -123,6 +123,10 @@ export type AppShellContextValue = {
   dismissRewardCinema: () => void
   lastPackRefund: number
   setLastPackRefund: React.Dispatch<React.SetStateAction<number>>
+  // ─── Phase 3X — First-launch onboarding tour ─────────────────────────
+  tourVisible: boolean
+  startOnboardingTour: () => void
+  dismissOnboardingTour: (reason: 'completed' | 'skipped') => void
   installPromptEvent: InstallPromptEvent | null
   handleInstallApp: () => Promise<void>
   swUpdateAvailable: boolean

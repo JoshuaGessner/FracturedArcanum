@@ -2,6 +2,7 @@ import { CARD_LIBRARY } from '../game'
 import { RankBadge } from '../components/AssetBadge'
 import { cardArtPath, formatTimestamp, getComplaintSeverityTone, handleCardArtError } from '../utils'
 import { useAppShell, useProfile } from '../contexts'
+import { feedback } from '../feedback'
 
 export function SettingsScreen() {
   const {
@@ -19,6 +20,7 @@ export function SettingsScreen() {
     adminAudit, adminAuditFilter, setAdminAuditFilter,
     adminAuditExpandedId, setAdminAuditExpandedId, refreshAdminAudit,
     inferToastSeverity, setToastMessage,
+    startOnboardingTour,
   } = useAppShell()
   const { isAdminRole, isOwnerRole, accountRole, serverProfile } = useProfile()
 
@@ -142,6 +144,27 @@ export function SettingsScreen() {
                 }}
               >
                 {analyticsConsent ? 'Pause Anonymous Analytics' : 'Enable Anonymous Analytics'}
+              </button>
+            </div>
+          </div>
+
+          <div className="preference-tile">
+            <div className="section-head">
+              <div>
+                <h3>Onboarding tour</h3>
+                <p className="note">Replay the 5-step spotlight walkthrough that introduces every scene of the arena.</p>
+              </div>
+              <span className="deck-status ready">Available</span>
+            </div>
+            <div className="controls">
+              <button
+                className="primary"
+                onClick={() => {
+                  feedback('tap', soundEnabled)
+                  startOnboardingTour()
+                }}
+              >
+                Replay onboarding tour
               </button>
             </div>
           </div>

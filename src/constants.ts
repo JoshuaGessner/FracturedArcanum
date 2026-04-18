@@ -192,6 +192,7 @@ export const STORAGE_KEYS = {
   selectedTheme: 'fractured-arcanum.selected-theme',
   lastDailyClaim: 'fractured-arcanum.last-daily-claim',
   authToken: 'fractured-arcanum.auth-token',
+  firstLaunch: 'fractured-arcanum.first-launch',
 }
 
 export const DECK_MAX_TOTAL_DISPLAY = 16

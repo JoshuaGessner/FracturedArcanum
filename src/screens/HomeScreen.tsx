@@ -53,7 +53,7 @@ export function HomeScreen() {
           </div>
         )}
 
-        <div className="controls nav-tile-row">
+        <div className="controls nav-tile-row" data-tour-id="home-tiles">
           {NAV_TILES.map((tile) => (
             <button
               key={tile.id}
