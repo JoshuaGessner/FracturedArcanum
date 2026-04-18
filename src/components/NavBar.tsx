@@ -16,16 +16,16 @@ const NAV_ITEMS: Array<{ id: Exclude<AppScreen, 'battle'>; label: string }> = [
 
 export function NavBar({ activeScreen, onNavigate }: NavBarProps) {
   return (
-    <nav className="scene-nav" aria-label="Primary screens">
+    <nav className="scene-rail" aria-label="Primary screens">
       {NAV_ITEMS.map((item) => (
         <button
           key={item.id}
-          className={activeScreen === item.id ? 'nav-chip active' : 'nav-chip'}
+          className={activeScreen === item.id ? 'scene-link active' : 'scene-link'}
           data-nav={item.id}
           aria-current={activeScreen === item.id ? 'page' : undefined}
           onClick={() => onNavigate(item.id)}
         >
-          <span>{item.label}</span>
+          <span className="scene-link-label">{item.label}</span>
         </button>
       ))}
     </nav>

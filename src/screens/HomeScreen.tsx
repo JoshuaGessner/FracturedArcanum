@@ -109,9 +109,9 @@ export function HomeScreen() {
             ))}
           </div>
           <span className="quest-count">{questsDone}/{questItems.length} Quests</span>
-          <button className={canClaimDailyReward ? 'primary' : 'ghost'} onClick={() => openScreen('shop')}>
-            {canClaimDailyReward ? 'Collect Reward' : 'Shop'}
-          </button>
+          <span className={`quest-reward-hint ${canClaimDailyReward ? 'ready' : ''}`}>
+            {canClaimDailyReward ? 'Reward Ready' : nextRewardLabel}
+          </span>
         </div>
       </article>
     </section>

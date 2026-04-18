@@ -139,7 +139,7 @@ button:disabled {
 /* Lock dock chrome to natural height; only the scene stage may grow. */
 .app-shell > .topbar,
 .app-shell > .nav-strip,
-.app-shell > .scene-nav,
+.app-shell > .scene-rail,
 .app-shell > .update-banner,
 .app-shell > .challenge-banner {
   flex: 0 0 auto;
@@ -209,11 +209,16 @@ button:disabled {
 }
 .app-shell:not(.battle-shell-active) .scene-stage > .screen-panel.active::-webkit-scrollbar-track { background: transparent; }
 
-/* Battle: the stage stacks all battle subsections naturally without
-   per-section scroll. The hand section may still scroll horizontally. */
+/* Battle: the stage stacks all battle subsections naturally. On
+   smaller screens it must still allow vertical access to the hand, so
+   the scene stage can scroll while the hand itself continues to scroll
+   horizontally. */
 .app-shell.battle-shell-active .scene-stage {
   gap: 8px;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .app-shell.battle-shell-active .scene-stage > .screen-panel.active {
@@ -399,63 +404,78 @@ button:disabled {
   gap: 8px;
 }
 
-.scene-nav {
+.scene-rail {
   position: relative;
-  display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 6px;
-  padding: 8px;
-  border-radius: 16px;
   z-index: 4;
-  background: rgba(10, 14, 28, 0.92);
-  backdrop-filter: blur(14px);
-  border: 1px solid rgba(147, 197, 253, 0.12);
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.32);
-  flex: 0 0 auto;
-}
-
-.nav-chip {
-  padding: 10px 12px;
-  min-height: 44px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.06);
-  color: #d8e1ff;
-  font-size: 0.82rem;
-  text-align: center;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  transition: background 0.2s, color 0.2s, transform 0.15s;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 2px 2px 4px;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
 }
 
-.nav-chip::before {
+.scene-rail::-webkit-scrollbar {
+  display: none;
+}
+
+.scene-link {
+  position: relative;
+  flex: 0 0 92px;
+  min-height: 78px;
+  padding: 10px 8px;
+  border-radius: 14px;
+  color: #e6ecff;
+  text-align: left;
+  display: grid;
+  align-content: end;
+  gap: 4px;
+  background: linear-gradient(160deg, rgba(124, 58, 237, 0.16), rgba(37, 99, 235, 0.12));
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 10px 24px rgba(10, 14, 30, 0.18);
+  overflow: hidden;
+  transition: transform 0.18s ease-out, box-shadow 0.18s ease-out, background 0.2s;
+}
+
+.scene-link::before {
   content: '';
-  width: 14px;
-  height: 14px;
-  flex: 0 0 auto;
-  opacity: 0.85;
+  position: absolute;
+  inset: 0;
+  background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
-  background-size: contain;
+  opacity: 0.16;
+  z-index: 0;
 }
 
-.nav-chip[data-nav='home']::before { background-image: url('/generated/ui/particle-rune.svg'); }
-.nav-chip[data-nav='play']::before { background-image: url('/generated/ui/tile-play.svg'); }
-.nav-chip[data-nav='collection']::before { background-image: url('/generated/ui/tile-collection.svg'); }
-.nav-chip[data-nav='social']::before { background-image: url('/generated/ui/tile-social.svg'); }
-.nav-chip[data-nav='shop']::before { background-image: url('/generated/ui/tile-shop.svg'); }
-.nav-chip[data-nav='settings']::before { background-image: url('/generated/ui/tile-settings.svg'); }
+.scene-link > * {
+  position: relative;
+  z-index: 1;
+}
 
-.nav-chip:hover { background: rgba(255, 255, 255, 0.1); }
+.scene-link[data-nav='home']::before { background-image: url('/generated/ui/bg-main-menu.svg'); }
+.scene-link[data-nav='play']::before { background-image: url('/generated/ui/tile-play.svg'); }
+.scene-link[data-nav='collection']::before { background-image: url('/generated/ui/tile-collection.svg'); }
+.scene-link[data-nav='social']::before { background-image: url('/generated/ui/tile-social.svg'); }
+.scene-link[data-nav='shop']::before { background-image: url('/generated/ui/tile-shop.svg'); }
+.scene-link[data-nav='settings']::before { background-image: url('/generated/ui/tile-settings.svg'); }
 
-.nav-chip.active {
-  background: linear-gradient(135deg, #7c3aed, #2563eb);
-  color: white;
-  box-shadow: 0 4px 16px rgba(124, 58, 237, 0.35);
+.scene-link:hover,
+.scene-link:focus-visible {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(124, 58, 237, 0.22);
+}
+
+.scene-link.active {
+  background: linear-gradient(160deg, rgba(124, 58, 237, 0.3), rgba(37, 99, 235, 0.24));
+  border-color: rgba(251, 191, 36, 0.36);
+  box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.16), 0 12px 28px rgba(37, 99, 235, 0.22);
+}
+
+.scene-link-label {
+  font-size: 0.84rem;
+  font-weight: 700;
+  line-height: 1.15;
 }
 
 /* ─── Main-menu nav tiles ───────────────────────────────────────── */
@@ -1435,9 +1455,12 @@ button:disabled {
 
 .slot.empty {
   border-style: dashed;
-  border-color: rgba(147, 197, 253, 0.15);
-  color: #b9c3de;
+  border-color: rgba(147, 197, 253, 0.28);
+  color: #d6def7;
   background: rgba(26, 31, 54, 0.52);
+  justify-content: center;
+  text-align: center;
+  font-size: 0.76rem;
 }
 
 .slot.selected {
@@ -2083,6 +2106,7 @@ button:disabled {
 .quest-summary {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 10px;
   padding: 10px 14px;
   margin-top: 12px;
@@ -2153,11 +2177,20 @@ button:disabled {
   white-space: nowrap;
 }
 
-.quest-summary button {
+.quest-reward-hint {
   flex: 0 0 auto;
-  padding: 8px 14px;
-  min-height: 36px;
-  font-size: 0.82rem;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  color: #d6def7;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(147, 197, 253, 0.14);
+}
+
+.quest-reward-hint.ready {
+  color: #fef3c7;
+  border-color: rgba(251, 191, 36, 0.28);
+  background: rgba(120, 90, 18, 0.24);
 }
 
 .log-panel { min-width: 0; }
@@ -2903,12 +2936,21 @@ button.danger:hover { filter: brightness(1.08); }
   }
 
   .battle-heroes-compact {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
     align-items: stretch;
-    flex-direction: column;
+    gap: 8px;
+  }
+
+  .battle-heroes-compact .hero-compact {
+    flex: 0 0 auto;
+    padding: 8px 10px;
   }
 
   .battle-turn-label {
-    order: -1;
+    order: 0;
+    align-content: center;
+    padding: 4px 0;
   }
 
   .battle-controls {
@@ -2919,12 +2961,26 @@ button.danger:hover { filter: brightness(1.08); }
 
   .asset-preview-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
-  .brand-block, .section-head {
+  .section-head {
     flex-direction: column;
     align-items: stretch;
   }
 
-  .top-actions { justify-content: flex-start; }
+  .topbar {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .brand-block {
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .top-actions {
+    justify-content: flex-start;
+    gap: 8px;
+  }
 }
 
 @media (max-width: 640px) {
@@ -3008,7 +3064,7 @@ button.danger:hover { filter: brightness(1.08); }
     display: none;
   }
   .queue-modal { width: 100%; }
-  .hand-card { min-height: 220px; }
+  .hand-card { min-height: 168px; }
   .hand-fan-grid .hand-card {
     flex-basis: 146px;
     margin-left: -10px;
@@ -3115,8 +3171,9 @@ button.danger:hover { filter: brightness(1.08); }
 }
 
 @media (max-width: 400px) {
-  .app-shell { padding: 8px 8px calc(88px + env(safe-area-inset-bottom, 0px)); }
-  .nav-chip { font-size: 0.78rem; padding: 8px 6px; }
+  .app-shell { padding: 8px 8px calc(8px + env(safe-area-inset-bottom, 0px)); }
+  .scene-link { flex-basis: 82px; min-height: 70px; padding: 8px 6px; }
+  .scene-link-label { font-size: 0.78rem; }
   .hand-grid { grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); }
   .builder-grid { grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); }
   .auth-card { padding: 24px 16px; }
@@ -4244,7 +4301,7 @@ input, textarea, p, .card-text, .note, .mini-text {
   -webkit-touch-callout: none;
 }
 
-button, [role="button"], .nav-chip, .chip {
+button, [role="button"], .scene-link, .chip {
   /* Faster tap response on touch devices, no double-tap zoom. */
   touch-action: manipulation;
 }
