@@ -75,7 +75,6 @@ import type {
   PackOffer,
   QueuePresence,
   QueueSearchStatus,
-  QueueState,
   SavedDeck,
   ServerProfile,
   SocialClan,
@@ -83,18 +82,22 @@ import type {
   Trade,
   TradeItem,
 } from './types'
+import { QueueProvider, useQueueState } from './contexts/QueueProvider'
 import './App.css'
 
 /**
  * Phase 1B — App is now a thin wrapper that exists only to host the
  * provider tree. All state, effects, and handlers live in `AppShell`.
  *
- * As real providers are extracted (Phase 1C–1F), they will be added here
- * to wrap `<AppShell />`. Each extracted provider can read AppShell-owned
- * data via the existing slice hooks until its own state lands.
+ * Phase 1F added the real `QueueProvider` above `AppShell`. Future
+ * provider extractions (1C–1E) will nest inside this tree the same way.
  */
 function App() {
-  return <AppShell />
+  return (
+    <QueueProvider>
+      <AppShell />
+    </QueueProvider>
+  )
 }
 
 function AppShell() {
@@ -154,24 +157,16 @@ function AppShell() {
   const [, setLobbyCode] = useState(() => makeLobbyCode())
   const [game, setGame] = useState<GameState>(() => createGame(savedMode, savedDeckConfig, undefined, savedMode === 'ai' ? initialAIDifficulty : 'legend'))
   const [selectedAttacker, setSelectedAttacker] = useState<number | null>(null)
-  const [queueState, setQueueState] = useState<QueueState>('idle')
-  const [queueSeconds, setQueueSeconds] = useState(0)
-  const [queuedOpponent, setQueuedOpponent] = useState<OpponentProfile | null>(null)
-  const [leaderboardEntries, setLeaderboardEntries] = useState<LeaderboardEntry[]>([])
-  const [queuePresence, setQueuePresence] = useState<QueuePresence>({
-    queueSize: 0,
-    connectedPlayers: 0,
-    rankedAvailable: false,
-    updatedAt: '',
-  })
-  const [queueSearchStatus, setQueueSearchStatus] = useState<QueueSearchStatus>({
-    position: 1,
-    queueSize: 0,
-    connectedPlayers: 0,
-    waitSeconds: 0,
-    estimatedWaitSeconds: 10,
-    ratingWindow: 150,
-  })
+  // Phase 1F — queue state lives in QueueProvider above AppShell.
+  const {
+    queueState, setQueueState,
+    queueSeconds, setQueueSeconds,
+    queuedOpponent, setQueuedOpponent,
+    queuePresence, setQueuePresence,
+    queueSearchStatus, setQueueSearchStatus,
+    leaderboardEntries, setLeaderboardEntries,
+    liveQueueLabel,
+  } = useQueueState()
   const [collection, setCollection] = useState<CardCollection>({})
   const [packOffers, setPackOffers] = useState<PackOffer[]>([])
   const [openedPackCards, setOpenedPackCards] = useState<OpenedPackCard[]>([])
@@ -882,6 +877,9 @@ function AppShell() {
       cancelled = true
       window.clearInterval(refreshTimer)
     }
+    // setQueuePresence + setLeaderboardEntries come from QueueProvider's
+    // useState; they're stable but eslint can't see through useContext.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loggedIn])
 
   useEffect(() => {
@@ -920,20 +918,6 @@ function AppShell() {
       })
       .catch(() => {})
   }, [authToken, loggedIn])
-
-  useEffect(() => {
-    if (queueState !== 'searching') {
-      return undefined
-    }
-
-    const tick = window.setInterval(() => {
-      setQueueSeconds((seconds) => seconds + 1)
-    }, 1000)
-
-    return () => {
-      window.clearInterval(tick)
-    }
-  }, [queueState])
 
   useEffect(() => {
     return () => {
@@ -1432,7 +1416,7 @@ function AppShell() {
   const defenderHasGuard = boardHasGuard(defendingPlayer.board)
   const rankLabel = getRankLabel(seasonRating)
   const resolvedAIDifficulty = aiDifficultySetting === 'auto' ? getRecommendedAIDifficulty(seasonRating) : aiDifficultySetting
-  const liveQueueLabel = queuePresence.rankedAvailable ? 'Live opponents ready' : 'Waiting for challengers'
+  // liveQueueLabel comes from QueueProvider via useQueueState above.
   const totalOwnedCards = Object.values(collection).reduce((sum, count) => sum + count, 0)
   const totalGames = record.wins + record.losses
   const winRate = totalGames > 0 ? Math.round((record.wins / totalGames) * 100) : 0

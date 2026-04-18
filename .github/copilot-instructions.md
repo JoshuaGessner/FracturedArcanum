@@ -91,10 +91,10 @@ A detailed code index lives in `.github/index/`. **Consult it before writing or 
 | File | Lines | Role | Edit Rules |
 |------|-------|------|------------|
 | `src/game.ts` | 1,410 | Game engine — single source of truth for all mechanics | Pure functions only. After edit: `npm run build:engine` |
-| `src/App.tsx` | 2,889 | `App` (thin wrapper) + `AppShell` (state, effects, handlers, builds AppContextValue, provides via `<AppContext.Provider>`) | All app state lives in AppShell. Screens read it via slice hooks from `src/contexts/`. |
+| `src/App.tsx` | 2,889 | `App` (provider tree: `<QueueProvider><AppShell/></QueueProvider>`) + `AppShell` (state, effects, handlers, builds AppContextValue, provides via `<AppContext.Provider>`) | All AppShell-owned state lives in AppShell. Queue state lives in `QueueProvider`. Screens read both via slice hooks from `src/contexts/`. |
+| `src/contexts/*.ts(x)` | 16–130 each | Phase 1A typed slice hooks: `useGame`, `useProfile`, `useSocial`, `useQueue`, `useAppShell` + Phase 1F real `QueueProvider` | Screens import slice hooks. AppShell uses internal `useQueueState()` from QueueProvider for setters. |
 | `src/AppContext.ts` | 275 | `AppContextValue` mega-type + `createContext` (slated for retirement during Phase 1C–1F) | Update when adding shared state |
 | `src/useApp.ts` | 10 | `useApp()` legacy hook — still used internally by slice hooks | |
-| `src/contexts/*.ts` | 16–97 each | Phase 1A typed slice hooks: `useGame`, `useProfile`, `useSocial`, `useQueue`, `useAppShell` | Screens import from here, not `useApp` |
 | `src/types.ts` | 252 | UI-only TypeScript types | Add new UI types here |
 | `src/constants.ts` | 182 | Static UI constants (themes, presets, labels) | No functions — data only |
 | `src/utils.ts` | 134 | Pure helper functions | No React, no app state |

@@ -16,6 +16,7 @@ src/
 ├── useApp.ts                  (10)           useApp() hook (legacy facade)
 ├── contexts/                                Phase 1A typed slice hooks (delegate to useApp() until real providers land)
 │   ├── index.ts
+│   ├── QueueProvider.tsx      — ✅ Phase 1F: real provider above AppShell (state + countdown + liveQueueLabel)
 │   ├── useGame.ts             — battle state, game actions, AI animation
 │   ├── useProfile.ts          — decks, collection, cosmetics, derived rank
 │   ├── useSocial.ts           — friends, clan, trades, challenges
