@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { io, type Socket } from 'socket.io-client'
 import { playSound } from './audio'
+import { feedback } from './feedback'
 import {
   type GameMode,
   type AIDifficulty,
@@ -395,7 +396,7 @@ function AppShell() {
   function inspectCard(card: InspectedCard) {
     clearLongPressTimer()
     longPressTriggeredRef.current = true
-    pulseFeedback(12)
+    feedback('inspect', soundEnabled)
     setInspectedCard(card)
   }
 
@@ -1196,7 +1197,7 @@ function AppShell() {
         )
         setCollection(data.owned ?? {})
         setToastMessage(`Refunded ${data.refunded ?? 0} Shards.`)
-        playSound('tap', soundEnabled)
+        feedback('claim', soundEnabled)
       })
       .catch(() => setToastMessage('Could not break down card.'))
       .finally(() => setPendingBreakdown(null))
@@ -1243,7 +1244,7 @@ function AppShell() {
             : prev,
         )
         setToastMessage(`${CARD_BORDER_OFFERS.find((b) => b.id === borderId)?.name ?? 'Border'} unlocked.`)
-        playSound('summon', soundEnabled)
+        feedback('purchase', soundEnabled)
       })
       .catch(() => setToastMessage('Could not purchase border.'))
   }
@@ -1270,7 +1271,7 @@ function AppShell() {
             : prev,
         )
         setToastMessage(`${CARD_BORDER_OFFERS.find((b) => b.id === borderId)?.name ?? 'Border'} equipped.`)
-        playSound('tap', soundEnabled)
+        feedback('equip', soundEnabled)
       })
       .catch(() => setToastMessage('Could not equip border.'))
   }
@@ -1313,8 +1314,7 @@ function AppShell() {
 
   useEffect(() => {
     if (queueState === 'found') {
-      playSound('match', soundEnabled)
-      pulseFeedback(20)
+      feedback('confirm', soundEnabled)
     }
   }, [queueState, soundEnabled])
 
@@ -1561,7 +1561,7 @@ function AppShell() {
   }
 
   function handleResumeBattle() {
-    playSound('tap', soundEnabled)
+    feedback('tap', soundEnabled)
     transitionToScreen('battle')
 
     if (battleKind === 'ranked') {
@@ -1581,7 +1581,7 @@ function AppShell() {
   }
 
   function handleAbandonBattle() {
-    playSound('tap', soundEnabled)
+    feedback('cancel', soundEnabled)
 
     if (serverBattleActive && hasBattleInProgress && socketClientRef.current?.connected) {
       emitAction({ type: 'surrender' })
@@ -1598,7 +1598,7 @@ function AppShell() {
   }
 
   function handleLeaveBattle() {
-    playSound('tap', soundEnabled)
+    feedback('cancel', soundEnabled)
 
     if (queueState !== 'idle' && !hasBattleInProgress) {
       handleCancelQueue()
@@ -1625,8 +1625,7 @@ function AppShell() {
       return
     }
 
-    playSound('win', soundEnabled)
-    pulseFeedback(18)
+    feedback('claim', soundEnabled)
     void authFetch('/api/me/daily', authToken, { method: 'POST' })
       .then((r) => r.json())
       .then((data: { ok: boolean; error?: string; runes?: number; totalEarned?: number }) => {
@@ -1999,7 +1998,7 @@ function AppShell() {
   }
 
   function handleModeChange(mode: GameMode) {
-    playSound('tap', soundEnabled)
+    feedback('select', soundEnabled)
     setPreferredMode(mode)
     setQueueState('idle')
     setQueueSeconds(0)
@@ -2008,7 +2007,7 @@ function AppShell() {
   }
 
   function handleAIDifficultyChange(level: 'auto' | AIDifficulty) {
-    playSound('tap', soundEnabled)
+    feedback('select', soundEnabled)
     setAiDifficultySetting(level)
     setToastMessage(level === 'auto' ? `AI difficulty set to Auto. Recommended tier: ${getRecommendedAIDifficulty(seasonRating)}.` : `${level.charAt(0).toUpperCase() + level.slice(1)} AI selected.`)
   }
@@ -2505,7 +2504,7 @@ function AppShell() {
    * by `startMatch` and is never saved into the player's collection.
    */
   function handleQuickBattle(name: string, config: DeckConfig) {
-    playSound('tap', soundEnabled)
+    feedback('tap', soundEnabled)
     setToastMessage(`Launching quick AI match: ${name} preset.`)
     startMatch('ai', `${name} Sparring Bot`, config)
   }
@@ -2540,7 +2539,7 @@ function AppShell() {
       return
     }
 
-    playSound('tap', soundEnabled)
+    feedback('select', soundEnabled)
     setSelectedAttacker((current) => (current === index ? null : index))
   }
 
@@ -2588,7 +2587,7 @@ function AppShell() {
       return
     }
 
-    playSound('tap', soundEnabled)
+    feedback('tap', soundEnabled)
     setSelectedAttacker(null)
 
     if (isRankedBattle) {
