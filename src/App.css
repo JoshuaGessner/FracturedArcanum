@@ -234,11 +234,44 @@ button:disabled {
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-.app-shell.screen-enter-forward .screen-panel.active { animation: slideInLeft 280ms var(--motion-base); }
-.app-shell.screen-enter-back .screen-panel.active { animation: slideInRight 280ms var(--motion-base); }
-.app-shell.screen-enter-lateral .screen-panel.active { animation: fadeInScreen 220ms var(--motion-base); }
-.app-shell.screen-enter-battle .screen-panel.active { animation: zoomWhoosh 360ms var(--motion-slow); }
+.app-shell.screen-enter-forward .screen-panel.active { animation: curtainPullForward 320ms var(--motion-base); }
+.app-shell.screen-enter-back .screen-panel.active { animation: curtainPullBack 320ms var(--motion-base); }
+.app-shell.screen-enter-lateral .screen-panel.active { animation: runeWipeFade 280ms var(--motion-base); }
+.app-shell.screen-enter-battle .screen-panel.active { animation: portalSlamIris 480ms var(--motion-slow); }
 
+/* Curtain pull forward (deeper into the app) — new scene wipes in from
+   the right with a parchment-curtain feel; previous scene parallaxes
+   away (handled by the implicit display swap, but the entering scene
+   still telegraphs the direction with a clipped reveal). */
+@keyframes curtainPullForward {
+  0% { opacity: 0; transform: translateX(48px) scale(0.97); clip-path: inset(0 100% 0 0); filter: brightness(0.85); }
+  60% { opacity: 1; clip-path: inset(0 0 0 0); }
+  100% { opacity: 1; transform: translateX(0) scale(1); clip-path: inset(0 0 0 0); filter: brightness(1); }
+}
+
+/* Curtain pull back (toward home) — mirror of forward. */
+@keyframes curtainPullBack {
+  0% { opacity: 0; transform: translateX(-48px) scale(0.97); clip-path: inset(0 0 0 100%); filter: brightness(0.85); }
+  60% { opacity: 1; clip-path: inset(0 0 0 0); }
+  100% { opacity: 1; transform: translateX(0) scale(1); clip-path: inset(0 0 0 0); filter: brightness(1); }
+}
+
+/* Lateral rune wipe — band of brightness sweeps across as scene fades. */
+@keyframes runeWipeFade {
+  0% { opacity: 0; filter: brightness(0.6) blur(2px); }
+  50% { opacity: 1; filter: brightness(1.15) blur(0.5px); }
+  100% { opacity: 1; filter: brightness(1) blur(0); }
+}
+
+/* Portal slam (any → battle) — central iris expands outward from
+   the spark, screen darkens briefly, then opens up. */
+@keyframes portalSlamIris {
+  0% { opacity: 0; transform: scale(0.6); clip-path: circle(0% at 50% 50%); filter: brightness(0.4); }
+  35% { opacity: 1; transform: scale(1.05); clip-path: circle(28% at 50% 50%); filter: brightness(1.2); }
+  100% { opacity: 1; transform: scale(1); clip-path: circle(75% at 50% 50%); filter: brightness(1); }
+}
+
+/* Legacy slide keyframes retained for any consumers still referencing them. */
 @keyframes slideInLeft {
   from { opacity: 0; transform: translateX(26px) scale(0.985); }
   to { opacity: 1; transform: translateX(0) scale(1); }

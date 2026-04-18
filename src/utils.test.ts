@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { getCompletionPercent, getComplaintSeverityTone, getEffectIconPath, getHandFanTilt, getPackArtPath, getRankAssetPath, getRarityGemPath, getScreenTransitionClass, getStreakTier } from './utils'
+import { getCompletionPercent, getComplaintSeverityTone, getEffectIconPath, getHandFanTilt, getPackArtPath, getRankAssetPath, getRarityGemPath, getScreenTransitionClass, getScreenTransitionSound, getStreakTier } from './utils'
 
 describe('UI asset helpers', () => {
   it('resolves rank insignia from labels and ratings', () => {
@@ -26,6 +26,15 @@ describe('UI asset helpers', () => {
     expect(getScreenTransitionClass('shop', 'home')).toBe('screen-enter-back')
     expect(getScreenTransitionClass('social', 'shop')).toBe('screen-enter-forward')
     expect(getScreenTransitionClass('collection', 'battle')).toBe('screen-enter-battle')
+  })
+
+  it('maps each transition direction to a paired sound cue', () => {
+    expect(getScreenTransitionSound('home', 'play')).toBe('sceneOpen')
+    expect(getScreenTransitionSound('shop', 'home')).toBe('sceneClose')
+    expect(getScreenTransitionSound('social', 'shop')).toBe('sceneOpen')
+    expect(getScreenTransitionSound('shop', 'social')).toBe('sceneClose')
+    expect(getScreenTransitionSound('settings', 'settings')).toBe('runeWipe')
+    expect(getScreenTransitionSound('collection', 'battle')).toBe('portalSlam')
   })
 
   it('clamps collection completion percentages safely', () => {

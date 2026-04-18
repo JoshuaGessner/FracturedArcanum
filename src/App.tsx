@@ -37,6 +37,7 @@ import {
   getRankLabel,
   getScreenBucket,
   getScreenTransitionClass,
+  getScreenTransitionSound,
   pulseFeedback,
   readStoredValue,
 } from './utils'
@@ -1520,7 +1521,7 @@ function AppShell() {
   function transitionToScreen(screen: AppScreen, withSound = false) {
     setScreenTransitionClass(getScreenTransitionClass(activeScreen, screen))
     if (withSound) {
-      playSound('navigate', soundEnabled)
+      playSound(getScreenTransitionSound(activeScreen, screen), soundEnabled)
     }
     setActiveScreen(screen)
   }

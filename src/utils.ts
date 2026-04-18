@@ -183,6 +183,24 @@ export function getScreenTransitionClass(fromScreen: AppScreen, toScreen: AppScr
   return toIndex > fromIndex ? 'screen-enter-forward' : 'screen-enter-back'
 }
 
+export function getScreenTransitionSound(
+  fromScreen: AppScreen,
+  toScreen: AppScreen,
+): 'sceneOpen' | 'sceneClose' | 'runeWipe' | 'portalSlam' {
+  const transitionClass = getScreenTransitionClass(fromScreen, toScreen)
+  switch (transitionClass) {
+    case 'screen-enter-battle':
+      return 'portalSlam'
+    case 'screen-enter-back':
+      return 'sceneClose'
+    case 'screen-enter-lateral':
+      return 'runeWipe'
+    case 'screen-enter-forward':
+    default:
+      return 'sceneOpen'
+  }
+}
+
 export function getCompletionPercent(current: number, total: number): number {
   if (total <= 0) {
     return 0

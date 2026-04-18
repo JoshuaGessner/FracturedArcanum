@@ -16,6 +16,12 @@ export type SoundName =
   | 'challenge'
   | 'trade'
   | 'countdown'
+  | 'sceneOpen'
+  | 'sceneClose'
+  | 'portalSlam'
+  | 'runeWipe'
+  | 'modalOpen'
+  | 'modalClose'
 
 let audioContext: AudioContext | null = null
 
@@ -60,6 +66,37 @@ function playTone(
   gainNode.connect(context.destination)
   oscillator.start(start)
   oscillator.stop(start + duration)
+}
+
+function playNoise(
+  context: AudioContext,
+  start: number,
+  duration: number,
+  filterFreqStart: number,
+  filterFreqEnd: number,
+  volume: number,
+) {
+  const bufferSize = Math.max(1, Math.floor(context.sampleRate * duration))
+  const buffer = context.createBuffer(1, bufferSize, context.sampleRate)
+  const data = buffer.getChannelData(0)
+  for (let i = 0; i < bufferSize; i += 1) {
+    data[i] = Math.random() * 2 - 1
+  }
+  const source = context.createBufferSource()
+  source.buffer = buffer
+  const filter = context.createBiquadFilter()
+  filter.type = 'lowpass'
+  filter.frequency.setValueAtTime(filterFreqStart, start)
+  filter.frequency.exponentialRampToValueAtTime(Math.max(40, filterFreqEnd), start + duration)
+  const gainNode = context.createGain()
+  gainNode.gain.setValueAtTime(0.0001, start)
+  gainNode.gain.exponentialRampToValueAtTime(volume, start + 0.02)
+  gainNode.gain.exponentialRampToValueAtTime(0.0001, start + duration)
+  source.connect(filter)
+  filter.connect(gainNode)
+  gainNode.connect(context.destination)
+  source.start(start)
+  source.stop(start + duration)
 }
 
 export function playSound(name: SoundName, enabled: boolean) {
@@ -155,6 +192,38 @@ export function playSound(name: SoundName, enabled: boolean) {
     case 'countdown':
       // Metronome tick
       playTone(context, 660, now, 0.05, 'triangle', 0.025)
+      break
+    case 'sceneOpen':
+      // Soft parchment whoosh — filtered noise sweep 800 → 200 Hz
+      playNoise(context, now, 0.2, 800, 200, 0.022)
+      break
+    case 'sceneClose':
+      // Mirror sweep + faint click
+      playNoise(context, now, 0.18, 600, 1400, 0.02)
+      playTone(context, 320, now + 0.16, 0.04, 'triangle', 0.018)
+      break
+    case 'portalSlam':
+      // Deep sub bass thud layered with summon-style chime
+      playTone(context, 80, now, 0.18, 'sine', 0.03)
+      playTone(context, 330, now + 0.04, 0.12, 'sine', 0.026)
+      playTone(context, 440, now + 0.09, 0.14, 'triangle', 0.024)
+      break
+    case 'runeWipe':
+      // Crystal shimmer arpeggio (4 quick notes)
+      playTone(context, 1318, now, 0.05, 'triangle', 0.02)
+      playTone(context, 1568, now + 0.05, 0.05, 'triangle', 0.02)
+      playTone(context, 1760, now + 0.1, 0.05, 'triangle', 0.02)
+      playTone(context, 2093, now + 0.15, 0.06, 'triangle', 0.02)
+      break
+    case 'modalOpen':
+      // tap overlay + soft glow tone
+      playTone(context, 520, now, 0.06, 'triangle', 0.02)
+      playTone(context, 660, now, 0.18, 'sine', 0.018)
+      break
+    case 'modalClose':
+      // Reversed-feeling close
+      playTone(context, 660, now, 0.12, 'sine', 0.018)
+      playTone(context, 440, now + 0.06, 0.06, 'triangle', 0.018)
       break
   }
 }
