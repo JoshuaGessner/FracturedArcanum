@@ -1,7 +1,7 @@
 import type { GameState, DeckConfig } from './game'
 
 export type QueueState = 'idle' | 'searching' | 'found'
-export type AppScreen = 'home' | 'collection' | 'battle' | 'shop' | 'settings'
+export type AppScreen = 'home' | 'play' | 'collection' | 'battle' | 'social' | 'shop' | 'settings'
 export type CosmeticTheme = 'royal' | 'ember' | 'moon'
 export type AuthScreen = 'login' | 'signup'
 export type CardBorder = 'default' | 'bronze' | 'frost' | 'solar' | 'void'

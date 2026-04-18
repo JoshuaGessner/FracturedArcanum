@@ -52,6 +52,8 @@ import { SettingsScreen } from './screens/SettingsScreen'
 import { ShopScreen } from './screens/ShopScreen'
 import { CollectionScreen } from './screens/CollectionScreen'
 import { HomeScreen } from './screens/HomeScreen'
+import { PlayScreen } from './screens/PlayScreen'
+import { SocialScreen } from './screens/SocialScreen'
 import { BattleScreen } from './screens/BattleScreen'
 import { AppContext, type AppContextValue } from './AppContext'
 import type {
@@ -1438,13 +1440,17 @@ function App() {
   const screenTitle =
     activeScreen === 'home'
       ? 'Arena Home'
-      : activeScreen === 'collection'
-        ? 'Collection'
-        : activeScreen === 'battle'
-          ? 'Battlefield'
-          : activeScreen === 'shop'
-            ? 'Shop'
-            : 'Settings'
+      : activeScreen === 'play'
+        ? 'Play'
+        : activeScreen === 'collection'
+          ? 'Collection'
+          : activeScreen === 'social'
+            ? 'Social'
+            : activeScreen === 'battle'
+              ? 'Battlefield'
+              : activeScreen === 'shop'
+                ? 'Shop'
+                : 'Settings'
 
 
   function openScreen(screen: AppScreen) {
@@ -2850,7 +2856,11 @@ function App() {
       {loggedIn && (<>
       <HomeScreen />
 
+      <PlayScreen />
+
       <CollectionScreen />
+
+      <SocialScreen />
 
       <BattleScreen />
 

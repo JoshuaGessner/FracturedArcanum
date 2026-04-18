@@ -15,16 +15,22 @@ export function NavBar({ activeScreen, onNavigate }: NavBarProps) {
         🏠 Home
       </button>
       <button
+        className={activeScreen === 'play' ? 'nav-chip active' : 'nav-chip'}
+        onClick={() => onNavigate('play')}
+      >
+        ⚔️ Play
+      </button>
+      <button
         className={activeScreen === 'collection' ? 'nav-chip active' : 'nav-chip'}
         onClick={() => onNavigate('collection')}
       >
         📚 Collection
       </button>
       <button
-        className={activeScreen === 'battle' ? 'nav-chip active' : 'nav-chip'}
-        onClick={() => onNavigate('battle')}
+        className={activeScreen === 'social' ? 'nav-chip active' : 'nav-chip'}
+        onClick={() => onNavigate('social')}
       >
-        ⚔️ Battle
+        👥 Social
       </button>
       <button
         className={activeScreen === 'shop' ? 'nav-chip active' : 'nav-chip'}
