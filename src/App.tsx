@@ -51,6 +51,8 @@ import { TopBar } from './components/TopBar'
 import { BattleIntroOverlay } from './components/BattleIntroOverlay'
 import { RewardCinemaOverlay } from './components/RewardCinemaOverlay'
 import { OnboardingTour } from './components/OnboardingTour'
+import { useSceneSwipe } from './hooks/useSceneSwipe'
+import { getNeighborScreen, NAV_ORDER } from './utils/sceneSwipe'
 import {
   buildBattleVictorySequence,
   buildDailyClaimSequence,
@@ -248,6 +250,7 @@ function AppShell() {
   const [, setMaintenanceMode] = useState(false)
   const [soundEnabled, setSoundEnabled] = useState(() => readStoredValue(STORAGE_KEYS.sound, true))
   const [ambientEnabled, setAmbientEnabled] = useState(() => readStoredValue(STORAGE_KEYS.ambient, false))
+  const [gesturesEnabled, setGesturesEnabled] = useState(() => readStoredValue(STORAGE_KEYS.gestures, true))
   const [analyticsConsent, setAnalyticsConsent] = useState(() =>
     readStoredValue(STORAGE_KEYS.analyticsConsent, true),
   )
@@ -1014,6 +1017,7 @@ function AppShell() {
     window.localStorage.setItem(STORAGE_KEYS.deck, JSON.stringify(deckConfig))
     window.localStorage.setItem(STORAGE_KEYS.sound, JSON.stringify(soundEnabled))
     window.localStorage.setItem(STORAGE_KEYS.ambient, JSON.stringify(ambientEnabled))
+    window.localStorage.setItem(STORAGE_KEYS.gestures, JSON.stringify(gesturesEnabled))
     window.localStorage.setItem(STORAGE_KEYS.mode, JSON.stringify(preferredMode))
     window.localStorage.setItem(STORAGE_KEYS.aiDifficulty, JSON.stringify(aiDifficultySetting))
     window.localStorage.setItem(STORAGE_KEYS.visitor, JSON.stringify(visitorId))
@@ -1023,6 +1027,7 @@ function AppShell() {
     deckConfig,
     soundEnabled,
     ambientEnabled,
+    gesturesEnabled,
     preferredMode,
     aiDifficultySetting,
     visitorId,
@@ -1599,6 +1604,56 @@ function AppShell() {
   function openScreen(screen: AppScreen) {
     transitionToScreen(screen, true)
   }
+
+  // ─── Phase 3Y — Mobile swipe + keyboard arrow scene navigation ───────
+  // The hook owns all gesture state. AppShell only owns the toggle, the
+  // commit callback (which routes back through `transitionToScreen` so
+  // the existing curtain class + paired sound fire automatically), and
+  // the keyboard-parity listener below.
+  const swipeEnabled = gesturesEnabled && !isBattleScreen && loggedIn && !setupRequired && !tourVisible
+  const handleSceneSwipeCommit = useCallback((direction: 'prev' | 'next') => {
+    const neighbor = getNeighborScreen(activeScreen, direction === 'prev' ? -1 : 1, NAV_ORDER)
+    if (!neighbor) return
+    transitionToScreen(neighbor, true)
+  // transitionToScreen is defined inline; rely on the closure capture.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeScreen])
+  const sceneSwipeBind = useSceneSwipe({
+    isBattleScreen,
+    enabled: swipeEnabled,
+    onCommit: handleSceneSwipeCommit,
+  })
+
+  useEffect(() => {
+    if (!swipeEnabled || typeof window === 'undefined') return
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
+      if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return
+      const target = event.target as HTMLElement | null
+      if (target && target !== document.body) {
+        const tag = target.tagName
+        if (
+          tag === 'INPUT' ||
+          tag === 'TEXTAREA' ||
+          tag === 'SELECT' ||
+          tag === 'BUTTON' ||
+          tag === 'A' ||
+          target.isContentEditable
+        ) {
+          return
+        }
+      }
+      const direction: 'prev' | 'next' = event.key === 'ArrowLeft' ? 'prev' : 'next'
+      const neighbor = getNeighborScreen(activeScreen, direction === 'prev' ? -1 : 1, NAV_ORDER)
+      if (!neighbor) return
+      event.preventDefault()
+      transitionToScreen(neighbor, true)
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  // transitionToScreen is defined inline; rely on the closure capture.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [swipeEnabled, activeScreen])
 
   // ─── Phase 3X — Onboarding tour control ──────────────────────────────
   const dismissOnboardingTour = useCallback((reason: 'completed' | 'skipped') => {
@@ -2799,6 +2854,7 @@ function AppShell() {
     installPromptEvent, handleInstallApp,
     swUpdateAvailable, handleAcceptUpdate, handleDismissUpdate,
     soundEnabled, setSoundEnabled, ambientEnabled, setAmbientEnabled, analyticsConsent, setAnalyticsConsent, visitorId,
+    gesturesEnabled, setGesturesEnabled,
     // Live service
     backendOnline, dailyQuest, featuredMode,
     // Queue handlers (state lives in QueueProvider)
@@ -3065,7 +3121,7 @@ function AppShell() {
 
 
       {loggedIn && (<>
-      <div className="scene-stage">
+      <div className="scene-stage" {...sceneSwipeBind}>
         <HomeScreen />
 
         <PlayScreen />

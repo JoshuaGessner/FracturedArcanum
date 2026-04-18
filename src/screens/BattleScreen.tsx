@@ -699,7 +699,7 @@ export function BattleScreen() {
             <span className="badge">Mana {activePlayer.mana}/{activePlayer.maxMana}</span>
           </div>
 
-          <div className="hand-grid hand-fan-grid">
+          <div className="hand-grid hand-fan-grid" data-scene-swipe-opt-out>
             {activePlayer.hand.map((card, index) => {
               const canPlay = !game.winner && activeBoardHasOpenLane && card.cost <= activePlayer.mana
               const needMana = card.cost - activePlayer.mana

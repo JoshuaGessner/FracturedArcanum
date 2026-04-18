@@ -4941,3 +4941,21 @@ button.icon-only {
     max-width: min(320px, calc(100vw - 24px));
   }
 }
+
+/* ─── Phase 3Y — Scene Swipe Gesture ───────────────────────────── */
+/*
+ * The swipe layer is implemented entirely in JS via useSceneSwipe; the
+ * only CSS affordance needed is a touch-action hint on the scene shell
+ * so the browser keeps native vertical scrolling snappy while still
+ * allowing horizontal swipe detection. Battle is inside `.scene-stage`
+ * but the hook short-circuits via `isBattleScreen`, so no per-screen
+ * CSS conflict arises.
+ *
+ * Reduced motion: scene-change commits inherit from the existing
+ * curtain transition system (.screen-enter-* + the prefers-reduced-motion
+ * rules already declared earlier in this file). The gesture itself adds
+ * no animated affordance, so there is nothing to collapse here.
+ */
+.scene-stage {
+  touch-action: pan-y;
+}

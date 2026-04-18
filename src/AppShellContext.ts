@@ -136,6 +136,9 @@ export type AppShellContextValue = {
   setSoundEnabled: React.Dispatch<React.SetStateAction<boolean>>
   ambientEnabled: boolean
   setAmbientEnabled: React.Dispatch<React.SetStateAction<boolean>>
+  // ─── Phase 3Y — Mobile swipe gesture between primary scenes ──────────
+  gesturesEnabled: boolean
+  setGesturesEnabled: React.Dispatch<React.SetStateAction<boolean>>
   analyticsConsent: boolean
   setAnalyticsConsent: React.Dispatch<React.SetStateAction<boolean>>
   visitorId: string

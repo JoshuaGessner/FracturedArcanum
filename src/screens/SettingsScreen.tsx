@@ -21,6 +21,7 @@ export function SettingsScreen() {
     adminAuditExpandedId, setAdminAuditExpandedId, refreshAdminAudit,
     inferToastSeverity, setToastMessage,
     startOnboardingTour,
+    gesturesEnabled, setGesturesEnabled,
   } = useAppShell()
   const { isAdminRole, isOwnerRole, accountRole, serverProfile } = useProfile()
 
@@ -165,6 +166,35 @@ export function SettingsScreen() {
                 }}
               >
                 Replay onboarding tour
+              </button>
+            </div>
+          </div>
+
+          <div className="preference-tile">
+            <div className="section-head">
+              <div>
+                <h3>Swipe between scenes</h3>
+                <p className="note">Drag horizontally on touch devices to switch primary scenes. Battle is unaffected.</p>
+              </div>
+              <span className={`deck-status ${gesturesEnabled ? 'ready' : 'warning'}`}>
+                {gesturesEnabled ? 'Enabled' : 'Disabled'}
+              </span>
+            </div>
+            <div className="controls">
+              <button
+                className={gesturesEnabled ? 'secondary' : 'primary'}
+                onClick={() => {
+                  const nextValue = !gesturesEnabled
+                  feedback('tap', soundEnabled)
+                  setGesturesEnabled(nextValue)
+                  setToastMessage(
+                    nextValue
+                      ? 'Swipe between scenes enabled.'
+                      : 'Swipe between scenes disabled.',
+                  )
+                }}
+              >
+                {gesturesEnabled ? 'Disable Scene Swipe' : 'Enable Scene Swipe'}
               </button>
             </div>
           </div>
