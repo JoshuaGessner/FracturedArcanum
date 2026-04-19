@@ -13,6 +13,7 @@ Fractured Arcanum should feel like a living fantasy card game, not a stack of we
 ### Core direction
 - every primary screen is a **scene**, not a long page of cards
 - the app uses **layered visual composition**: backdrop, ambient FX, anchored gameplay/UI, overlays
+- intentional overlap and z-layering are allowed when they save space **without blocking interaction**
 - battle is **board-first and always playable** on a phone viewport
 - floating animated elements should feel intentional and never block interaction
 - visuals can be inspired by premium digital card battlers, but all art, layout details, and assets must remain **original**
@@ -118,6 +119,8 @@ The best upgrade path is:
 - [x] remove the unstable mixed overlay/section-card arrangement from battle
 - [x] re-anchor enemy HUD, player HUD, hand rail, and end-turn controls as stable scene elements
 - [x] keep only one intentional battle surface in the viewport
+- [x] restore the stacked overlapping hand fan with lift/zoom emphasis
+- [x] surface effect seals on hand and battlefield cards so players can read mechanics at a glance
 - [ ] ensure touch hit areas and drag/tap behavior work reliably again
 
 ### Acceptance gate
@@ -167,9 +170,10 @@ This phase is not complete until battle is actually playable on-device.
 - [ ] create stable hero anchors rather than large floating slabs
 - [ ] rebuild the board into a true centered arena stage
 - [ ] create a compact player action dock with turn/burst controls
-- [ ] refit the hand rail for full visibility and reliable touch interaction
+- [x] refit the hand rail for full visibility, overlap, and reliable touch interaction
 - [ ] remove duplicate headings and oversized labels that waste vertical space
-- [ ] preserve inspect, drag, tap, and attack-target flows through the rebuild
+- [x] preserve inspect, drag, tap, and attack-target flows through the rebuild
+- [x] keep effect icons readable on live cards without forcing inspect-first play
 
 ### Interaction goals
 - [ ] card play feels tactile
@@ -260,9 +264,9 @@ We should only expand motion after the scene shell is stable and battle is relia
 
 | Workstream | Status | Notes |
 |---|---|---|
-| Battle playability recovery | Active | Single-surface battle shell is in place; on-device touch validation still needed |
-| Shared scene shell | Active | Core battle scene styling has started replacing split stacked layout |
-| Battle arena rebuild | Planned | Board-first layout with anchored hero and hand zones |
+| Battle playability recovery | Active | Single-surface shell, restored stacked hand fan, and visible effect seals are in place; on-device validation still needed |
+| Shared scene shell | Active | Core battle scene styling has started replacing split stacked layout with intentional layering |
+| Battle arena rebuild | Active | Board-first layout is underway with anchored hero and hand zones |
 | Unified chrome cleanup | Planned | Removes frame-within-frame artifacts |
 | App-wide scene migration | Planned | Apply the same model to all screens |
 | PixiJS rendering spike | Planned | Hybrid visual upgrade path |

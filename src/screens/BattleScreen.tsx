@@ -453,7 +453,7 @@ export function BattleScreen() {
                         <span><StatIcon kind="health" />{unit.currentHealth}</span>
                       </span>
                     </div>
-                    {unit.effect && <EffectBadge effect={unit.effect} compact />}
+                    {unit.effect && <EffectBadge effect={unit.effect} compact iconOnly className="battle-slot-effect" />}
                   </button>
                 )
               })}
@@ -529,7 +529,7 @@ export function BattleScreen() {
                         <span><StatIcon kind="health" />{unit.currentHealth}</span>
                       </span>
                     </div>
-                    {unit.effect && <EffectBadge effect={unit.effect} compact />}
+                    {unit.effect && <EffectBadge effect={unit.effect} compact iconOnly className="battle-slot-effect" />}
                   </button>
                 )
               })}
@@ -553,7 +553,6 @@ export function BattleScreen() {
                   <strong>{game.player.name}</strong>
                   <span className="battle-hero-metric"><StatIcon kind="health" /> {game.player.health} HP</span>
                 </div>
-                <span className="badge" aria-live="polite">{playerTurnLabel}</span>
                 {playerHeroFx === 'damaged' && (
                   <img className="hero-fx-overlay hero-fx-cracks" src={UI_ASSETS.overlays.heroCracks} alt="" aria-hidden="true" />
                 )}
@@ -561,6 +560,8 @@ export function BattleScreen() {
                   <img className="hero-fx-overlay hero-fx-halo" src={UI_ASSETS.overlays.heroHalo} alt="" aria-hidden="true" />
                 )}
               </div>
+
+              <span className="badge battle-turn-chip" aria-live="polite">{playerTurnLabel}</span>
 
               <div className="battle-resource-summary">
                 <span className="battle-resource-chip" aria-label={`Mana ${activePlayer.mana} of ${activePlayer.maxMana}`}>
@@ -665,7 +666,10 @@ export function BattleScreen() {
                   >
                     <div className="card-top">
                       <span className="cost-pill">{card.cost}</span>
-                      <span className="hero-label">{card.icon}</span>
+                      <div className="card-top-meta">
+                        {card.effect && <EffectBadge effect={card.effect} compact iconOnly className="battle-hand-effect" />}
+                        <span className="hero-label">{card.icon}</span>
+                      </div>
                     </div>
                     <div className="card-art-shell thumb">
                       <img className="card-illustration" src={cardArtPath(card.id)} alt={`${card.name} artwork`} loading="lazy" onError={handleCardArtError} />

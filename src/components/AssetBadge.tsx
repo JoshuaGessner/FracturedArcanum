@@ -4,15 +4,22 @@ import { getEffectIconPath, getPackArtPath, getRankAssetPath, getRarityGemPath, 
 type EffectBadgeProps = {
   effect: string
   compact?: boolean
+  iconOnly?: boolean
   className?: string
 }
 
-export function EffectBadge({ effect, compact = false, className = '' }: EffectBadgeProps) {
+export function EffectBadge({ effect, compact = false, iconOnly = false, className = '' }: EffectBadgeProps) {
   const icon = getEffectIconPath(effect)
+  const label = EFFECT_LABELS[effect] ?? effect
   return (
-    <span className={['effect-badge', compact ? 'small' : '', className].filter(Boolean).join(' ')}>
+    <span
+      className={['effect-badge', compact ? 'small' : '', iconOnly ? 'icon-only' : '', className].filter(Boolean).join(' ')}
+      role="img"
+      aria-label={`${label} effect`}
+      title={label}
+    >
       {icon && <img className="effect-icon" src={icon} alt="" aria-hidden="true" />}
-      <span>{EFFECT_LABELS[effect] ?? effect}</span>
+      {!iconOnly && <span>{label}</span>}
     </span>
   )
 }

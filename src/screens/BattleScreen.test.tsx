@@ -222,4 +222,13 @@ describe('BattleScreen mobile layout', () => {
     expect(within(battleSurface as HTMLElement).getByText(/tap or drag to play/i)).toBeTruthy()
     expect(document.querySelectorAll('.battlefield.active, .hand-section.active')).toHaveLength(1)
   })
+
+  it('shows visible effect markers in the live battle hand', () => {
+    renderBattleScreen()
+
+    const battleSurface = document.querySelector('.battlefield.active') as HTMLElement | null
+
+    expect(battleSurface).toBeTruthy()
+    expect(within(battleSurface as HTMLElement).getAllByLabelText(/effect/i).length).toBeGreaterThan(0)
+  })
 })
