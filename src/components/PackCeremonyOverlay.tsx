@@ -42,6 +42,7 @@ export function PackCeremonyOverlay({
   const [phase, setPhase] = useState<CeremonyPhase>(() => (detectReducedMotion() ? 'reveal' : 'intro'))
   const [flipped, setFlipped] = useState<boolean[]>(() => cards.map(() => false))
   const [shakeKey, setShakeKey] = useState<number>(0)
+  const [closing, setClosing] = useState(false)
   const timersRef = useRef<ReturnType<typeof setTimeout>[]>([])
   const ceremonySignature = useMemo(
     () => `${packId}:${cards.map((card) => `${card.id}:${card.rarity}:${card.duplicate ? 'dup' : 'new'}`).join('|')}`,
@@ -179,6 +180,15 @@ export function PackCeremonyOverlay({
     setPhase('reveal')
   }, [])
 
+  const handleCloseCeremony = useCallback(() => {
+    if (reducedMotion) {
+      onClose()
+      return
+    }
+    setClosing(true)
+    window.setTimeout(onClose, 240)
+  }, [onClose, reducedMotion])
+
   const canOpenAnother = runes >= packCost && packOpening === null
 
   if (cards.length === 0) return null
@@ -195,7 +205,7 @@ export function PackCeremonyOverlay({
 
   return (
     <section
-      className="pack-ceremony-overlay"
+      className={`pack-ceremony-overlay${closing ? ' closing' : ''}`}
       role="dialog"
       aria-modal="true"
       aria-label="Card pack opening"
@@ -325,7 +335,7 @@ export function PackCeremonyOverlay({
           <button
             type="button"
             className="primary"
-            onClick={onClose}
+            onClick={handleCloseCeremony}
             disabled={!allFlipped}
           >
             Done

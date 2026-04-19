@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import type { InspectedCard } from '../types'
 import { EFFECT_DESCRIPTIONS } from '../constants'
 import { cardArtPath, handleCardArtError } from '../utils'
@@ -9,14 +10,26 @@ type CardInspectModalProps = {
 }
 
 export function CardInspectModal({ card, onClose }: CardInspectModalProps) {
+  const dialogRef = useRef<HTMLElement>(null)
+
+  useEffect(() => {
+    if (!card) return
+    dialogRef.current?.focus()
+  }, [card])
+
   if (!card) return null
   return (
     <section
+      ref={dialogRef}
       className="queue-overlay card-inspect-overlay"
       role="dialog"
       aria-modal="true"
       aria-labelledby="card-inspect-name"
+      tabIndex={-1}
       onClick={onClose}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape') onClose()
+      }}
     >
       <div className="queue-modal card-inspect-modal section-card" onClick={(e) => e.stopPropagation()}>
         <div className="card-inspect-header">

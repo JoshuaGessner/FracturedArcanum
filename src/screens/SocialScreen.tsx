@@ -3,28 +3,10 @@ import { CARD_LIBRARY } from '../game'
 import { RankBadge } from '../components/AssetBadge'
 import { SceneHeaderPanel, type SceneHeaderTile } from '../components/SceneHeaderPanel'
 import { useAppShell, useProfile, useQueue, useSocial } from '../contexts'
+import { getCardIcon as _getCardIcon, getCardName as _getCardName, inferToastSeverity } from '../utils'
 
-type ToastSeverity = 'info' | 'success' | 'warning' | 'error'
-
-function inferToastSeverity(text: string): ToastSeverity {
-  const lc = text.toLowerCase()
-  if (/(error|fail|could not|cannot|denied|invalid|wrong|disconnect|lost|revok|too short|too long|already|forbid|unavailable|not enough)/.test(lc))
-    return 'error'
-  if (/(warning|caution|expired|reconnect|waiting|slow|delay)/.test(lc)) return 'warning'
-  if (/(welcome|claimed|unlocked|equipped|victory|won|saved|added|matched|ready|reconnected|installed|now an admin|server owner)/.test(lc))
-    return 'success'
-  return 'info'
-}
-
-function getCardName(cardId: string): string {
-  const card = CARD_LIBRARY.find((entry) => entry.id === cardId)
-  return card ? card.name : cardId
-}
-
-function getCardIcon(cardId: string): string {
-  const card = CARD_LIBRARY.find((entry) => entry.id === cardId)
-  return card?.icon ?? '🃏'
-}
+const getCardName = (id: string): string => _getCardName(id, CARD_LIBRARY)
+const getCardIcon = (id: string): string => _getCardIcon(id, CARD_LIBRARY)
 
 export function SocialScreen() {
   const { activeScreen } = useAppShell()
@@ -379,14 +361,13 @@ export function SocialScreen() {
                     <option value="request">You receive</option>
                   </select>
                   <input
-                    className="text-input"
+                    className="text-input trade-qty-input"
                     type="number"
                     min={1}
                     max={3}
                     value={tradePickerDraft.qty}
                     onChange={(event) => setTradePickerDraft((d) => ({ ...d, qty: Math.max(1, Math.min(3, Number(event.target.value) || 1)) }))}
                     aria-label="Quantity"
-                    style={{ width: '4.5rem' }}
                   />
                 </div>
                 <div className="row-2">

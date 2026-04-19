@@ -83,7 +83,7 @@ export function HomeScreen() {
           badges={(
             <>
               <span className="badge">{runes} Shards</span>
-              <span className={`badge streak-badge streak-${streakTier}`}>🔥{record.streak}</span>
+              <span className={`badge streak-badge streak-${streakTier}`}>{record.streak} Streak</span>
             </>
           )}
           tiles={homeTiles}

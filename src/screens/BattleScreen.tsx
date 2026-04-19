@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import {
   RARITY_COLORS,
+  type CardInstance,
 } from '../game'
 import { cardArtPath, getHandFanTilt, handleCardArtError, pulseFeedback } from '../utils'
 import { UI_ASSETS } from '../constants'
@@ -8,6 +9,15 @@ import { playSound, startLoopingSound } from '../audio'
 import { EffectBadge, StatIcon } from '../components/AssetBadge'
 import { SummaryPopup } from '../components/SummaryPopup'
 import { useAppShell, useGame, useProfile } from '../contexts'
+import type { InspectedCard } from '../types'
+
+function toInspectPayload(card: CardInstance): InspectedCard {
+  return { name: card.name, icon: card.icon, id: card.id, cost: card.cost, attack: card.attack, health: card.health, rarity: card.rarity, tribe: card.tribe, text: card.text, effect: card.effect ?? null }
+}
+
+const BattleFxCanvas = lazy(() =>
+  import('../components/BattleFxCanvas').then((m) => ({ default: m.BattleFxCanvas })),
+)
 
 type DragState = {
   handIndex: number
@@ -59,7 +69,7 @@ export function BattleScreen() {
   const isBattle = activeScreen === 'battle'
   const battleModeLabel = isRankedBattle ? 'Ranked duel' : battleKind === 'local' ? 'Pass and play' : 'AI skirmish'
   const resultTone = game.winner === 'player' ? 'victory' : game.winner === 'enemy' ? 'defeat' : 'draw'
-  const showBattleSummary = Boolean(game.winner)
+  const showBattleSummary = Boolean(game.winner) && !enemyTurnActive
     && ((battleSummaryVisible ?? false) || (game.winner !== 'player' && !cinemaSequence))
   const battleSummaryTitle = game.winner === 'player'
     ? 'Victory secured'
@@ -95,12 +105,15 @@ export function BattleScreen() {
   // Lane index that was just slammed into; clears after animation completes.
   const [slamLane, setSlamLane] = useState<number | null>(null)
   const slamTimerRef = useRef<number | null>(null)
+  // Incremented on each successful card play to drive PixiJS play-burst FX.
+  const [fxPlayCount, setFxPlayCount] = useState(0)
 
   const triggerSlam = useCallback((laneIndex: number) => {
     if (slamTimerRef.current) {
       window.clearTimeout(slamTimerRef.current)
     }
     setSlamLane(laneIndex)
+    setFxPlayCount((c) => c + 1)
     slamTimerRef.current = window.setTimeout(() => {
       setSlamLane(null)
       slamTimerRef.current = null
@@ -110,6 +123,22 @@ export function BattleScreen() {
   useEffect(() => () => {
     if (slamTimerRef.current) window.clearTimeout(slamTimerRef.current)
   }, [])
+
+  // ─── Turn-change pulse ─────────────────────────────────────────────
+  const [turnPulse, setTurnPulse] = useState<'player' | 'enemy' | null>(null)
+  const prevTurnRef = useRef(game.turn)
+  useEffect(() => {
+    if (game.turn !== prevTurnRef.current && !game.winner) {
+      setTurnPulse(game.turn === 'player' ? 'player' : 'enemy')
+      if (!enemyTurnActive) {
+        playSound('turnChange', soundEnabled)
+      }
+      const id = window.setTimeout(() => setTurnPulse(null), 650)
+      prevTurnRef.current = game.turn
+      return () => window.clearTimeout(id)
+    }
+    prevTurnRef.current = game.turn
+  }, [game.turn, game.winner, soundEnabled, enemyTurnActive])
 
   // ─── Attack arrow telegraph ─────────────────────────────────────────
   const battlefieldRef = useRef<HTMLElement | null>(null)
@@ -212,6 +241,27 @@ export function BattleScreen() {
     const stop = startLoopingSound('heroLowHp', soundEnabled, 1000)
     return stop
   }, [playerLowHp, soundEnabled])
+
+  // ─── Reset transient FX state on new match (Play Again) ────────────
+  const matchIdRef = useRef(`${game.enemy.name}-${game.turnNumber}`)
+  useEffect(() => {
+    const matchId = `${game.enemy.name}-${game.turnNumber}`
+    if (game.turnNumber <= 1 && !game.winner && matchId !== matchIdRef.current) {
+      setSlamLane(null)
+      setTurnPulse(null)
+      setArrow(null)
+      setPlayerHeroFx(null)
+      setEnemyHeroFx(null)
+      setDrag(null)
+      dragRef.current = null
+      prevTurnRef.current = game.turn
+      prevHeroRef.current = { player: game.player.health, enemy: game.enemy.health }
+      if (slamTimerRef.current) { window.clearTimeout(slamTimerRef.current); slamTimerRef.current = null }
+      if (playerFxTimerRef.current) { window.clearTimeout(playerFxTimerRef.current); playerFxTimerRef.current = null }
+      if (enemyFxTimerRef.current) { window.clearTimeout(enemyFxTimerRef.current); enemyFxTimerRef.current = null }
+    }
+    matchIdRef.current = matchId
+  }, [game.enemy.name, game.turnNumber, game.winner, game.turn, game.player.health, game.enemy.health])
 
   // ─── Drag-to-play handlers ──────────────────────────────────────────
   const findDropLane = useCallback((clientX: number, clientY: number): number | null => {
@@ -388,8 +438,17 @@ export function BattleScreen() {
         </div>
       )}
 
-      <section className={`battlefield screen-panel ${isBattle ? 'active' : 'hidden'}`}>
-        <article className="section-card battlefield-stage battle-arena-frame" ref={battlefieldRef}>
+      <section className={`battlefield screen-panel ${isBattle ? 'active' : 'hidden'} ${game.winner ? 'has-winner' : ''}`}>
+        <article className={`section-card battlefield-stage battle-arena-frame ${turnPulse ? `turn-pulse-${turnPulse}` : ''}`} ref={battlefieldRef}>
+          <Suspense fallback={null}>
+            <BattleFxCanvas
+              turn={game.turn}
+              damagedSlots={damagedSlots}
+              hasWinner={Boolean(game.winner)}
+              playCount={fxPlayCount}
+              containerRef={battlefieldRef}
+            />
+          </Suspense>
           {enemyTurnActive && (
             <div className="battle-overlay-stack">
               <div className="enemy-turn-banner enemy-turn-banner-floating" role="status" aria-live="polite" aria-atomic="true">
@@ -640,7 +699,7 @@ export function BattleScreen() {
 
                 const fanTilt = getHandFanTilt(index, activePlayer.hand.length)
                 const isDragging = dragActive && dragHandIndex === index
-                const inspectCard = { name: card.name, icon: card.icon, id: card.id, cost: card.cost, attack: card.attack, health: card.health, rarity: card.rarity, tribe: card.tribe, text: card.text, effect: card.effect ?? null }
+                const inspectCard = toInspectPayload(card)
                 const composed = composeHandlers(inspectCard, index, canPlay)
                 const dragStyle: React.CSSProperties = isDragging && drag
                   ? {
@@ -664,7 +723,12 @@ export function BattleScreen() {
                     onClick={() => {
                       if (consumeLongPressAction()) return
                       if (consumeDragHandled()) return
-                      if (canPlay) handlePlayCard(index)
+                      if (canPlay) {
+                        handlePlayCard(index)
+                      } else {
+                        playSound('error', soundEnabled)
+                        pulseFeedback(6, hapticsEnabled)
+                      }
                     }}
                     {...composed}
                     aria-disabled={!canPlay}

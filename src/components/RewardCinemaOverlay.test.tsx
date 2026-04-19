@@ -140,6 +140,11 @@ describe('RewardCinemaOverlay', () => {
 
     fireEvent.click(continueBtn)
     expect(feedbackMock).toHaveBeenCalledWith('claim', true, true)
+
+    // The overlay plays a 260ms exit animation before calling onClose.
+    act(() => {
+      vi.advanceTimersByTime(300)
+    })
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 

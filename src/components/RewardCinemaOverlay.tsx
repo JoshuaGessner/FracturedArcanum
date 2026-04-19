@@ -24,7 +24,7 @@ export type RewardCinemaOverlayProps = {
 const FULL_BEAT_DURATIONS: Record<RewardBeat['kind'], number> = {
   banner: 1100,
   count: 1300,
-  shower: 1400,
+  shower: 1650,
   card: 900,
 }
 
@@ -93,6 +93,8 @@ function RewardCinemaInner({
 }) {
   const [reducedMotion, setReducedMotion] = useState<boolean>(() => detectReducedMotion())
   const [beatIndex, setBeatIndex] = useState(0)
+  const [closing, setClosing] = useState(false)
+  const [beatExiting, setBeatExiting] = useState(false)
 
   // Keep reduced-motion preference in sync with the OS setting.
   useEffect(() => {
@@ -113,17 +115,34 @@ function RewardCinemaInner({
   }, [currentBeat, soundEnabled])
 
   // Auto-advance through beats. The final beat persists until Continue.
+  // Non-final beats fade out briefly before the next beat fades in.
+  const BEAT_EXIT_MS = 160
   useEffect(() => {
     if (!currentBeat || isLastBeat) return undefined
     const duration = reducedMotion ? 280 : FULL_BEAT_DURATIONS[currentBeat.kind]
-    const id = window.setTimeout(() => setBeatIndex((idx) => idx + 1), duration)
-    return () => window.clearTimeout(id)
-  }, [currentBeat, isLastBeat, reducedMotion])
+    const exitId = window.setTimeout(() => {
+      if (!reducedMotion) setBeatExiting(true)
+    }, duration - BEAT_EXIT_MS)
+    const advanceId = window.setTimeout(() => {
+      setBeatExiting(false)
+      setBeatIndex((idx) => idx + 1)
+      playSound('beatAdvance', soundEnabled)
+    }, duration)
+    return () => {
+      window.clearTimeout(exitId)
+      window.clearTimeout(advanceId)
+    }
+  }, [currentBeat, isLastBeat, reducedMotion, soundEnabled])
 
   const handleContinue = useCallback(() => {
     feedback('claim', soundEnabled, hapticsEnabled)
-    onClose()
-  }, [onClose, soundEnabled, hapticsEnabled])
+    if (reducedMotion) {
+      onClose()
+      return
+    }
+    setClosing(true)
+    window.setTimeout(onClose, 260)
+  }, [onClose, soundEnabled, hapticsEnabled, reducedMotion])
 
   const showShower = useMemo(
     () => !reducedMotion && currentBeat?.kind === 'shower',
@@ -134,7 +153,7 @@ function RewardCinemaInner({
 
   return (
     <section
-      className={`reward-cinema-overlay${reducedMotion ? ' reduced-motion' : ''}`}
+      className={`reward-cinema-overlay${reducedMotion ? ' reduced-motion' : ''}${closing ? ' closing' : ''}`}
       role="dialog"
       aria-modal="true"
       aria-label="Reward cinematic"
@@ -145,7 +164,7 @@ function RewardCinemaInner({
 
         <div
           key={currentBeat.id}
-          className={`reward-cinema-stage reward-cinema-stage-${currentBeat.kind}`}
+          className={`reward-cinema-stage reward-cinema-stage-${currentBeat.kind}${beatExiting ? ' beat-exiting' : ''}`}
           data-testid="reward-cinema-stage"
         >
           {currentBeat.kind === 'banner' && (

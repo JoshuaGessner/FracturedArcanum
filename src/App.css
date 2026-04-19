@@ -82,6 +82,14 @@
   --motion-fast: 120ms cubic-bezier(0.4, 0, 0.2, 1);
   --motion-base: 220ms cubic-bezier(0.4, 0, 0.2, 1);
   --motion-slow: 380ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* ── Viewport-Responsive Sizing ──────────────────────────────────
+     Gaps, padding, and panel spacing scale fluidly between compact
+     phones (667px tall) and spacious tablets (1024px+).  Uses svh so
+     iOS Safari dynamic toolbar changes don't cause constant reflow. */
+  --scene-gap: clamp(12px, 2svh, 28px);
+  --card-pad: clamp(12px, 1.6svh, 22px);
+  --panel-gap: clamp(6px, 1svh, 14px);
 }
 
 /* ─── Shared layout primitives ───────────────────────────────────── */
@@ -120,6 +128,31 @@ button:disabled {
   cursor: not-allowed;
 }
 
+/* ─── Error Boundary Fallback ──────────────────────────────────── */
+
+.error-boundary-fallback {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100dvh;
+  padding: var(--space-4);
+  text-align: center;
+  background: var(--bg);
+  color: var(--text);
+  gap: var(--space-3);
+}
+
+.error-boundary-fallback h1 {
+  font-size: var(--font-xl, 1.5rem);
+  margin: 0;
+}
+
+.error-boundary-fallback p {
+  color: var(--muted);
+  margin: 0;
+}
+
 /* ─── App Shell ─────────────────────────────────────────────────── */
 
 .app-shell {
@@ -135,7 +168,7 @@ button:disabled {
     calc(12px + var(--safe-left));
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--scene-gap);
   position: relative;
   overflow: hidden;
 }
@@ -193,15 +226,15 @@ button:disabled {
 }
 
 @keyframes ambientFloat {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-6px); }
+  0%, 100% { transform: translateY(0) scale(1); }
+  33%      { transform: translateY(-4px) scale(1.003); }
+  66%      { transform: translateY(-8px) scale(0.997); }
 }
 
 /* ─── Screen Transitions ────────────────────────────────────────── */
 
 .screen-panel.active {
   animation: screenIn 240ms ease;
-  align-content: start;
 }
 
 /* Non-battle screens: the single active panel owns vertical scroll. */
@@ -222,6 +255,33 @@ button:disabled {
   border-radius: 999px;
 }
 .app-shell:not(.battle-shell-active) .scene-stage > .screen-panel.active::-webkit-scrollbar-track { background: transparent; }
+
+/* ── Scene Fill — single-column screens stretch to use full viewport ─
+   The grid display from .home-screen / .collection-screen is overridden
+   to flex-column so the primary content card can grow into surplus
+   height instead of leaving dead space below. Multi-column screens
+   (.vault-grid, .ops-grid) keep their native CSS Grid layout. */
+.app-shell:not(.battle-shell-active) .scene-stage > .home-screen.screen-panel.active,
+.app-shell:not(.battle-shell-active) .scene-stage > .collection-screen.screen-panel.active {
+  display: flex;
+  flex-direction: column;
+  gap: var(--scene-gap);
+}
+
+/* Primary content block grows to absorb surplus height. */
+.home-screen.screen-panel.active > .section-card,
+.home-screen.screen-panel.active > .home-cards,
+.collection-screen.screen-panel.active > .section-card {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* Multi-column screens keep align-content: start so cards don't stretch
+   into tall rows when content is short. */
+.vault-grid.screen-panel.active,
+.ops-grid.screen-panel.active {
+  align-content: start;
+}
 
 /* Battle: the active arena should own the remaining height while banners
    and the hand rail stay compact around it. */
@@ -253,41 +313,42 @@ button:disabled {
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-.app-shell.screen-enter-forward .screen-panel.active { animation: curtainPullForward 320ms var(--motion-base); }
-.app-shell.screen-enter-back .screen-panel.active { animation: curtainPullBack 320ms var(--motion-base); }
-.app-shell.screen-enter-lateral .screen-panel.active { animation: runeWipeFade 280ms var(--motion-base); }
-.app-shell.screen-enter-battle .screen-panel.active { animation: portalSlamIris 480ms var(--motion-slow); }
+.app-shell.screen-enter-forward .screen-panel.active { animation: curtainPullForward 360ms cubic-bezier(0.22, 0.61, 0.36, 1); }
+.app-shell.screen-enter-back .screen-panel.active { animation: curtainPullBack 360ms cubic-bezier(0.22, 0.61, 0.36, 1); }
+.app-shell.screen-enter-lateral .screen-panel.active { animation: runeWipeFade 320ms cubic-bezier(0.22, 0.61, 0.36, 1); }
+.app-shell.screen-enter-battle .screen-panel.active { animation: portalSlamIris 520ms cubic-bezier(0.16, 1, 0.3, 1); }
 
 /* Curtain pull forward (deeper into the app) — new scene wipes in from
    the right with a parchment-curtain feel; previous scene parallaxes
    away (handled by the implicit display swap, but the entering scene
    still telegraphs the direction with a clipped reveal). */
 @keyframes curtainPullForward {
-  0% { opacity: 0; transform: translateX(48px) scale(0.97); clip-path: inset(0 100% 0 0); filter: brightness(0.85); }
-  60% { opacity: 1; clip-path: inset(0 0 0 0); }
+  0%   { opacity: 0; transform: translateX(42px) scale(0.96); clip-path: inset(0 100% 0 0); filter: brightness(0.7); }
+  50%  { opacity: 1; clip-path: inset(0 8% 0 0); filter: brightness(1.12); }
   100% { opacity: 1; transform: translateX(0) scale(1); clip-path: inset(0 0 0 0); filter: brightness(1); }
 }
 
 /* Curtain pull back (toward home) — mirror of forward. */
 @keyframes curtainPullBack {
-  0% { opacity: 0; transform: translateX(-48px) scale(0.97); clip-path: inset(0 0 0 100%); filter: brightness(0.85); }
-  60% { opacity: 1; clip-path: inset(0 0 0 0); }
+  0%   { opacity: 0; transform: translateX(-42px) scale(0.96); clip-path: inset(0 0 0 100%); filter: brightness(0.7); }
+  50%  { opacity: 1; clip-path: inset(0 0 0 8%); filter: brightness(1.12); }
   100% { opacity: 1; transform: translateX(0) scale(1); clip-path: inset(0 0 0 0); filter: brightness(1); }
 }
 
 /* Lateral rune wipe — band of brightness sweeps across as scene fades. */
 @keyframes runeWipeFade {
-  0% { opacity: 0; filter: brightness(0.6) blur(2px); }
-  50% { opacity: 1; filter: brightness(1.15) blur(0.5px); }
-  100% { opacity: 1; filter: brightness(1) blur(0); }
+  0%   { opacity: 0; filter: brightness(0.5) blur(3px); transform: scale(0.99); }
+  40%  { opacity: 0.8; filter: brightness(1.2) blur(1px); }
+  100% { opacity: 1; filter: brightness(1) blur(0); transform: scale(1); }
 }
 
 /* Portal slam (any → battle) — central iris expands outward from
    the spark, screen darkens briefly, then opens up. */
 @keyframes portalSlamIris {
-  0% { opacity: 0; transform: scale(0.6); clip-path: circle(0% at 50% 50%); filter: brightness(0.4); }
-  35% { opacity: 1; transform: scale(1.05); clip-path: circle(28% at 50% 50%); filter: brightness(1.2); }
-  100% { opacity: 1; transform: scale(1); clip-path: circle(75% at 50% 50%); filter: brightness(1); }
+  0%   { opacity: 0; transform: scale(0.5); clip-path: circle(0% at 50% 50%); filter: brightness(0.3) saturate(1.4); }
+  30%  { opacity: 1; transform: scale(1.08); clip-path: circle(24% at 50% 50%); filter: brightness(1.35) saturate(1.2); }
+  70%  { transform: scale(1.02); clip-path: circle(55% at 50% 50%); filter: brightness(1.05); }
+  100% { opacity: 1; transform: scale(1); clip-path: circle(75% at 50% 50%); filter: brightness(1) saturate(1); }
 }
 
 /* Legacy slide keyframes retained for any consumers still referencing them. */
@@ -372,11 +433,165 @@ button:disabled {
   .battlefield.active::before { filter: none; }
 }
 
+/* ─── Ambient Scene FX Layer ─────────────────────────────────────
+   Each active screen gets a `::after` layer for floating ambient
+   particles (runes, embers, dust, sparkles). These use CSS radial
+   gradients as pseudo-particles animated along offset paths so no
+   extra DOM nodes or JS are needed. Each scene picks a thematic
+   colour and motion character. The entire layer is decoration-only,
+   non-interactive, and removed under reduced motion.
+   ─────────────────────────────────────────────────────────────── */
+
+.home-screen.active::after,
+.play-screen.active::after,
+.social-screen.active::after,
+.collection-screen.active::after,
+.shop-screen.active::after,
+.settings-screen.active::after,
+.battlefield.active::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  border-radius: 24px;
+  overflow: hidden;
+  opacity: 0;
+  animation: sceneFxFadeIn 1.2s ease 0.4s forwards;
+}
+
+/* Shared particle paint — a scattered radial-gradient pattern that
+   each scene tints via background-color mix. */
+.home-screen.active::after {
+  background:
+    radial-gradient(1.5px 1.5px at 12% 18%, rgba(251, 191, 36, 0.55), transparent),
+    radial-gradient(1px 1px at 28% 72%, rgba(251, 191, 36, 0.35), transparent),
+    radial-gradient(2px 2px at 65% 8%, rgba(251, 191, 36, 0.4), transparent),
+    radial-gradient(1px 1px at 82% 42%, rgba(251, 191, 36, 0.3), transparent),
+    radial-gradient(1.5px 1.5px at 45% 88%, rgba(251, 191, 36, 0.45), transparent),
+    radial-gradient(1px 1px at 92% 76%, rgba(251, 191, 36, 0.25), transparent);
+  animation: sceneFxFadeIn 1.2s ease 0.4s forwards, sceneFxDriftSlow 18s ease-in-out infinite;
+}
+
+.play-screen.active::after {
+  background:
+    radial-gradient(2px 2px at 15% 22%, rgba(124, 58, 237, 0.6), transparent),
+    radial-gradient(1.5px 1.5px at 38% 65%, rgba(124, 58, 237, 0.35), transparent),
+    radial-gradient(2.5px 2.5px at 70% 12%, rgba(167, 139, 250, 0.5), transparent),
+    radial-gradient(1px 1px at 85% 48%, rgba(124, 58, 237, 0.3), transparent),
+    radial-gradient(2px 2px at 50% 85%, rgba(167, 139, 250, 0.45), transparent),
+    radial-gradient(1.5px 1.5px at 8% 78%, rgba(124, 58, 237, 0.25), transparent);
+  animation: sceneFxFadeIn 1.2s ease 0.4s forwards, sceneFxPulse 14s ease-in-out infinite;
+}
+
+.collection-screen.active::after {
+  background:
+    radial-gradient(1px 1px at 10% 30%, rgba(56, 189, 248, 0.5), transparent),
+    radial-gradient(1.5px 1.5px at 35% 58%, rgba(56, 189, 248, 0.3), transparent),
+    radial-gradient(1px 1px at 62% 15%, rgba(147, 197, 253, 0.45), transparent),
+    radial-gradient(2px 2px at 78% 70%, rgba(56, 189, 248, 0.35), transparent),
+    radial-gradient(1px 1px at 48% 90%, rgba(147, 197, 253, 0.25), transparent),
+    radial-gradient(1.5px 1.5px at 90% 25%, rgba(56, 189, 248, 0.4), transparent);
+  animation: sceneFxFadeIn 1.2s ease 0.4s forwards, sceneFxDriftSlow 22s ease-in-out infinite;
+}
+
+.social-screen.active::after {
+  background:
+    radial-gradient(2px 2px at 14% 25%, rgba(249, 115, 22, 0.45), transparent),
+    radial-gradient(1px 1px at 40% 60%, rgba(251, 146, 60, 0.3), transparent),
+    radial-gradient(1.5px 1.5px at 68% 18%, rgba(249, 115, 22, 0.4), transparent),
+    radial-gradient(1px 1px at 88% 55%, rgba(251, 146, 60, 0.25), transparent),
+    radial-gradient(2px 2px at 52% 82%, rgba(249, 115, 22, 0.35), transparent),
+    radial-gradient(1px 1px at 22% 90%, rgba(251, 146, 60, 0.2), transparent);
+  animation: sceneFxFadeIn 1.2s ease 0.4s forwards, sceneFxEmberRise 16s ease-in-out infinite;
+}
+
+.shop-screen.active::after {
+  background:
+    radial-gradient(2px 2px at 18% 20%, rgba(251, 191, 36, 0.5), transparent),
+    radial-gradient(1.5px 1.5px at 42% 55%, rgba(168, 85, 247, 0.35), transparent),
+    radial-gradient(1px 1px at 72% 10%, rgba(251, 191, 36, 0.4), transparent),
+    radial-gradient(2px 2px at 60% 78%, rgba(168, 85, 247, 0.3), transparent),
+    radial-gradient(1px 1px at 88% 40%, rgba(251, 191, 36, 0.35), transparent),
+    radial-gradient(1.5px 1.5px at 30% 92%, rgba(168, 85, 247, 0.25), transparent);
+  animation: sceneFxFadeIn 1.2s ease 0.4s forwards, sceneFxShimmer 12s ease-in-out infinite;
+}
+
+.settings-screen.active::after {
+  background:
+    radial-gradient(1px 1px at 15% 28%, rgba(147, 197, 253, 0.35), transparent),
+    radial-gradient(1px 1px at 42% 62%, rgba(147, 197, 253, 0.2), transparent),
+    radial-gradient(1.5px 1.5px at 68% 20%, rgba(167, 139, 250, 0.3), transparent),
+    radial-gradient(1px 1px at 85% 50%, rgba(147, 197, 253, 0.2), transparent),
+    radial-gradient(1px 1px at 55% 85%, rgba(167, 139, 250, 0.25), transparent),
+    radial-gradient(1px 1px at 8% 75%, rgba(147, 197, 253, 0.15), transparent);
+  animation: sceneFxFadeIn 1.2s ease 0.4s forwards, sceneFxDriftSlow 26s ease-in-out infinite;
+}
+
+.battlefield.active::after {
+  background:
+    radial-gradient(2px 2px at 10% 15%, rgba(239, 68, 68, 0.45), transparent),
+    radial-gradient(1.5px 1.5px at 32% 70%, rgba(249, 115, 22, 0.35), transparent),
+    radial-gradient(2.5px 2.5px at 58% 8%, rgba(239, 68, 68, 0.5), transparent),
+    radial-gradient(1px 1px at 80% 45%, rgba(249, 115, 22, 0.3), transparent),
+    radial-gradient(2px 2px at 45% 90%, rgba(239, 68, 68, 0.4), transparent),
+    radial-gradient(1.5px 1.5px at 92% 72%, rgba(249, 115, 22, 0.25), transparent),
+    radial-gradient(1px 1px at 20% 52%, rgba(251, 191, 36, 0.2), transparent);
+  animation: sceneFxFadeIn 1.2s ease 0.4s forwards, sceneFxEmberRise 10s ease-in-out infinite;
+}
+
+/* Prevent PlayScreen/SocialScreen from doubling the home-screen ::after */
+.home-screen.play-screen.active::after { background: none; animation: none; }
+.home-screen.social-screen.active::after { background: none; animation: none; }
+
+@keyframes sceneFxFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes sceneFxDriftSlow {
+  0%, 100% { transform: translateY(0) translateX(0); }
+  25%      { transform: translateY(-8px) translateX(4px); }
+  50%      { transform: translateY(-3px) translateX(-6px); }
+  75%      { transform: translateY(-10px) translateX(2px); }
+}
+
+@keyframes sceneFxPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.7; transform: scale(1.04); }
+}
+
+@keyframes sceneFxEmberRise {
+  0%, 100% { transform: translateY(0) translateX(0); opacity: 1; }
+  30%      { transform: translateY(-12px) translateX(3px); opacity: 0.85; }
+  60%      { transform: translateY(-6px) translateX(-4px); opacity: 1; }
+  80%      { transform: translateY(-14px) translateX(5px); opacity: 0.75; }
+}
+
+@keyframes sceneFxShimmer {
+  0%, 100% { opacity: 1; transform: translateX(0) scale(1); }
+  33%      { opacity: 0.8; transform: translateX(5px) scale(1.02); }
+  66%      { opacity: 1; transform: translateX(-3px) scale(0.98); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-screen.active::after,
+  .play-screen.active::after,
+  .social-screen.active::after,
+  .collection-screen.active::after,
+  .shop-screen.active::after,
+  .settings-screen.active::after,
+  .battlefield.active::after {
+    animation: none !important;
+    opacity: 0.6;
+  }
+}
+
 /* ─── Layout Grids ──────────────────────────────────────────────── */
 
 .topbar, .home-screen, .battlefield, .vault-grid, .ops-grid {
   display: grid;
-  gap: 16px;
+  gap: var(--scene-gap);
 }
 
 .utility-grid { grid-template-columns: 1fr; }
@@ -390,7 +605,7 @@ button:disabled {
 .home-cards {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
-  gap: 12px;
+  gap: var(--scene-gap);
 }
 
 .meta-grid, .footer-grid {
@@ -797,7 +1012,7 @@ button:disabled {
   background: linear-gradient(135deg, rgba(14, 20, 38, 0.94), rgba(23, 35, 71, 0.86));
   border: 1px solid var(--border);
   border-radius: 18px;
-  padding: 12px;
+  padding: var(--card-pad);
   box-shadow: 0 14px 38px rgba(10, 14, 30, 0.28);
 }
 
@@ -810,8 +1025,8 @@ button:disabled {
 .spotlight-card { overflow: hidden; }
 
 .scene-status-panel {
-  margin-top: 12px;
-  padding: 12px;
+  margin-top: var(--panel-gap);
+  padding: var(--card-pad);
   border-radius: 16px;
   border: 1px solid rgba(147, 197, 253, 0.18);
   background: linear-gradient(160deg, rgba(10, 16, 31, 0.86), rgba(26, 34, 64, 0.82));
@@ -819,7 +1034,7 @@ button:disabled {
 
 .scene-header-panel {
   display: grid;
-  gap: 6px;
+  gap: var(--panel-gap);
 }
 
 .scene-header-top {
@@ -867,7 +1082,7 @@ button:disabled {
 .scene-status-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 6px;
+  gap: var(--panel-gap);
   margin-top: 4px;
 }
 
@@ -875,7 +1090,7 @@ button:disabled {
   display: grid;
   gap: 2px;
   min-width: 0;
-  padding: 6px 8px;
+  padding: var(--panel-gap) 8px;
   border-radius: 10px;
   border: 1px solid rgba(147, 197, 253, 0.14);
   background: rgba(255, 255, 255, 0.04);
@@ -999,8 +1214,8 @@ button:disabled {
 .mode-card-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 10px;
-  margin-top: 12px;
+  gap: var(--panel-gap);
+  margin-top: var(--scene-gap);
 }
 
 .mode-card {
@@ -1427,6 +1642,15 @@ button:disabled {
   overflow: hidden;
   background: linear-gradient(180deg, rgba(10, 16, 31, 0.96), rgba(31, 45, 88, 0.92));
   backdrop-filter: blur(12px);
+}
+
+.battle-fx-canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+  border-radius: inherit;
 }
 
 /* ─── Hero Anchors (mirrored pair) ─────────────────────────────── */
@@ -2599,8 +2823,8 @@ button:disabled {
   grid-template-columns: auto auto minmax(0, 1fr);
   align-items: center;
   gap: 8px;
-  padding: 6px 10px;
-  margin-top: 6px;
+  padding: var(--panel-gap) 10px;
+  margin-top: var(--panel-gap);
   border-radius: 10px;
   background: rgba(30, 41, 59, 0.5);
   border: 1px solid rgba(147, 197, 253, 0.1);
@@ -3534,8 +3758,12 @@ button.danger:hover { filter: brightness(1.08); }
 }
 
 @media (max-width: 640px) {
+  :root {
+    --scene-gap: clamp(8px, 1.5svh, 16px);
+    --card-pad: clamp(10px, 1.4svh, 16px);
+    --panel-gap: clamp(4px, 0.8svh, 10px);
+  }
   .app-shell {
-    gap: 8px;
     padding: 10px 10px calc(10px + env(safe-area-inset-bottom, 0px));
   }
   .topbar-home {
@@ -3557,7 +3785,6 @@ button.danger:hover { filter: brightness(1.08); }
   .subtitle { display: none; }
   .brand-logo { width: min(156px, 44vw); }
   .section-card, .hero-card {
-    padding: 10px;
     border-radius: 14px;
     box-shadow: 0 10px 26px rgba(10, 14, 30, 0.22);
   }
@@ -3952,9 +4179,18 @@ button.danger:hover { filter: brightness(1.08); }
   .social-row {
     grid-template-columns: 1fr;
   }
+
+  .trade-picker-row {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 400px) {
+  :root {
+    --scene-gap: clamp(6px, 1.2svh, 12px);
+    --card-pad: clamp(8px, 1.2svh, 14px);
+    --panel-gap: clamp(4px, 0.6svh, 8px);
+  }
   .app-shell { padding: 8px 8px calc(8px + env(safe-area-inset-bottom, 0px)); }
   .scene-rail { gap: 3px; }
   .scene-link { min-height: 44px; padding: 4px 2px; }
@@ -4155,52 +4391,6 @@ button.danger:hover { filter: brightness(1.08); }
   font-size: 0.82rem;
   color: var(--muted);
 }
-
-@keyframes packOpen {
-  0% { transform: scale(1) rotate(0deg); }
-  30% { transform: scale(1.1) rotate(-3deg); }
-  60% { transform: scale(1.15) rotate(3deg); }
-  100% { transform: scale(0.9) rotate(0deg); opacity: 0; }
-}
-
-@keyframes cardReveal {
-  from { opacity: 0; transform: scale(0.6) rotateY(180deg); }
-  to { opacity: 1; transform: scale(1) rotateY(0deg); }
-}
-
-.pack-opening-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 20;
-  display: grid;
-  place-items: center;
-  background: rgba(5, 5, 15, 0.85);
-  backdrop-filter: blur(16px);
-}
-
-.pack-reveal-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: 12px;
-  max-width: 640px;
-  width: 100%;
-  padding: 24px;
-}
-
-.revealed-card {
-  padding: 12px;
-  border-radius: 14px;
-  border: 2px solid var(--rarity-color, var(--border));
-  background: linear-gradient(180deg, rgba(40, 35, 70, 0.98), rgba(18, 20, 40, 0.98));
-  text-align: center;
-  animation: cardReveal 0.5s ease-out backwards;
-}
-
-.revealed-card:nth-child(1) { animation-delay: 0.1s; }
-.revealed-card:nth-child(2) { animation-delay: 0.3s; }
-.revealed-card:nth-child(3) { animation-delay: 0.5s; }
-.revealed-card:nth-child(4) { animation-delay: 0.7s; }
-.revealed-card:nth-child(5) { animation-delay: 0.9s; }
 
 /* ─── Turn HUD (battle) ─── */
 .battle-hud { background: linear-gradient(135deg, rgba(14, 21, 41, 0.96), rgba(28, 44, 88, 0.88)); }
@@ -4796,6 +4986,9 @@ button.danger:disabled { opacity: 0.55; transform: none; box-shadow: none; }
 .trade-picker-row input {
   width: 100%;
 }
+.trade-qty-input {
+  max-width: 4.5rem;
+}
 .trade-expiry {
   font-size: var(--font-xs);
   color: var(--muted);
@@ -5043,6 +5236,90 @@ button.danger:disabled { opacity: 0.55; transform: none; box-shadow: none; }
   50%      { box-shadow: inset 0 0 30px rgba(220, 38, 38, 0.7); }
 }
 
+/* ─── Enhanced Battle Feedback (Phase F.3) ─────────────────────── */
+
+/* Turn-change edge pulse — a brief glow sweep along the battlefield
+   border when the turn switches. Applied by toggling `.turn-pulse`
+   on the board container for one animation cycle. */
+.battlefield-stage.turn-pulse-player {
+  animation: turnPulsePlayer 600ms ease-out;
+}
+
+.battlefield-stage.turn-pulse-enemy {
+  animation: turnPulseEnemy 600ms ease-out;
+}
+
+@keyframes turnPulsePlayer {
+  0%   { box-shadow: inset 0 0 0 0 rgba(37, 99, 235, 0); }
+  30%  { box-shadow: inset 0 0 24px 2px rgba(37, 99, 235, 0.35); }
+  100% { box-shadow: inset 0 0 0 0 rgba(37, 99, 235, 0); }
+}
+
+@keyframes turnPulseEnemy {
+  0%   { box-shadow: inset 0 0 0 0 rgba(220, 38, 38, 0); }
+  30%  { box-shadow: inset 0 0 24px 2px rgba(220, 38, 38, 0.3); }
+  100% { box-shadow: inset 0 0 0 0 rgba(220, 38, 38, 0); }
+}
+
+/* Mana spend sparkle — card-play animation gets an extra glow burst. */
+.slot.is-slamming .unit-portrait {
+  animation: manaSpendGlow 400ms ease-out;
+}
+
+@keyframes manaSpendGlow {
+  0%   { filter: brightness(1); }
+  25%  { filter: brightness(1.6) drop-shadow(0 0 8px rgba(253, 230, 138, 0.8)); }
+  100% { filter: brightness(1) drop-shadow(0 0 0 transparent); }
+}
+
+/* Attack telegraph — pulsing glow on the arrow line. */
+.attack-arrow-svg line {
+  animation: attackTelegraph 800ms ease-in-out infinite;
+}
+
+@keyframes attackTelegraph {
+  0%, 100% { filter: drop-shadow(0 0 4px rgba(220, 38, 38, 0.5)); stroke-width: 6; }
+  50%      { filter: drop-shadow(0 0 10px rgba(253, 230, 138, 0.7)); stroke-width: 8; }
+}
+
+/* Damage impact ripple — a brief expanding ring on units that take damage. */
+.slot.damage-flash::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: inherit;
+  border: 2px solid rgba(239, 68, 68, 0.7);
+  animation: damageRipple 450ms ease-out forwards;
+  pointer-events: none;
+}
+
+@keyframes damageRipple {
+  0%   { opacity: 1; transform: scale(0.95); }
+  100% { opacity: 0; transform: scale(1.15); }
+}
+
+/* Victory ambient intensification — battlefield glows brighter. */
+.battlefield.active.has-winner::after {
+  opacity: 1.5;
+  filter: brightness(1.3) saturate(1.4);
+  transition: filter 800ms ease, opacity 800ms ease;
+}
+
+/* Turn indicator chip — animate on turn swap. */
+.battle-center-phase.is-player-turn {
+  animation: turnChipFlash 500ms ease-out;
+}
+
+.battle-center-phase.is-enemy-turn {
+  animation: turnChipFlash 500ms ease-out;
+}
+
+@keyframes turnChipFlash {
+  0%   { opacity: 0; transform: scale(0.85); filter: brightness(1.5); }
+  40%  { opacity: 1; transform: scale(1.08); }
+  100% { opacity: 1; transform: scale(1); filter: brightness(1); }
+}
+
 /* Reduced motion — collapse every animation in this section to a no-op. */
 @media (prefers-reduced-motion: reduce) {
   .hand-card.is-dragging,
@@ -5052,16 +5329,26 @@ button.danger:disabled { opacity: 0.55; transform: none; box-shadow: none; }
   .slot.is-slamming,
   .slot.is-valid-defender,
   .slot.is-invalid-defender,
+  .slot.selected,
+  .enemy-turn-banner-inner,
   .battle-hero-anchor.is-damaged,
   .battle-hero-anchor.is-healed,
   .battle-hero-anchor.is-low-hp,
   .battle-hero-anchor .hero-fx-cracks,
-  .battle-hero-anchor .hero-fx-halo {
+  .battle-hero-anchor .hero-fx-halo,
+  .battlefield-stage.turn-pulse-player,
+  .battlefield-stage.turn-pulse-enemy,
+  .slot.is-slamming .unit-portrait,
+  .attack-arrow-svg line,
+  .slot.damage-flash::after,
+  .battle-center-phase.is-player-turn,
+  .battle-center-phase.is-enemy-turn {
     animation: none !important;
     transition: none !important;
   }
   .battle-hero-anchor.is-low-hp::after { background: rgba(220, 38, 38, 0.18); }
   .slot.is-slamming::after { display: none; }
+  .slot.damage-flash::after { display: none; }
   .hand-card.is-dragging { transform: rotate(var(--fan-tilt, 0deg)) scale(1.05); }
 }
 
@@ -5716,6 +6003,24 @@ button.icon-only {
   to   { opacity: 1; }
 }
 
+.pack-ceremony-overlay.closing {
+  animation: packCeremonyVeilOut 240ms ease forwards;
+}
+
+.pack-ceremony-overlay.closing .pack-ceremony-stage {
+  animation: packCeremonyStageOut 240ms ease forwards;
+}
+
+@keyframes packCeremonyVeilOut {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+@keyframes packCeremonyStageOut {
+  from { opacity: 1; transform: scale(1); }
+  to   { opacity: 0; transform: scale(0.95); }
+}
+
 .pack-ceremony-stage {
   position: relative;
   width: min(620px, 100%);
@@ -6158,6 +6463,24 @@ button.icon-only {
   to   { opacity: 1; }
 }
 
+.reward-cinema-overlay.closing {
+  animation: rewardCinemaVeilOut 260ms ease forwards;
+}
+
+.reward-cinema-overlay.closing .reward-cinema-card {
+  animation: rewardCinemaCardOut 260ms ease forwards;
+}
+
+@keyframes rewardCinemaVeilOut {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+@keyframes rewardCinemaCardOut {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to   { opacity: 0; transform: translateY(10px) scale(0.96); }
+}
+
 .reward-cinema-card {
   width: min(100%, 420px);
   max-width: calc(100vw - 32px);
@@ -6190,6 +6513,15 @@ button.icon-only {
 @keyframes rewardCinemaBeatIn {
   from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: translateY(0); }
+}
+
+.reward-cinema-stage.beat-exiting {
+  animation: rewardCinemaBeatOut 160ms ease forwards;
+}
+
+@keyframes rewardCinemaBeatOut {
+  from { opacity: 1; transform: translateY(0); }
+  to   { opacity: 0; transform: translateY(-6px); }
 }
 
 .reward-cinema-banner {

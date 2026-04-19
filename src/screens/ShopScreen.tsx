@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { CARD_LIBRARY, RARITY_COLORS } from '../game'
 import { CARD_BORDER_OFFERS, THEME_OFFERS } from '../constants'
 import { PackArt, RarityBadge } from '../components/AssetBadge'
@@ -88,7 +88,7 @@ export function ShopScreen() {
     },
   ]
 
-  const breakable = Object.entries(collection)
+  const breakable = useMemo(() => Object.entries(collection)
     .map(([cardId, owned]) => {
       const meta = CARD_LIBRARY.find((c) => c.id === cardId)
       if (!meta) return null
@@ -107,7 +107,7 @@ export function ShopScreen() {
       const rb = rarityOrder[b.meta.rarity]
       if (ra !== rb) return ra - rb
       return b.extra - a.extra
-    })
+    }), [collection, savedDecks])
 
   const handleClickOpenPack = (packId: string) => {
     if (packOpening !== null) return
@@ -119,10 +119,8 @@ export function ShopScreen() {
     const finisherCards = openedPackCards
     const finisherPackId = ceremonyPack?.id ?? activeCeremonyPackId
     const finisherRefund = lastPackRefund
-    setOpenedPackCards([])
-    setPrevCollectionSnapshot(null)
-    setActiveCeremonyPackId(null)
-    setLastPackRefund(0)
+
+    // Present cinema first so it fades in on top of the closing ceremony.
     if (finisherPackId && finisherCards.length > 0) {
       presentRewardCinema(
         buildPackSummarySequence({
@@ -133,6 +131,12 @@ export function ShopScreen() {
         'pack',
       )
     }
+
+    // Clear ceremony state so the overlay unmounts behind the cinema.
+    setOpenedPackCards([])
+    setPrevCollectionSnapshot(null)
+    setActiveCeremonyPackId(null)
+    setLastPackRefund(0)
   }
 
   const handleCeremonyOpenAnother = () => {

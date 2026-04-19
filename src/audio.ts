@@ -28,10 +28,14 @@ export type SoundName =
   | 'heroHit'
   | 'heroHeal'
   | 'heroLowHp'
+  | 'turnChange'
+  | 'unitDeath'
+  | 'draw'
   | 'packHover'
   | 'lidSplit'
   | 'cardArc'
   | 'firstTime'
+  | 'beatAdvance'
 
 let audioContext: AudioContext | null = null
 
@@ -282,6 +286,22 @@ export function playSound(name: SoundName, enabled: boolean) {
       playTone(context, 60, now, 0.1, 'sine', 0.02)
       playTone(context, 60, now + 0.18, 0.1, 'sine', 0.016)
       break
+    case 'turnChange':
+      // Brief chime marking turn swap — low tone + high ting
+      playTone(context, 330, now, 0.08, 'sine', 0.02)
+      playTone(context, 880, now + 0.04, 0.06, 'triangle', 0.018)
+      break
+    case 'unitDeath':
+      // Crumbling fall — descending tone + filtered noise
+      playTone(context, 260, now, 0.14, 'sine', 0.024)
+      playTone(context, 140, now + 0.06, 0.16, 'sine', 0.02)
+      playNoise(context, now + 0.04, 0.12, 1200, 300, 0.016)
+      break
+    case 'draw':
+      // Flat neutral tone — two equal-pitch sustained notes
+      playTone(context, 330, now, 0.18, 'sine', 0.022)
+      playTone(context, 330, now + 0.14, 0.18, 'triangle', 0.02)
+      break
     case 'packHover':
       // Soft chime 880Hz, 60ms
       playTone(context, 880, now, 0.06, 'triangle', 0.022)
@@ -307,6 +327,11 @@ export function playSound(name: SoundName, enabled: boolean) {
       playTone(context, 1318, now + 0.04, 0.22, 'triangle', 0.024)
       playTone(context, 1568, now + 0.08, 0.24, 'triangle', 0.022)
       playTone(context, 2093, now + 0.18, 0.18, 'sine', 0.018)
+      break
+    case 'beatAdvance':
+      // Soft tonal tick for reward-cinema beat transitions
+      playTone(context, 660, now, 0.05, 'sine', 0.016)
+      playTone(context, 880, now + 0.03, 0.04, 'triangle', 0.012)
       break
   }
 }

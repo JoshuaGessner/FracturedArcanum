@@ -470,21 +470,23 @@ Rules:
 
 ## Phase F — Motion, FX, and Rendering Upgrade
 
-**Status:** [ ] Not started
+**Status:** [x] In progress
 
 **Goal:** Add the richer animated layer the app needs after layout foundations are stable.
 
 ### Immediate motion goals
-- [ ] better scene transitions
-- [ ] cleaner floating ambient FX
-- [ ] richer battle feedback
-- [ ] smoother reward and pack presentation
+- [x] better scene transitions — enhanced curtainPull, runeWipe, portalSlam, and ambientFloat keyframes with brightness/blur/scale polish
+- [x] cleaner floating ambient FX — per-screen `::after` particle layers (7 screens, 5 new keyframes, thematic palettes)
+- [x] richer battle feedback — turn-change edge pulse, mana-spend glow, attack telegraph animation, damage ripple, turn-chip flash, victory ambient intensification
+- [x] smoother reward and pack presentation — exit animations on both overlays, crossfade beat transitions with beat-exit animation, ceremony→cinema layered crossfade, ember shower linger fix, beat-advance sound cue, ~45 lines dead legacy CSS removed
+- [x] battle sound gap fill — turn-change chime, unit-death crumble, draw tone; defeat SummaryPopup deferred until enemy animation completes
 
 ### Rendering upgrade track
-- [ ] add a PixiJS evaluation spike
-- [ ] prototype a battle scene FX layer with particles and parallax
-- [ ] confirm React + PixiJS data flow is stable
-- [ ] roll PixiJS into battle first, then optional ambient layers for other scenes
+- [x] add a PixiJS evaluation spike — pixi.js v8 + @pixi/react v8 installed, WebGPU-first preference, lazy-loaded code-split
+- [x] prototype a battle scene FX layer with particles and parallax — BattleFxCanvas renders ambient embers, turn-colored tinting, damage burst FX behind the DOM board
+- [x] confirm React + PixiJS data flow is stable — transparent canvas overlay, Suspense lazy-load, ref-based resizing, reduced-motion guard
+- [x] enrich battle PixiJS FX — victory celebration shower (60 particles), card-play burst from hand region, turn-change horizontal sweep, sweep/main dual-color palette
+- [ ] optional ambient PixiJS layers for non-battle scenes
 
 ### Important guardrail
 We should only expand motion after the scene shell is stable and battle is reliably playable.
@@ -503,7 +505,15 @@ We should only expand motion after the scene shell is stable and battle is relia
 - [ ] verify Android Chrome browser mode for install prompt flow, queue overlays, and battle drag reliability
 - [ ] verify Android installed PWA for splash-to-app launch, reward cinema containment, and service worker update handling
 - [x] implement fit-safe mobile layouts so shop subviews no longer run off the right edge and the play gate keeps all battle types visible without needing scroll
-- [ ] confirm no horizontal spill or clipped back actions at 375px width in shop, settings, and social subviews
+- [x] confirm no horizontal spill or clipped back actions at 375px width in shop, settings, and social subviews — trade-picker-row collapse fix at 640px, inline width removed
+- [x] defeat/draw SummaryPopup now waits for enemyTurnActive to clear before appearing
+- [x] BattleScreen state resets on Play Again (slamLane, turnPulse, arrow, heroFx, drag)
+- [x] turnChange sound suppressed during AI enemy turn animation
+- [x] reduced-motion coverage extended to selectPulse and banner-pulse keyframes
+- [x] unplayable card tap emits error sound + haptic feedback
+- [x] BattleFxCanvas particle array capped at 200 to prevent unbounded growth
+- [x] damagedSlots burst detection hardened — triggers on any non-empty Set, no size comparison race
+- [x] BattleFxCanvas inline styles moved to `.battle-fx-canvas` CSS class
 - [ ] confirm battle drag, attack targeting, inspect, and result-summary flows remain stable through repeated matches
 
 ---
@@ -517,9 +527,9 @@ We should only expand motion after the scene shell is stable and battle is relia
 | Battle arena rebuild | Complete | Hero anchors, centered arena stage, tactile card-press, slam ring FX, attack arrow glow, and reduced-motion support |
 | Unified chrome cleanup | Complete | One-owner chrome rule enforced, dead frame-within-frame CSS removed, summary popup extended with reward tone |
 | App-wide scene migration | Complete | Core scene migration established across every primary screen |
-| Device validation & edge polish | Active | Real-phone QA, safe-area verification, and final chrome containment are now the top follow-up tasks |
-| PixiJS rendering spike | Planned | Hybrid visual upgrade path |
-| Motion and ambient polish | Planned | Only after layout stability is restored |
+| Device validation & edge polish | Active | Edge-case hardening pass complete (state reset, sound guards, reduced-motion, particle safety, burst reliability). Real-phone QA remains. |
+| PixiJS rendering spike | Complete | pixi.js v8 + @pixi/react v8, lazy-loaded BattleFxCanvas with ambient + victory + play + sweep particles, dual-color palette |
+| Motion and ambient polish | Complete | Scene FX, transitions, battle feedback, reward/pack presentation, turn/death/draw sounds |
 
 ---
 
@@ -591,4 +601,4 @@ This direction is only complete when all of the following are true:
 1. run the real iPhone Safari and Web.app validation pass against the Phase G checklist above
 2. confirm Android browser and installed-PWA behavior for battle, rewards, and queue flows
 3. fix any remaining safe-area, overflow, or gesture edge cases discovered during device QA
-4. begin Phase F — PixiJS evaluation spike and richer ambient rendering
+4. confirm battle drag, attack targeting, inspect, and result-summary flows across repeated matches on real devices

@@ -1489,6 +1489,7 @@ function AppShell() {
     }
 
     const damaged = new Set<string>()
+    let hasDeaths = false
 
     for (const side of ['player', 'enemy'] as const) {
       const oldBoard = prev[side]
@@ -1499,10 +1500,17 @@ function AppShell() {
         if (oldUnit && newUnit && newUnit.uid === oldUnit.uid && newUnit.currentHealth < oldUnit.currentHealth) {
           damaged.add(newUnit.uid)
         }
+        if (oldUnit && !newUnit) {
+          hasDeaths = true
+        }
       }
     }
 
     prevBoardRef.current = { player: playerBoard, enemy: enemyBoard }
+
+    if (hasDeaths) {
+      playSound('unitDeath', soundEnabled)
+    }
 
     if (damaged.size > 0) {
       const showTimer = window.setTimeout(() => {
@@ -1517,7 +1525,7 @@ function AppShell() {
     // setDamagedSlots comes from GameProvider's useState; stable but eslint
     // can't see through useContext.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [game.player.board, game.enemy.board])
+  }, [game.player.board, game.enemy.board, soundEnabled])
 
   useEffect(() => {
     if (enemyTurnActive) return
@@ -1525,6 +1533,8 @@ function AppShell() {
       playSound('win', soundEnabled)
     } else if (game.winner === 'enemy') {
       playSound('lose', soundEnabled)
+    } else if (game.winner === 'draw') {
+      playSound('draw', soundEnabled)
     }
   }, [game.winner, soundEnabled, enemyTurnActive])
 
@@ -3191,7 +3201,7 @@ function AppShell() {
         </section>
       )}
 
-      <BattleIntroOverlay visible={battleIntroVisible} game={game} />
+      <BattleIntroOverlay visible={battleIntroVisible} game={game} playerRank={rankLabel} />
 
       <RewardCinemaOverlay
         sequence={cinemaSequence}
