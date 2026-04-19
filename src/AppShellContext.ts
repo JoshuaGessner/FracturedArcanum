@@ -1,6 +1,7 @@
 import { createContext, useContext, type FormEvent } from 'react'
 import type { GameMode, AIDifficulty, DeckConfig, GameState } from './game'
 import type { RewardBeat } from './components/RewardCinemaSequence'
+import type { RewardScope } from './utils'
 import type {
   AdminAuditEntry,
   AdminOverview,
@@ -124,8 +125,10 @@ export type AppShellContextValue = {
   getLongPressProps: (card: InspectedCard) => Record<string, unknown>
   // ─── Phase 3W — Reward cinematics ─────────────────────────────────────
   cinemaSequence: RewardBeat[] | null
-  presentRewardCinema: (beats: RewardBeat[]) => void
+  presentRewardCinema: (beats: RewardBeat[], scope?: RewardScope) => void
   dismissRewardCinema: () => void
+  battleSummaryVisible?: boolean
+  dismissBattleSummary?: () => void
   lastPackRefund: number
   setLastPackRefund: React.Dispatch<React.SetStateAction<number>>
   // ─── Phase 3X — First-launch onboarding tour ─────────────────────────

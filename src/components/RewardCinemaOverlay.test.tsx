@@ -2,7 +2,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { RewardCinemaOverlay } from './RewardCinemaOverlay'
-import type { RewardBeat } from './RewardCinemaSequence'
+import { buildPackSummarySequence, type RewardBeat } from './RewardCinemaSequence'
+import { UI_ASSETS } from '../constants'
 
 const playSoundMock = vi.fn()
 const feedbackMock = vi.fn()
@@ -140,6 +141,31 @@ describe('RewardCinemaOverlay', () => {
     fireEvent.click(continueBtn)
     expect(feedbackMock).toHaveBeenCalledWith('claim', true, true)
     expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('builds pack recaps without battle-victory framing', () => {
+    const sequence = buildPackSummarySequence({
+      packId: 'premium',
+      cards: [
+        { id: 'spark-imp', rarity: 'common', duplicate: false },
+        { id: 'venom-drake', rarity: 'rare', duplicate: true },
+      ],
+      shardsRefunded: 10,
+    })
+
+    expect(sequence[0]?.label).toMatch(/pack/i)
+    expect(sequence[0]?.label).not.toMatch(/victory|won|secured/i)
+    expect(sequence[0]?.iconAsset).not.toBe(UI_ASSETS.overlays.victory)
+    expect(sequence.some((beat) => beat.label === 'New Cards Added')).toBe(true)
+  })
+
+  it('marks the reward overlay as swipe-isolated', () => {
+    render(
+      <RewardCinemaOverlay sequence={sampleSequence} soundEnabled={false} hapticsEnabled={false} onClose={() => {}} />,
+    )
+
+    const dialog = screen.getByRole('dialog', { name: /reward cinematic/i })
+    expect(dialog.getAttribute('data-scene-swipe-opt-out')).toBe('true')
   })
 
   it('respects prefers-reduced-motion: skips ember shower and collapses timing', () => {

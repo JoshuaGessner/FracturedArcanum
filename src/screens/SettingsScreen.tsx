@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { RankBadge } from '../components/AssetBadge'
-import { formatTimestamp, getComplaintSeverityTone } from '../utils'
+import { formatTimestamp, getComplaintSeverityTone, getInstallAvailability } from '../utils'
 import { useAppShell, useProfile } from '../contexts'
 import { feedback } from '../feedback'
 
@@ -34,6 +34,7 @@ export function SettingsScreen() {
   const visitorSuffix = (visitorId || 'guest').slice(-6).toUpperCase()
   const complaintTone = getComplaintSeverityTone(complaintForm.severity)
   const roleInsignia = isOwnerRole ? 'Diamond' : isAdminRole ? 'Gold' : 'Bronze'
+  const installAvailability = getInstallAvailability(Boolean(installPromptEvent))
   const settingsViewLabel = settingsSubview === 'preferences'
     ? 'Preferences'
     : settingsSubview === 'support'
@@ -169,12 +170,16 @@ export function SettingsScreen() {
 
             <div className="settings-toggle-row">
               <span>Install App</span>
-              {installPromptEvent ? (
+              {installAvailability === 'prompt' ? (
                 <button className="ghost mini" onClick={() => void handleInstallApp()}>
                   Install
                 </button>
+              ) : installAvailability === 'installed' ? (
+                <span className="mini-text settings-install-hint">Already installed</span>
+              ) : installAvailability === 'ios-manual' ? (
+                <span className="mini-text settings-install-hint">Safari: tap Share, then Add to Home Screen</span>
               ) : (
-                <span className="mini-text">Unavailable</span>
+                <span className="mini-text settings-install-hint">Unavailable in this browser</span>
               )}
             </div>
 

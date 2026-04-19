@@ -218,6 +218,35 @@ describe('SettingsScreen hub flow', () => {
     expect(screen.queryByText(/complaint desk/i)).toBeNull()
   })
 
+  it('shows manual iPhone install guidance when browser install prompts are unavailable', () => {
+    Object.defineProperty(window.navigator, 'userAgent', {
+      value: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X)',
+      configurable: true,
+    })
+    Object.defineProperty(window.navigator, 'standalone', {
+      value: false,
+      configurable: true,
+    })
+    Object.defineProperty(window, 'matchMedia', {
+      value: vi.fn().mockImplementation((query: string) => ({
+        matches: query.includes('display-mode: standalone') ? false : false,
+        media: query,
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      })),
+      configurable: true,
+    })
+
+    renderSettingsScreen({ settingsSubview: 'preferences', installPromptEvent: null })
+
+    expect(screen.getByText(/add to home screen/i)).toBeTruthy()
+    expect(screen.getByText(/share/i)).toBeTruthy()
+  })
+
   it('routes to the support desk from the settings hub', () => {
     const openSettingsSubview = vi.fn()
     renderSettingsScreen({ openSettingsSubview })

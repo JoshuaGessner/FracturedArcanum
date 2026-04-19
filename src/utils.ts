@@ -2,6 +2,43 @@ import React from 'react'
 import { ARENA_URL, CARD_ART_ALIASES, EFFECT_ICONS, PACK_ART, RANK_INSIGNIA, RARITY_GEM_ICONS } from './constants'
 import type { AppScreen, ToastSeverity } from './types'
 
+export type RewardScope = 'battle' | 'pack' | 'daily' | 'rank' | 'generic'
+export type InstallAvailability = 'prompt' | 'ios-manual' | 'installed' | 'unavailable'
+
+export function isAppleMobileDevice(): boolean {
+  if (typeof navigator === 'undefined') {
+    return false
+  }
+
+  const ua = navigator.userAgent.toLowerCase()
+  return /iphone|ipad|ipod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+}
+
+export function isStandaloneMode(): boolean {
+  if (typeof window === 'undefined') {
+    return false
+  }
+
+  const nav = navigator as Navigator & { standalone?: boolean }
+  return window.matchMedia?.('(display-mode: standalone)').matches === true || nav.standalone === true
+}
+
+export function getInstallAvailability(hasInstallPrompt: boolean): InstallAvailability {
+  if (isStandaloneMode()) {
+    return 'installed'
+  }
+
+  if (hasInstallPrompt) {
+    return 'prompt'
+  }
+
+  if (isAppleMobileDevice()) {
+    return 'ios-manual'
+  }
+
+  return 'unavailable'
+}
+
 export function readStoredValue<T>(key: string, fallback: T): T {
   if (typeof window === 'undefined') {
     return fallback
@@ -198,6 +235,22 @@ export function getScreenTransitionSound(
     case 'screen-enter-forward':
     default:
       return 'sceneOpen'
+  }
+}
+
+export function shouldPresentScopedReward(scope: RewardScope, activeScreen: AppScreen): boolean {
+  switch (scope) {
+    case 'battle':
+      return activeScreen === 'battle'
+    case 'pack':
+      return activeScreen === 'shop'
+    case 'daily':
+      return activeScreen === 'home' || activeScreen === 'shop'
+    case 'rank':
+      return activeScreen === 'battle' || activeScreen === 'play' || activeScreen === 'home'
+    case 'generic':
+    default:
+      return true
   }
 }
 

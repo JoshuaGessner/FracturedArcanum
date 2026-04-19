@@ -1,12 +1,13 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { useEffect } from 'react'
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { BattleScreen } from './BattleScreen'
 import { AppShellContext, type AppShellContextValue } from '../AppShellContext'
 import { QueueProvider } from '../contexts/QueueProvider'
 import { ProfileProvider } from '../contexts/ProfileProvider'
 import { SocialProvider } from '../contexts/SocialProvider'
-import { GameProvider } from '../contexts/GameProvider'
+import { GameProvider, useGameState } from '../contexts/GameProvider'
 import { createGame } from '../game'
 import type { AppScreen, CardBorder, CosmeticTheme } from '../types'
 
@@ -91,6 +92,8 @@ function buildShellValue(overrides: Partial<AppShellContextValue> = {}): AppShel
     cinemaSequence: null,
     presentRewardCinema: noop,
     dismissRewardCinema: noop,
+    battleSummaryVisible: false,
+    dismissBattleSummary: noop,
     lastPackRefund: 0,
     setLastPackRefund: noop,
     tourVisible: false,
@@ -188,13 +191,45 @@ function buildShellValue(overrides: Partial<AppShellContextValue> = {}): AppShel
   }
 }
 
-function renderBattleScreen(valueOverrides: Partial<AppShellContextValue> = {}) {
+function BattleStateSeeder({
+  game,
+  enemyTurnActive = false,
+  enemyTurnLabel = '',
+  selectedAttacker = null,
+}: {
+  game?: ReturnType<typeof createGame>
+  enemyTurnActive?: boolean
+  enemyTurnLabel?: string
+  selectedAttacker?: number | null
+}) {
+  const { setGame, setEnemyTurnActive, setEnemyTurnLabel, setSelectedAttacker } = useGameState()
+
+  useEffect(() => {
+    if (game) setGame(game)
+    setEnemyTurnActive(enemyTurnActive)
+    setEnemyTurnLabel(enemyTurnLabel)
+    setSelectedAttacker(selectedAttacker)
+  }, [enemyTurnActive, enemyTurnLabel, game, selectedAttacker, setEnemyTurnActive, setEnemyTurnLabel, setGame, setSelectedAttacker])
+
+  return null
+}
+
+function renderBattleScreen(
+  valueOverrides: Partial<AppShellContextValue> = {},
+  battleOverrides: {
+    game?: ReturnType<typeof createGame>
+    enemyTurnActive?: boolean
+    enemyTurnLabel?: string
+    selectedAttacker?: number | null
+  } = {},
+) {
   const value = buildShellValue(valueOverrides)
   return render(
     <QueueProvider>
       <ProfileProvider>
         <SocialProvider>
           <GameProvider>
+            <BattleStateSeeder {...battleOverrides} />
             <AppShellContext.Provider value={value}>
               <BattleScreen />
             </AppShellContext.Provider>
@@ -218,6 +253,7 @@ describe('BattleScreen mobile layout', () => {
     expect(screen.getByText(/your command phase/i)).toBeTruthy()
     expect(screen.getByRole('button', { name: /end turn/i })).toBeTruthy()
     expect(screen.queryByText(/frontline/i)).toBeNull()
+    expect(screen.queryByText(/play a card or choose a ready unit/i)).toBeNull()
     expect(battleSurface).toBeTruthy()
     expect(within(battleSurface as HTMLElement).getByLabelText(/battle hand/i)).toBeTruthy()
     expect(document.querySelectorAll('.battlefield.active, .hand-section.active')).toHaveLength(1)
@@ -237,6 +273,75 @@ describe('BattleScreen mobile layout', () => {
 
     expect(screen.queryByText(/tap or drag to play/i)).toBeNull()
     expect(screen.queryByText(/hand \(\d+\)/i)).toBeNull()
+  })
+
+  it('floats the enemy-turn notice as an overlay instead of a layout banner', () => {
+    renderBattleScreen({}, { enemyTurnActive: true, enemyTurnLabel: 'Planning the next move' })
+
+    const overlay = document.querySelector('.enemy-turn-banner.enemy-turn-banner-floating') as HTMLElement | null
+
+    expect(overlay).toBeTruthy()
+    expect(screen.getByText(/enemy is thinking/i)).toBeTruthy()
+    expect(screen.getByText(/planning the next move/i)).toBeTruthy()
+  })
+
+  it('shows a battle summary popup instead of the old fallback result card', () => {
+    const finishedGame = createGame('ai', {})
+    finishedGame.winner = 'player'
+
+    renderBattleScreen({
+      activePlayer: finishedGame.player,
+      defendingPlayer: finishedGame.enemy,
+      battleSummaryVisible: true,
+    }, {
+      game: finishedGame,
+    })
+
+    const dialog = screen.getByRole('dialog', { name: /battle summary/i })
+    expect(dialog).toBeTruthy()
+    expect(dialog.getAttribute('data-scene-swipe-opt-out')).toBe('true')
+    expect(screen.getByRole('button', { name: /play again/i })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /leave to lobby/i })).toBeTruthy()
+    expect(screen.queryByText(/victory screen/i)).toBeNull()
+  })
+
+  it('hides the strike-hero control when guard still blocks the lane', () => {
+    const guardedGame = createGame('ai', {})
+    guardedGame.player.board[0] = {
+      instanceId: 'ally-instance-1',
+      uid: 'ally-1',
+      id: 'spark-imp',
+      name: 'Crawling Spark',
+      icon: '⚡',
+      cost: 1,
+      attack: 2,
+      health: 1,
+      currentHealth: 1,
+      exhausted: false,
+      rarity: 'common',
+      tribe: 'elemental',
+      text: 'Test ally',
+    }
+
+    renderBattleScreen({
+      activePlayer: guardedGame.player,
+      defendingPlayer: guardedGame.enemy,
+      defenderHasGuard: true,
+    }, {
+      game: guardedGame,
+      selectedAttacker: 0,
+    })
+
+    expect(screen.queryByRole('button', { name: /strike hero/i })).toBeNull()
+    expect(screen.getByText(/guard blocks the hero/i)).toBeTruthy()
+  })
+
+  it('marks battle card art as non-draggable so long press stays inside inspect flow', () => {
+    renderBattleScreen()
+
+    const art = Array.from(document.querySelectorAll('.card-illustration, .unit-portrait')) as HTMLImageElement[]
+    expect(art.length).toBeGreaterThan(0)
+    expect(art.every((img) => img.getAttribute('draggable') === 'false')).toBe(true)
   })
 
   it('supports drag-to-play with an upward pull gesture on a playable card', () => {

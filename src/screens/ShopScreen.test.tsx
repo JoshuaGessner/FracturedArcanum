@@ -2,6 +2,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/react'
 import { ShopScreen } from './ShopScreen'
+import { PackCeremonyOverlay } from '../components/PackCeremonyOverlay'
 import { AppShellContext, type AppShellContextValue } from '../AppShellContext'
 import { QueueProvider } from '../contexts/QueueProvider'
 import { ProfileProvider } from '../contexts/ProfileProvider'
@@ -206,6 +207,26 @@ function renderShopScreen(valueOverrides: Partial<AppShellContextValue> = {}) {
 describe('ShopScreen hub flow', () => {
   afterEach(() => {
     cleanup()
+  })
+
+  it('marks the pack ceremony as swipe-isolated so reveal browsing does not switch scenes', () => {
+    render(
+      <PackCeremonyOverlay
+        cards={[{ id: 'spark-imp', rarity: 'common', duplicate: false }]}
+        packId="standard"
+        packCost={20}
+        runes={100}
+        prevCollection={{}}
+        soundEnabled={false}
+        hapticsEnabled={false}
+        packOpening={null}
+        onOpenAnother={() => {}}
+        onClose={() => {}}
+      />,
+    )
+
+    const dialog = screen.getByRole('dialog', { name: /card pack opening/i })
+    expect(dialog.getAttribute('data-scene-swipe-opt-out')).toBe('true')
   })
 
   it('starts on a compact shop hub instead of rendering the breakdown panel immediately', () => {

@@ -81,6 +81,7 @@ export function ShopScreen() {
           cards: finisherCards,
           shardsRefunded: finisherRefund,
         }),
+        'pack',
       )
     }
   }
@@ -191,7 +192,7 @@ export function ShopScreen() {
               <h3>Card Borders</h3>
               <span className="badge">Cosmetics</span>
             </div>
-            <div className="theme-grid">
+            <div className="theme-grid" data-scene-swipe-opt-out="true">
               {CARD_BORDER_OFFERS.map((border) => {
                 const owned = ownedCardBorders.includes(border.id)
                 const equipped = selectedCardBorder === border.id
@@ -227,7 +228,7 @@ export function ShopScreen() {
               <h3>Card Packs</h3>
               <span className="badge">Owned {totalOwnedCards}</span>
             </div>
-            <div className="theme-grid">
+            <div className="theme-grid" data-scene-swipe-opt-out="true">
               {packOffers.map((pack) => (
                 <div className={`theme-offer-card pack-offer-card pack-offer-${pack.id}`} key={pack.id}>
                   <PackArt packId={pack.id} label={`${pack.id} pack artwork`} />
@@ -252,7 +253,7 @@ export function ShopScreen() {
                 <div className="section-head compact">
                   <h3>Latest Reveal</h3>
                 </div>
-                <div className="pack-reveal-grid">
+                <div className="pack-reveal-grid" data-scene-swipe-opt-out="true">
                   {openedPackCards.map((card, index) => {
                     const cardMeta = CARD_LIBRARY.find((entry) => entry.id === card.id)
                     return (
@@ -269,6 +270,7 @@ export function ShopScreen() {
                             alt={`${cardMeta?.name ?? card.id} illustration`}
                             loading="lazy"
                             onError={handleCardArtError}
+                            draggable={false}
                           />
                         </div>
                         <div className="pack-reveal-meta">

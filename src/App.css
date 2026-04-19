@@ -369,6 +369,8 @@ button:disabled {
 
 .vault-grid, .ops-grid {
   grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
+  min-width: 0;
+  align-content: start;
 }
 
 .home-cards {
@@ -1325,6 +1327,17 @@ button:disabled {
   min-width: 0;
 }
 
+.battle-hero-side {
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(219, 230, 255, 0.72);
+}
+
+.battle-hero-pill.enemy .battle-hero-side {
+  color: rgba(254, 202, 202, 0.8);
+}
+
 .battle-hero-copy strong {
   font-size: 0.9rem;
   white-space: nowrap;
@@ -1443,15 +1456,31 @@ button:disabled {
 
 /* ─── Enemy Turn Banner ─────────────────────────────────────────── */
 
+.battle-overlay-stack {
+  position: absolute;
+  top: 10px;
+  left: 0;
+  right: 0;
+  z-index: 6;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
 .enemy-turn-banner {
-  position: sticky;
-  top: 0;
-  z-index: 7;
-  padding: 10px 16px;
-  background: linear-gradient(90deg, #7c3aed, #c026d3);
-  border-radius: 12px;
-  margin-bottom: 8px;
+  width: min(calc(100% - 24px), 330px);
+  padding: 8px 12px;
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.94), rgba(192, 38, 211, 0.9));
+  border: 1px solid rgba(233, 213, 255, 0.34);
+  border-radius: 14px;
+  box-shadow: 0 12px 28px rgba(30, 12, 60, 0.34);
+  backdrop-filter: blur(12px);
   animation: banner-pulse 0.7s ease-in-out infinite alternate;
+}
+
+.enemy-turn-banner-floating {
+  position: relative;
+  margin: 0;
 }
 
 .enemy-turn-banner-inner {
@@ -1488,8 +1517,70 @@ button:disabled {
 }
 
 @keyframes banner-pulse {
-  from { opacity: 0.85; transform: scale(1); }
-  to { opacity: 1; transform: scale(1.01); }
+  from { opacity: 0.85; transform: translateY(0); }
+  to { opacity: 1; transform: translateY(2px); }
+}
+
+/* ─── Shared Summary Popup ─────────────────────────────────────── */
+
+.summary-popup-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 18;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  overflow: hidden;
+  background: rgba(6, 10, 22, 0.6);
+  backdrop-filter: blur(6px);
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+}
+
+.summary-popup-card {
+  width: min(100%, 430px);
+  display: grid;
+  gap: 12px;
+  background: linear-gradient(180deg, rgba(12, 18, 35, 0.98), rgba(27, 34, 62, 0.96));
+  border: 1px solid rgba(147, 197, 253, 0.18);
+  box-shadow: 0 18px 48px rgba(6, 10, 22, 0.46);
+}
+
+.summary-popup-victory {
+  border-color: rgba(74, 222, 128, 0.34);
+}
+
+.summary-popup-defeat {
+  border-color: rgba(248, 113, 113, 0.3);
+}
+
+.summary-popup-draw {
+  border-color: rgba(251, 191, 36, 0.26);
+}
+
+.summary-popup-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.summary-popup-head h2 {
+  margin: 0;
+}
+
+.summary-popup-note {
+  margin: 0;
+}
+
+.summary-popup-highlights {
+  gap: 8px;
+}
+
+.summary-popup-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
 }
 
 /* ─── Board Battlefield ─────────────────────────────────────────── */
@@ -1545,9 +1636,11 @@ button:disabled {
 }
 
 .battle-center-note {
-  font-size: 0.72rem;
+  font-size: 0.69rem;
+  letter-spacing: 0.04em;
   color: #dbe6ff;
   text-align: center;
+  text-transform: uppercase;
 }
 
 .board-grid-battle .slot {
@@ -1628,6 +1721,10 @@ button:disabled {
   border: 1px solid rgba(251, 191, 36, 0.24);
   object-fit: cover;
   background: rgba(7, 12, 26, 0.55);
+  -webkit-user-drag: none;
+  -webkit-touch-callout: none;
+  user-select: none;
+  pointer-events: none;
 }
 
 /* ─── Rarity Styling ────────────────────────────────────────────── */
@@ -2098,6 +2195,10 @@ button:disabled {
   display: block;
   object-fit: cover;
   transition: transform 0.3s ease;
+  -webkit-user-drag: none;
+  -webkit-touch-callout: none;
+  user-select: none;
+  pointer-events: none;
 }
 
 .hand-card:hover .card-illustration,
@@ -2677,11 +2778,23 @@ button:disabled {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 10px;
   padding: 6px 10px;
   border-radius: var(--radius-sm);
   background: rgba(0, 0, 0, 0.12);
   border: 1px solid var(--border);
   font-size: var(--font-sm);
+}
+
+.settings-install-hint {
+  flex: 1 1 180px;
+  text-align: right;
+}
+
+.auth-install-hint {
+  margin-top: 10px;
+  text-align: center;
 }
 
 .settings-toggle-row .muted,
@@ -2693,8 +2806,22 @@ button:disabled {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 8px;
   margin: 10px 0;
+}
+
+.settings-subnav .badge {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-subnav button {
+  flex: 0 0 auto;
+  margin-left: auto;
 }
 
 .settings-hub-grid {
@@ -3533,6 +3660,7 @@ button.danger:hover { filter: brightness(1.08); }
     padding-bottom: 2px;
     grid-template-columns: none;
     scroll-snap-type: x proximity;
+    overscroll-behavior-x: contain;
   }
   .theme-offer-card {
     padding: 8px;
@@ -3545,6 +3673,8 @@ button.danger:hover { filter: brightness(1.08); }
     display: flex;
     gap: 8px;
     overflow-x: auto;
+    overscroll-behavior-x: contain;
+    padding-bottom: 4px;
   }
   .pack-reveal-card {
     min-width: 160px;
@@ -3556,6 +3686,21 @@ button.danger:hover { filter: brightness(1.08); }
   .settings-hero strong { font-size: var(--font-sm); }
   .settings-subnav {
     margin: 8px 0;
+    align-items: center;
+  }
+
+  .settings-subnav .badge {
+    flex: 1 1 150px;
+  }
+
+  .settings-subnav button {
+    flex: 0 0 auto;
+    width: auto;
+    margin-left: auto;
+  }
+
+  .settings-install-hint {
+    text-align: left;
   }
 
   .quest-summary {
@@ -5196,11 +5341,13 @@ button.icon-only {
   align-items: center;
   justify-content: center;
   padding: 16px;
+  overflow: hidden;
   background: radial-gradient(ellipse at center, rgba(8, 6, 22, 0.78) 0%, rgba(2, 2, 10, 0.94) 70%);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
   animation: packCeremonyVeilIn 200ms ease forwards;
-  touch-action: none;
+  touch-action: pan-x pan-y;
+  overscroll-behavior: contain;
   -webkit-touch-callout: none;
   user-select: none;
 }
@@ -5219,6 +5366,7 @@ button.icon-only {
   align-items: center;
   justify-items: center;
   gap: 16px;
+  overflow: hidden;
 }
 
 .pack-ceremony-stage.legendary-shake-a { animation: packCeremonyShake 360ms ease-in-out; }
@@ -5531,9 +5679,46 @@ button.icon-only {
   flex: 1 1 140px;
 }
 
+@media (max-width: 640px) {
+  .pack-ceremony-stage {
+    width: 100%;
+    max-height: calc(100dvh - 20px);
+    gap: 12px;
+  }
+
+  .pack-ceremony-fan {
+    height: auto;
+    min-height: 0;
+    justify-content: flex-start;
+    gap: 10px;
+    padding: 8px 8px 4px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x proximity;
+    overscroll-behavior-x: contain;
+  }
+
+  .pack-ceremony-fan-slot {
+    position: relative;
+    left: auto !important;
+    bottom: auto;
+    width: clamp(112px, 34vw, 144px);
+    flex: 0 0 clamp(112px, 34vw, 144px);
+    margin-left: 0;
+    transform: rotate(var(--ceremony-tilt)) translateY(calc(var(--ceremony-lift) * -0.35));
+    scroll-snap-align: center;
+  }
+
+  .pack-ceremony-footer {
+    gap: 8px;
+    padding: 8px 10px;
+  }
+}
+
 @media (max-width: 460px) {
   .pack-ceremony-fan-slot {
     width: clamp(100px, 30vw, 132px);
+    flex-basis: clamp(100px, 30vw, 132px);
   }
   .pack-ceremony-card-meta strong { font-size: 0.72rem; }
   .pack-ceremony-card-ribbon { width: 64px; right: -8px; }
@@ -5597,10 +5782,13 @@ button.icon-only {
   align-items: center;
   justify-content: center;
   padding: 16px;
+  overflow: hidden;
   background: radial-gradient(ellipse at center, rgba(20, 12, 6, 0.78) 0%, rgba(2, 2, 8, 0.94) 70%);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   animation: rewardCinemaVeilIn 220ms ease forwards;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
 }
 
 @keyframes rewardCinemaVeilIn {

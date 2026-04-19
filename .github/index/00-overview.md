@@ -8,11 +8,12 @@
 - **Deployment:** Docker and Render-ready Node 20 pipeline
 
 ## Current verified state
-- Phase 3 gameplay, density, and polish work is complete
 - 7 player-facing screens are live and context-driven
 - the scene shell, reward cinema, pack ceremony, onboarding, swipe gestures, and reconnect recovery are all landed
+- the active visual direction is the unified scene-first plan tracked in `.github/REFACTOR_PLAN.md`
+- current battle alignment priorities include mirrored hero anchors, floating transient battle notices, visible live-card effect seals, and shared summary popup styling
 - local SVG asset generation is verified with a 173-entry manifest
-- the latest validation is green: 105 tests, lint, and production build
+- the latest validation is green: 130 tests, lint, and production build
 
 ## File Map
 

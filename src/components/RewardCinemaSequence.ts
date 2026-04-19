@@ -9,7 +9,7 @@
 import type { GameMode } from '../game'
 import type { BattleKind, OpenedPackCard } from '../types'
 import { UI_ASSETS } from '../constants'
-import { getRankAssetPath, getStreakTier } from '../utils'
+import { getPackArtPath, getRankAssetPath, getStreakTier } from '../utils'
 import type { SoundName } from '../audio'
 
 export type RewardBeatKind = 'banner' | 'count' | 'shower' | 'card'
@@ -158,9 +158,9 @@ export function buildPackSummarySequence(input: PackSummaryInput): RewardBeat[] 
     {
       id: 'pack-banner',
       kind: 'banner',
-      iconAsset: UI_ASSETS.overlays.victory,
-      label: `${input.packId[0].toUpperCase()}${input.packId.slice(1)} Pack Opened`,
-      caption: `${total} ${total === 1 ? 'card' : 'cards'} revealed in your library.`,
+      iconAsset: getPackArtPath(input.packId),
+      label: `${input.packId[0].toUpperCase()}${input.packId.slice(1)} Pack Revealed`,
+      caption: `${total} ${total === 1 ? 'card' : 'cards'} catalogued in your library.`,
       sound: 'cardReveal',
     },
     {
@@ -174,14 +174,25 @@ export function buildPackSummarySequence(input: PackSummaryInput): RewardBeat[] 
     },
   ]
 
-  if (duplicateCount > 0) {
+  beats.push({
+    id: 'pack-summary',
+    kind: 'card',
+    iconAsset: getPackArtPath(input.packId),
+    label: duplicateCount > 0 ? 'Collection Updated' : 'Fresh Pulls Catalogued',
+    caption:
+      duplicateCount > 0
+        ? `${duplicateCount} ${duplicateCount === 1 ? 'duplicate was' : 'duplicates were'} recycled into vault credit.`
+        : 'Every reveal from this pack was a fresh addition to your archive.',
+  })
+
+  if (duplicateCount > 0 && refund > 0) {
     beats.push({
-      id: 'pack-duplicates',
+      id: 'pack-credit',
       kind: 'count',
-      iconAsset: UI_ASSETS.glows.common,
-      label: 'Duplicates Recycled',
+      iconAsset: UI_ASSETS.tiles.shop,
+      label: 'Vault Credit',
       value: refund,
-      valueLabel: 'Shards Refunded',
+      valueLabel: 'Refunded',
     })
   }
 

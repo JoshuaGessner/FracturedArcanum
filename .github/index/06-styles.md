@@ -86,3 +86,6 @@ The stylesheet includes:
 - add new styles near the most relevant visual system instead of appending random blocks
 - keep reduced-motion overrides at the very end so they win specificity cleanly
 - prefer semantic class names tied to screen roles and asset-backed primitives
+- battle-state notices should render as floating overlays, not layout-shifting banners
+- keep the battle information map consistent: cost and effect at the top of live cards, attack and health at the bottom
+- use one shared summary-popup visual grammar for reward recaps, post-battle conclusions, and similar milestone overlays

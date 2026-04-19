@@ -171,6 +171,7 @@ export function PackCeremonyOverlay({
       role="dialog"
       aria-modal="true"
       aria-label="Card pack opening"
+      data-scene-swipe-opt-out="true"
     >
       <div className={stageClass}>
         {showPackArt && (

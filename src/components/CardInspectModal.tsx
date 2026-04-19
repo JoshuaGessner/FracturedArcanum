@@ -37,6 +37,7 @@ export function CardInspectModal({ card, onClose }: CardInspectModalProps) {
             src={cardArtPath(card.id)}
             alt={card.name}
             onError={handleCardArtError}
+            draggable={false}
           />
         </div>
         <div className="card-inspect-stats">

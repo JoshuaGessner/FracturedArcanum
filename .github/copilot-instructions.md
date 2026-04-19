@@ -6,7 +6,7 @@
 
 ## 1 — Code Index Reference
 
-A detailed code index lives in `.github/index/`. **Consult it before writing or modifying any code** to locate the correct file, line range, and function signatures.
+A detailed code index lives in `.github/index/`. **Consult it before writing or modifying any code** to locate the correct file, line range, and function signatures. For any visual, UX, or battle-presentation work, also consult `.github/REFACTOR_PLAN.md` first so new changes stay aligned with the active scene-first style direction.
 
 | Index File | Covers |
 |------------|--------|
@@ -100,6 +100,11 @@ A detailed code index lives in `.github/index/`. **Consult it before writing or 
 - Frequent player actions stay on the first view; admin, clan, leaderboard, vault, breakdown, and similar secondary tools should live one tap deeper with clear Back navigation.
 - Do not use browser `prompt` or `confirm` flows for production UX when an in-app modal pattern exists. Reuse the app’s confirm and inspect surfaces.
 - Battle layouts must preserve clear separation between HUD, board, and hand at phone sizes so no critical game element overlaps or becomes unreachable.
+- Scene-first hierarchy is mandatory: every screen has one dominant focal plane, and in battle the board must remain that focal point.
+- Temporary battle notices such as enemy-turn messaging must float above the arena and must not push the document layout down.
+- Live cards in hand and on the battlefield must expose effect seals/icons without requiring inspect-first play.
+- Avoid redundant combat copy in the active arena. Prefer concise chips, iconography, edge-lighting, and modal/inspect surfaces over persistent instructional text.
+- Recap, reward, and post-action conclusion states should reuse a shared summary-popup pattern instead of falling back to ad-hoc in-scene result cards.
 
 ### Asset & Audio Rules
 - All new visual assets go through `scripts/generate-brand-assets.mjs` and are registered in `public/generated/asset-manifest.json`.
@@ -124,7 +129,7 @@ A detailed code index lives in `.github/index/`. **Consult it before writing or 
 | `src/constants.ts` | 284 | Static UI constants, theme offers, labels, and semantic asset registry | No functions — data only |
 | `src/utils.ts` | 277 | Pure helper functions for asset lookup, transitions, completion, severity, and fan layout | No React, no app state |
 | `src/screens/*.tsx` | 119–780 each | Presentational screens (Home, Play, Collection, Battle, Social, Shop, Settings) | Propless — read state via slice hooks from `src/contexts/` |
-| `src/components/*.tsx` | 22–303 each | Shared UI primitives (modals, nav, overlays, asset badges, ceremony flows) | Prop-driven only |
+| `src/components/*.tsx` | 22–303 each | Shared UI primitives (modals, nav, overlays, asset badges, ceremony flows, and future summary popups) | Prop-driven only |
 | `src/App.css` | 5,440 | All styles and motion systems | Add to correct section per `06-styles.md` |
 | `src/audio.ts` | 338 | Sound synthesis | Expanded Web Audio cue library for UI, scenes, packs, and battle |
 | `server/server.js` | 2,328 | Express API + Socket.IO + matchmaking | Rate-limit all new endpoints |

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { getCompletionPercent, getComplaintSeverityTone, getEffectIconPath, getHandFanTilt, getPackArtPath, getRankAssetPath, getRarityCompletion, getRarityGemPath, getScreenTransitionClass, getScreenTransitionSound, getStreakTier } from './utils'
+import { getCompletionPercent, getComplaintSeverityTone, getEffectIconPath, getHandFanTilt, getPackArtPath, getRankAssetPath, getRarityCompletion, getRarityGemPath, getScreenTransitionClass, getScreenTransitionSound, getStreakTier, shouldPresentScopedReward } from './utils'
 
 describe('UI asset helpers', () => {
   it('resolves rank insignia from labels and ratings', () => {
@@ -75,5 +75,13 @@ describe('UI asset helpers', () => {
     expect(getHandFanTilt(0, 5)).toBe(-8)
     expect(getHandFanTilt(2, 5)).toBe(0)
     expect(getHandFanTilt(4, 5)).toBe(8)
+  })
+
+  it('scopes reward flows to the screen they belong to', () => {
+    expect(shouldPresentScopedReward('battle', 'battle')).toBe(true)
+    expect(shouldPresentScopedReward('battle', 'settings')).toBe(false)
+    expect(shouldPresentScopedReward('pack', 'shop')).toBe(true)
+    expect(shouldPresentScopedReward('pack', 'home')).toBe(false)
+    expect(shouldPresentScopedReward('daily', 'home')).toBe(true)
   })
 })

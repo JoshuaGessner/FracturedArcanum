@@ -5,7 +5,8 @@ import {
 import { cardArtPath, getHandFanTilt, handleCardArtError, pulseFeedback } from '../utils'
 import { UI_ASSETS } from '../constants'
 import { playSound, startLoopingSound } from '../audio'
-import { EffectBadge, RankBadge, StatIcon } from '../components/AssetBadge'
+import { EffectBadge, StatIcon } from '../components/AssetBadge'
+import { SummaryPopup } from '../components/SummaryPopup'
 import { useAppShell, useGame, useProfile } from '../contexts'
 
 type DragState = {
@@ -33,7 +34,16 @@ const DRAG_ACTIVATE_PX = 12
 const SLAM_DURATION_MS = 380
 
 export function BattleScreen() {
-  const { activeScreen, openScreen, backendOnline, soundEnabled, hapticsEnabled } = useAppShell()
+  const {
+    activeScreen,
+    openScreen,
+    backendOnline,
+    soundEnabled,
+    hapticsEnabled,
+    cinemaSequence,
+    battleSummaryVisible,
+    dismissBattleSummary,
+  } = useAppShell()
   const {
     game, activePlayer, isMyTurn, isRankedBattle, battleKind,
     enemyTurnActive, enemyTurnLabel, opponentDisconnected, disconnectGraceMs,
@@ -57,12 +67,31 @@ export function BattleScreen() {
     : isMyTurn
       ? 'Your command phase'
       : 'Enemy pressure'
-  const resultTone = game.winner === 'player' ? 'result-victory' : game.winner === 'enemy' ? 'result-defeat' : 'result-draw'
+  const resultTone = game.winner === 'player' ? 'victory' : game.winner === 'enemy' ? 'defeat' : 'draw'
+  const showBattleSummary = Boolean(game.winner)
+    && ((battleSummaryVisible ?? false) || (game.winner !== 'player' && !cinemaSequence))
+  const battleSummaryTitle = game.winner === 'player'
+    ? 'Victory secured'
+    : game.winner === 'enemy'
+      ? 'Defeat recorded'
+      : 'Battle drawn'
+  const battleSummaryNote = game.winner === 'player'
+    ? 'Rewards are tallied and the arena is ready when you are.'
+    : game.winner === 'enemy'
+      ? 'Regroup, adjust your line, and jump straight back into the arena.'
+      : 'A close duel. Refine the list and queue again.'
+  const battleSummaryBadge = isRankedBattle
+    ? (game.winner === 'player' ? '+25 Rating' : game.winner === 'enemy' ? '-15 Rating' : 'Even Match')
+    : battleKind === 'local'
+      ? 'Casual Duel'
+      : game.winner === 'player'
+        ? '+30 Shards'
+        : 'Practice Match'
   const battleCenterLabel = selectedAttacker === null
-    ? 'Play a card or choose a ready unit'
+    ? (isMyTurn ? 'Deploy or strike' : 'Hold formation')
     : defenderHasGuard
       ? 'Guard blocks the hero'
-      : 'Enemy hero exposed'
+      : 'Choose target'
 
   // ─── Drag-to-play state ─────────────────────────────────────────────
   const [drag, setDrag] = useState<DragState | null>(null)
@@ -356,19 +385,6 @@ export function BattleScreen() {
 
   return (
     <>
-      {enemyTurnActive && (
-        <div className={`enemy-turn-banner screen-panel ${isBattle ? 'active' : 'hidden'}`}>
-          <div className="enemy-turn-banner-inner">
-            <span className="enemy-turn-crest" aria-hidden="true" />
-            <div className="enemy-turn-copy">
-              <strong>Enemy is thinking</strong>
-              <span className="enemy-turn-label">{enemyTurnLabel}</span>
-            </div>
-            <span className="thinking-dots" aria-hidden="true" />
-          </div>
-        </div>
-      )}
-
       {isBattle && !backendOnline && isRankedBattle && (
         <div className="connection-banner reconnecting">
           <span>Connection lost — reconnecting...</span>
@@ -383,6 +399,21 @@ export function BattleScreen() {
 
       <section className={`battlefield screen-panel ${isBattle ? 'active' : 'hidden'}`}>
         <article className="section-card battlefield-stage battle-arena-frame" ref={battlefieldRef}>
+          {enemyTurnActive && (
+            <div className="battle-overlay-stack">
+              <div className="enemy-turn-banner enemy-turn-banner-floating" role="status" aria-live="polite" aria-atomic="true">
+                <div className="enemy-turn-banner-inner">
+                  <span className="enemy-turn-crest" aria-hidden="true" />
+                  <div className="enemy-turn-copy">
+                    <strong>Enemy is thinking</strong>
+                    <span className="enemy-turn-label">{enemyTurnLabel}</span>
+                  </div>
+                  <span className="thinking-dots" aria-hidden="true" />
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="battle-arena-hud battle-arena-hud-top">
             <div
               className={[
@@ -393,6 +424,7 @@ export function BattleScreen() {
               ].filter(Boolean).join(' ')}
             >
               <div className="battle-hero-copy">
+                <span className="battle-hero-side">Enemy</span>
                 <strong>{game.enemy.name}</strong>
                 <span className="battle-hero-metric"><StatIcon kind="health" /> {game.enemy.health} HP</span>
               </div>
@@ -456,7 +488,7 @@ export function BattleScreen() {
                     aria-disabled={Boolean(game.winner) || (isSelectable ? unit.exhausted : selectedAttacker === null)}
                     title="Long press to inspect"
                   >
-                    <img className="unit-portrait" src={cardArtPath(unit.id)} alt={`${unit.name} artwork`} loading="lazy" onError={handleCardArtError} />
+                    <img className="unit-portrait" src={cardArtPath(unit.id)} alt={`${unit.name} artwork`} loading="lazy" onError={handleCardArtError} draggable={false} />
                     <div className="slot-head">
                       <strong>
                         {unit.icon} {unit.name}
@@ -532,7 +564,7 @@ export function BattleScreen() {
                     aria-disabled={Boolean(game.winner) || (isSelectable ? unit.exhausted : selectedAttacker === null)}
                     title="Long press to inspect"
                   >
-                    <img className="unit-portrait" src={cardArtPath(unit.id)} alt={`${unit.name} artwork`} loading="lazy" onError={handleCardArtError} />
+                    <img className="unit-portrait" src={cardArtPath(unit.id)} alt={`${unit.name} artwork`} loading="lazy" onError={handleCardArtError} draggable={false} />
                     <div className="slot-head">
                       <strong>
                         {unit.icon} {unit.name}
@@ -563,6 +595,7 @@ export function BattleScreen() {
                 ].filter(Boolean).join(' ')}
               >
                 <div className="battle-hero-copy">
+                  <span className="battle-hero-side">You</span>
                   <strong>{game.player.name}</strong>
                   <span className="battle-hero-metric"><StatIcon kind="health" /> {game.player.health} HP</span>
                 </div>
@@ -596,16 +629,16 @@ export function BattleScreen() {
               </button>
               <button className="secondary" onClick={handleEndTurn} disabled={Boolean(game.winner) || !isMyTurn}>
                 {!isMyTurn ? (
-                  <><span className="spinner spinner-inline" aria-hidden="true" />Opponent thinking<span className="thinking-dots" /></>
+                  <><span className="spinner spinner-inline" aria-hidden="true" />Waiting<span className="thinking-dots" /></>
                 ) : (
                   'End Turn'
                 )}
               </button>
-              {selectedAttacker !== null && (
+              {selectedAttacker !== null && !defenderHasGuard && (
                 <button
                   className="ghost"
                   onClick={() => handleAttackTarget('hero')}
-                  disabled={defenderHasGuard || Boolean(game.winner)}
+                  disabled={Boolean(game.winner)}
                 >
                   Strike Hero
                 </button>
@@ -675,7 +708,7 @@ export function BattleScreen() {
                       {card.effect && <EffectBadge effect={card.effect} compact iconOnly className="battle-hand-effect" />}
                     </div>
                     <div className="card-art-shell thumb">
-                      <img className="card-illustration" src={cardArtPath(card.id)} alt={`${card.name} artwork`} loading="lazy" onError={handleCardArtError} />
+                      <img className="card-illustration" src={cardArtPath(card.id)} alt={`${card.name} artwork`} loading="lazy" onError={handleCardArtError} draggable={false} />
                     </div>
                     <div>
                       <strong className="card-name">{card.name}</strong>
@@ -729,48 +762,40 @@ export function BattleScreen() {
         </article>
       </section>
 
-      {game.winner && (
-        <section className={`summary-card section-card battle-result-card ${resultTone} screen-panel ${isBattle ? 'active' : 'hidden'}`}>
-          <div className="section-head">
-            <div>
-              <h2>{game.winner === 'player' ? 'Victory Screen' : game.winner === 'enemy' ? 'Defeat Screen' : 'Draw Screen'}</h2>
-              <p className="note">
-                {game.winner === 'player'
-                  ? 'Rewards tallied and the crowd is roaring for a rematch.'
-                  : game.winner === 'enemy'
-                    ? 'Review your deck, regroup, and jump straight back into the arena.'
-                    : 'A close match. Adjust your list and queue again.'}
-              </p>
-            </div>
-            <span className={`deck-status ${game.winner === 'player' ? 'ready' : 'warning'}`}>
-              {isRankedBattle ? (game.winner === 'player' ? '+25 Rating' : game.winner === 'enemy' ? '-15 Rating' : 'Even Match') : battleKind === 'local' ? 'Casual Duel' : game.winner === 'player' ? '+30 Shards' : 'Practice Match'}
-            </span>
-          </div>
-
-          <div className="summary-grid">
-            <div className="badges battle-status-strip">
-              <span className="badge badge-with-art"><RankBadge rank={rankLabel} /></span>
-              <span className="badge">Rating {seasonRating}</span>
-              <span className="badge">Win Rate {winRate}%</span>
-              <span className="badge">{battleModeLabel}</span>
-            </div>
-            <div className="controls">
-              <button className="primary" onClick={() => startMatch(game.mode)}>
-                Play Again
-              </button>
-              <button
-                className="ghost"
-                onClick={() => {
-                  setPreferredMode('ai')
-                  openScreen('home')
-                }}
-              >
-                Back to Lobby
-              </button>
-            </div>
-          </div>
-        </section>
-      )}
+      <SummaryPopup
+        visible={showBattleSummary}
+        ariaLabel="Battle summary"
+        eyebrow="Battle summary"
+        title={battleSummaryTitle}
+        note={battleSummaryNote}
+        tone={resultTone}
+        statusBadge={battleSummaryBadge}
+        highlights={[
+          rankLabel,
+          `Rating ${seasonRating}`,
+          `Win Rate ${winRate}%`,
+          battleModeLabel,
+        ]}
+        actions={[
+          {
+            label: 'Play Again',
+            variant: 'primary',
+            onClick: () => {
+              dismissBattleSummary?.()
+              startMatch(game.mode)
+            },
+          },
+          {
+            label: 'Leave to Lobby',
+            variant: 'ghost',
+            onClick: () => {
+              dismissBattleSummary?.()
+              setPreferredMode('ai')
+              openScreen('home')
+            },
+          },
+        ]}
+      />
 
     </>
   )

@@ -138,6 +138,7 @@ function RewardCinemaInner({
       role="dialog"
       aria-modal="true"
       aria-label="Reward cinematic"
+      data-scene-swipe-opt-out="true"
     >
       <div className="reward-cinema-card section-card">
         <p className="eyebrow">Reward</p>

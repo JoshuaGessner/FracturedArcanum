@@ -6,9 +6,11 @@
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui", "browser"],
   "orientation": "portrait",
   "lang": "en",
   "categories": ["games", "entertainment"],
+  "prefer_related_applications": false,
   "background_color": "#0b1020",
   "theme_color": "#0b1020",
   "icons": [

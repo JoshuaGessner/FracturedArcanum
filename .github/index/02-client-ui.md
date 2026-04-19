@@ -105,7 +105,15 @@ The transition class selection is centralized in `getScreenTransitionClass()` in
 - cinematic VS intro
 - board-first arena layout
 - drag-to-play and attack telegraph
-- hero reactions, low-HP heartbeat, and hand-fan layout
+- hero reactions, low-HP heartbeat, layered hand-fan layout, and live effect seals
+
+## Scene-first style guardrails
+
+- battle keeps the board as the dominant focal plane
+- enemy and player anchors should read as mirrored endpoints of the same arena system
+- transient notices should float as overlays and never reflow the battlefield
+- reward, recap, and milestone conclusions should resolve through shared popup styling rather than one-off result cards
+- live card surfaces should communicate mechanics through consistent icon placement before the player opens inspect
 
 ## Conventions
 

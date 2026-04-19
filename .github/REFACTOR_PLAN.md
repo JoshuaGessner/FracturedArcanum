@@ -1,8 +1,8 @@
 # Fractured Arcanum — Unified Scene-First Refactor Plan
 
-> Updated 2026-04-18.
+> Updated 2026-04-19.
 > This file replaces older planning notes that no longer match the current direction.
-> The active goal is a unified, scene-based game presentation with floating animated elements, board-first battle play, and a cleaner progress tracker.
+> The active goal is a unified, scene-based game presentation with floating animated elements, board-first battle play, cleaner reward flows, touch-safe interactions, and a clearer progress tracker.
 
 ---
 
@@ -46,6 +46,47 @@ We should stop patching isolated battle sections and instead refactor the app ar
 - consistent chrome
 - gameplay-safe overlays
 - one cohesive visual language across all screens
+
+### Recently resolved hardening issues
+- battle victory resolution is now screen-scoped so the cinematic flow does not reappear later on unrelated screens
+- pack-opening recap now uses pack-specific copy and iconography instead of battle-victory framing
+- overlay card-reveal experiences now opt out of scene routing so horizontal reveal browsing stays local to the active flow
+- shop and settings subviews now use mobile-safe containment rules so back controls and primary content remain reachable
+- inspectable card art now suppresses native drag/callout behavior more consistently so iPhone long press stays inside the in-app inspect flow
+- the app now exposes an iPhone-specific Add to Home Screen guidance path instead of treating install as permanently unavailable on Safari
+
+### Current remaining focus
+- continue on-device validation for touch targets, drag reliability, and subview containment on narrow phones
+- verify the iPhone long-press suppression and Add to Home Screen flow on real Safari / Web.app hardware
+- keep extending the same scene-first polish and shared summary language across the rest of the app
+
+### Newly confirmed platform hardening issues
+- some inspectable card surfaces still trigger the iOS Safari image/context callout during long-press instead of staying inside the app’s own inspect flow
+- the current install affordance depends on the `beforeinstallprompt` browser event, which is not supported on iPhone Safari, so the app appears permanently unavailable for installation there even when the manifest and icons exist
+
+### Research findings and logged fixes
+
+#### Long-press inspect / context-menu issue
+**Observed behavior:** a long press that should open card inspect can still surface the browser’s native context menu or image callout on some devices.
+
+**Likely root cause:** the app already blocks `contextmenu` on the long-press wrapper in `getLongPressProps()`, but Safari can still show native callouts from nested images and other inspectable card art if those surfaces do not consistently suppress touch callout and dragging.
+
+**Logged fix plan:**
+- extend touch-callout suppression to every inspectable card surface and nested card image
+- ensure card art used in hand, board, collection, inspect, and reward views is `draggable={false}`
+- keep `onContextMenu={preventDefault}` at the interaction root and verify the press path does not escape through nested art elements
+- run device checks specifically on iPhone Safari for hand cards, battlefield units, collection cards, and pack reveals
+
+#### iPhone PWA issue
+**Observed behavior:** the app can appear installable elsewhere but effectively never offers a working install flow on iPhone.
+
+**Likely root cause:** the current UI only becomes actionable when `beforeinstallprompt` fires. That flow works in Chromium browsers, but iOS Safari uses a manual Share → Add to Home Screen flow and does not expose that event.
+
+**Logged fix plan:**
+- add iPhone/iPad detection plus a standalone-mode check so the app can show the right install state on Apple devices
+- replace the current `Unavailable` dead end with explicit in-app Add to Home Screen instructions for iOS
+- keep the existing manifest, icons, and service worker registration, but verify them through an iPhone-specific install checklist over HTTPS
+- confirm post-install standalone launch behavior, icon quality, safe-area handling, and service-worker update flow on real Safari/Web.app
 
 ---
 
@@ -100,6 +141,54 @@ The best upgrade path is:
 - **Do next:** add PixiJS for battle and ambient effects
 - **Do not do now:** full engine migration or complete app rewrite
 
+## 3.3 Design alignment opportunities
+
+These are additional design-focused opportunities that align with the same direction and should guide future implementation.
+
+### Visual hierarchy rules
+- every scene should have **one dominant focal plane**
+- in battle, the **board owns the center**, identity and state stay compressed at the edges
+- persistent labels should only remain visible if they add information that the art, icon, or state treatment cannot already communicate
+- if a new panel or badge competes with the board or hand, it should be reduced, moved, or made transient
+
+### Battle ergonomics and readability
+- the enemy and player hero anchors should feel like a mirrored pair, not unrelated widgets
+- primary actions should sit in the lower thumb-reach zone without covering cards or lanes
+- the hand should visually tuck under the battlefield as a rail, not behave like a second page section
+- overlap should create depth, not obstruction
+- combat guidance should prefer short chips, highlights, and icon feedback over full-width instructional copy
+
+### Card readability grammar
+- every live card should follow the same information map:
+  - **cost** at the upper corner
+  - **effect seal** at the opposite upper corner
+  - **art** as the visual center
+  - **attack / health** anchored at the bottom edge
+- effect icons should stay visually consistent across hand, board, inspect, collection, and rewards
+- selected, playable, exhausted, guarded, and targetable states should be readable from silhouette and edge-lighting alone
+
+### Scene depth and composition
+- each major scene should use three visible depth cues:
+  - background environment
+  - midground gameplay surface
+  - foreground dock / overlay layer
+- shadows, glow, blur, and overlap should separate layers intentionally rather than decorate every surface equally
+- negative space is part of the design; not every area needs a framed widget
+
+### UI restraint rules
+- avoid repeating the same information in title bars, badges, helper copy, and buttons at the same time
+- reduce sentence-heavy instructional text in active play spaces
+- prefer icon + number + short label over full status paragraphs
+- if an element is always present but rarely important, it should likely be compact, contextual, or hidden behind inspect / modal flow
+
+### Environment storytelling opportunities
+- Home can feel like a war table with a live campaign map
+- Play can feel like an arena gate or summoning portal
+- Collection can feel like a living archive or forge shelf
+- Social can feel like a tavern hall with banners, notices, and clan heraldry
+- Shop can feel like a merchant vault with featured items staged physically in the scene
+- Settings can feel like a scribe desk or command ledger rather than an admin dashboard
+
 ---
 
 ## 4. Execution Plan
@@ -116,6 +205,8 @@ The best upgrade path is:
 - [ ] all three lanes for both sides remain readable on mobile
 - [ ] all battle actions are reachable and tappable
 - [ ] the board remains the main visual focus
+- [ ] enemy and player hero anchors feel visually paired and equally intentional
+- [ ] combat information is readable in under a glance without redundant helper text
 
 ### Required changes
 - [x] remove the unstable mixed overlay/section-card arrangement from battle
@@ -126,10 +217,95 @@ The best upgrade path is:
 - [x] surface effect seals on hand and battlefield cards so players can read mechanics at a glance
 - [x] unify enemy and player health anchors so they share the same visual language and footprint
 - [x] harden drag-to-play so upward pull gestures are not swallowed by scroll behavior
+- [x] convert the enemy-turn notice into a floating overlay that never pushes the scene downward
+- [x] replace the post-cinema fallback battlefield state with a dedicated battle-summary popup step
+- [x] harden reward-cinema state handoff so battle conclusion UI cannot appear late on unrelated screens
 - [ ] continue validating touch hit areas and drag/tap behavior on-device
 
 ### Acceptance gate
 This phase is not complete until battle is actually playable on-device.
+
+### Battle screen phasing guide — immediate design alignment pass
+
+#### Phase A1 — Layout freeze and floating notices
+**Goal:** stop reactive UI movement from cramming the battlefield.
+
+Deliverables:
+- move the enemy-turn banner from document flow into a true floating overlay
+- keep the battle board and hand locked in place while turn-state notices appear
+- ensure temporary notices fade or float above the arena instead of pushing content down
+
+Rules:
+- no battle-state banner should change the vertical footprint of the scene
+- overlay notices must feel like combat effects, not extra page sections
+- the board should never lose lane visibility because a status bar dropped in
+
+#### Phase A2 — Mirrored combat anchors
+**Goal:** make enemy and player identity surfaces feel like one system.
+
+Deliverables:
+- same visual size language for enemy and player hero anchors
+- same spacing rhythm, chip treatment, and edge treatment for both sides
+- the player dock stays compressed to the lower edge without covering the hand
+
+Rules:
+- health anchors should read as mirrored endpoints of the same arena
+- resource chips should support the anchor, not compete with it
+- only truly actionable controls should remain persistent in the lower dock
+
+#### Phase A3 — Card visibility and battlefield literacy
+**Goal:** improve understanding without more text.
+
+Deliverables:
+- card tops remain visible in the hand rail at all times
+- effect seals are always visible on live cards
+- lane state, exhaustion, guard, and targetability remain readable from the board alone
+
+Rules:
+- live card surfaces should explain themselves through icons, edge lighting, and state styling
+- instructional copy should be minimized once the scene grammar is readable
+- overlap should create a premium stacked-card feel without hiding cost or effect identity
+
+#### Phase A4 — Post-battle cinematic completion
+**Goal:** finish the win/loss flow cleanly and consistently.
+
+Deliverables:
+- keep the current reward cinema as scenes one through three
+- add a **fourth popup scene** for battle summary after the reward beats finish
+- this fourth step contains the final summary, reward recap, and the only persistent **Battle Again** / **Leave to Lobby** actions
+- remove the jumbled fallback view of the battlefield with loose result buttons after the cinema ends
+
+Rules:
+- the player should exit battle through a modal conclusion, not by being dropped back into a partially active arena
+- victory, defeat, and draw should all resolve through the same summary language
+- the modal should feel like part of the same cinematic stack, not a generic browser dialog
+
+#### Phase A5 — Reusable summary-popup system
+**Goal:** turn this battle fix into an app-wide pattern.
+
+Deliverables:
+- define a shared summary popup style for post-battle, daily reward, pack recap, rank-up, and similar milestone moments
+- use one visual grammar for header art, stat rows, reward rows, and CTA placement
+- keep confirmation and recap surfaces aligned across the app so the style language stays consistent
+
+Rules:
+- summary popups should be concise, celebratory, and action-oriented
+- they should reuse the same layered modal structure rather than inventing one-off result cards per feature
+- similar moments across the app should feel related, even if the content differs
+
+#### Phase A6 — Reward-flow hardening and cleanup
+**Goal:** eliminate delayed, mismatched, or cross-screen recap behavior.
+
+Deliverables:
+- battle victory cinema and battle summary are strictly battle-scoped and cannot re-trigger after navigating elsewhere
+- pack-opening recap uses pack-specific copy, icons, and neutral reward language rather than battle-victory framing
+- duplicate refunds and new-card counts are presented cleanly without implying the player won a match
+- reward overlays clear predictably when leaving battle, entering settings, or closing ceremony flows
+
+Rules:
+- no global recap state should leak from one feature into another
+- battle results, pack results, and daily rewards may share structure, but they must not share misleading tone or headline copy
+- if a reward flow is multi-step, the final step must resolve immediately in-context rather than appearing later on another screen
 
 ---
 
@@ -144,17 +320,50 @@ This phase is not complete until battle is actually playable on-device.
 - [ ] consistent layer model: backdrop / FX / content / overlays
 - [ ] scene body owns scroll only where intentionally needed
 - [ ] docked chrome behaves consistently on mobile
+- [x] overlay-driven experiences opt out of scene swiping whenever they need horizontal card or carousel gestures
+- [x] submenu headers and back controls now compress and wrap safely at 375px width
 
 ### Planned structure
 - [x] create shared scene shell styling in [src/App.css](src/App.css)
 - [ ] update the shell flow in [src/App.tsx](src/App.tsx)
 - [ ] ensure all screen roots can host floating animated elements safely
 - [ ] remove dependence on stacked section-card layouts as the primary screen structure
+- [x] add explicit swipe-lock rules for pack ceremony, reward recaps, and future overlay galleries
+- [x] contain dense shop/settings subviews inside the safe mobile viewport without horizontal spill
 
 ### Success criteria
 - screens feel like self-contained game scenes
 - floating effects no longer fight document flow
 - battle-specific layout hacks are no longer necessary just to keep the app usable
+- overlays that support horizontal review do not accidentally trigger scene changes
+- back navigation remains reachable in every subview on a phone screen
+
+### Phase B1 — Overlay gesture isolation and viewport containment
+**Goal:** stop scene navigation and layout overflow from fighting local UI interactions.
+
+Deliverables:
+- add overlay-level swipe opt-out coverage for pack opening, reward review, and similar horizontally browsed content
+- ensure back buttons, subnav badges, and primary calls-to-action wrap or compress safely on narrow screens
+- keep long settings and shop content inside dedicated scroll containers rather than pushing controls off-screen
+
+Rules:
+- horizontal reveal gestures must belong to the active overlay, not the scene router underneath it
+- no mobile submenu should require guessing where the back action went
+- content density must compress or scroll intentionally instead of spilling beyond the viewport
+
+### Phase B2 — Mobile Safari interaction and install reliability
+**Goal:** make touch interactions and home-screen install flow behave like a real app on iPhone.
+
+Deliverables:
+- long-press inspect opens the in-app card modal without the browser image/context menu stealing the gesture
+- all inspectable card art suppresses native drag/callout behavior consistently
+- Settings and onboarding show the correct iPhone install guidance when browser install prompts are unavailable
+- the PWA can be added to the iPhone home screen and launched in standalone mode with the expected icon and safe-area behavior
+
+Rules:
+- do not rely on `beforeinstallprompt` as the only install path
+- treat iPhone Safari and Web.app as a first-class platform with explicit checks
+- if a native browser affordance breaks immersion during long press, the app must suppress it at the surface level rather than hoping the wrapper handler is enough
 
 ---
 
@@ -180,6 +389,9 @@ This phase is not complete until battle is actually playable on-device.
 - [x] preserve inspect, drag, tap, and attack-target flows through the rebuild
 - [x] keep effect icons readable on live cards without forcing inspect-first play
 - [x] keep the horizontal hand rail scroll-friendly while still allowing vertical pull-up drag commits
+- [x] replace the static in-scene battle result card with the fourth cinematic summary popup
+- [x] ensure temporary enemy-turn messaging floats above the arena instead of shifting layout
+- [ ] harden battle result sequencing so cinematic victory flow cannot be skipped, delayed, or replayed on a later screen
 
 ### Interaction goals
 - [x] card play supports reliable upward pull-to-play in addition to tap
@@ -201,6 +413,15 @@ This phase is not complete until battle is actually playable on-device.
 - [ ] no frame-within-frame artifacts
 - [ ] consistent panel, button, badge, and divider language
 - [ ] consistent scene spacing and anchoring rules across all screens
+- [ ] a clear information hierarchy where primary, secondary, and decorative surfaces are easy to distinguish
+
+### Design system additions
+- [ ] define a shared scale for **hero surfaces**, **action docks**, **chips**, and **overlay cards** so sizes feel intentional across the app
+- [ ] define color-role rules so player, enemy, neutral system state, reward, and danger all read consistently
+- [ ] define when text should be persistent versus contextual versus inspect-only
+- [ ] standardize icon placement on cards and badges so the same mechanic never moves around visually between screens
+- [ ] define a reusable **summary popup** template for battle recap, pack recap, daily reward, rank-up, and other milestone moments
+- [ ] use environmental props and negative space to carry theme instead of filling every gap with another framed box
 
 ### Refactor rules
 - [ ] a surface owns either SVG-style chrome or CSS edge treatment, never both
@@ -237,10 +458,13 @@ This phase is not complete until battle is actually playable on-device.
 ### Shop
 - [ ] become a merchant/bazaar scene
 - [ ] packs, cosmetics, and rune economy appear as anchored displays and rails
+- [ ] pack opening and reveal review stay fully inside the active shop flow without using battle-victory framing
+- [ ] newly opened cards are browsed cleanly with swipe-safe overlays and no accidental section changes
 
 ### Settings
 - [ ] become a scribe-desk scene
 - [ ] account and admin surfaces remain readable without reverting to generic dashboard styling
+- [ ] subview headers, back controls, and dense admin/support content stay fully visible and scroll safely on phone screens
 
 ---
 
@@ -271,11 +495,11 @@ We should only expand motion after the scene shell is stable and battle is relia
 
 | Workstream | Status | Notes |
 |---|---|---|
-| Battle playability recovery | Active | Single-surface shell, restored stacked hand fan, and visible effect seals are in place; on-device validation still needed |
-| Shared scene shell | Active | Core battle scene styling has started replacing split stacked layout with intentional layering |
-| Battle arena rebuild | Active | Board-first layout is underway with anchored hero and hand zones |
-| Unified chrome cleanup | Planned | Removes frame-within-frame artifacts |
-| App-wide scene migration | Planned | Apply the same model to all screens |
+| Battle playability recovery | Active | Single-surface shell, restored stacked hand fan, floating enemy-turn notice, scoped reward flow, and the shared summary popup are in place; on-device confirmation is the main remaining gate |
+| Shared scene shell | Active | Core battle scene styling is now joined by overlay gesture isolation and mobile-safe subview containment |
+| Battle arena rebuild | Active | Board-first layout is stable, with remaining work focused on broader device validation and follow-on polish |
+| Unified chrome cleanup | Active | Shared summary popup styling and pack-specific reward framing are now in use; broader screen unification is next |
+| App-wide scene migration | Active | The scene model is established across battle, shop, and settings; continue extending polish to the rest of the app |
 | PixiJS rendering spike | Planned | Hybrid visual upgrade path |
 | Motion and ambient polish | Planned | Only after layout stability is restored |
 
@@ -314,6 +538,19 @@ We should only expand motion after the scene shell is stable and battle is relia
 
 ---
 
+## 7.1 Design review checklist
+
+Before any design-heavy phase is called complete, review the screen against these questions:
+
+- [ ] can a first-time player identify whose turn it is within about two seconds?
+- [ ] can the player immediately find their health, mana, momentum, and hand without hunting?
+- [ ] is the board still the strongest visual focal point during combat?
+- [ ] do the enemy and player anchors feel like parts of the same system?
+- [ ] are effect mechanics visible from the live card surfaces, not hidden behind inspect?
+- [ ] has redundant text been removed where icons, chips, or motion already explain the state?
+- [ ] does overlap create depth rather than cover important gameplay information?
+- [ ] does the scene feel like a place in the game world rather than a dashboard made of stacked cards?
+
 ## 8. Definition of Done
 
 This direction is only complete when all of the following are true:
@@ -334,7 +571,7 @@ This direction is only complete when all of the following are true:
 
 **Next implementation target:**
 
-1. finish on-device validation of the new battle shell
-2. rebuild the battle arena further inside this unified system
-3. extend the same scene architecture across the rest of the app
-4. then layer in the richer rendering and motion upgrade
+1. verify the refined iPhone long-press and Add to Home Screen behavior on real hardware
+2. continue on-device validation of the refined battle, shop, and settings flows on narrow screens
+3. extend the shared summary-popup and broader scene-first polish across the remaining app
+4. then continue the richer ambient rendering and motion upgrade path

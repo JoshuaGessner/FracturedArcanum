@@ -275,6 +275,7 @@ export function CollectionScreen() {
                     alt={`${card.name} illustration`}
                     loading="lazy"
                     onError={handleCardArtError}
+                    draggable={false}
                   />
                 </div>
                 <div className="slot-head">

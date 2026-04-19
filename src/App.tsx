@@ -37,11 +37,14 @@ import {
   createAnonymousId,
   getDeviceFingerprint,
   getRankLabel,
+  getInstallAvailability,
   getScreenBucket,
   getScreenTransitionClass,
   getScreenTransitionSound,
   pulseFeedback,
   readStoredValue,
+  shouldPresentScopedReward,
+  type RewardScope,
 } from './utils'
 import { ToastStack } from './components/ToastStack'
 import { ConfirmModal } from './components/ConfirmModal'
@@ -168,16 +171,28 @@ function AppShell() {
 
   // ─── Local screen-shell state ─────────────────────────────────────────
   const [activeScreen, setActiveScreen] = useState<AppScreen>('home')
+  const activeScreenRef = useRef<AppScreen>('home')
   const [settingsSubview, setSettingsSubview] = useState<SettingsSubview>('hub')
   const [screenTransitionClass, setScreenTransitionClass] = useState<'screen-enter-forward' | 'screen-enter-back' | 'screen-enter-lateral' | 'screen-enter-battle'>('screen-enter-lateral')
 
   // ─── Phase 3W — Reward cinema sequence (battle / daily / pack / rank-up)
   const [cinemaSequence, setCinemaSequence] = useState<RewardBeat[] | null>(null)
-  const presentRewardCinema = useCallback((beats: RewardBeat[]) => {
+  const [battleSummaryVisible, setBattleSummaryVisible] = useState(false)
+  const cinemaScopeRef = useRef<RewardScope>('generic')
+  const presentRewardCinema = useCallback((beats: RewardBeat[], scope: RewardScope = 'generic') => {
     if (beats.length === 0) return
+    if (!shouldPresentScopedReward(scope, activeScreenRef.current)) return
+    cinemaScopeRef.current = scope
+    setBattleSummaryVisible(false)
     setCinemaSequence(beats)
   }, [])
-  const dismissRewardCinema = useCallback(() => setCinemaSequence(null), [])
+  const dismissRewardCinema = useCallback(() => {
+    const scope = cinemaScopeRef.current
+    cinemaScopeRef.current = 'generic'
+    setCinemaSequence(null)
+    setBattleSummaryVisible(scope === 'battle' && activeScreenRef.current === 'battle')
+  }, [])
+  const dismissBattleSummary = useCallback(() => setBattleSummaryVisible(false), [])
   // Tracks the most recent pack open's duplicate refund so ShopScreen can
   // build an accurate finisher cinema after the ceremony overlay closes.
   const [lastPackRefund, setLastPackRefund] = useState<number>(0)
@@ -188,6 +203,10 @@ function AppShell() {
 
   // ─── Phase 3L — Transient post-claim checkmark flag ──────────────────
   const [justClaimedDaily, setJustClaimedDaily] = useState(false)
+
+  useEffect(() => {
+    activeScreenRef.current = activeScreen
+  }, [activeScreen])
 
   // ─── Phase 1C — active battle/game state lives in GameProvider ───────
   const {
@@ -485,7 +504,13 @@ function AppShell() {
       onPointerUp: () => clearLongPressTimer(),
       onPointerLeave: () => clearLongPressTimer(),
       onPointerCancel: () => clearLongPressTimer(),
-      onContextMenu: (event: React.MouseEvent<HTMLElement>) => event.preventDefault(),
+      onContextMenu: (event: React.MouseEvent<HTMLElement>) => {
+        event.preventDefault()
+        event.stopPropagation()
+      },
+      onDragStart: (event: React.DragEvent<HTMLElement>) => {
+        event.preventDefault()
+      },
     }
   }
 
@@ -1569,7 +1594,7 @@ function AppShell() {
           if (rankCrossed) {
             beats.push(...buildRankUpSequence({ previousRankLabel, newRankLabel }))
           }
-          presentRewardCinema(beats)
+          presentRewardCinema(beats, 'battle')
         })
         .catch(() => {})
     } else if (game.winner === 'player') {
@@ -1582,7 +1607,7 @@ function AppShell() {
         battleKind: game.mode === 'duel' ? 'local' : 'ai',
         mode: game.mode,
       })
-      window.setTimeout(() => presentRewardCinema(localBeats), 0)
+      presentRewardCinema(localBeats, 'battle')
     }
 
     if (authToken && game.mode === 'duel') {
@@ -1644,11 +1669,20 @@ function AppShell() {
                 ? 'Shop'
                 : 'Settings'
   const isBattleScreen = activeScreen === 'battle'
+  const installAvailability = getInstallAvailability(Boolean(installPromptEvent))
 
   function transitionToScreen(screen: AppScreen, withSound = false) {
     setScreenTransitionClass(getScreenTransitionClass(activeScreen, screen))
     if (withSound) {
       playSound(getScreenTransitionSound(activeScreen, screen), soundEnabled)
+    }
+    if (screen !== 'battle') {
+      setBattleSummaryVisible(false)
+    }
+    if (!shouldPresentScopedReward(cinemaScopeRef.current, screen)) {
+      cinemaScopeRef.current = 'generic'
+      setCinemaSequence(null)
+      setBattleSummaryVisible(false)
     }
     setActiveScreen(screen)
   }
@@ -1873,6 +1907,7 @@ function AppShell() {
           window.setTimeout(() => setJustClaimedDaily(false), 2000)
           presentRewardCinema(
             buildDailyClaimSequence({ shards: 50, totalEarned: data.totalEarned }),
+            'daily',
           )
         } else {
           setToastMessage(data.error ?? 'Could not claim daily reward.')
@@ -2217,6 +2252,7 @@ function AppShell() {
     setBattleKind(mode === 'duel' ? 'local' : 'ai')
     setBattleSessionActive(true)
     setServerBattleActive(false)
+    setBattleSummaryVisible(false)
     setSelectedAttacker(null)
     resolvedMatchKeyRef.current = ''
     clearEnemyTurnTimers()
@@ -2913,6 +2949,7 @@ function AppShell() {
     confirmRequest, confirmTextInput, setConfirmTextInput, askConfirm, closeConfirm,
     consumeLongPressAction, getLongPressProps,
     cinemaSequence, presentRewardCinema, dismissRewardCinema,
+    battleSummaryVisible, dismissBattleSummary,
     lastPackRefund, setLastPackRefund,
     tourVisible, startOnboardingTour, dismissOnboardingTour,
     installPromptEvent, handleInstallApp,
@@ -3090,10 +3127,13 @@ function AppShell() {
                 </>
               )}
             </p>
-            {installPromptEvent && (
+            {installAvailability === 'prompt' && (
               <button className="pwa-install-btn" onClick={handleInstallApp}>
                 Install App
               </button>
+            )}
+            {installAvailability === 'ios-manual' && (
+              <p className="note auth-install-hint">On iPhone, open this in Safari and use Share → Add to Home Screen.</p>
             )}
           </div>
         </div>
