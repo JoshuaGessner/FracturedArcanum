@@ -137,7 +137,8 @@ npm run update:server
 ```
 
 What it does:
-- creates a timestamped backup before making changes
+- creates a timestamped hard backup before making changes
+- captures a full repository snapshot for rollback
 - preserves Docker volume data and local `data/` contents
 - preserves your `.env` file
 - pulls the latest git changes with fast-forward protection
@@ -164,7 +165,19 @@ bash scripts/update.sh --mode node
 bash scripts/update.sh --mode docker
 ```
 
-Backups are written to `backups/update-YYYYMMDD-HHMMSS/` so admins can restore data if an update fails.
+Backups are written to `backups/update-YYYYMMDD-HHMMSS/` and now include a full repository snapshot, data backup, Docker-volume backup when applicable, and a restore note.
+
+To restore the latest backup:
+
+```bash
+npm run restore:server
+```
+
+To inspect available backups:
+
+```bash
+npm run restore:server:list
+```
 
 ### Environment Variables
 

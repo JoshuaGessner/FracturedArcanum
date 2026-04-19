@@ -12,6 +12,8 @@
     "assets:generate": "node scripts/generate-brand-assets.mjs",
     "update:server": "bash scripts/update.sh",
     "update:server:dry": "bash scripts/update.sh --dry-run",
+    "restore:server": "bash scripts/restore-backup.sh --latest",
+    "restore:server:list": "bash scripts/restore-backup.sh --list",
     "release:check": "npm test && npm run lint && npm run build",
     "build": "npm run build:engine && tsc -b && vite build",
     "lint": "eslint .",

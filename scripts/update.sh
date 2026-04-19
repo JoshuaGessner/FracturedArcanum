@@ -34,7 +34,7 @@ Usage:
 Options:
   --mode auto|docker|node   Update mode. Auto-detect by default.
   --branch <name>           Branch to pull before updating.
-  --skip-backup             Skip the pre-update data backup.
+  --skip-backup             Skip the pre-update hard backup.
   --skip-pull               Skip git fetch/pull and only rebuild/restart.
   --skip-build              Skip the build step in node mode.
   --force                   Continue even if the repo has local changes.
@@ -210,7 +210,38 @@ write_backup_metadata() {
     printf 'mode=%s\n' "$MODE"
     printf 'branch=%s\n' "${BRANCH:-unknown}"
     printf 'commit=%s\n' "$(git -C "$REPO_ROOT" rev-parse HEAD 2>/dev/null || echo unknown)"
+    printf 'restore_command=%s\n' "bash scripts/restore-backup.sh --backup-dir $CURRENT_BACKUP_DIR"
   } > "$CURRENT_BACKUP_DIR/metadata.txt"
+}
+
+backup_repo_snapshot() {
+  log "Creating full repository snapshot..."
+  run tar \
+    --exclude='./backups' \
+    --exclude='./node_modules' \
+    --exclude='./dist' \
+    --exclude='./coverage' \
+    -czf "$CURRENT_BACKUP_DIR/repo-snapshot.tar.gz" \
+    -C "$REPO_ROOT" .
+
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    log "Would capture git status and diff artifacts."
+    return 0
+  fi
+
+  git -C "$REPO_ROOT" status --short > "$CURRENT_BACKUP_DIR/git-status.txt" || true
+  git -C "$REPO_ROOT" diff --binary > "$CURRENT_BACKUP_DIR/git-diff.patch" || true
+  git -C "$REPO_ROOT" rev-parse --abbrev-ref HEAD > "$CURRENT_BACKUP_DIR/git-branch.txt" || true
+
+  cat > "$CURRENT_BACKUP_DIR/RESTORE.txt" <<EOF
+Restore helper:
+  bash scripts/restore-backup.sh --backup-dir "$CURRENT_BACKUP_DIR"
+
+Quick options:
+  --latest     restore the newest backup
+  --data-only  restore only data/.env/docker volume
+  --force      skip the confirmation prompt
+EOF
 }
 
 backup_local_data() {
@@ -244,27 +275,29 @@ backup_docker_volume() {
 
 create_backup() {
   if [[ "$SKIP_BACKUP" -eq 1 ]]; then
-    warn "Skipping data backup by request."
+    warn "Skipping pre-update hard backup by request."
     return 0
   fi
 
   CURRENT_BACKUP_DIR="$BACKUP_ROOT/update-$(date '+%Y%m%d-%H%M%S')"
 
   if [[ "$DRY_RUN" -eq 1 ]]; then
-    log "Would create backup at $CURRENT_BACKUP_DIR"
+    log "Would create hard backup at $CURRENT_BACKUP_DIR"
     return 0
   fi
 
   run mkdir -p "$BACKUP_ROOT"
   run mkdir -p "$CURRENT_BACKUP_DIR"
   write_backup_metadata
+  backup_repo_snapshot
   backup_local_data
 
   if [[ "$MODE" == "docker" ]]; then
     backup_docker_volume
   fi
 
-  log "Backup created at $CURRENT_BACKUP_DIR"
+  log "Hard backup created at $CURRENT_BACKUP_DIR"
+  log "Restore with: bash scripts/restore-backup.sh --backup-dir \"$CURRENT_BACKUP_DIR\""
 }
 
 update_git_checkout() {
