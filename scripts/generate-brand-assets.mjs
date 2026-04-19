@@ -846,6 +846,12 @@ const chrome = {
   'icon-guard.svg': svg('0 0 24 24',
     `<path d="M12 2 L20 5 V12 C20 17 16 21 12 22 C8 21 4 17 4 12 V5 Z" fill="#1d4ed8" stroke="#fbbf24" stroke-width="1"/><path d="M12 7 L13 11 L17 11 L14 14 L15 18 L12 16 L9 18 L10 14 L7 11 L11 11 Z" fill="#fbbf24"/>`,
     'Guard icon'),
+  'icon-edit.svg': svg('0 0 24 24',
+    `<path d="M4 20 L4 17 L15 6 L18 9 L7 20 Z" fill="#cbd5e1" stroke="#fff" stroke-width="0.5"/><path d="M15 6 L17 4 L20 7 L18 9 Z" fill="#fbbf24" stroke="#fff" stroke-width="0.5"/>`,
+    'Edit icon'),
+  'icon-delete.svg': svg('0 0 24 24',
+    `<path d="M8 6 V4 C8 3 9 2 10 2 H14 C15 2 16 3 16 4 V6" fill="none" stroke="#ef4444" stroke-width="1.5"/><rect x="5" y="6" width="14" height="16" rx="2" fill="#ef4444" stroke="#fff" stroke-width="0.5"/><path d="M10 10 V18 M14 10 V18" stroke="#fff" stroke-width="1.5"/>`,
+    'Delete icon'),
 }
 
 // Effect icons (40×40, 20 entries)

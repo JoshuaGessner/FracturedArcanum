@@ -171,7 +171,7 @@ export function CollectionScreen() {
                     </button>
                     <div className="deck-roster-actions">
                       <button className="ghost mini icon-only" onClick={() => handleRenameDeck(deck)} aria-label={`Rename ${deck.name}`} title="Rename">
-                        ✏️
+                        <img className="action-icon" src="/generated/ui/icon-edit.svg" alt="" aria-hidden="true" />
                       </button>
                       <button
                         className="ghost mini icon-only"
@@ -180,7 +180,7 @@ export function CollectionScreen() {
                         aria-label={`Delete ${deck.name}`}
                         title={savedDecks.length <= 1 ? 'You need at least one deck' : 'Delete'}
                       >
-                        🗑️
+                        <img className="action-icon" src="/generated/ui/icon-delete.svg" alt="" aria-hidden="true" />
                       </button>
                     </div>
                   </li>
@@ -309,7 +309,7 @@ export function CollectionScreen() {
                 </div>
                 <div className="slot-head">
                   <strong>{card.name}</strong>
-                  <span className="stats">{card.cost} 💧</span>
+                  <span className="stats"><StatIcon kind="mana" className="inline-stat" /> {card.cost}</span>
                 </div>
                 <div className="card-meta-row">
                   <RarityBadge rarity={card.rarity} />
@@ -358,7 +358,7 @@ export function CollectionScreen() {
               onClick={() => handleQuickBattle(preset.name, preset.config)}
               title={`Battle AI with a curated ${preset.name} deck`}
             >
-              ⚔ {preset.name}
+              <img className="action-icon" src="/generated/ui/icon-attack.svg" alt="" aria-hidden="true" /> {preset.name}
             </button>
           ))}
         </div>

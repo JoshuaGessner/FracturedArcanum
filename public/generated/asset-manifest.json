@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-04-18T16:42:30.126Z",
+  "generatedAt": "2026-04-19T17:13:33.799Z",
   "provider": "local-svg",
   "apiReady": false,
   "commercialSafe": true,
@@ -278,6 +278,18 @@
     {
       "id": "icon-guard.svg",
       "path": "/generated/ui/icon-guard.svg",
+      "type": "ui-chrome",
+      "source": "local-generated"
+    },
+    {
+      "id": "icon-edit.svg",
+      "path": "/generated/ui/icon-edit.svg",
+      "type": "ui-chrome",
+      "source": "local-generated"
+    },
+    {
+      "id": "icon-delete.svg",
+      "path": "/generated/ui/icon-delete.svg",
       "type": "ui-chrome",
       "source": "local-generated"
     },

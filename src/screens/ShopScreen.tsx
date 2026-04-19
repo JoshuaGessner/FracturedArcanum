@@ -225,7 +225,7 @@ export function ShopScreen() {
                 return (
                   <div className="theme-offer-card" key={border.id}>
                     <div className={`border-preview border-${border.id}`} aria-hidden="true">
-                      <span className="border-preview-icon">⚔</span>
+                      <img className="border-preview-icon" src="/generated/ui/icon-attack.svg" alt="" aria-hidden="true" />
                     </div>
                     <strong>{border.name}</strong>
                     <p className="mini-text">{border.description}</p>

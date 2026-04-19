@@ -123,6 +123,7 @@ export const UI_ASSETS = {
     attack: toUiAsset('icon-attack.svg'),
     health: toUiAsset('icon-health.svg'),
     guard: toUiAsset('icon-guard.svg'),
+    mana: toUiAsset('pip-mana-filled.svg'),
   },
   overlays: {
     versus: toUiAsset('overlay-vs.svg'),

@@ -13,6 +13,8 @@
   --accent: #7c3aed;
   --accent-blue: #2563eb;
   --gold: #fbbf24;
+  --gold-light: #fde68a;
+  --gold-dark: #b45309;
   --red: #ef4444;
   --green: #22c55e;
   --rarity-common: #9ca3af;
@@ -503,15 +505,15 @@ button:disabled {
   gap: 6px;
   padding: 16px 12px;
   min-height: 124px;
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   background: linear-gradient(160deg, rgba(124, 58, 237, 0.18), rgba(37, 99, 235, 0.12));
   border: 1px solid rgba(255, 255, 255, 0.08);
-  color: #e6ecff;
+  color: var(--text);
   text-align: center;
   cursor: pointer;
   position: relative;
   overflow: hidden;
-  transition: transform 0.18s ease-out, box-shadow 0.18s ease-out, background 0.2s;
+  transition: transform var(--motion-base), box-shadow var(--motion-base), background var(--motion-base);
 }
 
 .nav-tile::before {
@@ -539,7 +541,7 @@ button:disabled {
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  background: radial-gradient(circle, #fde68a 0%, #f59e0b 65%, #b45309 100%);
+  background: radial-gradient(circle, var(--gold-light) 0%, var(--rarity-legendary) 65%, var(--gold-dark) 100%);
   box-shadow: 0 0 0 4px rgba(251, 191, 36, 0.12), 0 0 16px rgba(251, 191, 36, 0.34);
   animation: urgencyPulse 1.6s ease-in-out infinite;
 }
@@ -557,12 +559,16 @@ button:disabled {
   box-shadow: 0 10px 28px rgba(124, 58, 237, 0.32);
 }
 
+.nav-tile:active {
+  transform: translateY(0) scale(0.97);
+}
+
 .nav-tile:hover::before,
 .nav-tile:focus-visible::before { opacity: 0.32; }
 
 .nav-tile-icon { font-size: 1.9rem; line-height: 1; }
 .nav-tile-label { font-size: 1rem; font-weight: 600; letter-spacing: 0.02em; }
-.nav-tile-description { font-size: 0.78rem; color: #b9c2dd; line-height: 1.3; }
+.nav-tile-description { font-size: 0.78rem; color: var(--muted); line-height: 1.3; }
 
 @media (prefers-reduced-motion: reduce) {
   .nav-tile { transition: none; }
@@ -1014,12 +1020,12 @@ button:disabled {
   display: grid;
   gap: 8px;
   align-content: start;
-  border-radius: 16px;
-  border: 1px solid rgba(147, 197, 253, 0.18);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
   background: linear-gradient(160deg, rgba(14, 20, 38, 0.96), rgba(24, 34, 68, 0.9));
-  color: #eff4ff;
+  color: var(--text);
   text-align: left;
-  transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
+  transition: transform var(--motion-fast), box-shadow var(--motion-fast), border-color var(--motion-fast);
 }
 
 .mode-card::before {
@@ -1045,6 +1051,10 @@ button:disabled {
 .mode-card:hover:not(:disabled) {
   transform: translateY(-3px);
   box-shadow: 0 10px 26px rgba(0, 0, 0, 0.24);
+}
+
+.mode-card:active:not(:disabled) {
+  transform: translateY(0) scale(0.98);
 }
 
 .mode-card.active {
@@ -1079,9 +1089,16 @@ button:disabled {
 
 .difficulty-chip {
   padding: 8px 12px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: rgba(99, 102, 241, 0.14);
   color: #dbe6ff;
+  cursor: pointer;
+  transition: background var(--motion-fast), color var(--motion-fast), box-shadow var(--motion-fast);
+}
+
+.difficulty-chip:hover:not(.active) {
+  background: rgba(99, 102, 241, 0.24);
+  color: var(--text);
 }
 
 .difficulty-chip.active {
@@ -1327,6 +1344,27 @@ button:disabled {
 .deck-status.warning { background: rgba(251, 191, 36, 0.18); }
 
 /* ─── Buttons ───────────────────────────────────────────────────── */
+/* ─── Inline icon helpers ─────────────────────────────────────────
+   Small SVG icons embedded in text-flow buttons and labels. They
+   inherit the line height of the surrounding text and stay crisp at
+   any size. */
+
+.action-icon {
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.12em;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.inline-stat {
+  width: 0.95em;
+  height: 0.95em;
+  vertical-align: -0.1em;
+  object-fit: contain;
+  pointer-events: none;
+}
+
 /* Single-owner chrome rule: buttons own ONE edge treatment (the
    border + gradient) — no stacked SVG button art behind them. The
    SVG button frames never aligned to arbitrary button widths and
@@ -1337,9 +1375,9 @@ button:disabled {
 .primary, .secondary, .ghost {
   padding: 12px 16px;
   min-height: 44px;
-  border-radius: 12px;
-  border: 1px solid rgba(147, 197, 253, 0.18);
-  transition: transform 0.15s ease, opacity 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease, border-color 0.15s ease;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  transition: transform var(--motion-fast), opacity var(--motion-fast), box-shadow var(--motion-fast), filter var(--motion-fast), border-color var(--motion-fast);
 }
 
 .primary {
@@ -1356,12 +1394,12 @@ button:disabled {
 
 .secondary {
   background: linear-gradient(135deg, rgba(37, 99, 235, 0.32), rgba(76, 29, 149, 0.28));
-  color: #f8f6ff;
+  color: var(--text);
 }
 
 .ghost {
   background: linear-gradient(135deg, rgba(99, 102, 241, 0.16), rgba(30, 41, 59, 0.32));
-  color: #dbe6ff;
+  color: var(--muted);
 }
 
 .mini {
@@ -1374,6 +1412,12 @@ button:disabled {
 .secondary:hover:not(:disabled),
 .ghost:hover:not(:disabled) {
   transform: translateY(-1px);
+}
+
+.primary:active:not(:disabled),
+.secondary:active:not(:disabled),
+.ghost:active:not(:disabled) {
+  transform: translateY(0.5px) scale(0.98);
 }
 
 .primary:disabled, .secondary:disabled, .ghost:disabled,
@@ -1861,7 +1905,7 @@ button:disabled {
 
 .rarity-legendary .slot-head strong,
 .rarity-legendary .card-name {
-  color: #fde68a;
+  color: var(--gold-light);
 }
 
 .rarity-legendary {
@@ -5112,6 +5156,96 @@ button, [role="button"], .scene-link, .chip {
   touch-action: manipulation;
 }
 
+/* ─── Form control reset ──────────────────────────────────────────
+   Remove browser-default appearance from selects, textareas, and
+   checkboxes so they inherit the app's dark surface look. */
+
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  background: rgba(8, 12, 26, 0.6);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 6px 28px 6px 10px;
+  font: inherit;
+  font-size: var(--font-sm);
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 6 L8 10 L12 6' fill='none' stroke='%23a0b0d0' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 6px center;
+  background-size: 16px 16px;
+}
+
+select:hover { border-color: var(--border-bright); }
+select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: var(--focus-ring);
+}
+
+textarea {
+  appearance: none;
+  background: rgba(8, 12, 26, 0.6);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  font: inherit;
+  font-size: var(--font-sm);
+  resize: vertical;
+  min-height: 64px;
+}
+
+textarea:hover { border-color: var(--border-bright); }
+textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: var(--focus-ring);
+}
+
+/* Custom checkbox toggle — replaces raw browser checkbox with a
+   small rounded switch that matches the dark-panel design. */
+input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  border: 1.5px solid var(--border-bright);
+  border-radius: 4px;
+  background: rgba(8, 12, 26, 0.5);
+  cursor: pointer;
+  position: relative;
+  transition: background var(--motion-fast), border-color var(--motion-fast);
+  vertical-align: middle;
+}
+
+input[type="checkbox"]:checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+input[type="checkbox"]:checked::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 5px;
+  width: 5px;
+  height: 9px;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+input[type="checkbox"]:focus-visible {
+  box-shadow: var(--focus-ring);
+}
+
+input[type="checkbox"]:hover {
+  border-color: var(--accent);
+}
+
 /* ─── Theme overrides v2: visible accent / surface differences ─── */
 
 .app-shell.theme-ember {
@@ -5286,7 +5420,7 @@ button, [role="button"], .scene-link, .chip {
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   overflow: hidden;
-  transition: border-color 160ms ease, transform 160ms ease, box-shadow 160ms ease;
+  transition: border-color var(--motion-fast), transform var(--motion-fast), box-shadow var(--motion-fast);
   box-shadow: inset 4px 0 0 rgba(251, 191, 36, 0.16);
 }
 
@@ -5407,7 +5541,7 @@ button.icon-only {
   color: var(--muted);
   border-radius: var(--radius-pill);
   cursor: pointer;
-  transition: background 140ms ease, color 140ms ease;
+  transition: background var(--motion-fast), color var(--motion-fast);
 }
 
 .chip:hover { color: var(--text); }
@@ -5557,8 +5691,10 @@ button.icon-only {
 }
 
 .border-preview-icon {
-  font-size: 1.6rem;
-  color: var(--text);
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  opacity: 0.7;
 }
 
 .border-preview.border-default { box-shadow: 0 0 0 1px var(--border) inset; }
@@ -6375,6 +6511,35 @@ button.icon-only {
   /* Collection card selection ring and social challenge banner pulses. */
   .card-tile.selected,
   .challenge-banner.incoming { animation: none !important; }
+
+  /* Streak badge decorative loops (emberFloat, fireGlow, rewardSweep). */
+  .streak-badge::before,
+  .streak-badge::after,
+  .streak-badge.streak-inferno { animation: none !important; }
+
+  /* Slot selection pulse + claim-ready vault pulse. */
+  .slot.selected,
+  .reward-vault-card.claim-ready .primary { animation: none !important; }
+
+  /* Legendary card cosmetic glow. */
+  .builder-card.rarity-legendary::before,
+  .hand-card.rarity-legendary::before { animation: none !important; }
+
+  /* Banner / challenge incoming pulse. */
+  .challenge-banner { animation: none !important; }
+
+  /* Drop-target pulse during drag. */
+  .slot.drop-target-active { animation: none !important; }
+
+  /* Queue portal spinner. */
+  .queue-portal-ring { animation: none !important; }
+
+  /* Rarity celebrate spark. */
+  .rarity-chip.rarity-celebrate { animation: none !important; }
+
+  /* Form control transitions — keep them instant. */
+  input[type="checkbox"],
+  select { transition: none !important; }
 
   /* Focus ring uses box-shadow only — no motion concern. */
 }
