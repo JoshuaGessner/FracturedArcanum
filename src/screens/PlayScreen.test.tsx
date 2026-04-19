@@ -231,4 +231,13 @@ describe('PlayScreen battle entry', () => {
     expect((screen.getByRole('button', { name: /ai skirmish/i }) as HTMLButtonElement).disabled).toBe(true)
     expect(screen.getByText(/your active deck has 8 cards/i)).toBeTruthy()
   })
+
+  it('shows a battle-readiness stage with compact launch context', () => {
+    renderPlayScreen({ deckReady: true, seasonRating: 1325 })
+
+    expect(screen.getByText(/battle readiness/i)).toBeTruthy()
+    expect(screen.getByText(/season rating/i)).toBeTruthy()
+    expect(screen.getByText(/deck ready/i)).toBeTruthy()
+    expect(screen.getByText(/queue open/i)).toBeTruthy()
+  })
 })

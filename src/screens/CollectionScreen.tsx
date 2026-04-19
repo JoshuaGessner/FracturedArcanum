@@ -28,6 +28,8 @@ export function CollectionScreen() {
   const collectionCircumference = 2 * Math.PI * 20
   const collectionOffset = collectionCircumference * (1 - collectionCompletion / 100)
   const rarityStats = getRarityCompletion(collection, CARD_LIBRARY)
+  const activeDeckName = savedDecks.find((deck) => deck.id === activeDeckId)?.name ?? 'Choose a deck'
+  const forgeStatusLabel = deckReady ? 'Forge stocked' : 'Needs tuning'
   const previousCompletionRef = useRef<Record<string, boolean> | null>(null)
   const [celebratingRarity, setCelebratingRarity] = useState<string | null>(null)
 
@@ -86,7 +88,8 @@ export function CollectionScreen() {
             </div>
           </div>
           <div className="collection-hero-stats">
-            <strong>Deck Builder</strong>
+            <strong>Archive Forge</strong>
+            <span className="note">Tune your library, refine the curve, and field the next lineup.</span>
             <span className="badge">{ownedUniqueCards}/{CARD_LIBRARY.length} owned</span>
             <span className={`deck-status ${deckReady ? 'ready' : 'warning'}`}>
               {deckReady ? `Ready · ${selectedDeckSize}` : `${selectedDeckSize}/${MIN_DECK_SIZE}`}
@@ -105,6 +108,30 @@ export function CollectionScreen() {
                 </span>
               )
             })}
+          </div>
+        </div>
+
+        <div className="scene-status-panel" aria-label="Archive status">
+          <div className="section-head compact">
+            <h3>Archive Status</h3>
+            <span className="badge">{collectionCompletion}% sealed</span>
+          </div>
+          <div className="scene-status-grid">
+            <div className="scene-status-tile">
+              <span className="scene-status-kicker">Collection Completion</span>
+              <strong>{ownedUniqueCards}/{CARD_LIBRARY.length}</strong>
+              <span className="mini-text">Unique cards logged to the archive</span>
+            </div>
+            <div className={`scene-status-tile ${deckReady ? 'is-accent' : ''}`}>
+              <span className="scene-status-kicker">Deck Ready</span>
+              <strong>{forgeStatusLabel}</strong>
+              <span className="mini-text">{selectedDeckSize} cards prepared for battle</span>
+            </div>
+            <div className="scene-status-tile">
+              <span className="scene-status-kicker">Saved Decks</span>
+              <strong>{savedDecks.length}</strong>
+              <span className="mini-text">Active build · {activeDeckName}</span>
+            </div>
           </div>
         </div>
 

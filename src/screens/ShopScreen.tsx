@@ -39,6 +39,8 @@ export function ShopScreen() {
           : shopSubview === 'breakdown'
             ? 'Breakdown'
             : 'Shop'
+  const vaultSignalLabel = canClaimDailyReward ? 'Ready to claim' : 'Charging'
+  const packStashLabel = `${packOffers.length} seals`
 
   const breakable = Object.entries(collection)
     .map(([cardId, owned]) => {
@@ -97,11 +99,36 @@ export function ShopScreen() {
         <article className={`section-card utility-card reward-vault-card ${canClaimDailyReward ? 'claim-ready' : ''}`}>
           <div className="shop-hero shop-hero-compact">
             <strong>Merchant&apos;s Bazaar</strong>
+            <span className="note">Featured stock, shard pressure, and quick routes back into the arena.</span>
             <span className="badge">{runes} Shards</span>
             <span className="badge">Next: {nextRewardLabel}</span>
             <button className="ghost mini" onClick={() => startMatch('ai')}>
               Earn in Battle
             </button>
+          </div>
+
+          <div className="scene-status-panel" aria-label="Bazaar signals">
+            <div className="section-head compact">
+              <h3>Bazaar Signals</h3>
+              <span className="badge">{viewLabel}</span>
+            </div>
+            <div className="scene-status-grid">
+              <div className="scene-status-tile">
+                <span className="scene-status-kicker">Shard Cache</span>
+                <strong>{runes}</strong>
+                <span className="mini-text">Spend on packs, themes, and borders</span>
+              </div>
+              <div className={`scene-status-tile ${canClaimDailyReward ? 'is-accent' : ''}`}>
+                <span className="scene-status-kicker">Daily Vault</span>
+                <strong>{vaultSignalLabel}</strong>
+                <span className="mini-text">Next payout · {nextRewardLabel}</span>
+              </div>
+              <div className="scene-status-tile">
+                <span className="scene-status-kicker">Pack Stash</span>
+                <strong>{packStashLabel}</strong>
+                <span className="mini-text">{totalOwnedCards} cards currently logged</span>
+              </div>
+            </div>
           </div>
 
           <div className="settings-subnav">

@@ -58,7 +58,7 @@ We should stop patching isolated battle sections and instead refactor the app ar
 ### Current remaining focus
 - continue on-device validation for touch targets, drag reliability, and subview containment on narrow phones
 - verify the iPhone long-press suppression and Add to Home Screen flow on real Safari / Web.app hardware
-- keep extending the same scene-first polish and shared summary language across the rest of the app
+- keep extending the same scene-first polish and shared summary language across the rest of the app, with Home and Play now moved onto the new status-stage treatment
 
 ### Newly confirmed platform hardening issues
 - some inspectable card surfaces still trigger the iOS Safari image/context callout during long-press instead of staying inside the app’s own inspect flow
@@ -404,7 +404,7 @@ Rules:
 
 ## Phase D — Unified Chrome and Visual Language
 
-**Status:** [ ] Not started
+**Status:** [ ] Not started  [x] In progress
 
 **Goal:** Make every screen feel like the same game, not a mixture of scene UI and old web panels.
 
@@ -433,38 +433,38 @@ Rules:
 
 ## Phase E — App-Wide Scene Migration
 
-**Status:** [ ] Not started
+**Status:** [x] Core scene migration complete  [ ] Device validation follow-up
 
 **Goal:** Extend the same scene-first architecture beyond battle.
 
 ### Home
-- [ ] convert into a war-room style scene
-- [ ] nav actions feel embedded in the scene rather than listed in cards
-- [ ] season and quest info act as anchored utility elements
+- [x] convert into a war-room style scene
+- [x] nav actions feel embedded in the scene rather than listed in cards
+- [x] season and quest info act as anchored utility elements
 
 ### Play
-- [ ] turn mode selection into a proper arena-gate scene
-- [ ] queue/search state becomes a central stage, not a page stack
+- [x] turn mode selection into a proper arena-gate scene
+- [x] queue/search state becomes a central stage, not a page stack
 
 ### Collection
-- [ ] become an archive/forge scene
-- [ ] card browser remains the main surface
-- [ ] deck tools feel anchored instead of stacked
+- [x] become an archive/forge scene
+- [x] card browser remains the main surface
+- [x] deck tools feel anchored instead of stacked
 
 ### Social
-- [ ] become a tavern/hall scene
-- [ ] leaderboard, friends, clan, and trade areas share one cohesive presentation
+- [x] become a tavern/hall scene
+- [x] leaderboard, friends, clan, and trade areas share one cohesive presentation
 
 ### Shop
-- [ ] become a merchant/bazaar scene
-- [ ] packs, cosmetics, and rune economy appear as anchored displays and rails
-- [ ] pack opening and reveal review stay fully inside the active shop flow without using battle-victory framing
-- [ ] newly opened cards are browsed cleanly with swipe-safe overlays and no accidental section changes
+- [x] become a merchant/bazaar scene
+- [x] packs, cosmetics, and rune economy appear as anchored displays and rails
+- [x] pack opening and reveal review stay fully inside the active shop flow without using battle-victory framing
+- [x] newly opened cards are browsed cleanly with swipe-safe overlays and no accidental section changes
 
 ### Settings
-- [ ] become a scribe-desk scene
-- [ ] account and admin surfaces remain readable without reverting to generic dashboard styling
-- [ ] subview headers, back controls, and dense admin/support content stay fully visible and scroll safely on phone screens
+- [x] become a scribe-desk scene
+- [x] account and admin surfaces remain readable without reverting to generic dashboard styling
+- [x] subview headers, back controls, and dense admin/support content stay fully visible and scroll safely on phone screens
 
 ---
 
@@ -491,6 +491,22 @@ We should only expand motion after the scene shell is stable and battle is relia
 
 ---
 
+## Phase G — Device Validation and Final Edge Polish
+
+**Status:** [ ] Not started  [x] In progress
+
+**Goal:** confirm the scene-first shell behaves correctly on real phones, installed PWAs, and narrow viewport edge cases.
+
+### Validation checklist
+- [ ] verify iPhone Safari browser mode for long-press inspect, swipe isolation, and install guidance
+- [ ] verify iPhone Home Screen launch for safe-area spacing, top chrome, bottom nav reachability, and update prompts
+- [ ] verify Android Chrome browser mode for install prompt flow, queue overlays, and battle drag reliability
+- [ ] verify Android installed PWA for splash-to-app launch, reward cinema containment, and service worker update handling
+- [ ] confirm no horizontal spill or clipped back actions at 375px width in shop, settings, and social subviews
+- [ ] confirm battle drag, attack targeting, inspect, and result-summary flows remain stable through repeated matches
+
+---
+
 ## 5. Progress Tracker
 
 | Workstream | Status | Notes |
@@ -498,8 +514,9 @@ We should only expand motion after the scene shell is stable and battle is relia
 | Battle playability recovery | Active | Single-surface shell, restored stacked hand fan, floating enemy-turn notice, scoped reward flow, and the shared summary popup are in place; on-device confirmation is the main remaining gate |
 | Shared scene shell | Active | Core battle scene styling is now joined by overlay gesture isolation and mobile-safe subview containment |
 | Battle arena rebuild | Active | Board-first layout is stable, with remaining work focused on broader device validation and follow-on polish |
-| Unified chrome cleanup | Active | Shared summary popup styling and pack-specific reward framing are now in use; broader screen unification is next |
-| App-wide scene migration | Active | The scene model is established across battle, shop, and settings; continue extending polish to the rest of the app |
+| Unified chrome cleanup | Active | Shared scene-status stages and summary-popup language now extend across the main screens; the remaining work is final edge cleanup and on-device verification |
+| App-wide scene migration | Active | Core scene migration is now established across every primary screen; only device validation and edge cleanup remain |
+| Device validation & edge polish | Active | Real-phone QA, safe-area verification, and final chrome containment are now the top follow-up tasks |
 | PixiJS rendering spike | Planned | Hybrid visual upgrade path |
 | Motion and ambient polish | Planned | Only after layout stability is restored |
 
@@ -508,18 +525,17 @@ We should only expand motion after the scene shell is stable and battle is relia
 ## 6. File Targets for the Next Execution Pass
 
 ### Highest priority
-- [src/screens/BattleScreen.tsx](src/screens/BattleScreen.tsx)
 - [src/App.css](src/App.css)
 - [src/App.tsx](src/App.tsx)
+- [src/components/TopBar.tsx](src/components/TopBar.tsx)
+- [src/components/NavBar.tsx](src/components/NavBar.tsx)
+- [docs/release-checklist.md](docs/release-checklist.md)
 
 ### Supporting scene-shell work
-- [src/components](src/components)
-- [src/screens/HomeScreen.tsx](src/screens/HomeScreen.tsx)
-- [src/screens/PlayScreen.tsx](src/screens/PlayScreen.tsx)
-- [src/screens/CollectionScreen.tsx](src/screens/CollectionScreen.tsx)
-- [src/screens/SocialScreen.tsx](src/screens/SocialScreen.tsx)
+- [src/screens/BattleScreen.tsx](src/screens/BattleScreen.tsx)
 - [src/screens/ShopScreen.tsx](src/screens/ShopScreen.tsx)
 - [src/screens/SettingsScreen.tsx](src/screens/SettingsScreen.tsx)
+- [src/screens/SocialScreen.tsx](src/screens/SocialScreen.tsx)
 
 ### Rendering upgrade track
 - new battle-scene visual layer components
@@ -571,7 +587,7 @@ This direction is only complete when all of the following are true:
 
 **Next implementation target:**
 
-1. verify the refined iPhone long-press and Add to Home Screen behavior on real hardware
-2. continue on-device validation of the refined battle, shop, and settings flows on narrow screens
-3. extend the shared summary-popup and broader scene-first polish across the remaining app
+1. run the real iPhone Safari and Web.app validation pass against the checklist above
+2. confirm Android browser and installed-PWA behavior for battle, rewards, and queue flows
+3. fix any remaining safe-area, overflow, or gesture edge cases discovered during device QA
 4. then continue the richer ambient rendering and motion upgrade path

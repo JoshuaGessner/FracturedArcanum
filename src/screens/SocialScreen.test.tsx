@@ -217,4 +217,14 @@ describe('SocialScreen hub flow', () => {
     expect(screen.queryByText(/leaderboard/i)).toBeNull()
     expect(screen.queryByText(/card trades/i)).toBeNull()
   })
+
+  it('shows a compact tavern status stage in the social hub', () => {
+    const { container } = renderSocialScreen()
+
+    expect(screen.getByText(/tavern signals/i)).toBeTruthy()
+    expect(screen.getByText(/friends online/i)).toBeTruthy()
+    expect(container.textContent).toMatch(/clan hall/i)
+    expect(container.textContent).toMatch(/trade post/i)
+    expect(container.querySelectorAll('.scene-status-tile')).toHaveLength(3)
+  })
 })

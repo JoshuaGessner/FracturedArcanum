@@ -44,6 +44,8 @@ export function SocialScreen() {
   const profileName = serverProfile?.displayName ?? serverProfile?.username ?? 'Player'
   const onlineFriends = friends.filter((friend) => onlineFriendIds.has(friend.accountId)).length
   const pendingTrades = trades.filter((trade) => trade.status === 'pending').length
+  const clanHallLabel = clan ? `[${clan.tag}] ${clan.members.length} allies` : 'Solo banner'
+  const tradeDeskLabel = pendingTrades > 0 ? `${pendingTrades} pending` : 'Open for barter'
   const socialViewLabel = socialSubview === 'friends'
     ? 'Friends'
     : socialSubview === 'clan'
@@ -66,6 +68,30 @@ export function SocialScreen() {
             <span className="badge">{pendingTrades} trades</span>
             <span className="badge">{clan ? clan.tag : 'Solo'}</span>
             <span className="badge">{totalGames}G · {winRate}%W · {runes}R</span>
+          </div>
+
+          <div className="scene-status-panel" aria-label="Tavern signals">
+            <div className="section-head compact">
+              <h3>Tavern Signals</h3>
+              <span className="badge">{friends.length} on roster</span>
+            </div>
+            <div className="scene-status-grid">
+              <div className="scene-status-tile">
+                <span className="scene-status-kicker">Friends Online</span>
+                <strong>{onlineFriends}/{friends.length || 0}</strong>
+                <span className="mini-text">Active challengers in your circle</span>
+              </div>
+              <div className="scene-status-tile">
+                <span className="scene-status-kicker">Clan Hall</span>
+                <strong>{clan ? clan.tag : 'Solo'}</strong>
+                <span className="mini-text">{clanHallLabel}</span>
+              </div>
+              <div className={`scene-status-tile ${pendingTrades > 0 ? 'is-accent' : ''}`}>
+                <span className="scene-status-kicker">Trade Post</span>
+                <strong>{tradeDeskLabel}</strong>
+                <span className="mini-text">Swap cards and review offers</span>
+              </div>
+            </div>
           </div>
 
           <div className="settings-subnav">

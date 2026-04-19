@@ -1,14 +1,14 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from 'vitest'
-import { cleanup, render } from '@testing-library/react'
-import { HomeScreen } from './HomeScreen'
+import { cleanup, render, screen } from '@testing-library/react'
+import { CollectionScreen } from './CollectionScreen'
 import { AppShellContext, type AppShellContextValue } from '../AppShellContext'
 import { QueueProvider } from '../contexts/QueueProvider'
 import { ProfileProvider } from '../contexts/ProfileProvider'
 import { SocialProvider } from '../contexts/SocialProvider'
 import { GameProvider } from '../contexts/GameProvider'
 import { createGame } from '../game'
-import type { AppScreen, CosmeticTheme, CardBorder } from '../types'
+import type { AppScreen, CardBorder, CosmeticTheme } from '../types'
 
 function buildShellValue(overrides: Partial<AppShellContextValue> = {}): AppShellContextValue {
   const noop = () => {}
@@ -32,7 +32,7 @@ function buildShellValue(overrides: Partial<AppShellContextValue> = {}): AppShel
     handleSetup: asyncNoop,
     handleAuth: asyncNoop,
     handleLogout: noop,
-    serverProfile: { accountId: 'acct-1', username: 'josh', displayName: 'josh', role: 'user', runes: 180, seasonRating: 1210, wins: 3, losses: 2, streak: 1, deckConfig: {}, ownedThemes: ['royal'], selectedTheme: 'royal', ownedCardBorders: ['default'], selectedCardBorder: 'default', lastDaily: '', totalEarned: 0 },
+    serverProfile: { accountId: 'acct-1', username: 'josh', displayName: 'Josh', role: 'user', runes: 180, seasonRating: 1210, wins: 3, losses: 2, streak: 1, deckConfig: {}, ownedThemes: ['royal'], selectedTheme: 'royal', ownedCardBorders: ['default'], selectedCardBorder: 'default', lastDaily: '', totalEarned: 0 },
     setServerProfile: noop,
     runes: 180,
     seasonRating: 1210,
@@ -57,8 +57,11 @@ function buildShellValue(overrides: Partial<AppShellContextValue> = {}): AppShel
     totalOwnedCards: 10,
     selectedDeckSize: 20,
     deckReady: true,
-    savedDecks: [],
-    activeDeckId: null,
+    savedDecks: [
+      { id: 'deck-1', name: 'Moon Guard', deckConfig: { 'spark-imp': 2 }, isActive: true, createdAt: '2026-04-18T00:00:00.000Z', updatedAt: '2026-04-18T00:00:00.000Z' },
+      { id: 'deck-2', name: 'Rune Storm', deckConfig: { 'spark-imp': 1 }, isActive: false, createdAt: '2026-04-18T00:00:00.000Z', updatedAt: '2026-04-18T00:00:00.000Z' },
+    ],
+    activeDeckId: 'deck-1',
     handleCreateDeck: noop,
     handleRenameDeck: noop,
     handleDeleteDeck: noop,
@@ -70,12 +73,12 @@ function buildShellValue(overrides: Partial<AppShellContextValue> = {}): AppShel
     handleSelectBorder: noop,
     handleEquipTheme: noop,
     handleClaimDailyReward: noop,
-    activeScreen: 'home' as AppScreen,
+    activeScreen: 'collection' as AppScreen,
     openScreen: noop,
     settingsSubview: 'hub',
     openSettingsSubview: noop,
     resetSettingsSubview: noop,
-    screenTitle: 'Arena Home',
+    screenTitle: 'Collection',
     toastMessage: '',
     toastSeverity: 'info',
     toastStack: [],
@@ -188,7 +191,7 @@ function buildShellValue(overrides: Partial<AppShellContextValue> = {}): AppShel
   }
 }
 
-function renderHomeScreen(valueOverrides: Partial<AppShellContextValue> = {}) {
+function renderCollectionScreen(valueOverrides: Partial<AppShellContextValue> = {}) {
   const value = buildShellValue(valueOverrides)
   return render(
     <QueueProvider>
@@ -196,7 +199,7 @@ function renderHomeScreen(valueOverrides: Partial<AppShellContextValue> = {}) {
         <SocialProvider>
           <GameProvider>
             <AppShellContext.Provider value={value}>
-              <HomeScreen />
+              <CollectionScreen />
             </AppShellContext.Provider>
           </GameProvider>
         </SocialProvider>
@@ -205,32 +208,18 @@ function renderHomeScreen(valueOverrides: Partial<AppShellContextValue> = {}) {
   )
 }
 
-describe('HomeScreen navigation and footer', () => {
+describe('CollectionScreen archive flow', () => {
   afterEach(() => {
     cleanup()
   })
 
-  it('does not duplicate the primary navigation destinations on the dashboard', () => {
-    const { container } = renderHomeScreen()
+  it('shows a compact archive status stage above the forge tools', () => {
+    const { container } = renderCollectionScreen()
 
-    expect(container.querySelectorAll('.nav-tile')).toHaveLength(0)
-  })
-
-  it('keeps the quest summary informational instead of showing a shop button', () => {
-    const { container } = renderHomeScreen()
-    const summary = container.querySelector('.quest-summary')
-
-    expect(summary).not.toBeNull()
-    expect(summary?.querySelector('button')).toBeNull()
-  })
-
-  it('shows a compact war-table status stage for core home progress', () => {
-    const { container, getByText } = renderHomeScreen({ canClaimDailyReward: true, nextRewardLabel: 'Reward Ready' })
-
-    expect(getByText(/war table status/i)).toBeTruthy()
-    expect(getByText(/league standing/i)).toBeTruthy()
-    expect(getByText(/deck ready/i)).toBeTruthy()
-    expect(getByText(/reward vault/i)).toBeTruthy()
+    expect(screen.getByText(/archive status/i)).toBeTruthy()
+    expect(screen.getByText(/collection completion/i)).toBeTruthy()
+    expect(screen.getByText(/deck ready/i)).toBeTruthy()
+    expect(screen.getByText(/saved decks/i)).toBeTruthy()
     expect(container.querySelectorAll('.scene-status-tile')).toHaveLength(3)
   })
 })

@@ -21,6 +21,8 @@ export function PlayScreen() {
     : deckReady
       ? 'Tap a battle type to launch immediately.'
       : `Your active deck has ${selectedDeckSize} cards. Finish it in Deck Forge to unlock battle entry.`
+  const readinessLabel = deckReady ? 'Forge stocked' : 'Deck Incomplete'
+  const queueOpenLabel = queueState === 'searching' ? 'Searching now' : 'Stand by'
 
   return (
     <section className={`home-screen play-screen screen-panel ${activeScreen === 'play' ? 'active' : 'hidden'}`}>
@@ -39,6 +41,30 @@ export function PlayScreen() {
             </div>
           </div>
         )}
+
+        <div className="scene-status-panel play-readiness-panel" aria-label="Battle readiness">
+          <div className="section-head compact">
+            <h3>Battle Readiness</h3>
+            <span className={`deck-status ${deckReady ? 'ready' : 'warning'}`}>{deckReady ? 'Ready' : 'Needs cards'}</span>
+          </div>
+          <div className="scene-status-grid">
+            <div className="scene-status-tile">
+              <span className="scene-status-kicker">Season Rating</span>
+              <strong>{seasonRating}</strong>
+              <span className="mini-text">Current ladder footing</span>
+            </div>
+            <div className={`scene-status-tile ${deckReady ? 'is-accent' : ''}`}>
+              <span className="scene-status-kicker">Deck Ready</span>
+              <strong>{readinessLabel}</strong>
+              <span className="mini-text">{selectedDeckSize} cards prepared</span>
+            </div>
+            <div className="scene-status-tile">
+              <span className="scene-status-kicker">Queue Open</span>
+              <strong>{queueOpenLabel}</strong>
+              <span className="mini-text">{queuePresence.connectedPlayers} online · {queuePresence.queueSize} queued</span>
+            </div>
+          </div>
+        </div>
 
         <div className="mode-card-grid" aria-label="Choose a battle mode">
           <button

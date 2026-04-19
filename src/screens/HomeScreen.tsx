@@ -49,6 +49,8 @@ export function HomeScreen() {
     { complete: canClaimDailyReward, label: `Daily reward • ${nextRewardLabel}` },
   ]
   const questsDone = questItems.filter(q => q.complete).length
+  const deckReadyLabel = selectedDeckSize >= 14 ? 'Forge stocked' : 'Needs cards'
+  const rewardVaultLabel = canClaimDailyReward ? 'Ready to Claim' : nextRewardLabel
 
   return (
     <section className={`home-screen screen-panel ${activeScreen === 'home' ? 'active' : 'hidden'}`}>
@@ -72,6 +74,30 @@ export function HomeScreen() {
             </div>
           </div>
         )}
+
+        <div className="scene-status-panel" aria-label="War table status">
+          <div className="section-head compact">
+            <h3>War Table Status</h3>
+            <span className="badge">{questsDone}/{questItems.length} ready</span>
+          </div>
+          <div className="scene-status-grid">
+            <div className="scene-status-tile">
+              <span className="scene-status-kicker">League Standing</span>
+              <strong>{rankLabel}</strong>
+              <span className="mini-text">{record.wins}W · {record.losses}L · {winRate}% WR</span>
+            </div>
+            <div className="scene-status-tile">
+              <span className="scene-status-kicker">Deck Ready</span>
+              <strong>{selectedDeckSize} Cards</strong>
+              <span className="mini-text">{deckReadyLabel}</span>
+            </div>
+            <div className={`scene-status-tile ${canClaimDailyReward ? 'is-accent' : ''}`}>
+              <span className="scene-status-kicker">Reward Vault</span>
+              <strong>{rewardVaultLabel}</strong>
+              <span className="mini-text">Daily Quest · {dailyQuest}</span>
+            </div>
+          </div>
+        </div>
 
         <div className="home-focus-strip" aria-label="Current arena focus">
           <span className="badge">Daily Quest · {dailyQuest}</span>

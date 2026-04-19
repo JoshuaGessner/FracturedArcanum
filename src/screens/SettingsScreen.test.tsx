@@ -255,4 +255,14 @@ describe('SettingsScreen hub flow', () => {
 
     expect(openSettingsSubview).toHaveBeenCalledWith('support')
   })
+
+  it('shows a compact command ledger stage on the settings hub', () => {
+    const { container } = renderSettingsScreen()
+
+    expect(screen.getByText(/command ledger/i)).toBeTruthy()
+    expect(container.textContent).toMatch(/profile seal/i)
+    expect(container.textContent).toMatch(/network link/i)
+    expect(container.textContent).toMatch(/install path/i)
+    expect(container.querySelectorAll('.scene-status-tile')).toHaveLength(3)
+  })
 })

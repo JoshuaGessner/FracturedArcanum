@@ -236,4 +236,14 @@ describe('ShopScreen hub flow', () => {
     expect(screen.getByRole('button', { name: /card packs/i })).toBeTruthy()
     expect(screen.queryByRole('button', { name: /break 1/i })).toBeNull()
   })
+
+  it('shows a compact bazaar status stage on the shop hub', () => {
+    const { container } = renderShopScreen({ canClaimDailyReward: true })
+
+    expect(screen.getByText(/bazaar signals/i)).toBeTruthy()
+    expect(container.textContent).toMatch(/shard cache/i)
+    expect(container.textContent).toMatch(/daily vault/i)
+    expect(container.textContent).toMatch(/pack stash/i)
+    expect(container.querySelectorAll('.scene-status-tile')).toHaveLength(3)
+  })
 })

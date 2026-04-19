@@ -35,6 +35,14 @@ export function SettingsScreen() {
   const complaintTone = getComplaintSeverityTone(complaintForm.severity)
   const roleInsignia = isOwnerRole ? 'Diamond' : isAdminRole ? 'Gold' : 'Bronze'
   const installAvailability = getInstallAvailability(Boolean(installPromptEvent))
+  const installPathLabel = installAvailability === 'prompt'
+    ? 'Quick install'
+    : installAvailability === 'installed'
+      ? 'Installed'
+      : installAvailability === 'ios-manual'
+        ? 'Manual setup'
+        : 'Browser limited'
+  const networkLabel = backendOnline ? 'Stable' : 'Fallback'
   const settingsViewLabel = settingsSubview === 'preferences'
     ? 'Preferences'
     : settingsSubview === 'support'
@@ -49,9 +57,34 @@ export function SettingsScreen() {
         <div className="settings-hero">
           <RankBadge rank={roleInsignia} />
           <strong>{playerDisplayName}</strong>
+          <span className="note">Tune comfort settings, install flow, and support access from one command desk.</span>
           <span className="badge">{accountRole === 'owner' ? 'Owner' : accountRole === 'admin' ? 'Admin' : 'Player'}</span>
           <span className="badge">{backendOnline ? 'Online' : 'Fallback'}</span>
           <span className="badge">{visitorSuffix}</span>
+        </div>
+
+        <div className="scene-status-panel" aria-label="Command ledger">
+          <div className="section-head compact">
+            <h3>Command Ledger</h3>
+            <span className="badge">{settingsViewLabel}</span>
+          </div>
+          <div className="scene-status-grid">
+            <div className="scene-status-tile">
+              <span className="scene-status-kicker">Profile Seal</span>
+              <strong>{accountRole === 'owner' ? 'Owner' : accountRole === 'admin' ? 'Admin' : 'Player'}</strong>
+              <span className="mini-text">Visitor mark · {visitorSuffix}</span>
+            </div>
+            <div className="scene-status-tile">
+              <span className="scene-status-kicker">Network Link</span>
+              <strong>{networkLabel}</strong>
+              <span className="mini-text">{backendOnline ? 'Arena services responding' : 'Offline-safe mode active'}</span>
+            </div>
+            <div className={`scene-status-tile ${installAvailability === 'prompt' || installAvailability === 'installed' ? 'is-accent' : ''}`}>
+              <span className="scene-status-kicker">Install Path</span>
+              <strong>{installPathLabel}</strong>
+              <span className="mini-text">{installAvailability === 'ios-manual' ? 'Safari install route for iPhone' : 'Check device readiness here'}</span>
+            </div>
+          </div>
         </div>
 
         <div className="settings-subnav">
