@@ -10,6 +10,7 @@ import {
 import { DECK_MAX_TOTAL_DISPLAY, DECK_PRESETS } from '../constants'
 import { cardArtPath, getCompletionPercent, getRarityCompletion, handleCardArtError } from '../utils'
 import { EffectBadge, RarityBadge, StatIcon } from '../components/AssetBadge'
+import { SceneHeaderPanel, type SceneHeaderTile } from '../components/SceneHeaderPanel'
 import { useAppShell, useGame, useProfile, useQueue } from '../contexts'
 import { feedback } from '../feedback'
 
@@ -30,6 +31,24 @@ export function CollectionScreen() {
   const rarityStats = getRarityCompletion(collection, CARD_LIBRARY)
   const activeDeckName = savedDecks.find((deck) => deck.id === activeDeckId)?.name ?? 'Choose a deck'
   const forgeStatusLabel = deckReady ? 'Forge stocked' : 'Needs tuning'
+  const archiveTiles: SceneHeaderTile[] = [
+    {
+      kicker: 'Collection Completion',
+      value: `${ownedUniqueCards}/${CARD_LIBRARY.length}`,
+      note: 'Unique cards logged to the archive',
+    },
+    {
+      kicker: 'Deck Ready',
+      value: forgeStatusLabel,
+      note: `${selectedDeckSize} cards prepared for battle`,
+      accent: deckReady,
+    },
+    {
+      kicker: 'Saved Decks',
+      value: `${savedDecks.length}`,
+      note: `Active build · ${activeDeckName}`,
+    },
+  ]
   const previousCompletionRef = useRef<Record<string, boolean> | null>(null)
   const [celebratingRarity, setCelebratingRarity] = useState<string | null>(null)
 
@@ -71,30 +90,37 @@ export function CollectionScreen() {
   return (
     <section className={`meta-grid deck-focus collection-screen screen-panel ${activeScreen === 'collection' ? 'active' : 'hidden'}`}>
       <article className="section-card">
-        <div className="collection-hero">
-          <div className="collection-progress-ring" aria-label={`Collection completion ${collectionCompletion}%`}>
-            <svg className="collection-progress-svg" viewBox="0 0 100 100" role="presentation" aria-hidden="true">
-              <circle className="collection-progress-track" cx="50" cy="50" r="20" />
-              <circle
-                className="collection-progress-value"
-                cx="50"
-                cy="50"
-                r="20"
-                style={{ strokeDasharray: collectionCircumference, strokeDashoffset: collectionOffset }}
-              />
-            </svg>
-            <div className="collection-progress-core">
-              <strong>{collectionCompletion}%</strong>
+        <SceneHeaderPanel
+          className="collection-scene-header"
+          visual={(
+            <div className="collection-progress-ring" aria-label={`Collection completion ${collectionCompletion}%`}>
+              <svg className="collection-progress-svg" viewBox="0 0 100 100" role="presentation" aria-hidden="true">
+                <circle className="collection-progress-track" cx="50" cy="50" r="20" />
+                <circle
+                  className="collection-progress-value"
+                  cx="50"
+                  cy="50"
+                  r="20"
+                  style={{ strokeDasharray: collectionCircumference, strokeDashoffset: collectionOffset }}
+                />
+              </svg>
+              <div className="collection-progress-core">
+                <strong>{collectionCompletion}%</strong>
+              </div>
             </div>
-          </div>
-          <div className="collection-hero-stats">
-            <strong>Archive Forge</strong>
-            <span className="note">Tune your library, refine the curve, and field the next lineup.</span>
-            <span className="badge">{ownedUniqueCards}/{CARD_LIBRARY.length} owned</span>
-            <span className={`deck-status ${deckReady ? 'ready' : 'warning'}`}>
-              {deckReady ? `Ready · ${selectedDeckSize}` : `${selectedDeckSize}/${MIN_DECK_SIZE}`}
-            </span>
-          </div>
+          )}
+          title="Archive Forge"
+          note="Tune your library, refine the curve, and field the next lineup."
+          badges={(
+            <>
+              <span className="badge">{ownedUniqueCards}/{CARD_LIBRARY.length} owned</span>
+              <span className={`deck-status ${deckReady ? 'ready' : 'warning'}`}>
+                {deckReady ? `Ready · ${selectedDeckSize}` : `${selectedDeckSize}/${MIN_DECK_SIZE}`}
+              </span>
+            </>
+          )}
+          tiles={archiveTiles}
+        >
           <div className="collection-rarity-chips">
             {(['common', 'rare', 'epic', 'legendary'] as const).map((r) => {
               const s = rarityStats[r]
@@ -109,31 +135,7 @@ export function CollectionScreen() {
               )
             })}
           </div>
-        </div>
-
-        <div className="scene-status-panel" aria-label="Archive status">
-          <div className="section-head compact">
-            <h3>Archive Status</h3>
-            <span className="badge">{collectionCompletion}% sealed</span>
-          </div>
-          <div className="scene-status-grid">
-            <div className="scene-status-tile">
-              <span className="scene-status-kicker">Collection Completion</span>
-              <strong>{ownedUniqueCards}/{CARD_LIBRARY.length}</strong>
-              <span className="mini-text">Unique cards logged to the archive</span>
-            </div>
-            <div className={`scene-status-tile ${deckReady ? 'is-accent' : ''}`}>
-              <span className="scene-status-kicker">Deck Ready</span>
-              <strong>{forgeStatusLabel}</strong>
-              <span className="mini-text">{selectedDeckSize} cards prepared for battle</span>
-            </div>
-            <div className="scene-status-tile">
-              <span className="scene-status-kicker">Saved Decks</span>
-              <strong>{savedDecks.length}</strong>
-              <span className="mini-text">Active build · {activeDeckName}</span>
-            </div>
-          </div>
-        </div>
+        </SceneHeaderPanel>
 
         {loggedIn && (
           <div className="deck-roster" aria-label="Saved decks">

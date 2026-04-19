@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { CARD_LIBRARY, RARITY_COLORS } from '../game'
 import type { CardCollection, OpenedPackCard } from '../types'
 import { UI_ASSETS } from '../constants'
@@ -22,7 +22,7 @@ type PackCeremonyOverlayProps = {
 }
 
 function detectReducedMotion(): boolean {
-  if (typeof window === 'undefined' || !window.matchMedia) return false
+  if (typeof window === 'undefined' || !window.matchMedia) return true
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches
 }
 
@@ -38,13 +38,15 @@ export function PackCeremonyOverlay({
   onOpenAnother,
   onClose,
 }: PackCeremonyOverlayProps) {
-  // Caller is responsible for re-mounting this component (via React `key`)
-  // any time a fresh pack arrives, so we only need to seed initial state
-  // from the incoming props on first render.
   const [reducedMotion, setReducedMotion] = useState<boolean>(() => detectReducedMotion())
   const [phase, setPhase] = useState<CeremonyPhase>(() => (detectReducedMotion() ? 'reveal' : 'intro'))
   const [flipped, setFlipped] = useState<boolean[]>(() => cards.map(() => false))
   const [shakeKey, setShakeKey] = useState<number>(0)
+  const timersRef = useRef<ReturnType<typeof setTimeout>[]>([])
+  const ceremonySignature = useMemo(
+    () => `${packId}:${cards.map((card) => `${card.id}:${card.rarity}:${card.duplicate ? 'dup' : 'new'}`).join('|')}`,
+    [cards, packId],
+  )
 
   // Keep reduced-motion preference in sync with OS.
   useEffect(() => {
@@ -72,35 +74,55 @@ export function PackCeremonyOverlay({
   // Sequence the ceremony beats. Reduced motion collapses to a single tick
   // so the player still gets the same outcome with no shake/burst.
   useEffect(() => {
+    timersRef.current.forEach((id) => clearTimeout(id))
+    timersRef.current = []
+
     if (cards.length === 0) return undefined
-    if (reducedMotion) {
-      playSound('packOpen', soundEnabled)
-      return undefined
+
+    const schedule = (delay: number, callback: () => void) => {
+      const id = window.setTimeout(callback, delay)
+      timersRef.current.push(id)
     }
 
-    const timers: ReturnType<typeof setTimeout>[] = []
-    timers.push(window.setTimeout(() => {
+    schedule(0, () => {
+      setShakeKey(0)
+      setFlipped(cards.map(() => false))
+      setPhase(reducedMotion ? 'reveal' : 'intro')
+    })
+
+    if (reducedMotion) {
+      schedule(0, () => {
+        playSound('packOpen', soundEnabled)
+      })
+      return () => {
+        timersRef.current.forEach((id) => clearTimeout(id))
+        timersRef.current = []
+      }
+    }
+
+    schedule(180, () => {
       setPhase('shake')
       playSound('packOpen', soundEnabled)
       pulseFeedback(20, hapticsEnabled)
-    }, 180))
-    timers.push(window.setTimeout(() => {
+    })
+    schedule(760, () => {
       setPhase('burst')
       playSound('lidSplit', soundEnabled)
       pulseFeedback(28, hapticsEnabled)
-    }, 760))
-    timers.push(window.setTimeout(() => {
+    })
+    schedule(1180, () => {
       setPhase('fan')
       cards.forEach((_, idx) => {
-        timers.push(window.setTimeout(() => playSound('cardArc', soundEnabled), 60 + idx * 80))
+        schedule(60 + idx * 80, () => playSound('cardArc', soundEnabled))
       })
-    }, 1180))
-    timers.push(window.setTimeout(() => setPhase('reveal'), 1180 + cards.length * 80 + 240))
+    })
+    schedule(1180 + cards.length * 80 + 240, () => setPhase('reveal'))
 
     return () => {
-      timers.forEach((id) => clearTimeout(id))
+      timersRef.current.forEach((id) => clearTimeout(id))
+      timersRef.current = []
     }
-  }, [cards, reducedMotion, soundEnabled, hapticsEnabled])
+  }, [cards, ceremonySignature, reducedMotion, soundEnabled, hapticsEnabled])
 
   const allFlipped = flipped.length > 0 && flipped.every(Boolean)
 

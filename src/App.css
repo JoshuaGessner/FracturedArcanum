@@ -820,6 +820,53 @@ button:disabled {
   background: linear-gradient(160deg, rgba(10, 16, 31, 0.86), rgba(26, 34, 64, 0.82));
 }
 
+.scene-header-panel {
+  display: grid;
+  gap: 10px;
+}
+
+.scene-header-top {
+  display: grid;
+  gap: 12px;
+  align-items: center;
+}
+
+.scene-header-top.has-visual {
+  grid-template-columns: auto 1fr;
+}
+
+.scene-header-visual {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.scene-header-copy {
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.scene-header-copy-main {
+  display: grid;
+  gap: 4px;
+}
+
+.scene-header-copy-main strong {
+  font-size: clamp(1rem, 2.4vw, 1.12rem);
+  color: #f6f8ff;
+}
+
+.scene-header-badges {
+  margin-top: 0;
+}
+
+.scene-status-grid-compact,
+.scene-header-subnav,
+.scene-header-shortcuts {
+  margin-top: 0;
+}
+
 .scene-status-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -3804,8 +3851,9 @@ button.danger:hover { filter: brightness(1.08); }
   .shop-hero strong { font-size: var(--font-sm); }
   .theme-grid-shop-fit {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 148px), 1fr));
     gap: 8px;
+    width: 100%;
     overflow: visible;
     padding-bottom: 0;
     grid-auto-flow: row;
@@ -3832,6 +3880,11 @@ button.danger:hover { filter: brightness(1.08); }
   /* Settings density — compact hero, tighter toggles */
   .settings-hero { padding: 6px 8px; gap: 6px; }
   .settings-hero strong { font-size: var(--font-sm); }
+  .scene-header-top.has-visual {
+    grid-template-columns: 1fr;
+    justify-items: start;
+  }
+
   .settings-subnav {
     margin: 8px 0;
     align-items: center;
@@ -5866,10 +5919,11 @@ button.icon-only {
     min-height: 0;
     justify-content: flex-start;
     gap: 10px;
-    padding: 8px 8px 4px;
+    padding: 8px 12px 4px;
     overflow-x: auto;
     overflow-y: hidden;
     scroll-snap-type: x proximity;
+    scroll-padding-inline: 12px;
     overscroll-behavior-x: contain;
   }
 
@@ -5877,11 +5931,13 @@ button.icon-only {
     position: relative;
     left: auto !important;
     bottom: auto;
-    width: clamp(112px, 34vw, 144px);
-    flex: 0 0 clamp(112px, 34vw, 144px);
+    width: clamp(104px, 30vw, 136px);
+    max-width: 100%;
+    flex: 0 0 clamp(104px, 30vw, 136px);
     margin-left: 0;
-    transform: rotate(var(--ceremony-tilt)) translateY(calc(var(--ceremony-lift) * -0.35));
+    transform: rotate(calc(var(--ceremony-tilt) * 0.5)) translateY(calc(var(--ceremony-lift) * -0.2));
     scroll-snap-align: center;
+    will-change: transform;
   }
 
   .pack-ceremony-footer {
@@ -5892,8 +5948,8 @@ button.icon-only {
 
 @media (max-width: 460px) {
   .pack-ceremony-fan-slot {
-    width: clamp(100px, 30vw, 132px);
-    flex-basis: clamp(100px, 30vw, 132px);
+    width: clamp(92px, 28vw, 120px);
+    flex-basis: clamp(92px, 28vw, 120px);
   }
   .pack-ceremony-card-meta strong { font-size: 0.72rem; }
   .pack-ceremony-card-ribbon { width: 64px; right: -8px; }

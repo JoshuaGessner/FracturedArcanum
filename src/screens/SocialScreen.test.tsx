@@ -213,15 +213,16 @@ describe('SocialScreen hub flow', () => {
   it('keeps friends primary and hides leaderboard details by default', () => {
     renderSocialScreen()
 
-    expect(screen.getByText(/social hub/i)).toBeTruthy()
+    expect(screen.getByRole('button', { name: /friends/i })).toBeTruthy()
     expect(screen.queryByText(/leaderboard/i)).toBeNull()
     expect(screen.queryByText(/card trades/i)).toBeNull()
   })
 
-  it('shows a compact tavern status stage in the social hub', () => {
+  it('uses a unified tavern header instead of separate tavern signals and social hub slabs', () => {
     const { container } = renderSocialScreen()
 
-    expect(screen.getByText(/tavern signals/i)).toBeTruthy()
+    expect(screen.queryByText(/social hub/i)).toBeNull()
+    expect(screen.queryByText(/tavern signals/i)).toBeNull()
     expect(screen.getByText(/friends online/i)).toBeTruthy()
     expect(container.textContent).toMatch(/clan hall/i)
     expect(container.textContent).toMatch(/trade post/i)

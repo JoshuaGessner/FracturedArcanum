@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { CARD_LIBRARY } from '../game'
 import { RankBadge } from '../components/AssetBadge'
+import { SceneHeaderPanel, type SceneHeaderTile } from '../components/SceneHeaderPanel'
 import { useAppShell, useProfile, useQueue, useSocial } from '../contexts'
 
 type ToastSeverity = 'info' | 'success' | 'warning' | 'error'
@@ -55,80 +56,72 @@ export function SocialScreen() {
         : socialSubview === 'rankings'
           ? 'Rankings'
           : 'Social'
+  const socialTiles: SceneHeaderTile[] = [
+    {
+      kicker: 'Friends Online',
+      value: `${onlineFriends}/${friends.length || 0}`,
+      note: 'Active challengers in your circle',
+    },
+    {
+      kicker: 'Clan Hall',
+      value: clan ? clan.tag : 'Solo',
+      note: clanHallLabel,
+    },
+    {
+      kicker: 'Trade Post',
+      value: tradeDeskLabel,
+      note: 'Swap cards and review offers',
+      accent: pendingTrades > 0,
+    },
+  ]
+  const socialShortcuts = [
+    {
+      label: 'Friends',
+      description: 'Current friends, online presence, and challenge flow.',
+      onClick: () => setSocialSubview('friends'),
+    },
+    {
+      label: 'Rankings',
+      description: 'Season ladder standings and top competitors.',
+      onClick: () => setSocialSubview('rankings'),
+    },
+    {
+      label: 'Clan Hall',
+      description: 'Create, join, and manage your alliance in one place.',
+      onClick: () => setSocialSubview('clan'),
+    },
+    {
+      label: 'Trade Post',
+      description: 'Send and review offers without crowding the hub.',
+      onClick: () => setSocialSubview('trades'),
+    },
+  ]
 
   return (
     <section className={`home-screen social-screen screen-panel ${activeScreen === 'social' ? 'active' : 'hidden'}`}>
       <div className="home-cards">
         <article className="section-card social-command-card">
-          <div className="social-hero">
-            <RankBadge rank={rankLabel} />
-            <strong>{profileName}</strong>
-            <span className="badge">@{serverProfile?.username ?? 'guest'}</span>
-            <span className="badge">{onlineFriends} online</span>
-            <span className="badge">{pendingTrades} trades</span>
-            <span className="badge">{clan ? clan.tag : 'Solo'}</span>
-            <span className="badge">{totalGames}G · {winRate}%W · {runes}R</span>
-          </div>
-
-          <div className="scene-status-panel" aria-label="Tavern signals">
-            <div className="section-head compact">
-              <h3>Tavern Signals</h3>
-              <span className="badge">{friends.length} on roster</span>
-            </div>
-            <div className="scene-status-grid">
-              <div className="scene-status-tile">
-                <span className="scene-status-kicker">Friends Online</span>
-                <strong>{onlineFriends}/{friends.length || 0}</strong>
-                <span className="mini-text">Active challengers in your circle</span>
-              </div>
-              <div className="scene-status-tile">
-                <span className="scene-status-kicker">Clan Hall</span>
-                <strong>{clan ? clan.tag : 'Solo'}</strong>
-                <span className="mini-text">{clanHallLabel}</span>
-              </div>
-              <div className={`scene-status-tile ${pendingTrades > 0 ? 'is-accent' : ''}`}>
-                <span className="scene-status-kicker">Trade Post</span>
-                <strong>{tradeDeskLabel}</strong>
-                <span className="mini-text">Swap cards and review offers</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="settings-subnav">
-            <span className="badge">{socialViewLabel}</span>
-            {socialSubview !== 'hub' && (
-              <button className="ghost mini" onClick={() => setSocialSubview('hub')}>
-                Back
-              </button>
+          <SceneHeaderPanel
+            className="social-scene-header"
+            visual={<RankBadge rank={rankLabel} />}
+            title="Tavern Hall"
+            note="Friends, clan traffic, and trade activity without the extra slabs."
+            badges={(
+              <>
+                <strong>{profileName}</strong>
+                <span className="badge">@{serverProfile?.username ?? 'guest'}</span>
+                <span className="badge">{onlineFriends} online</span>
+                <span className="badge">{pendingTrades} trades</span>
+                <span className="badge">{clan ? clan.tag : 'Solo'}</span>
+                <span className="badge">{totalGames}G · {winRate}%W · {runes}R</span>
+              </>
             )}
-          </div>
-
-          {socialSubview === 'hub' && (
-            <>
-              <div className="section-head compact">
-                <h3>Social Hub</h3>
-                <span className="badge">{friends.length} friend{friends.length === 1 ? '' : 's'}</span>
-              </div>
-
-              <div className="settings-hub-grid social-hub-grid">
-                <button className="settings-hub-tile" onClick={() => setSocialSubview('friends')}>
-                  <strong>Friends</strong>
-                  <span>Current friends, online presence, and challenge flow.</span>
-                </button>
-                <button className="settings-hub-tile" onClick={() => setSocialSubview('rankings')}>
-                  <strong>Rankings</strong>
-                  <span>Season ladder standings and top competitors.</span>
-                </button>
-                <button className="settings-hub-tile" onClick={() => setSocialSubview('clan')}>
-                  <strong>Clan Hall</strong>
-                  <span>Create, join, and manage your alliance in one place.</span>
-                </button>
-                <button className="settings-hub-tile" onClick={() => setSocialSubview('trades')}>
-                  <strong>Trade Post</strong>
-                  <span>Send and review offers without crowding the hub.</span>
-                </button>
-              </div>
-
+            tiles={socialTiles}
+            viewLabel={socialViewLabel}
+            onBack={socialSubview !== 'hub' ? () => setSocialSubview('hub') : undefined}
+            shortcuts={socialSubview === 'hub' ? socialShortcuts : undefined}
+          >
+            {socialSubview === 'hub' && (
               <div className="social-list social-primary-list">
                 {friends.slice(0, 6).map((friend) => {
                   const online = onlineFriendIds.has(friend.accountId)
@@ -182,8 +175,8 @@ export function SocialScreen() {
                   </div>
                 )}
               </div>
-            </>
-          )}
+            )}
+          </SceneHeaderPanel>
         </article>
 
         {socialSubview === 'friends' && (

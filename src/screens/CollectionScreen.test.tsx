@@ -213,10 +213,11 @@ describe('CollectionScreen archive flow', () => {
     cleanup()
   })
 
-  it('shows a compact archive status stage above the forge tools', () => {
+  it('keeps archive forge as the single top scene while preserving the key status tiles', () => {
     const { container } = renderCollectionScreen()
 
-    expect(screen.getByText(/archive status/i)).toBeTruthy()
+    expect(screen.getByText(/archive forge/i)).toBeTruthy()
+    expect(screen.queryByText(/archive status/i)).toBeNull()
     expect(screen.getByText(/collection completion/i)).toBeTruthy()
     expect(screen.getByText(/deck ready/i)).toBeTruthy()
     expect(screen.getByText(/saved decks/i)).toBeTruthy()

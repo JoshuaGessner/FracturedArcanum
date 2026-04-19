@@ -3,6 +3,7 @@ import { CARD_LIBRARY, RARITY_COLORS } from '../game'
 import { CARD_BORDER_OFFERS, THEME_OFFERS } from '../constants'
 import { PackArt, RarityBadge } from '../components/AssetBadge'
 import { PackCeremonyOverlay } from '../components/PackCeremonyOverlay'
+import { SceneHeaderPanel, type SceneHeaderTile } from '../components/SceneHeaderPanel'
 import { buildPackSummarySequence } from '../components/RewardCinemaSequence'
 import { cardArtPath, handleCardArtError } from '../utils'
 import { useAppShell, useGame, useProfile } from '../contexts'
@@ -41,6 +42,51 @@ export function ShopScreen() {
             : 'Shop'
   const vaultSignalLabel = canClaimDailyReward ? 'Ready to claim' : 'Charging'
   const packStashLabel = `${packOffers.length} seals`
+  const bazaarTiles: SceneHeaderTile[] = [
+    {
+      kicker: 'Shard Cache',
+      value: `${runes}`,
+      note: 'Spend on packs, themes, and borders',
+    },
+    {
+      kicker: 'Daily Vault',
+      value: vaultSignalLabel,
+      note: `Next payout · ${nextRewardLabel}`,
+      accent: canClaimDailyReward,
+    },
+    {
+      kicker: 'Pack Stash',
+      value: packStashLabel,
+      note: `${totalOwnedCards} cards currently logged`,
+    },
+  ]
+  const shopShortcuts = [
+    {
+      label: 'Reward Vault',
+      description: 'Daily reward progress, shard balance, and quick earn options.',
+      onClick: () => setShopSubview('vault'),
+    },
+    {
+      label: 'Card Packs',
+      description: 'Open standard and premium packs without crowding the screen.',
+      onClick: () => setShopSubview('packs'),
+    },
+    {
+      label: 'Themes',
+      description: 'Change your arena mood and visual style.',
+      onClick: () => setShopSubview('themes'),
+    },
+    {
+      label: 'Borders',
+      description: 'Equip and unlock card frame styles.',
+      onClick: () => setShopSubview('borders'),
+    },
+    {
+      label: 'Card Breakdown',
+      description: 'Convert extra cards into shards in a dedicated view.',
+      onClick: () => setShopSubview('breakdown'),
+    },
+  ]
 
   const breakable = Object.entries(collection)
     .map(([cardId, owned]) => {
@@ -64,6 +110,7 @@ export function ShopScreen() {
     })
 
   const handleClickOpenPack = (packId: string) => {
+    if (packOpening !== null) return
     setActiveCeremonyPackId(packId)
     void handleOpenPack(packId)
   }
@@ -89,7 +136,7 @@ export function ShopScreen() {
   }
 
   const handleCeremonyOpenAnother = () => {
-    if (!ceremonyPack) return
+    if (!ceremonyPack || packOpening !== null) return
     void handleOpenPack(ceremonyPack.id)
   }
 
@@ -97,73 +144,24 @@ export function ShopScreen() {
     <>
       <section className={`vault-grid shop-screen screen-panel ${activeScreen === 'shop' ? 'active' : 'hidden'}`}>
         <article className={`section-card utility-card reward-vault-card ${canClaimDailyReward ? 'claim-ready' : ''}`}>
-          <div className="shop-hero shop-hero-compact">
-            <strong>Merchant&apos;s Bazaar</strong>
-            <span className="note">Featured stock, shard pressure, and quick routes back into the arena.</span>
-            <span className="badge">{runes} Shards</span>
-            <span className="badge">Next: {nextRewardLabel}</span>
-            <button className="ghost mini" onClick={() => startMatch('ai')}>
-              Earn in Battle
-            </button>
-          </div>
-
-          <div className="scene-status-panel" aria-label="Bazaar signals">
-            <div className="section-head compact">
-              <h3>Bazaar Signals</h3>
-              <span className="badge">{viewLabel}</span>
-            </div>
-            <div className="scene-status-grid">
-              <div className="scene-status-tile">
-                <span className="scene-status-kicker">Shard Cache</span>
-                <strong>{runes}</strong>
-                <span className="mini-text">Spend on packs, themes, and borders</span>
-              </div>
-              <div className={`scene-status-tile ${canClaimDailyReward ? 'is-accent' : ''}`}>
-                <span className="scene-status-kicker">Daily Vault</span>
-                <strong>{vaultSignalLabel}</strong>
-                <span className="mini-text">Next payout · {nextRewardLabel}</span>
-              </div>
-              <div className="scene-status-tile">
-                <span className="scene-status-kicker">Pack Stash</span>
-                <strong>{packStashLabel}</strong>
-                <span className="mini-text">{totalOwnedCards} cards currently logged</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="settings-subnav">
-            <span className="badge">{viewLabel}</span>
-            {shopSubview !== 'hub' && (
-              <button className="ghost mini" onClick={() => setShopSubview('hub')}>
-                Back
-              </button>
+          <SceneHeaderPanel
+            className="shop-scene-header"
+            title="Merchant's Bazaar"
+            note="Featured stock, shard pressure, and faster routes into the vault."
+            badges={(
+              <>
+                <span className="badge">{runes} Shards</span>
+                <span className="badge">Next: {nextRewardLabel}</span>
+                <button className="ghost mini" onClick={() => startMatch('ai')}>
+                  Earn in Battle
+                </button>
+              </>
             )}
-          </div>
-
-          {shopSubview === 'hub' && (
-            <div className="settings-hub-grid shop-hub-grid">
-              <button className="settings-hub-tile" onClick={() => setShopSubview('vault')}>
-                <strong>Reward Vault</strong>
-                <span>Daily reward progress, shard balance, and quick earn options.</span>
-              </button>
-              <button className="settings-hub-tile" onClick={() => setShopSubview('packs')}>
-                <strong>Card Packs</strong>
-                <span>Open standard and premium packs without crowding the screen.</span>
-              </button>
-              <button className="settings-hub-tile" onClick={() => setShopSubview('themes')}>
-                <strong>Themes</strong>
-                <span>Change your arena mood and visual style.</span>
-              </button>
-              <button className="settings-hub-tile" onClick={() => setShopSubview('borders')}>
-                <strong>Borders</strong>
-                <span>Equip and unlock card frame styles.</span>
-              </button>
-              <button className="settings-hub-tile" onClick={() => setShopSubview('breakdown')}>
-                <strong>Card Breakdown</strong>
-                <span>Convert extra cards into shards in a dedicated view.</span>
-              </button>
-            </div>
-          )}
+            tiles={bazaarTiles}
+            viewLabel={viewLabel}
+            onBack={shopSubview !== 'hub' ? () => setShopSubview('hub') : undefined}
+            shortcuts={shopSubview === 'hub' ? shopShortcuts : undefined}
+          />
         </article>
 
         {shopSubview === 'vault' && (
@@ -381,7 +379,7 @@ export function ShopScreen() {
       </section>
       {ceremonyVisible && ceremonyPack && (
         <PackCeremonyOverlay
-          key={`${ceremonyPack.id}-${openedPackCards.length}-${openedPackCards[0]?.id ?? ''}`}
+          key={ceremonyPack.id}
           cards={openedPackCards}
           packId={ceremonyPack.id}
           packCost={ceremonyPack.cost}

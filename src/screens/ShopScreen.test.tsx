@@ -237,10 +237,11 @@ describe('ShopScreen hub flow', () => {
     expect(screen.queryByRole('button', { name: /break 1/i })).toBeNull()
   })
 
-  it('shows a compact bazaar status stage on the shop hub', () => {
+  it('uses one unified bazaar header instead of separate bazaar signals chrome', () => {
     const { container } = renderShopScreen({ canClaimDailyReward: true })
 
-    expect(screen.getByText(/bazaar signals/i)).toBeTruthy()
+    expect(screen.getByText(/merchant's bazaar/i)).toBeTruthy()
+    expect(screen.queryByText(/bazaar signals/i)).toBeNull()
     expect(container.textContent).toMatch(/shard cache/i)
     expect(container.textContent).toMatch(/daily vault/i)
     expect(container.textContent).toMatch(/pack stash/i)
@@ -254,5 +255,44 @@ describe('ShopScreen hub flow', () => {
 
     expect(container.textContent).toMatch(/card packs/i)
     expect(container.querySelector('.theme-grid-shop-fit')).toBeTruthy()
+  })
+
+  it('resets ceremony reveal state when a fresh pack result arrives', async () => {
+    const { rerender } = render(
+      <PackCeremonyOverlay
+        cards={[{ id: 'spark-imp', rarity: 'common', duplicate: false }]}
+        packId="standard"
+        packCost={20}
+        runes={100}
+        prevCollection={{}}
+        soundEnabled={false}
+        hapticsEnabled={false}
+        packOpening={null}
+        onOpenAnother={() => {}}
+        onClose={() => {}}
+      />, 
+    )
+
+    const firstButton = screen.getByRole('button', { name: /reveal card 1/i })
+    fireEvent.click(firstButton)
+    expect(firstButton.getAttribute('aria-pressed')).toBe('true')
+
+    rerender(
+      <PackCeremonyOverlay
+        cards={[{ id: 'bog-lurker', rarity: 'rare', duplicate: false }]}
+        packId="standard"
+        packCost={20}
+        runes={100}
+        prevCollection={{}}
+        soundEnabled={false}
+        hapticsEnabled={false}
+        packOpening={null}
+        onOpenAnother={() => {}}
+        onClose={() => {}}
+      />,
+    )
+
+    const resetButton = await screen.findByRole('button', { name: /reveal card 1/i })
+    expect(resetButton.getAttribute('aria-pressed')).toBe('false')
   })
 })
