@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { RankBadge } from '../components/AssetBadge'
+import { SceneHeaderPanel, type SceneHeaderTile } from '../components/SceneHeaderPanel'
 import { useAppShell, useGame, useProfile } from '../contexts'
 import { getStreakTier } from '../utils'
 
@@ -51,53 +52,53 @@ export function HomeScreen() {
   const questsDone = questItems.filter(q => q.complete).length
   const deckReadyLabel = selectedDeckSize >= 14 ? 'Forge stocked' : 'Needs cards'
   const rewardVaultLabel = canClaimDailyReward ? 'Ready to Claim' : nextRewardLabel
+  const profileName = serverProfile?.displayName ?? serverProfile?.username ?? 'Champion'
+  const homeTiles: SceneHeaderTile[] = [
+    {
+      kicker: 'League Standing',
+      value: rankLabel,
+      note: `${record.wins}W · ${record.losses}L · ${winRate}% WR`,
+    },
+    {
+      kicker: 'Deck Ready',
+      value: `${selectedDeckSize} Cards`,
+      note: deckReadyLabel,
+    },
+    {
+      kicker: 'Reward Vault',
+      value: rewardVaultLabel,
+      note: `Daily Quest · ${dailyQuest}`,
+      accent: canClaimDailyReward,
+    },
+  ]
 
   return (
     <section className={`home-screen screen-panel ${activeScreen === 'home' ? 'active' : 'hidden'}`}>
       <article className="section-card utility-card spotlight-card">
-        <div className="arena-title-block home-hero">
-          <p className="eyebrow">{seasonName}{seasonCountdown && <span className="season-countdown"> · {seasonCountdown}</span>}</p>
-          <h2>Welcome, {serverProfile?.displayName ?? serverProfile?.username ?? 'Champion'}</h2>
-          <div className="badges">
-            <RankBadge rank={rankLabel} />
-            <span className="badge">{runes} Runes</span>
-            <span className={`badge streak-badge streak-${streakTier}`}>Streak {record.streak}</span>
-          </div>
-        </div>
-
-        {gameInProgress && (
-          <div className="game-resume-block">
-            <p className="note">Battle in progress vs <strong>{game.enemy.name}</strong> · Turn {game.turnNumber}</p>
-            <div className="controls">
-              <button className="primary" onClick={handleResumeBattle}>{isRankedBattle ? 'Rejoin Battle' : 'Resume Battle'}</button>
-              <button className="ghost" onClick={handleAbandonBattle}>Abandon</button>
+        <SceneHeaderPanel
+          className="home-scene-header"
+          visual={<RankBadge rank={rankLabel} />}
+          title={`Welcome, ${profileName}`}
+          note={`${seasonName}${seasonCountdown ? ` · ${seasonCountdown}` : ''}`}
+          badges={(
+            <>
+              <span className="badge">{runes} Runes</span>
+              <span className={`badge streak-badge streak-${streakTier}`}>Streak {record.streak}</span>
+              <span className="badge">{questsDone}/{questItems.length} ready</span>
+            </>
+          )}
+          tiles={homeTiles}
+        >
+          {gameInProgress && (
+            <div className="game-resume-block">
+              <p className="note">Battle in progress vs <strong>{game.enemy.name}</strong> · Turn {game.turnNumber}</p>
+              <div className="controls">
+                <button className="primary" onClick={handleResumeBattle}>{isRankedBattle ? 'Rejoin Battle' : 'Resume Battle'}</button>
+                <button className="ghost" onClick={handleAbandonBattle}>Abandon</button>
+              </div>
             </div>
-          </div>
-        )}
-
-        <div className="scene-status-panel" aria-label="War table status">
-          <div className="section-head compact">
-            <h3>War Table Status</h3>
-            <span className="badge">{questsDone}/{questItems.length} ready</span>
-          </div>
-          <div className="scene-status-grid">
-            <div className="scene-status-tile">
-              <span className="scene-status-kicker">League Standing</span>
-              <strong>{rankLabel}</strong>
-              <span className="mini-text">{record.wins}W · {record.losses}L · {winRate}% WR</span>
-            </div>
-            <div className="scene-status-tile">
-              <span className="scene-status-kicker">Deck Ready</span>
-              <strong>{selectedDeckSize} Cards</strong>
-              <span className="mini-text">{deckReadyLabel}</span>
-            </div>
-            <div className={`scene-status-tile ${canClaimDailyReward ? 'is-accent' : ''}`}>
-              <span className="scene-status-kicker">Reward Vault</span>
-              <strong>{rewardVaultLabel}</strong>
-              <span className="mini-text">Daily Quest · {dailyQuest}</span>
-            </div>
-          </div>
-        </div>
+          )}
+        </SceneHeaderPanel>
 
         <div className="home-focus-strip" aria-label="Current arena focus">
           <span className="badge">Daily Quest · {dailyQuest}</span>

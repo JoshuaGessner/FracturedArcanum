@@ -412,7 +412,7 @@ Rules:
 - [ ] one-owner chrome rule for all surfaces
 - [ ] no frame-within-frame artifacts
 - [ ] consistent panel, button, badge, and divider language
-- [ ] consistent scene spacing and anchoring rules across all screens
+- [x] consistent scene spacing and anchoring rules across all screens
 - [ ] a clear information hierarchy where primary, secondary, and decorative surfaces are easy to distinguish
 
 ### Design system additions
@@ -515,7 +515,7 @@ We should only expand motion after the scene shell is stable and battle is relia
 | Battle playability recovery | Active | Single-surface shell, restored stacked hand fan, floating enemy-turn notice, scoped reward flow, and the shared summary popup are in place; on-device confirmation is the main remaining gate |
 | Shared scene shell | Active | Core battle scene styling is now joined by overlay gesture isolation and mobile-safe subview containment |
 | Battle arena rebuild | Active | Board-first layout is stable, with remaining work focused on broader device validation and follow-on polish |
-| Unified chrome cleanup | Active | Shared scene-status stages and summary-popup language now extend across the main screens; the remaining work is final edge cleanup and on-device verification |
+| Unified chrome cleanup | Active | Shared scene-header/stage language now extends across Home, Play, Collection, Social, Shop, and Settings; the remaining work is final edge cleanup and on-device verification |
 | App-wide scene migration | Active | Core scene migration is now established across every primary screen; only device validation and edge cleanup remain |
 | Device validation & edge polish | Active | Real-phone QA, safe-area verification, and final chrome containment are now the top follow-up tasks |
 | PixiJS rendering spike | Planned | Hybrid visual upgrade path |

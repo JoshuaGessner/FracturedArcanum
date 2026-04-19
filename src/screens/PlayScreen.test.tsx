@@ -232,14 +232,13 @@ describe('PlayScreen battle entry', () => {
     expect(screen.getByText(/your active deck has 8 cards/i)).toBeTruthy()
   })
 
-  it('shows a battle-readiness stage with compact launch context', () => {
+  it('keeps the play gate status in the unified arena header without the extra slab title', () => {
     const { container } = renderPlayScreen({ deckReady: true, seasonRating: 1325 })
 
-    expect(screen.getByText(/battle readiness/i)).toBeTruthy()
-    expect(screen.getByText(/season rating/i)).toBeTruthy()
-    expect(screen.getByText(/deck ready/i)).toBeTruthy()
-    expect(screen.getByText(/queue open/i)).toBeTruthy()
-    expect(container.querySelector('.play-readiness-panel-compact')).toBeTruthy()
+    expect(container.textContent).toMatch(/season rating/i)
+    expect(container.textContent).toMatch(/deck ready/i)
+    expect(container.textContent).toMatch(/queue open/i)
     expect(container.querySelector('.play-mode-grid-compact')).toBeTruthy()
+    expect(container.textContent).not.toMatch(/battle readiness/i)
   })
 })

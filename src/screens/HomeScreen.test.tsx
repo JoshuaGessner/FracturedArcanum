@@ -216,6 +216,16 @@ describe('HomeScreen navigation and footer', () => {
     expect(container.querySelectorAll('.nav-tile')).toHaveLength(0)
   })
 
+  it('uses one unified war-table header instead of a separate status slab', () => {
+    const { container } = renderHomeScreen()
+
+    expect(container.textContent).toMatch(/league standing/i)
+    expect(container.textContent).toMatch(/deck ready/i)
+    expect(container.textContent).toMatch(/reward vault/i)
+    expect(container.querySelectorAll('.scene-status-tile')).toHaveLength(3)
+    expect(container.textContent).not.toMatch(/war table status/i)
+  })
+
   it('keeps the quest summary informational instead of showing a shop button', () => {
     const { container } = renderHomeScreen()
     const summary = container.querySelector('.quest-summary')
@@ -224,10 +234,9 @@ describe('HomeScreen navigation and footer', () => {
     expect(summary?.querySelector('button')).toBeNull()
   })
 
-  it('shows a compact war-table status stage for core home progress', () => {
+  it('shows the core home progress tiles in the unified header', () => {
     const { container, getByText } = renderHomeScreen({ canClaimDailyReward: true, nextRewardLabel: 'Reward Ready' })
 
-    expect(getByText(/war table status/i)).toBeTruthy()
     expect(getByText(/league standing/i)).toBeTruthy()
     expect(getByText(/deck ready/i)).toBeTruthy()
     expect(getByText(/reward vault/i)).toBeTruthy()
