@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it } from 'vitest'
-import { cleanup, render, screen, within } from '@testing-library/react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { BattleScreen } from './BattleScreen'
 import { AppShellContext, type AppShellContextValue } from '../AppShellContext'
 import { QueueProvider } from '../contexts/QueueProvider'
@@ -219,7 +219,7 @@ describe('BattleScreen mobile layout', () => {
     expect(screen.getByRole('button', { name: /end turn/i })).toBeTruthy()
     expect(screen.queryByText(/frontline/i)).toBeNull()
     expect(battleSurface).toBeTruthy()
-    expect(within(battleSurface as HTMLElement).getByText(/tap or drag to play/i)).toBeTruthy()
+    expect(within(battleSurface as HTMLElement).getByLabelText(/battle hand/i)).toBeTruthy()
     expect(document.querySelectorAll('.battlefield.active, .hand-section.active')).toHaveLength(1)
   })
 
@@ -230,5 +230,46 @@ describe('BattleScreen mobile layout', () => {
 
     expect(battleSurface).toBeTruthy()
     expect(within(battleSurface as HTMLElement).getAllByLabelText(/effect/i).length).toBeGreaterThan(0)
+  })
+
+  it('removes the redundant hand banner copy so cards stay visible', () => {
+    renderBattleScreen()
+
+    expect(screen.queryByText(/tap or drag to play/i)).toBeNull()
+    expect(screen.queryByText(/hand \(\d+\)/i)).toBeNull()
+  })
+
+  it('supports drag-to-play with an upward pull gesture on a playable card', () => {
+    const handlePlayCard = vi.fn()
+    const game = createGame('ai', {})
+
+    game.player.hand = [
+      {
+        ...game.player.hand[0],
+        instanceId: 'playable-card',
+        name: 'Test Wisp',
+        cost: 1,
+        effect: 'charge',
+      },
+      ...game.player.hand.slice(1),
+    ]
+    game.player.mana = 1
+    game.player.maxMana = 1
+    game.player.board = [null, null, null]
+
+    renderBattleScreen({
+      activePlayer: game.player,
+      defendingPlayer: game.enemy,
+      handlePlayCard,
+      activeBoardHasOpenLane: true,
+    })
+
+    const card = screen.getByRole('button', { name: /test wisp/i })
+
+    fireEvent.pointerDown(card, { pointerId: 1, clientX: 120, clientY: 520, button: 0, pointerType: 'touch' })
+    fireEvent.pointerMove(card, { pointerId: 1, clientX: 122, clientY: 470, pointerType: 'touch' })
+    fireEvent.pointerUp(card, { pointerId: 1, clientX: 122, clientY: 430, pointerType: 'touch' })
+
+    expect(handlePlayCard).toHaveBeenCalledWith(0)
   })
 })

@@ -63,8 +63,6 @@ export function BattleScreen() {
     : defenderHasGuard
       ? 'Guard blocks the hero'
       : 'Enemy hero exposed'
-  const playerTurnLabel = isMyTurn ? 'Your turn' : 'Holding'
-  const handCountLabel = `Hand (${activePlayer.hand.length})`
 
   // ─── Drag-to-play state ─────────────────────────────────────────────
   const [drag, setDrag] = useState<DragState | null>(null)
@@ -197,7 +195,7 @@ export function BattleScreen() {
 
   // ─── Drag-to-play handlers ──────────────────────────────────────────
   const findDropLane = useCallback((clientX: number, clientY: number): number | null => {
-    if (typeof document === 'undefined') return null
+    if (typeof document === 'undefined' || typeof document.elementFromPoint !== 'function') return null
     const el = document.elementFromPoint(clientX, clientY)
     if (!el) return null
     const target = (el as HTMLElement).closest<HTMLElement>('[data-drop-lane]')
@@ -226,12 +224,13 @@ export function BattleScreen() {
   }, [findDropLane, game.player.board, handlePlayCard, triggerSlam])
 
   const cancelDrag = useCallback(() => {
+    dragRef.current = null
     setDrag(null)
   }, [])
 
   const handleHandPointerDown = useCallback((event: React.PointerEvent<HTMLButtonElement>, index: number, canPlay: boolean) => {
     if (event.pointerType === 'mouse' && event.button !== 0) return
-    setDrag({
+    const nextDrag = {
       handIndex: index,
       pointerId: event.pointerId,
       originX: event.clientX,
@@ -240,7 +239,9 @@ export function BattleScreen() {
       pointerY: event.clientY,
       active: false,
       canPlay,
-    })
+    }
+    dragRef.current = nextDrag
+    setDrag(nextDrag)
     dragHandledRef.current = false
   }, [])
 
@@ -250,8 +251,13 @@ export function BattleScreen() {
     const dx = event.clientX - current.originX
     const dy = event.clientY - current.originY
     const distance = Math.hypot(dx, dy)
+    const verticalIntent = Math.abs(dy) > Math.abs(dx) && dy < 0
+
+    if (current.canPlay && verticalIntent && distance >= DRAG_ACTIVATE_PX) {
+      event.preventDefault()
+    }
+
     if (!current.active && distance >= DRAG_ACTIVATE_PX) {
-      // First time we cross the threshold — lift the card.
       playSound('cardLift', soundEnabled)
       pulseFeedback(8, hapticsEnabled)
       try {
@@ -259,9 +265,14 @@ export function BattleScreen() {
       } catch {
         /* setPointerCapture not supported / already captured */
       }
-      setDrag({ ...current, pointerX: event.clientX, pointerY: event.clientY, active: true })
+      const nextDrag = { ...current, pointerX: event.clientX, pointerY: event.clientY, active: true }
+      dragRef.current = nextDrag
+      setDrag(nextDrag)
     } else if (current.active) {
-      setDrag({ ...current, pointerX: event.clientX, pointerY: event.clientY })
+      event.preventDefault()
+      const nextDrag = { ...current, pointerX: event.clientX, pointerY: event.clientY }
+      dragRef.current = nextDrag
+      setDrag(nextDrag)
     }
   }, [soundEnabled, hapticsEnabled])
 
@@ -301,35 +312,37 @@ export function BattleScreen() {
   // moves > 6px, so the drag activation threshold (12px) keeps inspect from
   // racing the lift.
   const composeHandlers = (card: Parameters<typeof getLongPressProps>[0], index: number, canPlay: boolean) => {
-    const longPress = getLongPressProps(card) as {
+    const longPress = (getLongPressProps(card) ?? {}) as Partial<{
       onPointerDown: (e: React.PointerEvent<HTMLElement>) => void
       onPointerMove: (e: React.PointerEvent<HTMLElement>) => void
       onPointerUp: (e: React.PointerEvent<HTMLElement>) => void
       onPointerLeave: (e: React.PointerEvent<HTMLElement>) => void
       onPointerCancel: (e: React.PointerEvent<HTMLElement>) => void
       onContextMenu: (e: React.MouseEvent<HTMLElement>) => void
-    }
+    }>
     return {
       onPointerDown: (event: React.PointerEvent<HTMLButtonElement>) => {
-        longPress.onPointerDown(event)
+        longPress.onPointerDown?.(event)
         handleHandPointerDown(event, index, canPlay)
       },
       onPointerMove: (event: React.PointerEvent<HTMLButtonElement>) => {
-        longPress.onPointerMove(event)
+        longPress.onPointerMove?.(event)
         handleHandPointerMove(event)
       },
       onPointerUp: (event: React.PointerEvent<HTMLButtonElement>) => {
-        longPress.onPointerUp(event)
+        longPress.onPointerUp?.(event)
         handleHandPointerUp(event, index)
       },
       onPointerLeave: (event: React.PointerEvent<HTMLButtonElement>) => {
-        longPress.onPointerLeave(event)
+        longPress.onPointerLeave?.(event)
       },
       onPointerCancel: (event: React.PointerEvent<HTMLButtonElement>) => {
-        longPress.onPointerCancel(event)
+        longPress.onPointerCancel?.(event)
         handleHandPointerCancel(event)
       },
-      onContextMenu: longPress.onContextMenu,
+      onContextMenu: (event: React.MouseEvent<HTMLButtonElement>) => {
+        longPress.onContextMenu?.(event)
+      },
     }
   }
 
@@ -561,8 +574,6 @@ export function BattleScreen() {
                 )}
               </div>
 
-              <span className="badge battle-turn-chip" aria-live="polite">{playerTurnLabel}</span>
-
               <div className="battle-resource-summary">
                 <span className="battle-resource-chip" aria-label={`Mana ${activePlayer.mana} of ${activePlayer.maxMana}`}>
                   <span className="battle-resource-label">Mana</span>
@@ -606,12 +617,7 @@ export function BattleScreen() {
           </div>
 
           <div className="battle-hand-rail" data-tour-id="battle-hand">
-            <div className="hand-rail-head">
-              <span className="badge">{handCountLabel}</span>
-              <span className="mini-text">Tap or drag to play · hold to inspect</span>
-            </div>
-
-            <div className="hand-grid hand-fan-grid" data-scene-swipe-opt-out>
+            <div className={`hand-grid hand-fan-grid ${dragActive ? 'is-drag-active' : ''}`} data-scene-swipe-opt-out aria-label="Battle hand">
               {activePlayer.hand.map((card, index) => {
                 const canPlay = !game.winner && activeBoardHasOpenLane && card.cost <= activePlayer.mana
                 const needMana = card.cost - activePlayer.mana
@@ -666,10 +672,7 @@ export function BattleScreen() {
                   >
                     <div className="card-top">
                       <span className="cost-pill">{card.cost}</span>
-                      <div className="card-top-meta">
-                        {card.effect && <EffectBadge effect={card.effect} compact iconOnly className="battle-hand-effect" />}
-                        <span className="hero-label">{card.icon}</span>
-                      </div>
+                      {card.effect && <EffectBadge effect={card.effect} compact iconOnly className="battle-hand-effect" />}
                     </div>
                     <div className="card-art-shell thumb">
                       <img className="card-illustration" src={cardArtPath(card.id)} alt={`${card.name} artwork`} loading="lazy" onError={handleCardArtError} />

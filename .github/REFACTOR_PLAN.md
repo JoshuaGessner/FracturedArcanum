@@ -21,6 +21,8 @@ Fractured Arcanum should feel like a living fantasy card game, not a stack of we
 ### Non-negotiables
 - no broken or blocked battle interactions
 - no stacked framed slabs fighting for the same space
+- no redundant combat copy or labels covering the playable card area
+- live cards must expose their effect icons without requiring inspect-first play
 - no browser-default looking controls in production UI
 - no visual direction that depends on copyrighted assets or copied board layouts
 
@@ -120,8 +122,11 @@ The best upgrade path is:
 - [x] re-anchor enemy HUD, player HUD, hand rail, and end-turn controls as stable scene elements
 - [x] keep only one intentional battle surface in the viewport
 - [x] restore the stacked overlapping hand fan with lift/zoom emphasis
+- [x] remove the redundant hand-count / instructional rail header so card tops stay visible
 - [x] surface effect seals on hand and battlefield cards so players can read mechanics at a glance
-- [ ] ensure touch hit areas and drag/tap behavior work reliably again
+- [x] unify enemy and player health anchors so they share the same visual language and footprint
+- [x] harden drag-to-play so upward pull gestures are not swallowed by scroll behavior
+- [ ] continue validating touch hit areas and drag/tap behavior on-device
 
 ### Acceptance gate
 This phase is not complete until battle is actually playable on-device.
@@ -169,17 +174,19 @@ This phase is not complete until battle is actually playable on-device.
 ### Detailed tasks
 - [ ] create stable hero anchors rather than large floating slabs
 - [ ] rebuild the board into a true centered arena stage
-- [ ] create a compact player action dock with turn/burst controls
+- [x] create a more compact player action dock with turn, burst, and leave controls kept off the board itself
 - [x] refit the hand rail for full visibility, overlap, and reliable touch interaction
-- [ ] remove duplicate headings and oversized labels that waste vertical space
+- [x] remove duplicate headings, redundant hand labels, and oversized guidance copy that waste vertical space
 - [x] preserve inspect, drag, tap, and attack-target flows through the rebuild
 - [x] keep effect icons readable on live cards without forcing inspect-first play
+- [x] keep the horizontal hand rail scroll-friendly while still allowing vertical pull-up drag commits
 
 ### Interaction goals
+- [x] card play supports reliable upward pull-to-play in addition to tap
 - [ ] card play feels tactile
 - [ ] attack telegraphs are readable
 - [ ] state changes feel animated but not cluttered
-- [ ] the battle scene remains understandable at a glance
+- [x] the battle scene remains understandable at a glance
 
 ---
 

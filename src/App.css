@@ -1286,14 +1286,14 @@ button:disabled {
 
 .battle-arena-hud-top {
   grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
+  align-items: stretch;
 }
 
 .battle-arena-hud-bottom {
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 10px;
-  padding-top: 2px;
+  grid-template-columns: 1fr;
+  align-items: stretch;
+  gap: 6px;
+  padding-top: 0;
 }
 
 .battle-hero-pill {
@@ -1302,8 +1302,9 @@ button:disabled {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  flex: 0 1 220px;
+  min-height: 54px;
   min-width: 0;
+  width: 100%;
   padding: 6px 9px;
   border-radius: 12px;
   background: rgba(8, 14, 30, 0.76);
@@ -1344,7 +1345,7 @@ button:disabled {
   justify-items: center;
   align-content: center;
   justify-self: end;
-  min-width: 128px;
+  min-width: 124px;
   text-align: center;
   padding: 5px 8px;
   border-radius: 12px;
@@ -1367,17 +1368,11 @@ button:disabled {
 }
 
 .battle-player-summary {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: flex-start;
   gap: 6px 8px;
   min-width: 0;
-}
-
-.battle-turn-chip {
-  border: 1px solid rgba(99, 102, 241, 0.24);
-  background: rgba(55, 65, 160, 0.28);
 }
 
 .battle-resource-summary {
@@ -1385,7 +1380,6 @@ button:disabled {
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 6px;
-  margin-left: auto;
 }
 
 .battle-resource-chip {
@@ -1771,7 +1765,10 @@ button:disabled {
 }
 
 .battle-hand-effect {
-  flex: 0 0 auto;
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 2;
 }
 
 /* ─── Hand Cards ────────────────────────────────────────────────── */
@@ -1796,12 +1793,10 @@ button:disabled {
 
 .battle-hand-rail {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
-  gap: 8px;
   min-height: 0;
-  max-height: min(24svh, 184px);
-  margin-top: -6px;
-  padding: 12px 10px 8px;
+  max-height: min(21svh, 168px);
+  margin-top: -2px;
+  padding: 4px 8px 8px;
   border-radius: 16px 16px 14px 14px;
   background: linear-gradient(180deg, rgba(9, 13, 24, 0.96), rgba(20, 30, 56, 0.94));
   border: 1px solid rgba(147, 197, 253, 0.12);
@@ -1809,11 +1804,7 @@ button:disabled {
 }
 
 .hand-rail-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  min-width: 0;
+  display: none;
 }
 
 .hand-grid {
@@ -1829,11 +1820,16 @@ button:disabled {
   overflow-x: auto;
   overflow-y: hidden;
   min-height: 0;
-  padding: 6px 8px 12px 2px;
+  padding: 2px 8px 10px 2px;
   overscroll-behavior-x: contain;
   scroll-padding-inline: 10px;
   scroll-snap-type: x proximity;
   scrollbar-width: none;
+  touch-action: pan-x;
+}
+
+.hand-fan-grid.is-drag-active {
+  overflow-x: hidden;
 }
 
 .hand-fan-grid::-webkit-scrollbar {
@@ -1856,7 +1852,7 @@ button:disabled {
   border: 2px solid var(--rarity-color, var(--border));
   overflow: hidden;
   transition: transform 0.25s ease, box-shadow 0.25s ease;
-  touch-action: manipulation;
+  touch-action: pan-x;
   -webkit-user-select: none;
   user-select: none;
   -webkit-touch-callout: none;
@@ -3365,8 +3361,8 @@ button.danger:hover { filter: brightness(1.08); }
     align-items: start;
   }
   .battle-arena-hud-bottom {
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: end;
+    grid-template-columns: 1fr;
+    align-items: stretch;
   }
   .battle-turn-pill {
     order: 0;
@@ -3384,9 +3380,9 @@ button.danger:hover { filter: brightness(1.08); }
   }
   .battle-player-summary {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: center;
-    gap: 4px 6px;
+    grid-template-columns: 1fr;
+    align-items: stretch;
+    gap: 4px;
   }
   .battle-resource-summary {
     display: grid;
@@ -3441,9 +3437,9 @@ button.danger:hover { filter: brightness(1.08); }
   }
   .queue-modal { width: 100%; }
   .battle-hand-rail {
-    max-height: min(23svh, 160px);
-    margin-top: -8px;
-    padding: 10px 8px 6px;
+    max-height: min(22svh, 154px);
+    margin-top: -4px;
+    padding: 2px 6px 6px;
   }
   .hand-rail-head .mini-text {
     font-size: 0.68rem;
