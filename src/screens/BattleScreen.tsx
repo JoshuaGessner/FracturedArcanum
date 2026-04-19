@@ -59,7 +59,7 @@ export function BattleScreen() {
       : 'Enemy pressure'
   const resultTone = game.winner === 'player' ? 'result-victory' : game.winner === 'enemy' ? 'result-defeat' : 'result-draw'
   const battleCenterLabel = selectedAttacker === null
-    ? 'Choose a unit to attack'
+    ? 'Play a card or choose a ready unit'
     : defenderHasGuard
       ? 'Guard blocks the hero'
       : 'Enemy hero exposed'
@@ -604,6 +604,85 @@ export function BattleScreen() {
             </div>
           </div>
 
+          <div className="battle-hand-rail" data-tour-id="battle-hand">
+            <div className="hand-rail-head">
+              <span className="badge">{handCountLabel}</span>
+              <span className="mini-text">Tap or drag to play · hold to inspect</span>
+            </div>
+
+            <div className="hand-grid hand-fan-grid" data-scene-swipe-opt-out>
+              {activePlayer.hand.map((card, index) => {
+                const canPlay = !game.winner && activeBoardHasOpenLane && card.cost <= activePlayer.mana
+                const needMana = card.cost - activePlayer.mana
+                const needLane = !activeBoardHasOpenLane
+                const overlayLabel = !canPlay
+                  ? game.winner
+                    ? 'Battle over'
+                    : needLane
+                      ? 'Board is full'
+                      : needMana > 0
+                        ? `Need ${needMana} more mana`
+                        : 'Cannot play'
+                  : ''
+
+                const fanTilt = getHandFanTilt(index, activePlayer.hand.length)
+                const isDragging = dragActive && dragHandIndex === index
+                const inspectCard = { name: card.name, icon: card.icon, id: card.id, cost: card.cost, attack: card.attack, health: card.health, rarity: card.rarity, tribe: card.tribe, text: card.text, effect: card.effect ?? null }
+                const composed = composeHandlers(inspectCard, index, canPlay)
+                const dragStyle: React.CSSProperties = isDragging && drag
+                  ? {
+                      '--drag-dx': `${drag.pointerX - drag.originX}px`,
+                      '--drag-dy': `${drag.pointerY - drag.originY}px`,
+                    } as React.CSSProperties
+                  : {}
+
+                return (
+                  <button
+                    className={[
+                      'hand-card',
+                      `rarity-${card.rarity}`,
+                      `border-${selectedCardBorder}`,
+                      canPlay ? '' : 'unplayable',
+                      isDragging ? 'is-dragging' : '',
+                      dragActive && !isDragging ? 'is-drag-sibling' : '',
+                    ].filter(Boolean).join(' ')}
+                    key={card.instanceId}
+                    data-need={overlayLabel}
+                    onClick={() => {
+                      if (consumeLongPressAction()) return
+                      if (consumeDragHandled()) return
+                      if (canPlay) handlePlayCard(index)
+                    }}
+                    {...composed}
+                    aria-disabled={!canPlay}
+                    title={canPlay ? 'Tap or drag to play, long press to inspect' : `${overlayLabel}. Long press to inspect.`}
+                    style={{
+                      '--rarity-color': RARITY_COLORS[card.rarity],
+                      '--fan-tilt': `${fanTilt}deg`,
+                      '--fan-order': index + 1,
+                      ...dragStyle,
+                    } as React.CSSProperties}
+                  >
+                    <div className="card-top">
+                      <span className="cost-pill">{card.cost}</span>
+                      <span className="hero-label">{card.icon}</span>
+                    </div>
+                    <div className="card-art-shell thumb">
+                      <img className="card-illustration" src={cardArtPath(card.id)} alt={`${card.name} artwork`} loading="lazy" onError={handleCardArtError} />
+                    </div>
+                    <div>
+                      <strong className="card-name">{card.name}</strong>
+                    </div>
+                    <div className="card-stats">
+                      <span><StatIcon kind="attack" /> {card.attack}</span>
+                      <span><StatIcon kind="health" /> {card.health}</span>
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
           {arrow && (
             <svg
               className="attack-arrow-svg"
@@ -686,86 +765,6 @@ export function BattleScreen() {
         </section>
       )}
 
-      <section className={`hand-section screen-panel ${isBattle ? 'active' : 'hidden'}`}>
-        <article className="section-card hand-fan-stage battle-hand-rail" data-tour-id="battle-hand">
-          <div className="hand-rail-head">
-            <span className="badge">{handCountLabel}</span>
-            <span className="mini-text">Tap or drag to play · hold to inspect</span>
-          </div>
-
-          <div className="hand-grid hand-fan-grid" data-scene-swipe-opt-out>
-            {activePlayer.hand.map((card, index) => {
-              const canPlay = !game.winner && activeBoardHasOpenLane && card.cost <= activePlayer.mana
-              const needMana = card.cost - activePlayer.mana
-              const needLane = !activeBoardHasOpenLane
-              const overlayLabel = !canPlay
-                ? game.winner
-                  ? 'Battle over'
-                  : needLane
-                    ? 'Board is full'
-                    : needMana > 0
-                      ? `Need ${needMana} more mana`
-                      : 'Cannot play'
-                : ''
-
-              const fanTilt = getHandFanTilt(index, activePlayer.hand.length)
-              const isDragging = dragActive && dragHandIndex === index
-              const inspectCard = { name: card.name, icon: card.icon, id: card.id, cost: card.cost, attack: card.attack, health: card.health, rarity: card.rarity, tribe: card.tribe, text: card.text, effect: card.effect ?? null }
-              const composed = composeHandlers(inspectCard, index, canPlay)
-              const dragStyle: React.CSSProperties = isDragging && drag
-                ? {
-                    '--drag-dx': `${drag.pointerX - drag.originX}px`,
-                    '--drag-dy': `${drag.pointerY - drag.originY}px`,
-                  } as React.CSSProperties
-                : {}
-
-              return (
-                <button
-                  className={[
-                    'hand-card',
-                    `rarity-${card.rarity}`,
-                    `border-${selectedCardBorder}`,
-                    canPlay ? '' : 'unplayable',
-                    isDragging ? 'is-dragging' : '',
-                    dragActive && !isDragging ? 'is-drag-sibling' : '',
-                  ].filter(Boolean).join(' ')}
-                  key={card.instanceId}
-                  data-need={overlayLabel}
-                  onClick={() => {
-                    if (consumeLongPressAction()) return
-                    if (consumeDragHandled()) return
-                    if (canPlay) handlePlayCard(index)
-                  }}
-                  {...composed}
-                  aria-disabled={!canPlay}
-                  title={canPlay ? 'Tap or drag to play, long press to inspect' : `${overlayLabel}. Long press to inspect.`}
-                  style={{
-                    '--rarity-color': RARITY_COLORS[card.rarity],
-                    '--fan-tilt': `${fanTilt}deg`,
-                    '--fan-order': index + 1,
-                    ...dragStyle,
-                  } as React.CSSProperties}
-                >
-                  <div className="card-top">
-                    <span className="cost-pill">{card.cost}</span>
-                    <span className="hero-label">{card.icon}</span>
-                  </div>
-                  <div className="card-art-shell thumb">
-                    <img className="card-illustration" src={cardArtPath(card.id)} alt={`${card.name} artwork`} loading="lazy" onError={handleCardArtError} />
-                  </div>
-                  <div>
-                    <strong className="card-name">{card.name}</strong>
-                  </div>
-                  <div className="card-stats">
-                    <span><StatIcon kind="attack" /> {card.attack}</span>
-                    <span><StatIcon kind="health" /> {card.health}</span>
-                  </div>
-                </button>
-              )
-            })}
-          </div>
-        </article>
-      </section>
     </>
   )
 }

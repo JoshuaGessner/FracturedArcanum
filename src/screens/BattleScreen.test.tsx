@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from 'vitest'
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, render, screen, within } from '@testing-library/react'
 import { BattleScreen } from './BattleScreen'
 import { AppShellContext, type AppShellContextValue } from '../AppShellContext'
 import { QueueProvider } from '../contexts/QueueProvider'
@@ -213,9 +213,13 @@ describe('BattleScreen mobile layout', () => {
   it('keeps the arena cohesive without large standalone frontline headers', () => {
     renderBattleScreen()
 
+    const battleSurface = document.querySelector('.battlefield.active') as HTMLElement | null
+
     expect(screen.getByText(/your command phase/i)).toBeTruthy()
     expect(screen.getByRole('button', { name: /end turn/i })).toBeTruthy()
     expect(screen.queryByText(/frontline/i)).toBeNull()
-    expect(screen.getByText(/tap or drag to play/i)).toBeTruthy()
+    expect(battleSurface).toBeTruthy()
+    expect(within(battleSurface as HTMLElement).getByText(/tap or drag to play/i)).toBeTruthy()
+    expect(document.querySelectorAll('.battlefield.active, .hand-section.active')).toHaveLength(1)
   })
 })
