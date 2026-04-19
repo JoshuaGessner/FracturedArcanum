@@ -255,6 +255,7 @@ describe('ShopScreen hub flow', () => {
 
     expect(container.textContent).toMatch(/card packs/i)
     expect(container.querySelector('.theme-grid-shop-fit')).toBeTruthy()
+    expect(screen.getByRole('button', { name: /back/i })).toBeTruthy()
   })
 
   it('resets ceremony reveal state when a fresh pack result arrives', async () => {

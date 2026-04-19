@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from 'vitest'
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { SocialScreen } from './SocialScreen'
 import { AppShellContext, type AppShellContextValue } from '../AppShellContext'
 import { QueueProvider } from '../contexts/QueueProvider'
@@ -227,5 +227,13 @@ describe('SocialScreen hub flow', () => {
     expect(container.textContent).toMatch(/clan hall/i)
     expect(container.textContent).toMatch(/trade post/i)
     expect(container.querySelectorAll('.scene-status-tile')).toHaveLength(3)
+  })
+
+  it('keeps the back action visible when opening a social subview', () => {
+    renderSocialScreen()
+
+    fireEvent.click(screen.getByRole('button', { name: /clan hall/i }))
+
+    expect(screen.getByRole('button', { name: /back/i })).toBeTruthy()
   })
 })

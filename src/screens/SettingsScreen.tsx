@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { RankBadge } from '../components/AssetBadge'
+import { SceneHeaderPanel, type SceneHeaderTile } from '../components/SceneHeaderPanel'
 import { formatTimestamp, getComplaintSeverityTone, getInstallAvailability } from '../utils'
 import { useAppShell, useProfile } from '../contexts'
 import { feedback } from '../feedback'
@@ -50,71 +51,67 @@ export function SettingsScreen() {
       : settingsSubview === 'admin'
         ? 'Admin Console'
         : 'Settings'
+  const settingsTiles: SceneHeaderTile[] = [
+    {
+      kicker: 'Profile Seal',
+      value: accountRole === 'owner' ? 'Owner' : accountRole === 'admin' ? 'Admin' : 'Player',
+      note: `Visitor mark · ${visitorSuffix}`,
+    },
+    {
+      kicker: 'Network Link',
+      value: networkLabel,
+      note: backendOnline ? 'Arena services responding' : 'Offline-safe mode active',
+    },
+    {
+      kicker: 'Install Path',
+      value: installPathLabel,
+      note: installAvailability === 'ios-manual' ? 'Safari install route for iPhone' : 'Check device readiness here',
+      accent: installAvailability === 'prompt' || installAvailability === 'installed',
+    },
+  ]
+  const settingsShortcuts = [
+    {
+      label: 'Preferences',
+      description: 'Audio, gestures, haptics, and onboarding.',
+      onClick: () => openSettingsSubview('preferences'),
+    },
+    {
+      label: 'Support Desk',
+      description: 'Report gameplay, balance, performance, or moderation issues.',
+      onClick: () => openSettingsSubview('support'),
+    },
+    ...(isAdminRole
+      ? [{
+          label: isOwnerRole ? 'Admin & Owner Tools' : 'Admin Console',
+          description: 'Live ops, complaint review, roles, and audit history.',
+          onClick: () => openSettingsSubview('admin'),
+        }]
+      : []),
+  ]
 
   return (
     <section className={`ops-grid settings-screen screen-panel ${activeScreen === 'settings' ? 'active' : 'hidden'}`}>
       <article className="section-card settings-hero-card">
-        <div className="settings-hero">
-          <RankBadge rank={roleInsignia} />
-          <strong>{playerDisplayName}</strong>
-          <span className="note">Tune comfort settings, install flow, and support access from one command desk.</span>
-          <span className="badge">{accountRole === 'owner' ? 'Owner' : accountRole === 'admin' ? 'Admin' : 'Player'}</span>
-          <span className="badge">{backendOnline ? 'Online' : 'Fallback'}</span>
-          <span className="badge">{visitorSuffix}</span>
-        </div>
-
-        <div className="scene-status-panel" aria-label="Command ledger">
-          <div className="section-head compact">
-            <h3>Command Ledger</h3>
-            <span className="badge">{settingsViewLabel}</span>
-          </div>
-          <div className="scene-status-grid">
-            <div className="scene-status-tile">
-              <span className="scene-status-kicker">Profile Seal</span>
-              <strong>{accountRole === 'owner' ? 'Owner' : accountRole === 'admin' ? 'Admin' : 'Player'}</strong>
-              <span className="mini-text">Visitor mark · {visitorSuffix}</span>
-            </div>
-            <div className="scene-status-tile">
-              <span className="scene-status-kicker">Network Link</span>
-              <strong>{networkLabel}</strong>
-              <span className="mini-text">{backendOnline ? 'Arena services responding' : 'Offline-safe mode active'}</span>
-            </div>
-            <div className={`scene-status-tile ${installAvailability === 'prompt' || installAvailability === 'installed' ? 'is-accent' : ''}`}>
-              <span className="scene-status-kicker">Install Path</span>
-              <strong>{installPathLabel}</strong>
-              <span className="mini-text">{installAvailability === 'ios-manual' ? 'Safari install route for iPhone' : 'Check device readiness here'}</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="settings-subnav">
-          <span className="badge">{settingsViewLabel}</span>
-          {settingsSubview !== 'hub' && (
-            <button className="ghost mini" onClick={resetSettingsSubview}>
-              Back
-            </button>
+        <SceneHeaderPanel
+          className="settings-scene-header"
+          visual={<RankBadge rank={roleInsignia} />}
+          title="Command Desk"
+          note="Tune comfort settings, install flow, and support access from one command desk."
+          badges={(
+            <>
+              <strong>{playerDisplayName}</strong>
+              <span className="badge">{accountRole === 'owner' ? 'Owner' : accountRole === 'admin' ? 'Admin' : 'Player'}</span>
+              <span className="badge">{backendOnline ? 'Online' : 'Fallback'}</span>
+              <span className="badge">{visitorSuffix}</span>
+            </>
           )}
-        </div>
-
-        {settingsSubview === 'hub' ? (
-          <div className="settings-hub-grid">
-            <button className="settings-hub-tile" onClick={() => openSettingsSubview('preferences')}>
-              <strong>Preferences</strong>
-              <span>Audio, gestures, haptics, and onboarding.</span>
-            </button>
-            <button className="settings-hub-tile" onClick={() => openSettingsSubview('support')}>
-              <strong>Support Desk</strong>
-              <span>Report gameplay, balance, performance, or moderation issues.</span>
-            </button>
-            {isAdminRole && (
-              <button className="settings-hub-tile" onClick={() => openSettingsSubview('admin')}>
-                <strong>{isOwnerRole ? 'Admin & Owner Tools' : 'Admin Console'}</strong>
-                <span>Live ops, complaint review, roles, and audit history.</span>
-              </button>
-            )}
-          </div>
-        ) : settingsSubview === 'preferences' ? (
-          <div className="settings-toggle-list">
+          tiles={settingsTiles}
+          viewLabel={settingsViewLabel}
+          onBack={settingsSubview !== 'hub' ? resetSettingsSubview : undefined}
+          shortcuts={settingsSubview === 'hub' ? settingsShortcuts : undefined}
+        >
+          {settingsSubview === 'preferences' ? (
+          <div className="settings-toggle-list" data-scene-swipe-opt-out="true">
             <div className="settings-toggle-row">
               <span>Arena Audio</span>
               <button
@@ -223,7 +220,7 @@ export function SettingsScreen() {
               </button>
             </div>
           </div>
-        ) : (
+        ) : settingsSubview === 'hub' ? null : (
           <p className="note settings-view-note">
             {settingsSubview === 'support'
               ? 'Use the support desk below to send a clear report to the arena team.'
@@ -232,6 +229,7 @@ export function SettingsScreen() {
         )}
 
         {complaintStatus && <p className="note toast-line">{complaintStatus}</p>}
+        </SceneHeaderPanel>
       </article>
 
       {settingsSubview === 'support' && (

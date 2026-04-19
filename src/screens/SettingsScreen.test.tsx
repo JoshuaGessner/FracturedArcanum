@@ -218,6 +218,21 @@ describe('SettingsScreen hub flow', () => {
     expect(screen.queryByText(/complaint desk/i)).toBeNull()
   })
 
+  it('uses a unified settings header instead of a separate command ledger slab', () => {
+    const { container } = renderSettingsScreen()
+
+    expect(screen.queryByText(/command ledger/i)).toBeNull()
+    expect(container.textContent).toMatch(/profile seal/i)
+    expect(container.textContent).toMatch(/network link/i)
+    expect(container.textContent).toMatch(/install path/i)
+  })
+
+  it('keeps the back action visible in support mode', () => {
+    renderSettingsScreen({ settingsSubview: 'support' })
+
+    expect(screen.getByRole('button', { name: /back/i })).toBeTruthy()
+  })
+
   it('shows manual iPhone install guidance when browser install prompts are unavailable', () => {
     Object.defineProperty(window.navigator, 'userAgent', {
       value: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X)',
@@ -256,10 +271,10 @@ describe('SettingsScreen hub flow', () => {
     expect(openSettingsSubview).toHaveBeenCalledWith('support')
   })
 
-  it('shows a compact command ledger stage on the settings hub', () => {
+  it('shows the compact settings status tiles in the unified header', () => {
     const { container } = renderSettingsScreen()
 
-    expect(screen.getByText(/command ledger/i)).toBeTruthy()
+    expect(screen.queryByText(/command ledger/i)).toBeNull()
     expect(container.textContent).toMatch(/profile seal/i)
     expect(container.textContent).toMatch(/network link/i)
     expect(container.textContent).toMatch(/install path/i)

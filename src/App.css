@@ -3832,6 +3832,14 @@ button.danger:hover { filter: brightness(1.08); }
     overflow-y: auto;
     padding-right: 2px;
   }
+  .shop-screen .utility-card,
+  .social-screen .utility-card,
+  .settings-screen .utility-card {
+    max-height: min(58dvh, 440px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
   .social-clan-block {
     padding: 8px;
     margin-top: 6px;

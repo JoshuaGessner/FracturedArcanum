@@ -173,6 +173,12 @@ export function PackCeremonyOverlay({
     })
   }, [cards, flipped, handleFlipCard])
 
+  const handleSkipToReveal = useCallback(() => {
+    timersRef.current.forEach((id) => clearTimeout(id))
+    timersRef.current = []
+    setPhase('reveal')
+  }, [])
+
   const canOpenAnother = runes >= packCost && packOpening === null
 
   if (cards.length === 0) return null
@@ -298,6 +304,11 @@ export function PackCeremonyOverlay({
         )}
 
         <footer className="pack-ceremony-footer">
+          {!reducedMotion && !showFan && (
+            <button type="button" className="ghost" onClick={handleSkipToReveal}>
+              Skip Intro
+            </button>
+          )}
           {!allFlipped && (showFan) && (
             <button type="button" className="ghost" onClick={handleRevealAll}>
               Reveal All
