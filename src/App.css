@@ -797,7 +797,7 @@ button:disabled {
   background: linear-gradient(135deg, rgba(14, 20, 38, 0.94), rgba(23, 35, 71, 0.86));
   border: 1px solid var(--border);
   border-radius: 18px;
-  padding: 14px;
+  padding: 12px;
   box-shadow: 0 14px 38px rgba(10, 14, 30, 0.28);
 }
 
@@ -819,12 +819,12 @@ button:disabled {
 
 .scene-header-panel {
   display: grid;
-  gap: 10px;
+  gap: 6px;
 }
 
 .scene-header-top {
   display: grid;
-  gap: 12px;
+  gap: 8px;
   align-items: center;
 }
 
@@ -841,16 +841,16 @@ button:disabled {
 .scene-header-copy {
   min-width: 0;
   display: grid;
-  gap: 8px;
+  gap: 4px;
 }
 
 .scene-header-copy-main {
   display: grid;
-  gap: 4px;
+  gap: 2px;
 }
 
 .scene-header-copy-main strong {
-  font-size: clamp(1rem, 2.4vw, 1.12rem);
+  font-size: clamp(0.92rem, 2.2vw, 1.06rem);
   color: #f6f8ff;
 }
 
@@ -867,22 +867,22 @@ button:disabled {
 .scene-status-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-  margin-top: 10px;
+  gap: 6px;
+  margin-top: 4px;
 }
 
 .scene-status-tile {
   display: grid;
-  gap: 4px;
+  gap: 2px;
   min-width: 0;
-  padding: 10px 12px;
-  border-radius: 14px;
+  padding: 6px 8px;
+  border-radius: 10px;
   border: 1px solid rgba(147, 197, 253, 0.14);
   background: rgba(255, 255, 255, 0.04);
 }
 
 .scene-status-tile strong {
-  font-size: 1rem;
+  font-size: 0.88rem;
   color: #f6f8ff;
 }
 
@@ -892,8 +892,8 @@ button:disabled {
 }
 
 .scene-status-kicker {
-  font-size: 0.72rem;
-  letter-spacing: 0.12em;
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: #cbd5ff;
 }
@@ -2598,10 +2598,10 @@ button:disabled {
   display: grid;
   grid-template-columns: auto auto minmax(0, 1fr);
   align-items: center;
-  gap: 10px;
-  padding: 10px 14px;
-  margin-top: 12px;
-  border-radius: 12px;
+  gap: 8px;
+  padding: 6px 10px;
+  margin-top: 6px;
+  border-radius: 10px;
   background: rgba(30, 41, 59, 0.5);
   border: 1px solid rgba(147, 197, 253, 0.1);
 }
@@ -2670,9 +2670,9 @@ button:disabled {
 
 .quest-reward-hint {
   flex: 0 0 auto;
-  padding: 6px 10px;
+  padding: 4px 8px;
   border-radius: 999px;
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   color: #d6def7;
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(147, 197, 253, 0.14);

@@ -55,19 +55,19 @@ export function HomeScreen() {
   const profileName = serverProfile?.displayName ?? serverProfile?.username ?? 'Champion'
   const homeTiles: SceneHeaderTile[] = [
     {
-      kicker: 'League Standing',
+      kicker: 'League',
       value: rankLabel,
-      note: `${record.wins}W · ${record.losses}L · ${winRate}% WR`,
+      note: `${record.wins}W ${record.losses}L · ${winRate}%`,
     },
     {
-      kicker: 'Deck Ready',
-      value: `${selectedDeckSize} Cards`,
+      kicker: 'Deck',
+      value: `${selectedDeckSize}/14`,
       note: deckReadyLabel,
     },
     {
-      kicker: 'Reward Vault',
+      kicker: 'Vault',
       value: rewardVaultLabel,
-      note: `Daily Quest · ${dailyQuest}`,
+      note: dailyQuest,
       accent: canClaimDailyReward,
     },
   ]
@@ -82,9 +82,8 @@ export function HomeScreen() {
           note={`${seasonName}${seasonCountdown ? ` · ${seasonCountdown}` : ''}`}
           badges={(
             <>
-              <span className="badge">{runes} Runes</span>
-              <span className={`badge streak-badge streak-${streakTier}`}>Streak {record.streak}</span>
-              <span className="badge">{questsDone}/{questItems.length} ready</span>
+              <span className="badge">{runes} Shards</span>
+              <span className={`badge streak-badge streak-${streakTier}`}>🔥{record.streak}</span>
             </>
           )}
           tiles={homeTiles}
@@ -99,12 +98,6 @@ export function HomeScreen() {
             </div>
           )}
         </SceneHeaderPanel>
-
-        <div className="home-focus-strip" aria-label="Current arena focus">
-          <span className="badge">Daily Quest · {dailyQuest}</span>
-          <span className="badge">Deck Size {selectedDeckSize}</span>
-          <span className="badge">Win Rate {winRate}%</span>
-        </div>
 
         <div className={`quest-summary ${canClaimDailyReward ? 'claim-ready' : ''} ${justClaimedDaily ? 'just-claimed' : ''}`}>
           <div className="quest-pips" role="img" aria-label={`${questsDone} of ${questItems.length} quests complete`}>

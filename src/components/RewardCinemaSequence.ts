@@ -44,7 +44,7 @@ export type BattleVictoryInput = {
 }
 
 export function buildBattleVictorySequence(input: BattleVictoryInput): RewardBeat[] {
-  const shards = input.shards ?? (input.battleKind === 'local' ? 0 : 30)
+  const shards = input.shards ?? (input.battleKind === 'local' ? 0 : 50)
   const streakTier = getStreakTier(input.streak)
   const beats: RewardBeat[] = [
     {

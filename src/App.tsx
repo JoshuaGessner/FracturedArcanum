@@ -1593,7 +1593,7 @@ function AppShell() {
             isRanked,
             battleKind: battleKindForBeats,
             mode: game.mode,
-            shards: data.runesEarned ?? 30,
+            shards: data.runesEarned ?? 50,
             ratingDelta: isRanked ? ratingDelta : undefined,
           })
           if (rankCrossed) {

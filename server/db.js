@@ -801,7 +801,7 @@ export function selectTheme(accountId, themeId) {
 // ─── Economy operations (server-authoritative) ──────────────────────────────
 
 const THEME_COSTS = { royal: 0, ember: 120, moon: 180 }
-const WIN_RUNES = 30
+const WIN_RUNES = 50
 const LOSS_RUNES = 10
 const DAILY_RUNES = 50
 const WIN_RATING = 25

@@ -219,9 +219,9 @@ describe('HomeScreen navigation and footer', () => {
   it('uses one unified war-table header instead of a separate status slab', () => {
     const { container } = renderHomeScreen()
 
-    expect(container.textContent).toMatch(/league standing/i)
-    expect(container.textContent).toMatch(/deck ready/i)
-    expect(container.textContent).toMatch(/reward vault/i)
+    expect(container.textContent).toMatch(/league/i)
+    expect(container.textContent).toMatch(/deck/i)
+    expect(container.textContent).toMatch(/vault/i)
     expect(container.querySelectorAll('.scene-status-tile')).toHaveLength(3)
     expect(container.textContent).not.toMatch(/war table status/i)
   })
@@ -237,9 +237,9 @@ describe('HomeScreen navigation and footer', () => {
   it('shows the core home progress tiles in the unified header', () => {
     const { container, getByText } = renderHomeScreen({ canClaimDailyReward: true, nextRewardLabel: 'Reward Ready' })
 
-    expect(getByText(/league standing/i)).toBeTruthy()
-    expect(getByText(/deck ready/i)).toBeTruthy()
-    expect(getByText(/reward vault/i)).toBeTruthy()
+    expect(getByText(/league/i)).toBeTruthy()
+    expect(getByText(/deck/i)).toBeTruthy()
+    expect(getByText(/vault/i)).toBeTruthy()
     expect(container.querySelectorAll('.scene-status-tile')).toHaveLength(3)
   })
 })
