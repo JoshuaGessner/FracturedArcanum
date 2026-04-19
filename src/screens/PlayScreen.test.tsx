@@ -233,11 +233,13 @@ describe('PlayScreen battle entry', () => {
   })
 
   it('shows a battle-readiness stage with compact launch context', () => {
-    renderPlayScreen({ deckReady: true, seasonRating: 1325 })
+    const { container } = renderPlayScreen({ deckReady: true, seasonRating: 1325 })
 
     expect(screen.getByText(/battle readiness/i)).toBeTruthy()
     expect(screen.getByText(/season rating/i)).toBeTruthy()
     expect(screen.getByText(/deck ready/i)).toBeTruthy()
     expect(screen.getByText(/queue open/i)).toBeTruthy()
+    expect(container.querySelector('.play-readiness-panel-compact')).toBeTruthy()
+    expect(container.querySelector('.play-mode-grid-compact')).toBeTruthy()
   })
 })

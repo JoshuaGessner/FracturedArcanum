@@ -42,12 +42,12 @@ export function PlayScreen() {
           </div>
         )}
 
-        <div className="scene-status-panel play-readiness-panel" aria-label="Battle readiness">
-          <div className="section-head compact">
+        <div className="scene-status-panel play-readiness-panel play-readiness-panel-compact" aria-label="Battle readiness">
+          <div className="section-head compact play-readiness-head">
             <h3>Battle Readiness</h3>
             <span className={`deck-status ${deckReady ? 'ready' : 'warning'}`}>{deckReady ? 'Ready' : 'Needs cards'}</span>
           </div>
-          <div className="scene-status-grid">
+          <div className="scene-status-grid play-status-grid-compact">
             <div className="scene-status-tile">
               <span className="scene-status-kicker">Season Rating</span>
               <strong>{seasonRating}</strong>
@@ -66,7 +66,7 @@ export function PlayScreen() {
           </div>
         </div>
 
-        <div className="mode-card-grid" aria-label="Choose a battle mode">
+        <div className="mode-card-grid play-mode-grid-compact" aria-label="Choose a battle mode">
           <button
             className={`mode-card mode-card-ai ${preferredMode === 'ai' ? 'active' : ''}`}
             onClick={() => {

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from 'vitest'
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { ShopScreen } from './ShopScreen'
 import { PackCeremonyOverlay } from '../components/PackCeremonyOverlay'
 import { AppShellContext, type AppShellContextValue } from '../AppShellContext'
@@ -245,5 +245,14 @@ describe('ShopScreen hub flow', () => {
     expect(container.textContent).toMatch(/daily vault/i)
     expect(container.textContent).toMatch(/pack stash/i)
     expect(container.querySelectorAll('.scene-status-tile')).toHaveLength(3)
+  })
+
+  it('keeps the card packs view in a fit-safe in-screen grid', () => {
+    const { container } = renderShopScreen()
+
+    fireEvent.click(screen.getByRole('button', { name: /card packs/i }))
+
+    expect(container.textContent).toMatch(/card packs/i)
+    expect(container.querySelector('.theme-grid-shop-fit')).toBeTruthy()
   })
 })

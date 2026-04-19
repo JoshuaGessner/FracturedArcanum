@@ -190,7 +190,7 @@ export function ShopScreen() {
               <h3>Cosmetic Themes</h3>
               <span className="badge">Cosmetics</span>
             </div>
-            <div className="theme-grid">
+            <div className="theme-grid theme-grid-shop-fit">
               {THEME_OFFERS.map((theme) => {
                 const owned = ownedThemes.includes(theme.id)
                 const equipped = selectedTheme === theme.id
@@ -219,7 +219,7 @@ export function ShopScreen() {
               <h3>Card Borders</h3>
               <span className="badge">Cosmetics</span>
             </div>
-            <div className="theme-grid" data-scene-swipe-opt-out="true">
+            <div className="theme-grid theme-grid-shop-fit" data-scene-swipe-opt-out="true">
               {CARD_BORDER_OFFERS.map((border) => {
                 const owned = ownedCardBorders.includes(border.id)
                 const equipped = selectedCardBorder === border.id
@@ -255,7 +255,7 @@ export function ShopScreen() {
               <h3>Card Packs</h3>
               <span className="badge">Owned {totalOwnedCards}</span>
             </div>
-            <div className="theme-grid" data-scene-swipe-opt-out="true">
+            <div className="theme-grid theme-grid-shop-fit" data-scene-swipe-opt-out="true">
               {packOffers.map((pack) => (
                 <div className={`theme-offer-card pack-offer-card pack-offer-${pack.id}`} key={pack.id}>
                   <PackArt packId={pack.id} label={`${pack.id} pack artwork`} />

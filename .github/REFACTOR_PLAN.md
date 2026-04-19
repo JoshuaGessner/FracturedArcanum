@@ -58,7 +58,7 @@ We should stop patching isolated battle sections and instead refactor the app ar
 ### Current remaining focus
 - continue on-device validation for touch targets, drag reliability, and subview containment on narrow phones
 - verify the iPhone long-press suppression and Add to Home Screen flow on real Safari / Web.app hardware
-- keep extending the same scene-first polish and shared summary language across the rest of the app, with Home and Play now moved onto the new status-stage treatment
+- confirm the latest narrow-phone fixes for shop overflow rails and the compact play gate on real hardware
 
 ### Newly confirmed platform hardening issues
 - some inspectable card surfaces still trigger the iOS Safari image/context callout during long-press instead of staying inside the app’s own inspect flow
@@ -502,6 +502,7 @@ We should only expand motion after the scene shell is stable and battle is relia
 - [ ] verify iPhone Home Screen launch for safe-area spacing, top chrome, bottom nav reachability, and update prompts
 - [ ] verify Android Chrome browser mode for install prompt flow, queue overlays, and battle drag reliability
 - [ ] verify Android installed PWA for splash-to-app launch, reward cinema containment, and service worker update handling
+- [x] implement fit-safe mobile layouts so shop subviews no longer run off the right edge and the play gate keeps all battle types visible without needing scroll
 - [ ] confirm no horizontal spill or clipped back actions at 375px width in shop, settings, and social subviews
 - [ ] confirm battle drag, attack targeting, inspect, and result-summary flows remain stable through repeated matches
 

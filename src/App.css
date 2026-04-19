@@ -3495,8 +3495,46 @@ button.danger:hover { filter: brightness(1.08); }
   .season-progress-core strong { font-size: 0.75rem; }
   .season-progress-block > div:first-child .note { display: none; }
   .progress-shell { height: 10px; }
-  .play-live-strip { flex-wrap: wrap; gap: 6px; padding: 6px 8px; }
+  .play-live-strip { flex-wrap: wrap; gap: 6px; padding: 4px 6px; margin-top: 6px; font-size: 0.72rem; }
   .play-live-stat { margin-left: 0; }
+
+  .play-readiness-head {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+  }
+
+  .play-readiness-panel-compact {
+    margin-top: 6px;
+    padding: 8px;
+  }
+
+  .play-status-grid-compact {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    margin-top: 6px;
+  }
+
+  .play-status-grid-compact .scene-status-tile {
+    padding: 6px 7px;
+    gap: 2px;
+  }
+
+  .play-status-grid-compact .scene-status-kicker {
+    font-size: 0.56rem;
+    letter-spacing: 0.08em;
+  }
+
+  .play-status-grid-compact .scene-status-tile strong {
+    font-size: 0.84rem;
+    line-height: 1.05;
+  }
+
+  .play-status-grid-compact .mini-text {
+    font-size: 0.62rem;
+    line-height: 1.15;
+  }
 
   .scene-rail {
     gap: 4px;
@@ -3554,14 +3592,36 @@ button.danger:hover { filter: brightness(1.08); }
 
   /* Play density — shorter mode cards, hide long notes */
   .mode-card {
-    min-height: 90px;
-    padding: 10px;
-    gap: 4px;
+    min-height: 76px;
+    padding: 8px 6px;
+    gap: 3px;
   }
   .mode-card .note { display: none; }
-  .mode-card-grid { gap: 8px; margin-top: 10px; }
-  .difficulty-panel { margin-top: 8px; padding: 8px 10px; }
-  .play-action-row { margin-top: 8px; }
+  .play-mode-grid-compact {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    margin-top: 8px;
+  }
+  .play-mode-grid-compact .mode-card-eyebrow {
+    font-size: 0.56rem;
+    letter-spacing: 0.08em;
+  }
+  .play-mode-grid-compact .mode-card strong {
+    font-size: 0.9rem;
+    line-height: 1.05;
+  }
+  .difficulty-panel { margin-top: 6px; padding: 6px 8px; }
+  .difficulty-panel .note { font-size: 0.76rem; }
+  .difficulty-chip-row { gap: 6px; margin-top: 6px; }
+  .difficulty-chip { padding: 6px 8px; font-size: 0.74rem; }
+  .play-entry-hint,
+  .play-live-strip { display: none; }
+  .play-action-row { margin-top: 6px; }
+  .play-action-row button {
+    min-height: 34px;
+    padding: 6px 8px;
+    font-size: 0.78rem;
+  }
   .queue-search-portal { margin-top: 8px; padding: 10px; gap: 10px; }
   .queue-portal-ring { width: 80px; height: 80px; }
   .queue-portal-core { inset: 18px; font-size: 0.88rem; }
@@ -3742,32 +3802,31 @@ button.danger:hover { filter: brightness(1.08); }
   /* Shop density — compact hero, convert offer stacks to rails */
   .shop-hero { padding: 6px 8px; gap: 6px; }
   .shop-hero strong { font-size: var(--font-sm); }
-  .theme-grid {
-    display: flex;
+  .theme-grid-shop-fit {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
-    overflow-x: auto;
-    padding-bottom: 2px;
-    grid-template-columns: none;
-    scroll-snap-type: x proximity;
-    overscroll-behavior-x: contain;
+    overflow: visible;
+    padding-bottom: 0;
+    grid-auto-flow: row;
   }
-  .theme-offer-card {
+  .theme-grid-shop-fit .theme-offer-card {
+    min-width: 0;
+    width: 100%;
+    flex: initial;
     padding: 8px;
     gap: 6px;
-    min-width: 176px;
-    flex: 0 0 176px;
-    scroll-snap-align: start;
   }
   .pack-reveal-grid {
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
-    overflow-x: auto;
-    overscroll-behavior-x: contain;
-    padding-bottom: 4px;
+    overflow: visible;
+    padding-bottom: 0;
   }
   .pack-reveal-card {
-    min-width: 160px;
-    flex: 0 0 160px;
+    min-width: 0;
+    flex: initial;
   }
 
   /* Settings density — compact hero, tighter toggles */
@@ -3833,6 +3892,22 @@ button.danger:hover { filter: brightness(1.08); }
   .scene-link { min-height: 44px; padding: 4px 2px; }
   .scene-link::before { width: 14px; height: 14px; }
   .scene-link-label { font-size: 0.64rem; }
+  .play-status-grid-compact {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .play-mode-grid-compact {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .play-status-grid-compact .mini-text {
+    display: none;
+  }
+  .play-mode-grid-compact .mode-card strong {
+    font-size: 0.82rem;
+  }
+  .theme-grid-shop-fit,
+  .pack-reveal-grid {
+    grid-template-columns: 1fr;
+  }
   .hand-grid { grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); }
   .builder-grid { grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); }
   .auth-card { padding: 24px 16px; }
