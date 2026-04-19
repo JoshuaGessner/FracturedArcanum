@@ -1,23 +1,13 @@
-import type { ServerProfile, InstallPromptEvent } from '../types'
+import type { ServerProfile } from '../types'
 
 type TopBarProps = {
   screenTitle: string
   serverProfile: ServerProfile | null
-  soundEnabled: boolean
-  onToggleSound: () => void
-  installPromptEvent: InstallPromptEvent | null
-  onInstallApp: () => void
-  onLogout: () => void
 }
 
 export function TopBar({
   screenTitle,
   serverProfile,
-  soundEnabled,
-  onToggleSound,
-  installPromptEvent,
-  onInstallApp,
-  onLogout,
 }: TopBarProps) {
   const isHome = screenTitle === 'Arena Home'
 
@@ -33,23 +23,12 @@ export function TopBar({
 
   return (
     <header className="topbar topbar-art topbar-home">
-      <div className="brand-block">
+      <div className="brand-block brand-block-home">
         <img className="brand-logo brand-logo-home" src="/fractured-arcanum-crest.svg" alt="Fractured Arcanum home crest" />
-      </div>
-
-      <div className="top-actions">
-        <span className="username-label">@{serverProfile?.username ?? ''}</span>
-        <button className="ghost top-action-toggle" onClick={onToggleSound}>
-          {soundEnabled ? 'Sound On' : 'Sound Off'}
-        </button>
-        {installPromptEvent && (
-          <button className="ghost" onClick={onInstallApp}>
-            Install
-          </button>
-        )}
-        <button className="ghost" onClick={onLogout}>
-          Logout
-        </button>
+        <div className="brand-copy">
+          <strong className="brand-wordmark">Fractured Arcanum</strong>
+          <span className="username-label">@{serverProfile?.username ?? ''}</span>
+        </div>
       </div>
     </header>
   )

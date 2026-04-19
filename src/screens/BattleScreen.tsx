@@ -430,7 +430,7 @@ export function BattleScreen() {
             </div>
           </div>
 
-          <div className="controls battle-controls">
+          <div className={`controls battle-controls ${selectedAttacker !== null ? 'battle-controls-attack-ready' : ''}`}>
             <button
               className="primary"
               onClick={handleBurst}
@@ -445,6 +445,15 @@ export function BattleScreen() {
                 'End Turn'
               )}
             </button>
+            {selectedAttacker !== null && (
+              <button
+                className="ghost"
+                onClick={() => handleAttackTarget('hero')}
+                disabled={defenderHasGuard || Boolean(game.winner)}
+              >
+                Strike Hero
+              </button>
+            )}
             <button className="ghost" onClick={handleLeaveBattle}>
               Leave
             </button>
@@ -530,13 +539,6 @@ export function BattleScreen() {
                     : 'Enemy hero exposed'}
               </strong>
             </div>
-            <button
-              className="ghost"
-              onClick={() => handleAttackTarget('hero')}
-              disabled={selectedAttacker === null || defenderHasGuard || Boolean(game.winner)}
-            >
-              Strike Hero
-            </button>
           </div>
 
           <div className="battlefield-side player-side">

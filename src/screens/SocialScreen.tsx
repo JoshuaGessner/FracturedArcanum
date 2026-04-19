@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { CARD_LIBRARY } from '../game'
 import { RankBadge } from '../components/AssetBadge'
 import { useAppShell, useProfile, useQueue, useSocial } from '../contexts'
@@ -38,9 +39,20 @@ export function SocialScreen() {
     formatCountdown, tradeStatus, trades, handleTradeAction,
   } = useSocial()
 
+  const [socialSubview, setSocialSubview] = useState<'hub' | 'friends' | 'clan' | 'trades' | 'rankings'>('hub')
+
   const profileName = serverProfile?.displayName ?? serverProfile?.username ?? 'Player'
   const onlineFriends = friends.filter((friend) => onlineFriendIds.has(friend.accountId)).length
   const pendingTrades = trades.filter((trade) => trade.status === 'pending').length
+  const socialViewLabel = socialSubview === 'friends'
+    ? 'Friends'
+    : socialSubview === 'clan'
+      ? 'Clan Hall'
+      : socialSubview === 'trades'
+        ? 'Trade Post'
+        : socialSubview === 'rankings'
+          ? 'Rankings'
+          : 'Social'
 
   return (
     <section className={`home-screen social-screen screen-panel ${activeScreen === 'social' ? 'active' : 'hidden'}`}>
@@ -55,172 +67,251 @@ export function SocialScreen() {
             <span className="badge">{clan ? clan.tag : 'Solo'}</span>
             <span className="badge">{totalGames}G · {winRate}%W · {runes}R</span>
           </div>
-        </article>
 
-        <article className="section-card utility-card">
-          <div className="section-head compact">
-            <h3>Leaderboard</h3>
-            <span className="badge">Top 5</span>
-          </div>
-          <div className="leaderboard-list">
-            {leaderboardEntries.slice(0, 5).map((entry, index) => {
-              const entryGames = Math.max(1, entry.wins + entry.losses)
-              const entryWinRate = Math.round((entry.wins / entryGames) * 100)
-              return (
-                <div className="leaderboard-row" key={`${entry.account_id}-${index}`}>
-                  <span className="badge">#{index + 1}</span>
-                  <div className="leaderboard-meta">
-                    <strong>{entry.display_name}</strong>
-                    <span className="note">{entry.season_rating} rating • {entryWinRate}% WR</span>
-                  </div>
-                  <RankBadge rank={entry.season_rating} className="rank-badge-inline" />
-                </div>
-              )
-            })}
-            {!leaderboardEntries.length && <p className="note">No ladder data yet. Win ranked matches to claim the top spot.</p>}
-          </div>
-        </article>
-
-        <article className="section-card utility-card">
-          <div className="section-head compact">
-            <h3>Social Hub</h3>
-            <span className="badge">{friends.length} friend{friends.length === 1 ? '' : 's'}</span>
-          </div>
-
-          <form className="social-inline-form" onSubmit={(event) => void handleAddFriend(event)}>
-            <input
-              className="text-input"
-              value={friendUsernameInput}
-              maxLength={20}
-              placeholder="Friend username"
-              onChange={(event) => setFriendUsernameInput(event.target.value)}
-            />
-            <button className="secondary" disabled={socialLoading}>Add Friend</button>
-          </form>
-
-          <div className="social-list">
-            {friends.slice(0, 8).map((friend) => {
-              const online = onlineFriendIds.has(friend.accountId)
-              const canChallenge = online && !outgoingChallenge && !incomingChallenge
-              return (
-                <div className="social-row" key={friend.accountId}>
-                  <div className="leaderboard-meta">
-                    <strong>
-                      <span
-                        className={`presence-dot ${online ? 'online' : 'offline'}`}
-                        role="img"
-                        aria-label={online ? 'online' : 'offline'}
-                        title={online ? 'Online' : 'Offline'}
-                      />
-                      {friend.displayName}
-                    </strong>
-                    <span className="note">@{friend.username}</span>
-                  </div>
-                  <div className="controls">
-                    <button
-                      className="primary mini"
-                      disabled={!canChallenge}
-                      title={online ? 'Challenge to an unranked duel' : 'Friend is offline'}
-                      onClick={() => handleChallengeFriend(friend)}
-                    >
-                      ⚔ Challenge
-                    </button>
-                    <button className="ghost mini" disabled={socialLoading} onClick={() => void handleRemoveFriend(friend.accountId, friend.displayName)}>
-                      Remove
-                    </button>
-                  </div>
-                </div>
-              )
-            })}
-            {!friends.length && <p className="note">No friends yet. Add players by username to build your roster.</p>}
-            {challengeStatus && <p className="note toast-line">{challengeStatus}</p>}
-            {outgoingChallenge && (
-              <div className="challenge-banner outgoing">
-                <span>
-                  Waiting for <strong>{outgoingChallenge.toName}</strong>…
-                </span>
-                <button className="ghost mini" onClick={handleCancelOutgoingChallenge}>Cancel</button>
-              </div>
-            )}
-            {incomingChallenge && (
-              <div className="challenge-banner incoming">
-                <span>
-                  <strong>{incomingChallenge.fromName}</strong> is challenging you to an unranked duel.
-                </span>
-                <div className="controls">
-                  <button className="primary mini" onClick={handleAcceptChallenge}>Accept</button>
-                  <button className="ghost mini" onClick={handleDeclineChallenge}>Decline</button>
-                </div>
-              </div>
+          <div className="settings-subnav">
+            <span className="badge">{socialViewLabel}</span>
+            {socialSubview !== 'hub' && (
+              <button className="ghost mini" onClick={() => setSocialSubview('hub')}>
+                Back
+              </button>
             )}
           </div>
 
-          {clan ? (
-            <div className="social-clan-block">
-              <div className="section-head">
-                <strong>[{clan.tag}] {clan.name}</strong>
-                <button className="ghost mini" disabled={socialLoading} onClick={() => void handleLeaveClan()}>
-                  Leave
+          {socialSubview === 'hub' && (
+            <>
+              <div className="section-head compact">
+                <h3>Social Hub</h3>
+                <span className="badge">{friends.length} friend{friends.length === 1 ? '' : 's'}</span>
+              </div>
+
+              <div className="settings-hub-grid social-hub-grid">
+                <button className="settings-hub-tile" onClick={() => setSocialSubview('friends')}>
+                  <strong>Friends</strong>
+                  <span>Current friends, online presence, and challenge flow.</span>
+                </button>
+                <button className="settings-hub-tile" onClick={() => setSocialSubview('rankings')}>
+                  <strong>Rankings</strong>
+                  <span>Season ladder standings and top competitors.</span>
+                </button>
+                <button className="settings-hub-tile" onClick={() => setSocialSubview('clan')}>
+                  <strong>Clan Hall</strong>
+                  <span>Create, join, and manage your alliance in one place.</span>
+                </button>
+                <button className="settings-hub-tile" onClick={() => setSocialSubview('trades')}>
+                  <strong>Trade Post</strong>
+                  <span>Send and review offers without crowding the hub.</span>
                 </button>
               </div>
-              <div className="badges">
-                <span className="badge">Invite {clan.inviteCode}</span>
-                <span className="badge">{clan.members.length} members</span>
-              </div>
-              <div className="social-list">
-                {clan.members.map((member) => (
-                  <div className="social-row" key={member.accountId}>
-                    <div className="leaderboard-meta">
-                      <strong>{member.displayName} {member.isYou ? '(You)' : ''}</strong>
-                      <span className="note">@{member.username} • {member.role}</span>
+
+              <div className="social-list social-primary-list">
+                {friends.slice(0, 6).map((friend) => {
+                  const online = onlineFriendIds.has(friend.accountId)
+                  const canChallenge = online && !outgoingChallenge && !incomingChallenge
+                  return (
+                    <div className="social-row" key={friend.accountId}>
+                      <div className="leaderboard-meta">
+                        <strong>
+                          <span
+                            className={`presence-dot ${online ? 'online' : 'offline'}`}
+                            role="img"
+                            aria-label={online ? 'online' : 'offline'}
+                            title={online ? 'Online' : 'Offline'}
+                          />
+                          {friend.displayName}
+                        </strong>
+                        <span className="note">@{friend.username}</span>
+                      </div>
+                      <div className="controls">
+                        <button
+                          className="primary mini"
+                          disabled={!canChallenge}
+                          title={online ? 'Challenge to an unranked duel' : 'Friend is offline'}
+                          onClick={() => handleChallengeFriend(friend)}
+                        >
+                          Challenge
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })}
+                {!friends.length && <p className="note">No friends yet. Add players by username to build your roster.</p>}
+                {challengeStatus && <p className="note toast-line">{challengeStatus}</p>}
+                {outgoingChallenge && (
+                  <div className="challenge-banner outgoing">
+                    <span>
+                      Waiting for <strong>{outgoingChallenge.toName}</strong>…
+                    </span>
+                    <button className="ghost mini" onClick={handleCancelOutgoingChallenge}>Cancel</button>
+                  </div>
+                )}
+                {incomingChallenge && (
+                  <div className="challenge-banner incoming">
+                    <span>
+                      <strong>{incomingChallenge.fromName}</strong> is challenging you to an unranked duel.
+                    </span>
+                    <div className="controls">
+                      <button className="primary mini" onClick={handleAcceptChallenge}>Accept</button>
+                      <button className="ghost mini" onClick={handleDeclineChallenge}>Decline</button>
                     </div>
                   </div>
-                ))}
+                )}
               </div>
-            </div>
-          ) : (
-            <div className="social-clan-block">
-              <form className="form-stack" onSubmit={(event) => void handleCreateClan(event)}>
-                <label className="form-field">
-                  <span>Create clan</span>
-                  <div className="social-inline-form">
-                    <input
-                      className="text-input"
-                      value={clanForm.name}
-                      maxLength={32}
-                      placeholder="Clan name"
-                      onChange={(event) => setClanForm((current) => ({ ...current, name: event.target.value }))}
-                    />
-                    <input
-                      className="text-input clan-tag-field"
-                      value={clanForm.tag}
-                      maxLength={6}
-                      placeholder="TAG"
-                      onChange={(event) => setClanForm((current) => ({ ...current, tag: event.target.value.toUpperCase() }))}
-                    />
-                    <button className="secondary" disabled={socialLoading}>Create</button>
-                  </div>
-                </label>
-              </form>
-
-              <form className="social-inline-form" onSubmit={(event) => void handleJoinClan(event)}>
-                <input
-                  className="text-input"
-                  value={clanForm.inviteCode}
-                  maxLength={12}
-                  placeholder="Invite code (CLN-XXXXXXXX)"
-                  onChange={(event) => setClanForm((current) => ({ ...current, inviteCode: event.target.value.toUpperCase() }))}
-                />
-                <button className="ghost" disabled={socialLoading}>Join Clan</button>
-              </form>
-            </div>
+            </>
           )}
+        </article>
 
-          {socialStatus && <p className="note toast-line">{socialStatus}</p>}
-
-          <div className="social-trade-block">
+        {socialSubview === 'friends' && (
+          <article className="section-card utility-card">
             <div className="section-head compact">
-              <h3>Card Trades</h3>
+              <h3>Friends & Challenges</h3>
+              <span className="badge">{friends.length} total</span>
+            </div>
+
+            <form className="social-inline-form" onSubmit={(event) => void handleAddFriend(event)}>
+              <input
+                className="text-input"
+                value={friendUsernameInput}
+                maxLength={20}
+                placeholder="Friend username"
+                onChange={(event) => setFriendUsernameInput(event.target.value)}
+              />
+              <button className="secondary" disabled={socialLoading}>Add Friend</button>
+            </form>
+
+            <div className="social-list">
+              {friends.map((friend) => {
+                const online = onlineFriendIds.has(friend.accountId)
+                const canChallenge = online && !outgoingChallenge && !incomingChallenge
+                return (
+                  <div className="social-row" key={friend.accountId}>
+                    <div className="leaderboard-meta">
+                      <strong>
+                        <span
+                          className={`presence-dot ${online ? 'online' : 'offline'}`}
+                          role="img"
+                          aria-label={online ? 'online' : 'offline'}
+                          title={online ? 'Online' : 'Offline'}
+                        />
+                        {friend.displayName}
+                      </strong>
+                      <span className="note">@{friend.username}</span>
+                    </div>
+                    <div className="controls">
+                      <button className="primary mini" disabled={!canChallenge} onClick={() => handleChallengeFriend(friend)}>
+                        Challenge
+                      </button>
+                      <button className="ghost mini" disabled={socialLoading} onClick={() => void handleRemoveFriend(friend.accountId, friend.displayName)}>
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </article>
+        )}
+
+        {socialSubview === 'rankings' && (
+          <article className="section-card utility-card">
+            <div className="section-head compact">
+              <h3>Top Ladder</h3>
+              <span className="badge">Top 5</span>
+            </div>
+            <div className="leaderboard-list">
+              {leaderboardEntries.slice(0, 5).map((entry, index) => {
+                const entryGames = Math.max(1, entry.wins + entry.losses)
+                const entryWinRate = Math.round((entry.wins / entryGames) * 100)
+                return (
+                  <div className="leaderboard-row" key={`${entry.account_id}-${index}`}>
+                    <span className="badge">#{index + 1}</span>
+                    <div className="leaderboard-meta">
+                      <strong>{entry.display_name}</strong>
+                      <span className="note">{entry.season_rating} rating • {entryWinRate}% WR</span>
+                    </div>
+                    <RankBadge rank={entry.season_rating} className="rank-badge-inline" />
+                  </div>
+                )
+              })}
+              {!leaderboardEntries.length && <p className="note">No ladder data yet. Win ranked matches to claim the top spot.</p>}
+            </div>
+          </article>
+        )}
+
+        {socialSubview === 'clan' && (
+          <article className="section-card utility-card social-clan-block">
+            <div className="section-head compact">
+              <h3>Clan Hall</h3>
+              <span className="badge">{clan ? clan.tag : 'Solo'}</span>
+            </div>
+
+            {clan ? (
+              <>
+                <div className="section-head">
+                  <strong>[{clan.tag}] {clan.name}</strong>
+                  <button className="ghost mini" disabled={socialLoading} onClick={() => void handleLeaveClan()}>
+                    Leave
+                  </button>
+                </div>
+                <div className="badges">
+                  <span className="badge">Invite {clan.inviteCode}</span>
+                  <span className="badge">{clan.members.length} members</span>
+                </div>
+                <div className="social-list">
+                  {clan.members.map((member) => (
+                    <div className="social-row" key={member.accountId}>
+                      <div className="leaderboard-meta">
+                        <strong>{member.displayName} {member.isYou ? '(You)' : ''}</strong>
+                        <span className="note">@{member.username} • {member.role}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <>
+                <form className="form-stack" onSubmit={(event) => void handleCreateClan(event)}>
+                  <label className="form-field">
+                    <span>Create clan</span>
+                    <div className="social-inline-form">
+                      <input
+                        className="text-input"
+                        value={clanForm.name}
+                        maxLength={32}
+                        placeholder="Clan name"
+                        onChange={(event) => setClanForm((current) => ({ ...current, name: event.target.value }))}
+                      />
+                      <input
+                        className="text-input clan-tag-field"
+                        value={clanForm.tag}
+                        maxLength={6}
+                        placeholder="TAG"
+                        onChange={(event) => setClanForm((current) => ({ ...current, tag: event.target.value.toUpperCase() }))}
+                      />
+                      <button className="secondary" disabled={socialLoading}>Create</button>
+                    </div>
+                  </label>
+                </form>
+
+                <form className="social-inline-form" onSubmit={(event) => void handleJoinClan(event)}>
+                  <input
+                    className="text-input"
+                    value={clanForm.inviteCode}
+                    maxLength={12}
+                    placeholder="Invite code (CLN-XXXXXXXX)"
+                    onChange={(event) => setClanForm((current) => ({ ...current, inviteCode: event.target.value.toUpperCase() }))}
+                  />
+                  <button className="ghost" disabled={socialLoading}>Join Clan</button>
+                </form>
+              </>
+            )}
+            {socialStatus && <p className="note toast-line">{socialStatus}</p>}
+          </article>
+        )}
+
+        {socialSubview === 'trades' && (
+          <article className="section-card utility-card social-trade-block">
+            <div className="section-head compact">
+              <h3>Trade Post</h3>
               <span className="badge">Friends</span>
             </div>
 
@@ -383,8 +474,8 @@ export function SocialScreen() {
                 })
               )}
             </ul>
-          </div>
-        </article>
+          </article>
+        )}
       </div>
     </section>
   )

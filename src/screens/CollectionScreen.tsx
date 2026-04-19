@@ -14,7 +14,7 @@ import { useAppShell, useGame, useProfile, useQueue } from '../contexts'
 import { feedback } from '../feedback'
 
 export function CollectionScreen() {
-  const { activeScreen, loggedIn, setToastMessage, soundEnabled, hapticsEnabled } = useAppShell()
+  const { activeScreen, loggedIn, setToastMessage, soundEnabled, hapticsEnabled, consumeLongPressAction, getLongPressProps } = useAppShell()
   const {
     deckReady, selectedDeckSize, savedDecks, activeDeckId,
     handleCreateDeck, handleSelectDeck, handleRenameDeck, handleDeleteDeck,
@@ -252,13 +252,22 @@ export function CollectionScreen() {
             const ownedCount = loggedIn ? (collection[card.id] ?? 0) : maxCopies
             const count = deckConfig[card.id] ?? 0
             const addDisabled = count >= Math.min(maxCopies, ownedCount)
+            const inspectCard = { name: card.name, icon: card.icon, id: card.id, cost: card.cost, attack: card.attack, health: card.health, rarity: card.rarity, tribe: card.tribe, text: card.text, effect: card.effect ?? null }
             return (
             <div
               className={`builder-card rarity-${card.rarity} border-${selectedCardBorder} ${ownedCount === 0 ? 'locked' : ''}`}
               key={card.id}
               style={{ '--rarity-color': RARITY_COLORS[card.rarity] } as React.CSSProperties}
             >
-              <div>
+              <button
+                type="button"
+                className="builder-card-preview"
+                onClick={() => {
+                  if (consumeLongPressAction()) return
+                }}
+                {...getLongPressProps(inspectCard)}
+                title="Hold to inspect the full card"
+              >
                 <div className="card-art-shell">
                   <img
                     className="card-illustration"
@@ -269,9 +278,7 @@ export function CollectionScreen() {
                   />
                 </div>
                 <div className="slot-head">
-                  <strong>
-                    {card.icon} {card.name}
-                  </strong>
+                  <strong>{card.name}</strong>
                   <span className="stats">{card.cost} 💧</span>
                 </div>
                 <div className="card-meta-row">
@@ -283,9 +290,11 @@ export function CollectionScreen() {
                   <span><StatIcon kind="attack" /> {card.attack}</span>
                   <span><StatIcon kind="health" /> {card.health}</span>
                 </div>
-                {card.effect && <EffectBadge effect={card.effect} compact />}
-                <p className="card-text clamped">{card.text}</p>
-              </div>
+                <div className="builder-card-footnote">
+                  {card.effect && <EffectBadge effect={card.effect} compact />}
+                  <span className="mini-text">Hold to inspect</span>
+                </div>
+              </button>
 
               <div className="stepper">
                 <button className="ghost mini" onClick={() => handleDeckCount(card.id, -1)}>

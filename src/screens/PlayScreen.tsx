@@ -6,7 +6,7 @@ export function PlayScreen() {
   const { activeScreen, openScreen } = useAppShell()
   const {
     gameInProgress, game, handleResumeBattle, handleAbandonBattle,
-    preferredMode, handleModeChange,
+    preferredMode, handleModeChange, isRankedBattle,
     resolvedAIDifficulty, aiDifficultySetting, handleAIDifficultyChange,
     startMatch,
   } = useGame()
@@ -34,7 +34,7 @@ export function PlayScreen() {
           <div className="game-resume-block">
             <p className="note">Battle in progress vs <strong>{game.enemy.name}</strong> · Turn {game.turnNumber}</p>
             <div className="controls">
-              <button className="primary" onClick={handleResumeBattle}>Resume Battle</button>
+              <button className="primary" onClick={handleResumeBattle}>{isRankedBattle ? 'Rejoin Battle' : 'Resume Battle'}</button>
               <button className="ghost" onClick={handleAbandonBattle}>Abandon</button>
             </div>
           </div>

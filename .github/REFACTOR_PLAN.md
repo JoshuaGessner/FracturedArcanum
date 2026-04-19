@@ -242,6 +242,22 @@ After removal: build, test, lint must all pass. The `room:emote` socket event be
 
 **Goal:** Restructure screens to match the planned 7-screen architecture. One screen at a time, test after each.
 
+### Unified Dense-Screen Standard
+
+Any screen that contains multiple unrelated task groups must use a thin landing view with clear buttons into focused subpages rather than a single long scroll stack.
+
+Apply this standard to:
+- Settings → Preferences, Support, Admin
+- Shop → Reward Vault, Packs, Themes, Borders, Breakdown
+- Social → Friends, Leaderboard, Clan, Trades
+- Any future admin or economy surface
+
+Rules:
+- Keep the root screen scannable on a phone without deep vertical overflow.
+- Put the most frequent actions first and advanced tools one step deeper.
+- Use the same visual language for all app-internal subpage hubs so the UX stays consistent.
+- Reuse the app’s custom confirm modal and inspect modal patterns instead of native browser prompts.
+
 ### 2A. Update `AppScreen` type
 
 ```typescript

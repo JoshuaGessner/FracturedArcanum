@@ -578,16 +578,19 @@ function ensureVisitor(visitorId, sessionId, route, screen) {
       lastSeen: new Date().toISOString(),
       lastRoute: route,
       lastScreen: screen,
+      lastViewport: 'unknown',
       sessions: 0,
       events: 0,
       matches: 0,
       complaints: 0,
       installs: 0,
       lastSessionId: '',
+      pageViewWindow: {},
     }
   }
 
   const visitor = adminStore.visitors[anonymousUser]
+  visitor.pageViewWindow = visitor.pageViewWindow ?? {}
 
   if (sessionId && visitor.lastSessionId !== sessionId) {
     visitor.sessions += 1
@@ -609,18 +612,27 @@ function trackAnalyticsEvent(payload = {}) {
   const type = String(payload.type ?? 'page_view')
   const route = String(payload.route ?? 'home')
   const meta = payload.meta && typeof payload.meta === 'object' ? payload.meta : {}
-  const screen = String(meta.screen ?? 'unknown')
+  const rawScreen = String(meta.screen ?? route)
+  const screen = ['mobile', 'tablet', 'desktop', 'unknown'].includes(rawScreen) ? route : rawScreen
+  const viewport = String(meta.viewport ?? (['mobile', 'tablet', 'desktop'].includes(rawScreen) ? rawScreen : 'unknown'))
   const dayKey = new Date().toISOString().slice(0, 10)
   const { anonymousUser, visitor } = ensureVisitor(visitorId, sessionId, route, screen)
 
   visitor.events += 1
+  visitor.lastViewport = viewport
   adminStore.totals.events += 1
 
   if (type === 'page_view') {
-    adminStore.totals.pageViews += 1
-    adminStore.pageViews[route] = (adminStore.pageViews[route] ?? 0) + 1
-    adminStore.dailyTraffic[dayKey] = (adminStore.dailyTraffic[dayKey] ?? 0) + 1
-    adminStore.deviceBuckets[screen] = (adminStore.deviceBuckets[screen] ?? 0) + 1
+    const pageKey = `${route}:${screen}`
+    const lastCountedAt = Number(visitor.pageViewWindow?.[pageKey] ?? 0)
+    const now = Date.now()
+    if (now - lastCountedAt >= 15000) {
+      adminStore.totals.pageViews += 1
+      adminStore.pageViews[route] = (adminStore.pageViews[route] ?? 0) + 1
+      adminStore.dailyTraffic[dayKey] = (adminStore.dailyTraffic[dayKey] ?? 0) + 1
+      adminStore.deviceBuckets[viewport] = (adminStore.deviceBuckets[viewport] ?? 0) + 1
+      visitor.pageViewWindow[pageKey] = now
+    }
   }
 
   if (type === 'queue_join') {

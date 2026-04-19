@@ -5,7 +5,7 @@ import { getStreakTier } from '../utils'
 
 export function HomeScreen() {
   const { activeScreen, dailyQuest, justClaimedDaily, seasonName, seasonEnd } = useAppShell()
-  const { gameInProgress, game, handleResumeBattle, handleAbandonBattle } = useGame()
+  const { gameInProgress, game, handleResumeBattle, handleAbandonBattle, isRankedBattle } = useGame()
   const { record, winRate, selectedDeckSize, serverProfile, rankLabel, runes, canClaimDailyReward, nextRewardLabel } = useProfile()
 
   const streakTier = getStreakTier(record.streak)
@@ -67,7 +67,7 @@ export function HomeScreen() {
           <div className="game-resume-block">
             <p className="note">Battle in progress vs <strong>{game.enemy.name}</strong> · Turn {game.turnNumber}</p>
             <div className="controls">
-              <button className="primary" onClick={handleResumeBattle}>Resume Battle</button>
+              <button className="primary" onClick={handleResumeBattle}>{isRankedBattle ? 'Rejoin Battle' : 'Resume Battle'}</button>
               <button className="ghost" onClick={handleAbandonBattle}>Abandon</button>
             </div>
           </div>

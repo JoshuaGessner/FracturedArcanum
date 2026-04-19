@@ -96,6 +96,10 @@ A detailed code index lives in `.github/index/`. **Consult it before writing or 
 - Use semantic HTML elements where possible.
 - New styles go in `App.css` in the appropriate section (see `06-styles.md`).
 - Support `prefers-reduced-motion` for all new animations.
+- Dense multi-purpose mobile screens must use a unified hub-plus-subpage pattern instead of one long vertical stack. Keep the root view focused, and move secondary tools into dedicated subviews.
+- Frequent player actions stay on the first view; admin, clan, leaderboard, vault, breakdown, and similar secondary tools should live one tap deeper with clear Back navigation.
+- Do not use browser `prompt` or `confirm` flows for production UX when an in-app modal pattern exists. Reuse the app’s confirm and inspect surfaces.
+- Battle layouts must preserve clear separation between HUD, board, and hand at phone sizes so no critical game element overlaps or becomes unreachable.
 
 ### Asset & Audio Rules
 - All new visual assets go through `scripts/generate-brand-assets.mjs` and are registered in `public/generated/asset-manifest.json`.

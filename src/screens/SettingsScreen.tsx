@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { RankBadge } from '../components/AssetBadge'
 import { formatTimestamp, getComplaintSeverityTone } from '../utils'
 import { useAppShell, useProfile } from '../contexts'
@@ -23,8 +24,11 @@ export function SettingsScreen() {
     gesturesEnabled, setGesturesEnabled,
     hapticsEnabled, setHapticsEnabled,
     settingsSubview, openSettingsSubview, resetSettingsSubview,
+    installPromptEvent, handleInstallApp, handleLogout,
   } = useAppShell()
   const { isAdminRole, isOwnerRole, accountRole, serverProfile } = useProfile()
+
+  const [adminSubview, setAdminSubview] = useState<'overview' | 'traffic' | 'complaints' | 'roles' | 'audit'>('overview')
 
   const playerDisplayName = serverProfile?.displayName ?? serverProfile?.username ?? 'Guest'
   const visitorSuffix = (visitorId || 'guest').slice(-6).toUpperCase()
@@ -162,6 +166,24 @@ export function SettingsScreen() {
                 Replay
               </button>
             </div>
+
+            <div className="settings-toggle-row">
+              <span>Install App</span>
+              {installPromptEvent ? (
+                <button className="ghost mini" onClick={() => void handleInstallApp()}>
+                  Install
+                </button>
+              ) : (
+                <span className="mini-text">Unavailable</span>
+              )}
+            </div>
+
+            <div className="settings-toggle-row">
+              <span>Log Out</span>
+              <button className="ghost mini" onClick={handleLogout}>
+                Sign Out
+              </button>
+            </div>
           </div>
         ) : (
           <p className="note settings-view-note">
@@ -277,30 +299,98 @@ export function SettingsScreen() {
 
         {adminOverview && (
           <>
-            <div className="insight-grid">
-              <div className="stat-tile">
-                <strong>{adminOverview.totals.uniqueVisitors}</strong>
-                <span>Unique Guests</span>
-              </div>
-              <div className="stat-tile">
-                <strong>{adminOverview.totals.pageViews}</strong>
-                <span>Page Views</span>
-              </div>
-              <div className="stat-tile">
-                <strong>{adminOverview.totals.matchesCompleted}</strong>
-                <span>Completed Matches</span>
-              </div>
-              <div className="stat-tile">
-                <strong>{adminOverview.totals.complaintsOpen}</strong>
-                <span>Open Complaints</span>
-              </div>
+            <div className="settings-hub-grid admin-hub-grid">
+              <button className="settings-hub-tile" onClick={() => setAdminSubview('overview')}>
+                <strong>Overview</strong>
+                <span>Live ops settings and key health counts.</span>
+              </button>
+              <button className="settings-hub-tile" onClick={() => setAdminSubview('traffic')}>
+                <strong>Traffic</strong>
+                <span>Route activity, viewport mix, and daily visits.</span>
+              </button>
+              <button className="settings-hub-tile" onClick={() => setAdminSubview('complaints')}>
+                <strong>Complaints</strong>
+                <span>Review incoming player issues in one place.</span>
+              </button>
+              <button className="settings-hub-tile" onClick={() => setAdminSubview('roles')}>
+                <strong>Roles</strong>
+                <span>Permission and ownership management.</span>
+              </button>
+              <button className="settings-hub-tile" onClick={() => setAdminSubview('audit')}>
+                <strong>Audit</strong>
+                <span>Recent admin actions and metadata.</span>
+              </button>
             </div>
 
-            <div className="admin-columns">
+            {adminSubview === 'overview' && (
+              <>
+                <div className="insight-grid">
+                  <div className="stat-tile">
+                    <strong>{adminOverview.totals.uniqueVisitors}</strong>
+                    <span>Unique Guests</span>
+                  </div>
+                  <div className="stat-tile">
+                    <strong>{adminOverview.totals.pageViews}</strong>
+                    <span>Page Views</span>
+                  </div>
+                  <div className="stat-tile">
+                    <strong>{adminOverview.totals.matchesCompleted}</strong>
+                    <span>Completed Matches</span>
+                  </div>
+                  <div className="stat-tile">
+                    <strong>{adminOverview.totals.complaintsOpen}</strong>
+                    <span>Open Complaints</span>
+                  </div>
+                </div>
+
+                <div className="admin-panel-block">
+                  <h3>Live Ops Controls</h3>
+                  <div className="form-stack">
+                    <label className="form-field">
+                      <span>Message of the day</span>
+                      <input
+                        className="text-input"
+                        value={adminSettings.motd}
+                        onChange={(event) => setAdminSettings((current) => ({ ...current, motd: event.target.value }))}
+                      />
+                    </label>
+                    <label className="form-field">
+                      <span>Daily quest</span>
+                      <input
+                        className="text-input"
+                        value={adminSettings.quest}
+                        onChange={(event) => setAdminSettings((current) => ({ ...current, quest: event.target.value }))}
+                      />
+                    </label>
+                    <label className="form-field">
+                      <span>Featured mode</span>
+                      <input
+                        className="text-input"
+                        value={adminSettings.featuredMode}
+                        onChange={(event) => setAdminSettings((current) => ({ ...current, featuredMode: event.target.value }))}
+                      />
+                    </label>
+                    <label className="checkbox-row maintenance-toggle">
+                      <input
+                        type="checkbox"
+                        checked={adminSettings.maintenanceMode}
+                        onChange={(event) => setAdminSettings((current) => ({ ...current, maintenanceMode: event.target.checked }))}
+                      />
+                      <span>Maintenance mode</span>
+                    </label>
+                    <button className="primary" onClick={() => void handleSaveAdminSettings()}>
+                      Save Live Settings
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {adminSubview === 'traffic' && (
               <div className="admin-panel-block">
                 <h3>Traffic by Section</h3>
                 <ul className="stats-list">
-                  {adminOverview.traffic.pages.slice(0, 5).map((entry) => (
+                  {adminOverview.traffic.pages.slice(0, 8).map((entry) => (
                     <li key={entry.route}>
                       <span>{entry.route}</span>
                       <strong>{entry.views}</strong>
@@ -308,9 +398,9 @@ export function SettingsScreen() {
                   ))}
                 </ul>
 
-                <h3>Device Mix</h3>
+                <h3>Viewport Mix</h3>
                 <ul className="stats-list">
-                  {adminOverview.traffic.devices.slice(0, 4).map((entry) => (
+                  {adminOverview.traffic.devices.slice(0, 6).map((entry) => (
                     <li key={entry.label}>
                       <span>{entry.label}</span>
                       <strong>{entry.count}</strong>
@@ -320,7 +410,7 @@ export function SettingsScreen() {
 
                 <h3>Traffic by Day</h3>
                 <ul className="stats-list">
-                  {adminOverview.traffic.daily.slice(-5).reverse().map((entry) => (
+                  {adminOverview.traffic.daily.slice(-7).reverse().map((entry) => (
                     <li key={entry.day}>
                       <span>{entry.day}</span>
                       <strong>{entry.views}</strong>
@@ -328,219 +418,148 @@ export function SettingsScreen() {
                   ))}
                 </ul>
               </div>
+            )}
 
+            {adminSubview === 'complaints' && (
               <div className="admin-panel-block">
-                <h3>Live Ops Controls</h3>
-                <div className="form-stack">
-                  <label className="form-field">
-                    <span>Message of the day</span>
-                    <input
-                      className="text-input"
-                      value={adminSettings.motd}
-                      onChange={(event) =>
-                        setAdminSettings((current) => ({ ...current, motd: event.target.value }))
-                      }
-                    />
-                  </label>
-
-                  <label className="form-field">
-                    <span>Daily quest</span>
-                    <input
-                      className="text-input"
-                      value={adminSettings.quest}
-                      onChange={(event) =>
-                        setAdminSettings((current) => ({ ...current, quest: event.target.value }))
-                      }
-                    />
-                  </label>
-
-                  <label className="form-field">
-                    <span>Featured mode</span>
-                    <input
-                      className="text-input"
-                      value={adminSettings.featuredMode}
-                      onChange={(event) =>
-                        setAdminSettings((current) => ({
-                          ...current,
-                          featuredMode: event.target.value,
-                        }))
-                      }
-                    />
-                  </label>
-
-                  <label className="checkbox-row maintenance-toggle">
-                    <input
-                      type="checkbox"
-                      checked={adminSettings.maintenanceMode}
-                      onChange={(event) =>
-                        setAdminSettings((current) => ({
-                          ...current,
-                          maintenanceMode: event.target.checked,
-                        }))
-                      }
-                    />
-                    <span>Maintenance mode</span>
-                  </label>
-
-                  <button className="primary" onClick={() => void handleSaveAdminSettings()}>
-                    Save Live Settings
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div className="admin-panel-block">
-              <div className="section-head log-heading">
-                <h3>Recent Player Complaints</h3>
-                <span className="badge">Resolved {adminOverview.totals.complaintsResolved}</span>
-              </div>
-
-              <div className="ticket-list">
-                {adminOverview.complaints.length === 0 ? (
-                  <p className="note">No complaints have been submitted yet.</p>
-                ) : (
-                  adminOverview.complaints.slice(0, 5).map((complaint) => (
-                    <div className="ticket-card" key={complaint.id}>
-                      <div className="slot-head">
-                        <strong>{complaint.summary}</strong>
-                        <span
-                          className={`queue-pill ${
-                            complaint.status === 'resolved'
-                              ? 'found'
-                              : complaint.status === 'investigating'
-                                ? 'searching'
-                                : 'idle'
-                          }`}
-                        >
-                          {complaint.status}
-                        </span>
-                      </div>
-                      <p className="mini-text">{complaint.details}</p>
-                      <div className="badges">
-                        <span className="badge">{complaint.id}</span>
-                        <span className="badge">{complaint.category}</span>
-                        <span className="badge">{complaint.severity}</span>
-                        <span className="badge">{formatTimestamp(complaint.createdAt)}</span>
-                      </div>
-                      <div className="controls">
-                        <button
-                          className="ghost"
-                          onClick={() => void handleUpdateComplaintStatus(complaint.id, 'investigating')}
-                        >
-                          Investigating
-                        </button>
-                        <button
-                          className="primary"
-                          onClick={() => void handleUpdateComplaintStatus(complaint.id, 'resolved')}
-                        >
-                          Resolve
-                        </button>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-
-            {isOwnerRole && (
-              <div className="admin-panel-block admin-role-block">
                 <div className="section-head log-heading">
-                  <h3>Account Roles</h3>
-                  <span className="badge">Owner</span>
+                  <h3>Recent Player Complaints</h3>
+                  <span className="badge">Resolved {adminOverview.totals.complaintsResolved}</span>
                 </div>
-
-                <div className="admin-auth-row">
-                  <input
-                    className="text-input"
-                    value={adminUserSearch}
-                    placeholder="Search users by username, name, or id"
-                    onChange={(event) => setAdminUserSearch(event.target.value)}
-                  />
-                  <button className="secondary" onClick={() => void refreshAdminUsers(adminUserSearch)}>
-                    {adminUsersLoading ? 'Loading…' : 'Search'}
-                  </button>
-                </div>
-
-                <ul className="role-list">
-                  {adminUsers.length === 0 ? (
-                    <li className="note">No users loaded. Click search to list accounts.</li>
+                <div className="ticket-list">
+                  {adminOverview.complaints.length === 0 ? (
+                    <p className="note">No complaints have been submitted yet.</p>
                   ) : (
-                    adminUsers.map((user) => {
-                      const isSelf = user.accountId === (serverProfile?.accountId ?? '')
-                      const isRoleOwner = user.role === 'owner'
-                      return (
-                        <li className="role-row" key={user.accountId}>
-                          <div className="role-identity">
-                            <strong>{user.displayName || user.username}</strong>
-                            <span className="mini-text">@{user.username}</span>
-                            <span className={`badge role-badge role-${user.role}`}>
-                              {user.role === 'owner' ? 'Owner' : user.role === 'admin' ? 'Admin' : 'Player'}
-                            </span>
-                          </div>
-                          <div className="controls">
-                            {isRoleOwner || isSelf ? (
-                              <span className="mini-text">
-                                {isSelf ? 'You' : 'Cannot modify the owner'}
-                              </span>
-                            ) : user.role === 'admin' ? (
-                              <button className="ghost" onClick={() => void handleSetUserRole(user, 'user')}>
-                                Demote to Player
-                              </button>
-                            ) : (
-                              <button className="primary" onClick={() => void handleSetUserRole(user, 'admin')}>
-                                Promote to Admin
-                              </button>
-                            )}
-                          </div>
-                        </li>
-                      )
-                    })
+                    adminOverview.complaints.slice(0, 10).map((complaint) => (
+                      <div className="ticket-card" key={complaint.id}>
+                        <div className="slot-head">
+                          <strong>{complaint.summary}</strong>
+                          <span className={`queue-pill ${complaint.status === 'resolved' ? 'found' : complaint.status === 'investigating' ? 'searching' : 'idle'}`}>
+                            {complaint.status}
+                          </span>
+                        </div>
+                        <p className="mini-text">{complaint.details}</p>
+                        <div className="badges">
+                          <span className="badge">{complaint.id}</span>
+                          <span className="badge">{complaint.category}</span>
+                          <span className="badge">{complaint.severity}</span>
+                          <span className="badge">{formatTimestamp(complaint.createdAt)}</span>
+                        </div>
+                        <div className="controls">
+                          <button className="ghost" onClick={() => void handleUpdateComplaintStatus(complaint.id, 'investigating')}>
+                            Investigating
+                          </button>
+                          <button className="primary" onClick={() => void handleUpdateComplaintStatus(complaint.id, 'resolved')}>
+                            Resolve
+                          </button>
+                        </div>
+                      </div>
+                    ))
                   )}
-                </ul>
-
-                <div className="section-head log-heading">
-                  <h3>Transfer Ownership</h3>
-                  <span className="badge">Irreversible</span>
                 </div>
-                <form className="form-stack" onSubmit={handleTransferOwnership}>
-                  <label className="form-field">
-                    <span>New owner</span>
-                    <select
-                      className="text-input"
-                      value={transferForm.targetAccountId}
-                      onChange={(event) => setTransferForm((f) => ({ ...f, targetAccountId: event.target.value }))}
-                    >
-                      <option value="">Choose an admin from the list above…</option>
-                      {adminUsers
-                        .filter((user) => user.accountId !== (serverProfile?.accountId ?? ''))
-                        .map((user) => (
-                          <option key={user.accountId} value={user.accountId}>
-                            @{user.username}{user.displayName ? ` (${user.displayName})` : ''}{user.role === 'admin' ? ' • admin' : ''}
-                          </option>
-                        ))}
-                    </select>
-                  </label>
-                  <label className="form-field">
-                    <span>Confirm your password</span>
-                    <input
-                      className="text-input"
-                      type="password"
-                      autoComplete="current-password"
-                      value={transferForm.password}
-                      onChange={(event) => setTransferForm((f) => ({ ...f, password: event.target.value }))}
-                    />
-                  </label>
-                  {transferStatus && <p className={`toast toast-${inferToastSeverity(transferStatus)} toast-line`}>{transferStatus}</p>}
-                  <div className="controls">
-                    <button className="btn-danger" type="submit" disabled={!transferForm.targetAccountId || !transferForm.password}>
-                      Transfer ownership
-                    </button>
-                  </div>
-                </form>
               </div>
             )}
 
-            {isAdminRole && (
+            {adminSubview === 'roles' && (
+              <div className="admin-panel-block admin-role-block">
+                {isOwnerRole ? (
+                  <>
+                    <div className="section-head log-heading">
+                      <h3>Account Roles</h3>
+                      <span className="badge">Owner</span>
+                    </div>
+                    <div className="admin-auth-row">
+                      <input
+                        className="text-input"
+                        value={adminUserSearch}
+                        placeholder="Search users by username, name, or id"
+                        onChange={(event) => setAdminUserSearch(event.target.value)}
+                      />
+                      <button className="secondary" onClick={() => void refreshAdminUsers(adminUserSearch)}>
+                        {adminUsersLoading ? 'Loading…' : 'Search'}
+                      </button>
+                    </div>
+                    <ul className="role-list">
+                      {adminUsers.length === 0 ? (
+                        <li className="note">No users loaded. Click search to list accounts.</li>
+                      ) : (
+                        adminUsers.map((user) => {
+                          const isSelf = user.accountId === (serverProfile?.accountId ?? '')
+                          const isRoleOwner = user.role === 'owner'
+                          return (
+                            <li className="role-row" key={user.accountId}>
+                              <div className="role-identity">
+                                <strong>{user.displayName || user.username}</strong>
+                                <span className="mini-text">@{user.username}</span>
+                                <span className={`badge role-badge role-${user.role}`}>
+                                  {user.role === 'owner' ? 'Owner' : user.role === 'admin' ? 'Admin' : 'Player'}
+                                </span>
+                              </div>
+                              <div className="controls">
+                                {isRoleOwner || isSelf ? (
+                                  <span className="mini-text">{isSelf ? 'You' : 'Cannot modify the owner'}</span>
+                                ) : user.role === 'admin' ? (
+                                  <button className="ghost" onClick={() => void handleSetUserRole(user, 'user')}>
+                                    Demote to Player
+                                  </button>
+                                ) : (
+                                  <button className="primary" onClick={() => void handleSetUserRole(user, 'admin')}>
+                                    Promote to Admin
+                                  </button>
+                                )}
+                              </div>
+                            </li>
+                          )
+                        })
+                      )}
+                    </ul>
+                    <div className="section-head log-heading">
+                      <h3>Transfer Ownership</h3>
+                      <span className="badge">Irreversible</span>
+                    </div>
+                    <form className="form-stack" onSubmit={handleTransferOwnership}>
+                      <label className="form-field">
+                        <span>New owner</span>
+                        <select
+                          className="text-input"
+                          value={transferForm.targetAccountId}
+                          onChange={(event) => setTransferForm((f) => ({ ...f, targetAccountId: event.target.value }))}
+                        >
+                          <option value="">Choose an admin from the list above…</option>
+                          {adminUsers
+                            .filter((user) => user.accountId !== (serverProfile?.accountId ?? ''))
+                            .map((user) => (
+                              <option key={user.accountId} value={user.accountId}>
+                                @{user.username}{user.displayName ? ` (${user.displayName})` : ''}{user.role === 'admin' ? ' • admin' : ''}
+                              </option>
+                            ))}
+                        </select>
+                      </label>
+                      <label className="form-field">
+                        <span>Confirm your password</span>
+                        <input
+                          className="text-input"
+                          type="password"
+                          autoComplete="current-password"
+                          value={transferForm.password}
+                          onChange={(event) => setTransferForm((f) => ({ ...f, password: event.target.value }))}
+                        />
+                      </label>
+                      {transferStatus && <p className={`toast toast-${inferToastSeverity(transferStatus)} toast-line`}>{transferStatus}</p>}
+                      <div className="controls">
+                        <button className="btn-danger" type="submit" disabled={!transferForm.targetAccountId || !transferForm.password}>
+                          Transfer ownership
+                        </button>
+                      </div>
+                    </form>
+                  </>
+                ) : (
+                  <p className="note">Only the server owner can manage roles and ownership transfer.</p>
+                )}
+              </div>
+            )}
+
+            {adminSubview === 'audit' && (
               <div className="admin-panel-block">
                 <div className="section-head log-heading">
                   <h3>Admin Audit Log</h3>
@@ -589,12 +608,8 @@ export function SettingsScreen() {
                               {entry.target ? ` → @${entry.target.username}` : ''}
                             </span>
                             <span className="mini-text">{formatTimestamp(entry.createdAt)}</span>
-                            {hasMeta && (
-                              <span className="mini-text" aria-hidden="true">{expanded ? '▾' : '▸'}</span>
-                            )}
-                            {expanded && hasMeta && (
-                              <pre className="audit-meta">{JSON.stringify(entry.metadata, null, 2)}</pre>
-                            )}
+                            {hasMeta && <span className="mini-text" aria-hidden="true">{expanded ? '▾' : '▸'}</span>}
+                            {expanded && hasMeta && <pre className="audit-meta">{JSON.stringify(entry.metadata, null, 2)}</pre>}
                           </li>
                         )
                       })

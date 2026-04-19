@@ -45,6 +45,7 @@ import {
 } from './utils'
 import { ToastStack } from './components/ToastStack'
 import { ConfirmModal } from './components/ConfirmModal'
+import { TextPromptModal } from './components/TextPromptModal'
 import { CardInspectModal } from './components/CardInspectModal'
 import { NavBar } from './components/NavBar'
 import { TopBar } from './components/TopBar'
@@ -306,6 +307,16 @@ function AppShell() {
   type ConfirmRequest = ConfirmOptions & { resolve: (ok: boolean) => void }
   const [confirmRequest, setConfirmRequest] = useState<ConfirmRequest | null>(null)
   const [confirmTextInput, setConfirmTextInput] = useState('')
+  type TextPromptRequest = {
+    title: string
+    label: string
+    confirmLabel?: string
+    placeholder?: string
+    initialValue?: string
+    resolve: (value: string | null) => void
+  }
+  const [textPromptRequest, setTextPromptRequest] = useState<TextPromptRequest | null>(null)
+  const [textPromptValue, setTextPromptValue] = useState('')
   const askConfirm = useCallback(
     (options: ConfirmOptions): Promise<boolean> =>
       new Promise<boolean>((resolve) => {
@@ -323,6 +334,24 @@ function AppShell() {
       setConfirmTextInput('')
     },
     [],
+  )
+  const askTextPrompt = useCallback(
+    (options: Omit<TextPromptRequest, 'resolve'>): Promise<string | null> =>
+      new Promise<string | null>((resolve) => {
+        setTextPromptValue(options.initialValue ?? '')
+        setTextPromptRequest({ ...options, resolve })
+      }),
+    [],
+  )
+  const closeTextPrompt = useCallback(
+    (ok: boolean) => {
+      setTextPromptRequest((current) => {
+        if (current) current.resolve(ok ? textPromptValue.trim() : null)
+        return null
+      })
+      setTextPromptValue('')
+    },
+    [textPromptValue],
   )
   const [swUpdateAvailable, setSwUpdateAvailable] = useState(false)
   const swRegistrationRef = useRef<ServiceWorkerRegistration | null>(null)
@@ -1114,12 +1143,18 @@ function AppShell() {
     [authToken],
   )
 
-  function handleCreateDeck() {
+  async function handleCreateDeck() {
     if (!authToken) {
       setToastMessage('Sign in to save multiple decks.')
       return
     }
-    const name = window.prompt('Name your new deck (1-30 characters):', `Deck ${savedDecks.length + 1}`)?.trim()
+    const name = await askTextPrompt({
+      title: 'Create Deck',
+      label: 'Deck name',
+      confirmLabel: 'Create',
+      placeholder: 'Deck name',
+      initialValue: `Deck ${savedDecks.length + 1}`,
+    })
     if (!name) return
     void authFetch('/api/me/decks', authToken, {
       method: 'POST',
@@ -1133,18 +1168,21 @@ function AppShell() {
         }
         await reloadDecks()
         if (data.deck) {
-          // Switching active to the newly-created deck would discard the
-          // current builder state; instead, just update the list and let
-          // the player select it explicitly.
           setToastMessage(`Deck "${data.deck.name}" created.`)
         }
       })
       .catch(() => setToastMessage('Could not create deck.'))
   }
 
-  function handleRenameDeck(deck: SavedDeck) {
+  async function handleRenameDeck(deck: SavedDeck) {
     if (!authToken) return
-    const name = window.prompt('Rename deck:', deck.name)?.trim()
+    const name = await askTextPrompt({
+      title: 'Rename Deck',
+      label: 'Deck name',
+      confirmLabel: 'Save',
+      placeholder: 'Deck name',
+      initialValue: deck.name,
+    })
     if (!name || name === deck.name) return
     void authFetch(`/api/me/decks/${deck.id}/rename`, authToken, {
       method: 'POST',
@@ -1162,13 +1200,20 @@ function AppShell() {
       .catch(() => setToastMessage('Could not rename deck.'))
   }
 
-  function handleDeleteDeck(deck: SavedDeck) {
+  async function handleDeleteDeck(deck: SavedDeck) {
     if (!authToken) return
     if (savedDecks.length <= 1) {
       setToastMessage('You need at least one deck. Create another before deleting this one.')
       return
     }
-    if (!window.confirm(`Delete deck "${deck.name}"? This cannot be undone.`)) return
+    const ok = await askConfirm({
+      title: 'Delete Deck',
+      body: <p>Delete <strong>{deck.name}</strong>? This cannot be undone.</p>,
+      confirmLabel: 'Delete',
+      cancelLabel: 'Keep Deck',
+      danger: true,
+    })
+    if (!ok) return
     void authFetch(`/api/me/decks/${deck.id}`, authToken, { method: 'DELETE' })
       .then((r) => r.json())
       .then(async (data: { ok: boolean; error?: string }) => {
@@ -1401,12 +1446,13 @@ function AppShell() {
     void sendAnalytics(
       'page_view',
       {
-        screen: getScreenBucket(),
+        screen: activeScreen,
+        viewport: getScreenBucket(),
         mode: game.mode,
       },
-      'home',
+      activeScreen,
     )
-  }, [game.mode, sendAnalytics])
+  }, [activeScreen, game.mode, sendAnalytics])
 
   useEffect(() => {
     const prev = prevBoardRef.current
@@ -1833,7 +1879,7 @@ function AppShell() {
         }
       })
       .catch(() => setToastMessage('Network error claiming daily reward.'))
-    void sendAnalytics('reward_claim', { amount: 50, currency: 'shards' }, 'vault')
+    void sendAnalytics('reward_claim', { amount: 50, currency: 'shards', screen: activeScreen, viewport: getScreenBucket() }, 'vault')
   }
 
   function handleEquipTheme(themeId: CosmeticTheme, cost: number) {
@@ -1880,7 +1926,7 @@ function AppShell() {
       setToastMessage(`${THEME_OFFERS.find((item) => item.id === themeId)?.name ?? 'Theme'} equipped.`)
     }
 
-    void sendAnalytics('cosmetic_equip', { themeId }, 'vault')
+    void sendAnalytics('cosmetic_equip', { themeId, screen: activeScreen, viewport: getScreenBucket() }, 'vault')
   }
 
   async function refreshAdminOverview() {
@@ -2580,7 +2626,7 @@ function AppShell() {
     )
 
     if (result.outcome === 'accepted') {
-      void sendAnalytics('install', { screen: getScreenBucket() }, 'install')
+      void sendAnalytics('install', { screen: activeScreen, viewport: getScreenBucket() }, 'install')
     }
 
     setInstallPromptEvent(null)
@@ -2628,7 +2674,8 @@ function AppShell() {
       {
         rank: rankLabel,
         deckSize: selectedDeckSize,
-        screen: getScreenBucket(),
+        screen: activeScreen,
+        viewport: getScreenBucket(),
       },
       'queue',
     )
@@ -2917,6 +2964,13 @@ function AppShell() {
         onClose={closeConfirm}
       />
 
+      <TextPromptModal
+        request={textPromptRequest}
+        value={textPromptValue}
+        onChange={setTextPromptValue}
+        onClose={closeTextPrompt}
+      />
+
       {/* ─── First-launch setup ─────────────────────────────────────── */}
       {setupRequired && (
         <div className="auth-gate">
@@ -3049,14 +3103,6 @@ function AppShell() {
         <TopBar
           screenTitle={screenTitle}
           serverProfile={serverProfile}
-          soundEnabled={soundEnabled}
-          onToggleSound={() => {
-            playSound('tap', !soundEnabled)
-            setSoundEnabled((value) => !value)
-          }}
-          installPromptEvent={installPromptEvent}
-          onInstallApp={() => void handleInstallApp()}
-          onLogout={handleLogout}
         />
       )}
 

@@ -8,7 +8,7 @@ describe('TopBar mobile variants', () => {
     cleanup()
   })
 
-  it('keeps home actions visible while using an icon-led home header', () => {
+  it('renders a slimmer home header with the crest, wordmark, and username', () => {
     render(
       <TopBar
         screenTitle="Arena Home"
@@ -27,19 +27,14 @@ describe('TopBar mobile variants', () => {
           lastDaily: '',
           totalEarned: 0,
         }}
-        soundEnabled={true}
-        onToggleSound={() => {}}
-        installPromptEvent={null}
-        onInstallApp={() => {}}
-        onLogout={() => {}}
       />,
     )
 
     expect(screen.getByRole('img', { name: /fractured arcanum home crest/i })).toBeTruthy()
     expect(screen.queryByText('Arena Home')).toBeNull()
-    expect(screen.queryByText('Fractured Arcanum')).toBeNull()
-    expect(screen.getByRole('button', { name: /sound on/i })).toBeTruthy()
-    expect(screen.getByRole('button', { name: /logout/i })).toBeTruthy()
+    expect(screen.getByText('Fractured Arcanum')).toBeTruthy()
+    expect(screen.getByText('@josh')).toBeTruthy()
+    expect(screen.queryByRole('button')).toBeNull()
   })
 
   it('renders a compact header without home action buttons on inner screens', () => {
@@ -61,15 +56,10 @@ describe('TopBar mobile variants', () => {
           lastDaily: '',
           totalEarned: 0,
         }}
-        soundEnabled={true}
-        onToggleSound={() => {}}
-        installPromptEvent={null}
-        onInstallApp={() => {}}
-        onLogout={() => {}}
       />,
     )
 
-    expect(screen.queryByRole('button', { name: /logout/i })).toBeNull()
+    expect(screen.queryByRole('button')).toBeNull()
     expect(screen.queryByText('Fractured Arcanum')).toBeNull()
     expect(screen.getByText('Collection')).toBeTruthy()
   })

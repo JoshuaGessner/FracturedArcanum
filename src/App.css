@@ -552,11 +552,11 @@ button:disabled {
 
 .topbar {
   display: grid;
-  gap: 10px;
+  gap: 8px;
 }
 
 .topbar-home {
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr);
   align-items: center;
 }
 
@@ -588,6 +588,11 @@ button:disabled {
   min-width: 0;
 }
 
+.brand-block-home {
+  gap: 12px;
+  padding: 2px 4px;
+}
+
 .brand-copy {
   display: grid;
   gap: 2px;
@@ -610,7 +615,7 @@ button:disabled {
 }
 
 .brand-logo-home {
-  width: clamp(76px, 18vw, 104px);
+  width: clamp(58px, 14vw, 78px);
 }
 
 @keyframes logoPulse {
@@ -720,6 +725,21 @@ button:disabled {
 
 .season-progress-core strong {
   font-size: 0.9rem;
+}
+
+.season-progress-core .rank-badge-art {
+  padding: 0;
+  background: transparent;
+  justify-content: center;
+}
+
+.season-progress-core .rank-badge-art span {
+  display: none;
+}
+
+.season-progress-core .rank-badge-art img {
+  width: 24px;
+  height: 24px;
 }
 
 /* ─── Generic Flex Rows ─────────────────────────────────────────── */
@@ -1103,6 +1123,12 @@ button:disabled {
   font-size: var(--font-md);
 }
 
+.social-primary-list,
+.shop-hub-grid,
+.social-hub-grid {
+  margin-top: 10px;
+}
+
 .badge, .deck-status {
   padding: 6px 10px;
   border-radius: 999px;
@@ -1428,10 +1454,11 @@ button:disabled {
 .battlefield-stage {
   display: grid;
   grid-template-rows: minmax(0, 1fr) auto minmax(0, 1fr);
-  gap: 8px;
-  padding-top: 8px;
+  gap: 6px;
+  padding-top: 4px;
   height: 100%;
   min-height: 0;
+  overflow: hidden;
 }
 
 .battlefield-side {
@@ -1447,9 +1474,9 @@ button:disabled {
 .battle-centerline {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 5px 8px;
+  justify-content: center;
+  gap: 6px;
+  padding: 3px 8px;
   border-radius: 10px;
   border: 1px solid rgba(147, 197, 253, 0.16);
   background: linear-gradient(135deg, rgba(12, 18, 36, 0.88), rgba(28, 34, 60, 0.74));
@@ -1461,8 +1488,9 @@ button:disabled {
 }
 
 .battle-center-note {
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   color: #dbe6ff;
+  text-align: center;
 }
 
 .board-grid-battle .slot {
@@ -1656,7 +1684,7 @@ button:disabled {
   position: relative;
   z-index: 1;
   min-height: 0;
-  max-height: min(24svh, 170px);
+  max-height: min(20svh, 150px);
 }
 
 .hand-fan-stage {
@@ -1963,19 +1991,38 @@ button:disabled {
 
 .builder-card {
   position: relative;
-  min-height: 280px;
+  min-height: 252px;
   padding: 10px;
   display: grid;
   grid-template-rows: minmax(0, 1fr) auto;
-  gap: 10px;
-  overflow: visible;
+  gap: 8px;
+  overflow: hidden;
   background: linear-gradient(180deg, rgba(30, 35, 64, 0.98), rgba(18, 21, 41, 0.98));
   border-radius: 16px;
   border: 2px solid var(--rarity-color, var(--border));
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.builder-card > div:first-child {
+.builder-card-preview {
+  width: 100%;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+
+.builder-card-preview:focus-visible {
+  outline: 2px solid #67e8f9;
+  outline-offset: 2px;
+}
+
+.builder-card-footnote {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
   min-width: 0;
 }
 
@@ -2165,9 +2212,9 @@ button:disabled {
 /* ─── Quest Summary Strip (Home density) ─────────────────────── */
 
 .quest-summary {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
   align-items: center;
-  flex-wrap: wrap;
   gap: 10px;
   padding: 10px 14px;
   margin-top: 12px;
@@ -3214,6 +3261,10 @@ button.danger:hover { filter: brightness(1.08); }
     gap: 6px;
   }
 
+  .battle-controls.battle-controls-attack-ready {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
   .battle-controls > button {
     width: 100%;
     min-width: 0;
@@ -3226,7 +3277,7 @@ button.danger:hover { filter: brightness(1.08); }
   }
   .queue-modal { width: 100%; }
   .hand-section {
-    max-height: min(18svh, 126px);
+    max-height: min(19svh, 132px);
   }
   .battle-hand-head .badge,
   .battle-hand-note {
@@ -3342,8 +3393,18 @@ button.danger:hover { filter: brightness(1.08); }
   .settings-subnav {
     margin: 8px 0;
   }
+
+  .quest-summary {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
   .settings-hub-grid {
     gap: 8px;
+  }
+
+  .shop-hub-grid,
+  .social-hub-grid {
+    margin-top: 6px;
   }
   .settings-hub-tile {
     padding: 10px;
