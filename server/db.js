@@ -142,6 +142,15 @@ ensureColumn('player_profiles', 'owned_cards', "TEXT NOT NULL DEFAULT '{}' ")
 ensureColumn('player_profiles', 'owned_card_borders', "TEXT NOT NULL DEFAULT '[\"default\"]'")
 ensureColumn('player_profiles', 'selected_card_border', "TEXT NOT NULL DEFAULT 'default'")
 
+// Backward-safe naming migration: older or manually edited rows may have a
+// blank display_name. Normalize those rows to the username so account labels
+// remain stable without breaking existing logins or profile data.
+db.exec(`
+  UPDATE accounts
+  SET display_name = username
+  WHERE TRIM(COALESCE(display_name, '')) = ''
+`)
+
 // Create indexes that depend on migrated columns only after the ALTER TABLE
 // compatibility pass above. This keeps startup safe for older databases whose
 // existing `accounts` table predates the anti-abuse fields.
@@ -304,12 +313,23 @@ function buildAccountFlags({ deviceCount, ipCount, ipDayCount, ipAgentWeekCount 
   return flags.join(',')
 }
 
+function resolveAccountName(displayName, username) {
+  const fallbackUsername = String(username ?? '').trim()
+  const resolvedDisplayName = String(displayName ?? '').trim() || fallbackUsername
+  return {
+    username: fallbackUsername,
+    displayName: resolvedDisplayName,
+  }
+}
+
 export function createAccount(username, password, displayName, deviceFp, ip, userAgent) {
-  if (!USERNAME_RE.test(username)) {
+  const resolved = resolveAccountName(displayName, username)
+
+  if (!USERNAME_RE.test(resolved.username)) {
     return { ok: false, error: 'Username must be 3-20 characters: letters, numbers, underscore only.' }
   }
 
-  if (!DISPLAY_RE.test(displayName || username)) {
+  if (!DISPLAY_RE.test(resolved.displayName)) {
     return { ok: false, error: 'Display name must be 1-24 characters.' }
   }
 
@@ -317,7 +337,7 @@ export function createAccount(username, password, displayName, deviceFp, ip, use
     return { ok: false, error: `Password must be at least ${PASSWORD_MIN} characters.` }
   }
 
-  const existing = _getByUsername.get(username)
+  const existing = _getByUsername.get(resolved.username)
   if (existing) {
     return { ok: false, error: 'That username is already taken.' }
   }
@@ -375,9 +395,9 @@ export function createAccount(username, password, displayName, deviceFp, ip, use
     const tx = db.transaction(() => {
       _insertAccount.run(
         id,
-        username.toLowerCase(),
+        resolved.username.toLowerCase(),
         hash,
-        displayName || username,
+        resolved.displayName,
         fpHash,
         ipHash,
         userAgentHash,
@@ -401,7 +421,11 @@ export function authenticateAccount(username, password) {
   if (!verifyPassword(password, row.password_hash)) {
     return { ok: false, error: 'Invalid username or password.' }
   }
-  return { ok: true, accountId: row.id, displayName: row.display_name }
+  return {
+    ok: true,
+    accountId: row.id,
+    displayName: String(row.display_name ?? '').trim() || row.username,
+  }
 }
 
 // ─── Session management ─────────────────────────────────────────────────────
@@ -413,7 +437,7 @@ const _insertSession = db.prepare(`
 `)
 
 const _getSession = db.prepare(`
-  SELECT s.*, a.username, a.display_name FROM sessions s
+  SELECT s.*, a.username, COALESCE(NULLIF(TRIM(a.display_name), ''), a.username) as display_name FROM sessions s
   JOIN accounts a ON a.id = s.account_id
   WHERE s.token = ? AND s.expires_at > datetime('now')
 `)

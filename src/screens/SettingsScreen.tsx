@@ -22,6 +22,7 @@ export function SettingsScreen() {
     startOnboardingTour,
     gesturesEnabled, setGesturesEnabled,
     hapticsEnabled, setHapticsEnabled,
+    settingsSubview, openSettingsSubview, resetSettingsSubview,
   } = useAppShell()
   const { isAdminRole, isOwnerRole, accountRole, serverProfile } = useProfile()
 
@@ -29,6 +30,13 @@ export function SettingsScreen() {
   const visitorSuffix = (visitorId || 'guest').slice(-6).toUpperCase()
   const complaintTone = getComplaintSeverityTone(complaintForm.severity)
   const roleInsignia = isOwnerRole ? 'Diamond' : isAdminRole ? 'Gold' : 'Bronze'
+  const settingsViewLabel = settingsSubview === 'preferences'
+    ? 'Preferences'
+    : settingsSubview === 'support'
+      ? 'Support Desk'
+      : settingsSubview === 'admin'
+        ? 'Admin Console'
+        : 'Settings'
 
   return (
     <section className={`ops-grid settings-screen screen-panel ${activeScreen === 'settings' ? 'active' : 'hidden'}`}>
@@ -41,99 +49,134 @@ export function SettingsScreen() {
           <span className="badge">{visitorSuffix}</span>
         </div>
 
-        <div className="settings-toggle-list">
-          <div className="settings-toggle-row">
-            <span>Arena Audio</span>
-            <button
-              className={`ghost mini ${soundEnabled ? '' : 'muted'}`}
-              onClick={() => {
-                const nextValue = !soundEnabled
-                setSoundEnabled(nextValue)
-                setToastMessage(nextValue ? 'Arena sound enabled.' : 'Arena sound muted.')
-              }}
-            >
-              {soundEnabled ? 'On' : 'Off'}
+        <div className="settings-subnav">
+          <span className="badge">{settingsViewLabel}</span>
+          {settingsSubview !== 'hub' && (
+            <button className="ghost mini" onClick={resetSettingsSubview}>
+              Back
             </button>
-          </div>
-
-          <div className="settings-toggle-row">
-            <span>Ambient Loops</span>
-            <button
-              className={`ghost mini ${ambientEnabled && soundEnabled ? '' : 'muted'}`}
-              disabled={!soundEnabled}
-              onClick={() => {
-                const nextValue = !ambientEnabled
-                setAmbientEnabled(nextValue)
-                setToastMessage(nextValue ? 'Ambient loops enabled.' : 'Ambient loops disabled.')
-              }}
-            >
-              {!soundEnabled ? 'Audio off' : ambientEnabled ? 'On' : 'Off'}
-            </button>
-          </div>
-
-          <div className="settings-toggle-row">
-            <span>Analytics</span>
-            <button
-              className={`ghost mini ${analyticsConsent ? '' : 'muted'}`}
-              onClick={() => {
-                const nextValue = !analyticsConsent
-                setAnalyticsConsent(nextValue)
-                setToastMessage(nextValue ? 'Anonymous tracking enabled.' : 'Anonymous tracking paused.')
-              }}
-            >
-              {analyticsConsent ? 'On' : 'Off'}
-            </button>
-          </div>
-
-          <div className="settings-toggle-row">
-            <span>Scene Swipe</span>
-            <button
-              className={`ghost mini ${gesturesEnabled ? '' : 'muted'}`}
-              onClick={() => {
-                const nextValue = !gesturesEnabled
-                feedback('tap', soundEnabled, hapticsEnabled)
-                setGesturesEnabled(nextValue)
-                setToastMessage(nextValue ? 'Scene swipe enabled.' : 'Scene swipe disabled.')
-              }}
-            >
-              {gesturesEnabled ? 'On' : 'Off'}
-            </button>
-          </div>
-
-          <div className="settings-toggle-row">
-            <span>Haptics</span>
-            <button
-              className={`ghost mini ${hapticsEnabled ? '' : 'muted'}`}
-              onClick={() => {
-                const nextValue = !hapticsEnabled
-                feedback('tap', soundEnabled, nextValue)
-                setHapticsEnabled(nextValue)
-                setToastMessage(nextValue ? 'Haptics enabled.' : 'Haptics disabled.')
-              }}
-            >
-              {hapticsEnabled ? 'On' : 'Off'}
-            </button>
-          </div>
-
-          <div className="settings-toggle-row">
-            <span>Onboarding Tour</span>
-            <button
-              className="ghost mini"
-              onClick={() => {
-                feedback('tap', soundEnabled, hapticsEnabled)
-                startOnboardingTour()
-              }}
-            >
-              Replay
-            </button>
-          </div>
+          )}
         </div>
+
+        {settingsSubview === 'hub' ? (
+          <div className="settings-hub-grid">
+            <button className="settings-hub-tile" onClick={() => openSettingsSubview('preferences')}>
+              <strong>Preferences</strong>
+              <span>Audio, gestures, haptics, and onboarding.</span>
+            </button>
+            <button className="settings-hub-tile" onClick={() => openSettingsSubview('support')}>
+              <strong>Support Desk</strong>
+              <span>Report gameplay, balance, performance, or moderation issues.</span>
+            </button>
+            {isAdminRole && (
+              <button className="settings-hub-tile" onClick={() => openSettingsSubview('admin')}>
+                <strong>{isOwnerRole ? 'Admin & Owner Tools' : 'Admin Console'}</strong>
+                <span>Live ops, complaint review, roles, and audit history.</span>
+              </button>
+            )}
+          </div>
+        ) : settingsSubview === 'preferences' ? (
+          <div className="settings-toggle-list">
+            <div className="settings-toggle-row">
+              <span>Arena Audio</span>
+              <button
+                className={`ghost mini ${soundEnabled ? '' : 'muted'}`}
+                onClick={() => {
+                  const nextValue = !soundEnabled
+                  setSoundEnabled(nextValue)
+                  setToastMessage(nextValue ? 'Arena sound enabled.' : 'Arena sound muted.')
+                }}
+              >
+                {soundEnabled ? 'On' : 'Off'}
+              </button>
+            </div>
+
+            <div className="settings-toggle-row">
+              <span>Ambient Loops</span>
+              <button
+                className={`ghost mini ${ambientEnabled && soundEnabled ? '' : 'muted'}`}
+                disabled={!soundEnabled}
+                onClick={() => {
+                  const nextValue = !ambientEnabled
+                  setAmbientEnabled(nextValue)
+                  setToastMessage(nextValue ? 'Ambient loops enabled.' : 'Ambient loops disabled.')
+                }}
+              >
+                {!soundEnabled ? 'Audio off' : ambientEnabled ? 'On' : 'Off'}
+              </button>
+            </div>
+
+            <div className="settings-toggle-row">
+              <span>Analytics</span>
+              <button
+                className={`ghost mini ${analyticsConsent ? '' : 'muted'}`}
+                onClick={() => {
+                  const nextValue = !analyticsConsent
+                  setAnalyticsConsent(nextValue)
+                  setToastMessage(nextValue ? 'Anonymous tracking enabled.' : 'Anonymous tracking paused.')
+                }}
+              >
+                {analyticsConsent ? 'On' : 'Off'}
+              </button>
+            </div>
+
+            <div className="settings-toggle-row">
+              <span>Scene Swipe</span>
+              <button
+                className={`ghost mini ${gesturesEnabled ? '' : 'muted'}`}
+                onClick={() => {
+                  const nextValue = !gesturesEnabled
+                  feedback('tap', soundEnabled, hapticsEnabled)
+                  setGesturesEnabled(nextValue)
+                  setToastMessage(nextValue ? 'Scene swipe enabled.' : 'Scene swipe disabled.')
+                }}
+              >
+                {gesturesEnabled ? 'On' : 'Off'}
+              </button>
+            </div>
+
+            <div className="settings-toggle-row">
+              <span>Haptics</span>
+              <button
+                className={`ghost mini ${hapticsEnabled ? '' : 'muted'}`}
+                onClick={() => {
+                  const nextValue = !hapticsEnabled
+                  feedback('tap', soundEnabled, nextValue)
+                  setHapticsEnabled(nextValue)
+                  setToastMessage(nextValue ? 'Haptics enabled.' : 'Haptics disabled.')
+                }}
+              >
+                {hapticsEnabled ? 'On' : 'Off'}
+              </button>
+            </div>
+
+            <div className="settings-toggle-row">
+              <span>Onboarding Tour</span>
+              <button
+                className="ghost mini"
+                onClick={() => {
+                  feedback('tap', soundEnabled, hapticsEnabled)
+                  startOnboardingTour()
+                }}
+              >
+                Replay
+              </button>
+            </div>
+          </div>
+        ) : (
+          <p className="note settings-view-note">
+            {settingsSubview === 'support'
+              ? 'Use the support desk below to send a clear report to the arena team.'
+              : 'Advanced live-ops and moderation tools are shown below.'}
+          </p>
+        )}
 
         {complaintStatus && <p className="note toast-line">{complaintStatus}</p>}
       </article>
 
+      {settingsSubview === 'support' && (
       <article className="section-card utility-card complaint-desk-card">
-        <div className="section-head compact">
+        <div className="section-head compact settings-subview-head">
           <h3>Complaint Desk</h3>
           <span className={`support-seal ${complaintTone}`}>{complaintForm.severity}</span>
         </div>
@@ -207,7 +250,9 @@ export function SettingsScreen() {
           </div>
         </form>
       </article>
+      )}
 
+      {settingsSubview === 'admin' && isAdminRole && (
       <article className="section-card admin-console scribe-console">
         <div className="section-head compact">
           <h3>Admin Console</h3>
@@ -560,6 +605,7 @@ export function SettingsScreen() {
           </>
         )}
       </article>
+      )}
     </section>
   )
 }

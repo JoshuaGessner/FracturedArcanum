@@ -168,6 +168,17 @@ describe('single-owner DB constraint', () => {
   })
 })
 
+it('falls back to the username when a legacy account has a blank display name', () => {
+  const username = 'legacyblankname'
+  const accountId = makeAccount(username)
+  db.default.prepare('UPDATE accounts SET display_name = ? WHERE id = ?').run('', accountId)
+
+  const login = db.authenticateAccount(username, 'password12345')
+
+  expect(login.ok).toBe(true)
+  expect(login.displayName).toBe(username)
+})
+
 describe('friend gating', () => {
   it('isFriendOf returns true only for reciprocal friend edges', () => {
     const a = makeAccount('friendhelpera')

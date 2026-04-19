@@ -522,8 +522,13 @@ export function BattleScreen() {
 
           <div className="battle-centerline">
             <div className="battle-center-status">
-              <span className="eyebrow">Arena clash</span>
-              <strong>{battleStatusLabel}</strong>
+              <strong className="battle-center-note">
+                {selectedAttacker === null
+                  ? 'Choose a frontline unit'
+                  : defenderHasGuard
+                    ? 'Guard blocks the hero'
+                    : 'Enemy hero exposed'}
+              </strong>
             </div>
             <button
               className="ghost"
@@ -696,7 +701,7 @@ export function BattleScreen() {
           <div className="section-head battle-hand-head">
             <div>
               <h2>Hand</h2>
-              <p className="note battle-hand-note">Tap to cast or hold to inspect.</p>
+              <p className="note battle-hand-note">Tap to cast · hold to inspect.</p>
             </div>
             <span className="badge">Mana {activePlayer.mana}/{activePlayer.maxMana}</span>
           </div>
@@ -763,7 +768,6 @@ export function BattleScreen() {
                   </div>
                   <div>
                     <strong className="card-name">{card.name}</strong>
-                    {card.effect && <EffectBadge effect={card.effect} />}
                   </div>
                   <div className="card-stats">
                     <span><StatIcon kind="attack" /> {card.attack}</span>

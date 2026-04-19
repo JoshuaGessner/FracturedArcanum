@@ -19,18 +19,26 @@ export function TopBar({
   onInstallApp,
   onLogout,
 }: TopBarProps) {
-  return (
-    <header className="topbar topbar-art">
-      <div className="brand-block">
-        <img className="brand-logo" src="/fractured-arcanum-logo.svg" alt="Fractured Arcanum" />
-        <div>
+  const isHome = screenTitle === 'Arena Home'
+
+  if (!isHome) {
+    return (
+      <header className="topbar topbar-compact-shell" aria-label={screenTitle}>
+        <div className="topbar-compact-copy">
           <p className="eyebrow">{screenTitle}</p>
-          <h1>Fractured Arcanum</h1>
         </div>
+      </header>
+    )
+  }
+
+  return (
+    <header className="topbar topbar-art topbar-home">
+      <div className="brand-block">
+        <img className="brand-logo brand-logo-home" src="/fractured-arcanum-crest.svg" alt="Fractured Arcanum home crest" />
       </div>
 
       <div className="top-actions">
-        <span className="username-label">{serverProfile?.username ?? ''}</span>
+        <span className="username-label">@{serverProfile?.username ?? ''}</span>
         <button className="ghost top-action-toggle" onClick={onToggleSound}>
           {soundEnabled ? 'Sound On' : 'Sound Off'}
         </button>

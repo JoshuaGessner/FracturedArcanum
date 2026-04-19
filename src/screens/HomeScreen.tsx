@@ -3,22 +3,8 @@ import { RankBadge } from '../components/AssetBadge'
 import { useAppShell, useGame, useProfile } from '../contexts'
 import { getStreakTier } from '../utils'
 
-type NavTile = {
-  id: 'play' | 'collection' | 'social' | 'shop' | 'settings'
-  label: string
-  description: string
-}
-
-const NAV_TILES: NavTile[] = [
-  { id: 'play', label: 'Play', description: 'Solo, ranked, or pass-and-play.' },
-  { id: 'collection', label: 'Collection', description: 'Build decks and browse cards.' },
-  { id: 'social', label: 'Social', description: 'Friends, clans, and trades.' },
-  { id: 'shop', label: 'Shop', description: 'Packs and cosmetic flair.' },
-  { id: 'settings', label: 'Settings', description: 'Account and preferences.' },
-]
-
 export function HomeScreen() {
-  const { activeScreen, openScreen, dailyQuest, justClaimedDaily, seasonName, seasonEnd } = useAppShell()
+  const { activeScreen, dailyQuest, justClaimedDaily, seasonName, seasonEnd } = useAppShell()
   const { gameInProgress, game, handleResumeBattle, handleAbandonBattle } = useGame()
   const { record, winRate, selectedDeckSize, serverProfile, rankLabel, runes, canClaimDailyReward, nextRewardLabel } = useProfile()
 
@@ -87,19 +73,10 @@ export function HomeScreen() {
           </div>
         )}
 
-        <div className="controls nav-tile-row" data-tour-id="home-tiles">
-          {NAV_TILES.map((tile) => (
-            <button
-              key={tile.id}
-              className={`nav-tile nav-tile-${tile.id} ${tile.id === 'shop' && canClaimDailyReward ? 'nav-tile-alert' : ''}`}
-              data-tile={tile.id}
-              onClick={() => openScreen(tile.id)}
-            >
-              {tile.id === 'shop' && canClaimDailyReward && <span className="nav-tile-notice" aria-hidden="true" />}
-              <span className="nav-tile-label">{tile.label}</span>
-              <span className="nav-tile-description">{tile.description}</span>
-            </button>
-          ))}
+        <div className="home-focus-strip" aria-label="Current arena focus">
+          <span className="badge">Daily Quest · {dailyQuest}</span>
+          <span className="badge">Deck Size {selectedDeckSize}</span>
+          <span className="badge">Win Rate {winRate}%</span>
         </div>
 
         <div className={`quest-summary ${canClaimDailyReward ? 'claim-ready' : ''} ${justClaimedDaily ? 'just-claimed' : ''}`}>

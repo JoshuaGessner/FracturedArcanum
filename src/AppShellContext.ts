@@ -8,6 +8,7 @@ import type {
   AdminUser,
   AppScreen,
   AuthScreen,
+  SettingsSubview,
   CardBorder,
   ComplaintFormState,
   ConfirmOptions,
@@ -44,14 +45,14 @@ export type AppShellContextValue = {
   setAuthToken: (value: string) => void
   authScreen: AuthScreen
   setAuthScreen: (value: AuthScreen) => void
-  authForm: { username: string; password: string; displayName: string }
-  setAuthForm: React.Dispatch<React.SetStateAction<{ username: string; password: string; displayName: string }>>
+  authForm: { username: string; password: string }
+  setAuthForm: React.Dispatch<React.SetStateAction<{ username: string; password: string }>>
   authError: string
   authLoading: boolean
   loggedIn: boolean
   setupRequired: boolean | null
-  setupForm: { username: string; password: string; displayName: string }
-  setSetupForm: React.Dispatch<React.SetStateAction<{ username: string; password: string; displayName: string }>>
+  setupForm: { username: string; password: string }
+  setSetupForm: React.Dispatch<React.SetStateAction<{ username: string; password: string }>>
   setupError: string
   setupLoading: boolean
   handleSetup: (event: FormEvent) => Promise<void>
@@ -105,6 +106,9 @@ export type AppShellContextValue = {
   // ─── Navigation / UI shell ────────────────────────────────────────────
   activeScreen: AppScreen
   openScreen: (screen: AppScreen) => void
+  settingsSubview: SettingsSubview
+  openSettingsSubview: (view: SettingsSubview) => void
+  resetSettingsSubview: () => void
   screenTitle: string
   toastMessage: string
   toastSeverity: ToastSeverity

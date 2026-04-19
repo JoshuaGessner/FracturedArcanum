@@ -86,6 +86,7 @@ import type {
   PackOffer,
   QueuePresence,
   QueueSearchStatus,
+  SettingsSubview,
   SavedDeck,
   ServerProfile,
   SocialClan,
@@ -126,14 +127,14 @@ function AppShell() {
   // ─── Auth state ───────────────────────────────────────────────────────
   const [authToken, setAuthToken] = useState(() => readStoredValue(STORAGE_KEYS.authToken, ''))
   const [authScreen, setAuthScreen] = useState<AuthScreen>('login')
-  const [authForm, setAuthForm] = useState({ username: '', password: '', displayName: '' })
+  const [authForm, setAuthForm] = useState({ username: '', password: '' })
   const [authError, setAuthError] = useState('')
   const [authLoading, setAuthLoading] = useState(false)
   const [loggedIn, setLoggedIn] = useState(false)
 
   // ─── First-launch setup state ─────────────────────────────────────────
   const [setupRequired, setSetupRequired] = useState<boolean | null>(null)
-  const [setupForm, setSetupForm] = useState({ username: '', password: '', displayName: '' })
+  const [setupForm, setSetupForm] = useState({ username: '', password: '' })
   const [setupError, setSetupError] = useState('')
   const [setupLoading, setSetupLoading] = useState(false)
 
@@ -166,6 +167,7 @@ function AppShell() {
 
   // ─── Local screen-shell state ─────────────────────────────────────────
   const [activeScreen, setActiveScreen] = useState<AppScreen>('home')
+  const [settingsSubview, setSettingsSubview] = useState<SettingsSubview>('hub')
   const [screenTransitionClass, setScreenTransitionClass] = useState<'screen-enter-forward' | 'screen-enter-back' | 'screen-enter-lateral' | 'screen-enter-battle'>('screen-enter-lateral')
 
   // ─── Phase 3W — Reward cinema sequence (battle / daily / pack / rank-up)
@@ -517,7 +519,7 @@ function AppShell() {
         body: JSON.stringify({
           username: setupForm.username.trim(),
           password: setupForm.password,
-          displayName: setupForm.displayName.trim() || setupForm.username.trim(),
+          displayName: setupForm.username.trim(),
         }),
       })
       const data = await response.json() as {
@@ -555,7 +557,7 @@ function AppShell() {
       password: authForm.password,
     }
     if (authScreen === 'signup') {
-      body.displayName = authForm.displayName.trim() || authForm.username.trim()
+      body.displayName = authForm.username.trim()
       body.deviceFingerprint = getDeviceFingerprint()
     }
 
@@ -1605,7 +1607,18 @@ function AppShell() {
     setActiveScreen(screen)
   }
 
+  const resetSettingsSubview = useCallback(() => {
+    setSettingsSubview('hub')
+  }, [])
+
+  const openSettingsSubview = useCallback((view: SettingsSubview) => {
+    setSettingsSubview(view)
+  }, [])
+
   function openScreen(screen: AppScreen) {
+    if (screen === 'settings' || activeScreen === 'settings') {
+      resetSettingsSubview()
+    }
     transitionToScreen(screen, true)
   }
 
@@ -2848,7 +2861,7 @@ function AppShell() {
     // Cosmetics / shop handlers (state lives in ProfileProvider)
     handleOpenPack, handlePurchaseBorder, handleSelectBorder, handleEquipTheme, handleClaimDailyReward,
     // Navigation / UI shell
-    activeScreen, openScreen, screenTitle,
+    activeScreen, openScreen, settingsSubview, openSettingsSubview, resetSettingsSubview, screenTitle,
     toastMessage, toastSeverity, toastStack, setToastMessage, inferToastSeverity,
     confirmRequest, confirmTextInput, setConfirmTextInput, askConfirm, closeConfirm,
     consumeLongPressAction, getLongPressProps,
@@ -2908,20 +2921,10 @@ function AppShell() {
       {setupRequired && (
         <div className="auth-gate">
           <div className="auth-card">
-            <img className="brand-logo" src="/fractured-arcanum-logo.svg" alt="Fractured Arcanum" />
+            <img className="auth-app-icon" src="/fractured-arcanum-icon-512.svg" alt="Fractured Arcanum app icon" />
             <h1>Server Setup</h1>
             <p className="auth-tagline">Create your admin account to get started</p>
             <form className="auth-form" onSubmit={handleSetup}>
-                <label>
-                  Display Name
-                  <input
-                    type="text"
-                    placeholder="Your arena name"
-                    maxLength={20}
-                    value={setupForm.displayName}
-                    onChange={(event) => setSetupForm((f) => ({ ...f, displayName: event.target.value }))}
-                  />
-                </label>
                 <label>
                   Username
                   <input
@@ -2983,22 +2986,10 @@ function AppShell() {
       {!setupRequired && !loggedIn && (
         <div className="auth-gate">
           <div className="auth-card">
-            <img className="brand-logo" src="/fractured-arcanum-logo.svg" alt="Fractured Arcanum" />
+            <img className="auth-app-icon" src="/fractured-arcanum-icon-512.svg" alt="Fractured Arcanum app icon" />
             <h1>Fractured Arcanum</h1>
             <p className="auth-tagline">Cosmic horror card battles await</p>
             <form className="auth-form" onSubmit={handleAuth}>
-              {authScreen === 'signup' && (
-                <label>
-                  Display Name
-                  <input
-                    type="text"
-                    placeholder="Your arena name"
-                    maxLength={20}
-                    value={authForm.displayName}
-                    onChange={(event) => setAuthForm((f) => ({ ...f, displayName: event.target.value }))}
-                  />
-                </label>
-              )}
               <label>
                 Username
                 <input
@@ -3067,10 +3058,6 @@ function AppShell() {
           onInstallApp={() => void handleInstallApp()}
           onLogout={handleLogout}
         />
-      )}
-
-      {loggedIn && !isBattleScreen && activeScreen !== 'home' && (
-        <NavBar activeScreen={activeScreen} onNavigate={openScreen} />
       )}
 
       {activeScreen === 'home' && loggedIn && (
@@ -3148,6 +3135,7 @@ function AppShell() {
         <SettingsScreen />
       </div>
 
+      {!isBattleScreen && <NavBar activeScreen={activeScreen} onNavigate={openScreen} />}
       </>)}
     </main>
     </AppShellContext.Provider>

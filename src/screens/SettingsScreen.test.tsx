@@ -1,14 +1,14 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it } from 'vitest'
-import { cleanup, render } from '@testing-library/react'
-import { HomeScreen } from './HomeScreen'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { SettingsScreen } from './SettingsScreen'
 import { AppShellContext, type AppShellContextValue } from '../AppShellContext'
 import { QueueProvider } from '../contexts/QueueProvider'
 import { ProfileProvider } from '../contexts/ProfileProvider'
 import { SocialProvider } from '../contexts/SocialProvider'
 import { GameProvider } from '../contexts/GameProvider'
 import { createGame } from '../game'
-import type { AppScreen, CosmeticTheme, CardBorder } from '../types'
+import type { AppScreen, CardBorder, CosmeticTheme, SettingsSubview } from '../types'
 
 function buildShellValue(overrides: Partial<AppShellContextValue> = {}): AppShellContextValue {
   const noop = () => {}
@@ -32,7 +32,7 @@ function buildShellValue(overrides: Partial<AppShellContextValue> = {}): AppShel
     handleSetup: asyncNoop,
     handleAuth: asyncNoop,
     handleLogout: noop,
-    serverProfile: { accountId: 'acct-1', username: 'josh', displayName: 'josh', role: 'user', runes: 180, seasonRating: 1210, wins: 3, losses: 2, streak: 1, deckConfig: {}, ownedThemes: ['royal'], selectedTheme: 'royal', ownedCardBorders: ['default'], selectedCardBorder: 'default', lastDaily: '', totalEarned: 0 },
+    serverProfile: { accountId: 'acct-1', username: 'josh', displayName: 'Josh', role: 'user', runes: 180, seasonRating: 1210, wins: 3, losses: 2, streak: 1, deckConfig: {}, ownedThemes: ['royal'], selectedTheme: 'royal', ownedCardBorders: ['default'], selectedCardBorder: 'default', lastDaily: '', totalEarned: 0 },
     setServerProfile: noop,
     runes: 180,
     seasonRating: 1210,
@@ -70,12 +70,12 @@ function buildShellValue(overrides: Partial<AppShellContextValue> = {}): AppShel
     handleSelectBorder: noop,
     handleEquipTheme: noop,
     handleClaimDailyReward: noop,
-    activeScreen: 'home' as AppScreen,
+    activeScreen: 'settings' as AppScreen,
     openScreen: noop,
-    settingsSubview: 'hub',
+    settingsSubview: 'hub' as SettingsSubview,
     openSettingsSubview: noop,
     resetSettingsSubview: noop,
-    screenTitle: 'Arena Home',
+    screenTitle: 'Settings',
     toastMessage: '',
     toastSeverity: 'info',
     toastStack: [],
@@ -188,7 +188,7 @@ function buildShellValue(overrides: Partial<AppShellContextValue> = {}): AppShel
   }
 }
 
-function renderHomeScreen(valueOverrides: Partial<AppShellContextValue> = {}) {
+function renderSettingsScreen(valueOverrides: Partial<AppShellContextValue> = {}) {
   const value = buildShellValue(valueOverrides)
   return render(
     <QueueProvider>
@@ -196,7 +196,7 @@ function renderHomeScreen(valueOverrides: Partial<AppShellContextValue> = {}) {
         <SocialProvider>
           <GameProvider>
             <AppShellContext.Provider value={value}>
-              <HomeScreen />
+              <SettingsScreen />
             </AppShellContext.Provider>
           </GameProvider>
         </SocialProvider>
@@ -205,22 +205,25 @@ function renderHomeScreen(valueOverrides: Partial<AppShellContextValue> = {}) {
   )
 }
 
-describe('HomeScreen navigation and footer', () => {
+describe('SettingsScreen hub flow', () => {
   afterEach(() => {
     cleanup()
   })
 
-  it('does not duplicate the primary navigation destinations on the dashboard', () => {
-    const { container } = renderHomeScreen()
+  it('starts on a thin hub instead of opening the complaint desk immediately', () => {
+    renderSettingsScreen()
 
-    expect(container.querySelectorAll('.nav-tile')).toHaveLength(0)
+    expect(screen.getByRole('button', { name: /preferences/i })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /support desk/i })).toBeTruthy()
+    expect(screen.queryByText(/complaint desk/i)).toBeNull()
   })
 
-  it('keeps the quest summary informational instead of showing a shop button', () => {
-    const { container } = renderHomeScreen()
-    const summary = container.querySelector('.quest-summary')
+  it('routes to the support desk from the settings hub', () => {
+    const openSettingsSubview = vi.fn()
+    renderSettingsScreen({ openSettingsSubview })
 
-    expect(summary).not.toBeNull()
-    expect(summary?.querySelector('button')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: /support desk/i }))
+
+    expect(openSettingsSubview).toHaveBeenCalledWith('support')
   })
 })

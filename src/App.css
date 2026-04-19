@@ -209,16 +209,14 @@ button:disabled {
 }
 .app-shell:not(.battle-shell-active) .scene-stage > .screen-panel.active::-webkit-scrollbar-track { background: transparent; }
 
-/* Battle: the stage stacks all battle subsections naturally. On
-   smaller screens it must still allow vertical access to the hand, so
-   the scene stage can scroll while the hand itself continues to scroll
-   horizontally. */
+/* Battle: use a strict three-row shell on mobile so the status bar,
+   battlefield, and hand each get a controlled height budget without
+   covering one another. */
 .app-shell.battle-shell-active .scene-stage {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
   gap: 8px;
-  overflow-x: hidden;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  -webkit-overflow-scrolling: touch;
+  overflow: hidden;
 }
 
 .app-shell.battle-shell-active .scene-stage > .screen-panel.active {
@@ -406,54 +404,45 @@ button:disabled {
 
 .scene-rail {
   position: relative;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 6px;
+  padding: 8px;
+  border-radius: 16px;
   z-index: 4;
-  display: flex;
-  gap: 8px;
-  overflow-x: auto;
-  padding: 2px 2px 4px;
-  scrollbar-width: none;
-  -webkit-overflow-scrolling: touch;
-}
-
-.scene-rail::-webkit-scrollbar {
-  display: none;
+  background: rgba(10, 14, 28, 0.92);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(147, 197, 253, 0.12);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.28);
+  padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
 }
 
 .scene-link {
   position: relative;
-  flex: 0 0 92px;
-  min-height: 78px;
-  padding: 10px 8px;
-  border-radius: 14px;
-  color: #e6ecff;
-  text-align: left;
+  min-height: 52px;
+  padding: 6px 4px;
+  border-radius: 12px;
+  color: #d8e1ff;
+  text-align: center;
   display: grid;
-  align-content: end;
+  align-content: center;
+  justify-items: center;
   gap: 4px;
-  background: linear-gradient(160deg, rgba(124, 58, 237, 0.16), rgba(37, 99, 235, 0.12));
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 10px 24px rgba(10, 14, 30, 0.18);
-  overflow: hidden;
-  transition: transform 0.18s ease-out, box-shadow 0.18s ease-out, background 0.2s;
+  background: rgba(255, 255, 255, 0.05);
+  transition: background 0.2s, color 0.2s, transform 0.15s;
 }
 
 .scene-link::before {
   content: '';
-  position: absolute;
-  inset: 0;
-  background-size: cover;
+  width: 16px;
+  height: 16px;
+  opacity: 0.88;
   background-position: center;
   background-repeat: no-repeat;
-  opacity: 0.16;
-  z-index: 0;
+  background-size: contain;
 }
 
-.scene-link > * {
-  position: relative;
-  z-index: 1;
-}
-
-.scene-link[data-nav='home']::before { background-image: url('/generated/ui/bg-main-menu.svg'); }
+.scene-link[data-nav='home']::before { background-image: url('/generated/ui/particle-rune.svg'); }
 .scene-link[data-nav='play']::before { background-image: url('/generated/ui/tile-play.svg'); }
 .scene-link[data-nav='collection']::before { background-image: url('/generated/ui/tile-collection.svg'); }
 .scene-link[data-nav='social']::before { background-image: url('/generated/ui/tile-social.svg'); }
@@ -462,20 +451,19 @@ button:disabled {
 
 .scene-link:hover,
 .scene-link:focus-visible {
-  transform: translateY(-2px);
-  box-shadow: 0 12px 28px rgba(124, 58, 237, 0.22);
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .scene-link.active {
-  background: linear-gradient(160deg, rgba(124, 58, 237, 0.3), rgba(37, 99, 235, 0.24));
-  border-color: rgba(251, 191, 36, 0.36);
-  box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.16), 0 12px 28px rgba(37, 99, 235, 0.22);
+  background: linear-gradient(135deg, #7c3aed, #2563eb);
+  color: #fff;
+  box-shadow: 0 4px 16px rgba(124, 58, 237, 0.32);
 }
 
 .scene-link-label {
-  font-size: 0.84rem;
+  font-size: 0.72rem;
   font-weight: 700;
-  line-height: 1.15;
+  line-height: 1.1;
 }
 
 /* ─── Main-menu nav tiles ───────────────────────────────────────── */
@@ -563,29 +551,66 @@ button:disabled {
 /* ─── Topbar & Brand ────────────────────────────────────────────── */
 
 .topbar {
-  grid-template-columns: 1fr auto;
-  align-items: end;
+  display: grid;
+  gap: 10px;
+}
+
+.topbar-home {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
 }
 
 .topbar-art {
-  background:
-    linear-gradient(135deg, rgba(12, 17, 34, 0.92), rgba(25, 36, 74, 0.86)),
-    url('/fractured-arcanum-board.svg') center/cover no-repeat;
+  background: linear-gradient(135deg, rgba(12, 17, 34, 0.94), rgba(25, 36, 74, 0.9));
+}
+
+.topbar-compact-shell {
+  padding: 0 2px;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+
+.topbar-compact-copy {
+  display: flex;
+  align-items: center;
+  min-height: 22px;
+}
+
+.topbar-compact-copy .eyebrow {
+  margin: 0;
 }
 
 .brand-block {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 10px;
+  min-width: 0;
+}
+
+.brand-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.brand-wordmark {
+  font-size: clamp(1.05rem, 4.2vw, 1.35rem);
+  line-height: 1.05;
+  color: #f5f7ff;
 }
 
 .brand-logo {
-  width: min(220px, 38vw);
+  width: clamp(56px, 16vw, 84px);
   max-width: 100%;
   height: auto;
-  border-radius: 14px;
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.25);
+  border-radius: 12px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.22);
   animation: logoPulse 6s ease-in-out infinite;
+}
+
+.brand-logo-home {
+  width: clamp(76px, 18vw, 104px);
 }
 
 @keyframes logoPulse {
@@ -596,13 +621,24 @@ button:disabled {
 .top-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 8px;
   align-items: center;
   justify-content: flex-end;
 }
 
+.username-label {
+  font-size: 0.78rem;
+  color: #d6def7;
+  white-space: nowrap;
+}
+
+.top-actions .ghost {
+  min-height: 40px;
+  padding: 8px 12px;
+}
+
 .top-action-toggle {
-  min-width: 104px;
+  min-width: 92px;
 }
 
 /* ─── Season Progress ───────────────────────────────────────────── */
@@ -688,7 +724,7 @@ button:disabled {
 
 /* ─── Generic Flex Rows ─────────────────────────────────────────── */
 
-.topbar, .turn-bar, .section-head, .hero-header,
+.turn-bar, .section-head, .hero-header,
 .slot-head, .card-top, .card-stats, .stepper, .mode-switch {
   display: flex;
   align-items: center;
@@ -1205,6 +1241,7 @@ button:disabled {
 .battle-topbar {
   position: relative;
   z-index: 3;
+  padding: 10px 12px;
   background: linear-gradient(135deg, rgba(10, 16, 31, 0.96), rgba(31, 45, 88, 0.92));
   backdrop-filter: blur(12px);
 }
@@ -1229,13 +1266,21 @@ button:disabled {
 
 .hero-compact {
   display: grid;
-  gap: 2px;
+  gap: 1px;
   min-width: 0;
-  flex: 1 1 220px;
-  padding: 10px 12px;
+  flex: 1 1 180px;
+  padding: 8px 10px;
   border-radius: 12px;
   background: rgba(8, 14, 30, 0.44);
   border: 1px solid rgba(147, 197, 253, 0.14);
+}
+
+.hero-compact strong {
+  font-size: 0.92rem;
+}
+
+.hero-compact .hero-health {
+  font-size: 0.95rem;
 }
 
 .hero-compact.enemy { color: #fca5a5; }
@@ -1382,13 +1427,17 @@ button:disabled {
 
 .battlefield-stage {
   display: grid;
-  gap: 10px;
-  padding-top: 12px;
+  grid-template-rows: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 8px;
+  padding-top: 8px;
+  height: 100%;
+  min-height: 0;
 }
 
 .battlefield-side {
   display: grid;
-  gap: 8px;
+  gap: 6px;
+  min-height: 0;
 }
 
 .battle-side-head {
@@ -1399,9 +1448,9 @@ button:disabled {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  padding: 8px 10px;
-  border-radius: 12px;
+  gap: 8px;
+  padding: 5px 8px;
+  border-radius: 10px;
   border: 1px solid rgba(147, 197, 253, 0.16);
   background: linear-gradient(135deg, rgba(12, 18, 36, 0.88), rgba(28, 34, 60, 0.74));
 }
@@ -1411,13 +1460,18 @@ button:disabled {
   gap: 2px;
 }
 
+.battle-center-note {
+  font-size: 0.78rem;
+  color: #dbe6ff;
+}
+
 .board-grid-battle .slot {
-  min-height: 92px;
-  padding: 6px 8px;
+  min-height: 66px;
+  padding: 5px 7px;
 }
 
 .board-grid-battle .unit-portrait {
-  height: 40px;
+  height: 34px;
 }
 
 .board-grid-battle .slot-head {
@@ -1598,13 +1652,18 @@ button:disabled {
 
 .hand-section {
   display: grid;
-  gap: 16px;
+  gap: 6px;
   position: relative;
   z-index: 1;
+  min-height: 0;
+  max-height: min(24svh, 170px);
 }
 
 .hand-fan-stage {
   overflow: hidden;
+  height: 100%;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
 }
 
 .battle-hand-head {
@@ -1626,20 +1685,22 @@ button:disabled {
   align-items: flex-end;
   gap: 0;
   overflow-x: auto;
-  padding: 10px 6px 18px;
+  overflow-y: hidden;
+  min-height: 0;
+  padding: 6px 4px 10px;
 }
 
 .hand-card {
   position: relative;
-  min-height: 176px;
-  padding: 10px 12px;
+  min-height: 142px;
+  padding: 8px 10px;
   background: linear-gradient(180deg, rgba(49, 42, 84, 0.96), rgba(22, 24, 46, 0.96));
   color: white;
   text-align: left;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  gap: 6px;
+  gap: 4px;
   box-shadow: 0 8px 20px rgba(6, 10, 22, 0.28);
   border-radius: 12px;
   border: 2px solid var(--rarity-color, var(--border));
@@ -1654,7 +1715,7 @@ button:disabled {
 }
 
 .hand-fan-grid .hand-card {
-  flex: 0 0 156px;
+  flex: 0 0 128px;
   margin-left: -18px;
 }
 
@@ -2193,6 +2254,13 @@ button:disabled {
   background: rgba(120, 90, 18, 0.24);
 }
 
+.home-focus-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
 .log-panel { min-width: 0; }
 
 /* ─── Queue / Modal Overlays ────────────────────────────────────── */
@@ -2445,6 +2513,39 @@ button:disabled {
 .settings-toggle-row .muted,
 .settings-toggle-row button.muted {
   color: var(--muted);
+}
+
+.settings-subnav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 10px 0;
+}
+
+.settings-hub-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.settings-hub-tile {
+  display: grid;
+  gap: 4px;
+  text-align: left;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(147, 197, 253, 0.18);
+  background: linear-gradient(135deg, rgba(10, 16, 31, 0.9), rgba(33, 36, 70, 0.76));
+  color: #f5f8ff;
+}
+
+.settings-hub-tile span {
+  color: #c9d5f3;
+  font-size: 0.86rem;
+}
+
+.settings-view-note {
+  margin: 0;
 }
 
 .preference-grid {
@@ -2922,7 +3023,7 @@ button.danger:hover { filter: brightness(1.08); }
 /* ─── Responsive ────────────────────────────────────────────────── */
 
 @media (max-width: 900px) {
-  .vault-grid, .ops-grid, .meta-grid, .footer-grid, .topbar,
+  .vault-grid, .ops-grid, .meta-grid, .footer-grid,
   .season-progress-block, .summary-grid, .split-fields, .preference-grid,
   .admin-columns, .admin-auth-row, .insight-grid, .reward-summary-grid,
   .battle-hud-main, .profile-showcase, .battle-objective,
@@ -2966,20 +3067,13 @@ button.danger:hover { filter: brightness(1.08); }
     align-items: stretch;
   }
 
-  .topbar {
+  .topbar-home {
     grid-template-columns: 1fr;
     align-items: stretch;
   }
 
-  .brand-block {
-    flex-direction: row;
-    align-items: center;
-    gap: 10px;
-  }
-
   .top-actions {
     justify-content: flex-start;
-    gap: 8px;
   }
 }
 
@@ -2987,6 +3081,22 @@ button.danger:hover { filter: brightness(1.08); }
   .app-shell {
     gap: 8px;
     padding: 10px 10px calc(10px + env(safe-area-inset-bottom, 0px));
+  }
+  .topbar-home {
+    gap: 8px;
+  }
+  .brand-wordmark {
+    font-size: 1rem;
+  }
+  .top-actions {
+    gap: 6px;
+  }
+  .top-actions .ghost {
+    padding: 7px 10px;
+    min-height: 38px;
+  }
+  .username-label {
+    display: none;
   }
   .subtitle { display: none; }
   .brand-logo { width: min(156px, 44vw); }
@@ -3012,7 +3122,26 @@ button.danger:hover { filter: brightness(1.08); }
   .play-live-strip { flex-wrap: wrap; gap: 6px; padding: 6px 8px; }
   .play-live-stat { margin-left: 0; }
 
+  .scene-rail {
+    gap: 4px;
+    padding: 6px 6px calc(6px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .scene-link {
+    min-height: 48px;
+    padding: 5px 2px;
+  }
+
+  .scene-link-label {
+    font-size: 0.68rem;
+  }
+
   /* Home density — 3-col tile grid, shorter tiles, hide descriptions */
+  .home-focus-strip {
+    gap: 6px;
+    margin-top: 8px;
+  }
+
   .nav-tile-row {
     grid-template-columns: repeat(3, 1fr);
     gap: 8px;
@@ -3048,26 +3177,86 @@ button.danger:hover { filter: brightness(1.08); }
   .queue-portal-core { inset: 18px; font-size: 0.88rem; }
 
   .mode-switch, .stepper { flex-wrap: wrap; }
-  .slot { min-height: 110px; padding: 8px; }
+  .slot { min-height: 88px; padding: 7px; }
+  .battle-topbar {
+    padding: 8px 10px;
+  }
+  .battle-heroes-compact {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .battle-turn-label {
+    grid-column: 1 / -1;
+    padding: 0;
+  }
   .board-grid-battle .slot {
-    min-height: 84px;
-    padding: 6px;
+    min-height: 58px;
+    padding: 4px 5px;
+  }
+  .board-grid-battle .slot .effect-badge {
+    display: none;
   }
   .board-grid-battle .unit-portrait {
-    height: 34px;
+    height: 24px;
   }
   .battle-centerline {
-    flex-direction: column;
-    align-items: stretch;
+    flex-direction: row;
+    align-items: center;
+    padding: 4px 6px;
+  }
+  .battle-center-note {
+    font-size: 0.7rem;
+  }
+
+  .battle-controls {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .battle-controls > button {
+    width: 100%;
+    min-width: 0;
+    min-height: 38px;
+    padding: 6px 4px;
+    font-size: 0.82rem;
   }
   .battle-objective .note {
     display: none;
   }
   .queue-modal { width: 100%; }
-  .hand-card { min-height: 168px; }
+  .hand-section {
+    max-height: min(18svh, 126px);
+  }
+  .battle-hand-head .badge,
+  .battle-hand-note {
+    display: none;
+  }
+  .hand-card {
+    min-height: 102px;
+    padding: 6px 8px;
+    gap: 3px;
+  }
+  .hand-card .card-name {
+    min-height: 1.2em;
+    margin-bottom: 0;
+    font-size: 0.78rem;
+    -webkit-line-clamp: 1;
+  }
+  .hand-card .card-art-shell.thumb {
+    height: 40px;
+  }
+  .hand-card .cost-pill {
+    width: 26px;
+    height: 26px;
+    font-size: 0.8rem;
+  }
+  .hand-card .card-stats {
+    font-size: 0.78rem;
+  }
   .hand-fan-grid .hand-card {
-    flex-basis: 146px;
-    margin-left: -10px;
+    flex-basis: 96px;
+    margin-left: -6px;
   }
 
   .builder-grid {
@@ -3150,6 +3339,15 @@ button.danger:hover { filter: brightness(1.08); }
   /* Settings density — compact hero, tighter toggles */
   .settings-hero { padding: 6px 8px; gap: 6px; }
   .settings-hero strong { font-size: var(--font-sm); }
+  .settings-subnav {
+    margin: 8px 0;
+  }
+  .settings-hub-grid {
+    gap: 8px;
+  }
+  .settings-hub-tile {
+    padding: 10px;
+  }
   .settings-toggle-list { gap: 2px; margin: 4px 0; }
   .settings-toggle-row { padding: 4px 8px; font-size: var(--font-xs); }
   .complaint-desk-card .complaint-form { padding: 8px; }
@@ -3172,8 +3370,10 @@ button.danger:hover { filter: brightness(1.08); }
 
 @media (max-width: 400px) {
   .app-shell { padding: 8px 8px calc(8px + env(safe-area-inset-bottom, 0px)); }
-  .scene-link { flex-basis: 82px; min-height: 70px; padding: 8px 6px; }
-  .scene-link-label { font-size: 0.78rem; }
+  .scene-rail { gap: 3px; }
+  .scene-link { min-height: 44px; padding: 4px 2px; }
+  .scene-link::before { width: 14px; height: 14px; }
+  .scene-link-label { font-size: 0.64rem; }
   .hand-grid { grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); }
   .builder-grid { grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); }
   .auth-card { padding: 24px 16px; }
@@ -3209,6 +3409,17 @@ button.danger:hover { filter: brightness(1.08); }
   width: 56px;
   height: 56px;
   margin: 0 auto;
+}
+
+.auth-app-icon {
+  width: 76px;
+  height: 76px;
+  margin: 0 auto 4px;
+  display: block;
+  border-radius: 18px;
+  box-shadow:
+    0 10px 24px rgba(10, 14, 30, 0.3),
+    0 0 0 1px rgba(147, 197, 253, 0.18);
 }
 
 .auth-card h1 { margin: 0; font-size: 1.5rem; color: var(--text); }
