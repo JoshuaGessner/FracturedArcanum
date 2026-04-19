@@ -1553,6 +1553,9 @@ function AppShell() {
       const result = game.winner === 'player' ? 'win' : game.winner === 'enemy' ? 'loss' : 'draw'
       const previousRating = serverProfile?.seasonRating ?? 1200
       const previousStreak = serverProfile?.streak ?? 0
+      // Capture the key so the async callback can detect staleness
+      // (e.g. user started a new match before the response arrived).
+      const capturedKey = matchKey
       void authFetch('/api/match/complete', authToken, {
         method: 'POST',
         body: { opponent: game.enemy.name, mode: game.mode, result, turns: game.turnNumber },
@@ -1560,6 +1563,8 @@ function AppShell() {
         .then((r) => r.json())
         .then((data: { ok: boolean; runes?: number; seasonRating?: number; wins?: number; losses?: number; streak?: number; runesEarned?: number }) => {
           if (!data.ok) return
+          // Stale response — a new match has started since this request.
+          if (resolvedMatchKeyRef.current !== capturedKey) return
           setServerProfile((prev) =>
             prev
               ? {
@@ -1813,6 +1818,8 @@ function AppShell() {
       battleIntroTimerRef.current = null
     }
     resolvedMatchKeyRef.current = ''
+    setCinemaSequence(null)
+    cinemaScopeRef.current = 'generic'
     prevBoardRef.current = null
     setBattleSessionActive(false)
     setServerBattleActive(false)
@@ -2253,6 +2260,8 @@ function AppShell() {
     setBattleSessionActive(true)
     setServerBattleActive(false)
     setBattleSummaryVisible(false)
+    setCinemaSequence(null)
+    cinemaScopeRef.current = 'generic'
     setSelectedAttacker(null)
     resolvedMatchKeyRef.current = ''
     clearEnemyTurnTimers()

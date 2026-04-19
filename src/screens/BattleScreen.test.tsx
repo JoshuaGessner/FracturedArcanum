@@ -250,7 +250,7 @@ describe('BattleScreen mobile layout', () => {
 
     const battleSurface = document.querySelector('.battlefield.active') as HTMLElement | null
 
-    expect(screen.getByText(/your command phase/i)).toBeTruthy()
+    expect(screen.getByText(/your turn/i)).toBeTruthy()
     expect(screen.getByRole('button', { name: /end turn/i })).toBeTruthy()
     expect(screen.queryByText(/frontline/i)).toBeNull()
     expect(screen.queryByText(/play a card or choose a ready unit/i)).toBeNull()

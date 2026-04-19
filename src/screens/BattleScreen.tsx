@@ -58,15 +58,6 @@ export function BattleScreen() {
 
   const isBattle = activeScreen === 'battle'
   const battleModeLabel = isRankedBattle ? 'Ranked duel' : battleKind === 'local' ? 'Pass and play' : 'AI skirmish'
-  const battleStatusLabel = game.winner
-    ? game.winner === 'player'
-      ? 'Arena secured'
-      : game.winner === 'enemy'
-        ? 'Rival advantage'
-        : 'Dead heat'
-    : isMyTurn
-      ? 'Your command phase'
-      : 'Enemy pressure'
   const resultTone = game.winner === 'player' ? 'victory' : game.winner === 'enemy' ? 'defeat' : 'draw'
   const showBattleSummary = Boolean(game.winner)
     && ((battleSummaryVisible ?? false) || (game.winner !== 'player' && !cinemaSequence))
@@ -414,33 +405,24 @@ export function BattleScreen() {
             </div>
           )}
 
-          <div className="battle-arena-hud battle-arena-hud-top">
-            <div
-              className={[
-                'battle-hero-pill',
-                'enemy',
-                enemyHeroFx === 'damaged' ? 'is-damaged' : '',
-                enemyHeroFx === 'healed' ? 'is-healed' : '',
-              ].filter(Boolean).join(' ')}
-            >
-              <div className="battle-hero-copy">
-                <span className="battle-hero-side">Enemy</span>
-                <strong>{game.enemy.name}</strong>
-                <span className="battle-hero-metric"><StatIcon kind="health" /> {game.enemy.health} HP</span>
-              </div>
-              {enemyHeroFx === 'damaged' && (
-                <img className="hero-fx-overlay hero-fx-cracks" src={UI_ASSETS.overlays.heroCracks} alt="" aria-hidden="true" />
-              )}
-              {enemyHeroFx === 'healed' && (
-                <img className="hero-fx-overlay hero-fx-halo" src={UI_ASSETS.overlays.heroHalo} alt="" aria-hidden="true" />
-              )}
-            </div>
-
-            <div className="battle-turn-pill">
-              <span className="eyebrow">Turn {game.turnNumber}</span>
-              <strong className="battle-turn-state">{battleStatusLabel}</strong>
-              <span className="mini-text">{battleModeLabel}</span>
-            </div>
+          {/* ─── Enemy Hero Anchor ──────────────────────────────── */}
+          <div
+            className={[
+              'battle-hero-anchor',
+              'enemy',
+              enemyHeroFx === 'damaged' ? 'is-damaged' : '',
+              enemyHeroFx === 'healed' ? 'is-healed' : '',
+            ].filter(Boolean).join(' ')}
+          >
+            <span className="battle-hero-side">Enemy</span>
+            <strong className="battle-hero-name">{game.enemy.name}</strong>
+            <span className="battle-hero-hp"><StatIcon kind="health" /> {game.enemy.health}</span>
+            {enemyHeroFx === 'damaged' && (
+              <img className="hero-fx-overlay hero-fx-cracks" src={UI_ASSETS.overlays.heroCracks} alt="" aria-hidden="true" />
+            )}
+            {enemyHeroFx === 'healed' && (
+              <img className="hero-fx-overlay hero-fx-halo" src={UI_ASSETS.overlays.heroHalo} alt="" aria-hidden="true" />
+            )}
           </div>
 
           <div className="battle-board-stack">
@@ -506,9 +488,9 @@ export function BattleScreen() {
           </div>
 
           <div className="battle-centerline">
-            <div className="battle-center-status">
-              <strong className="battle-center-note">{battleCenterLabel}</strong>
-            </div>
+            <span className="battle-center-turn">T{game.turnNumber}</span>
+            <strong className="battle-center-note">{battleCenterLabel}</strong>
+            <span className={`battle-center-phase ${isMyTurn ? 'is-player-turn' : 'is-enemy-turn'}`}>{isMyTurn ? 'Your turn' : 'Enemy turn'}</span>
           </div>
 
           <div className="battlefield-side player-side">
@@ -583,70 +565,61 @@ export function BattleScreen() {
 
           </div>
 
-          <div className="battle-arena-hud battle-arena-hud-bottom">
-            <div className="battle-player-summary">
-              <div
-                className={[
-                  'battle-hero-pill',
-                  'player',
-                  playerHeroFx === 'damaged' ? 'is-damaged' : '',
-                  playerHeroFx === 'healed' ? 'is-healed' : '',
-                  playerLowHp ? 'is-low-hp' : '',
-                ].filter(Boolean).join(' ')}
-              >
-                <div className="battle-hero-copy">
-                  <span className="battle-hero-side">You</span>
-                  <strong>{game.player.name}</strong>
-                  <span className="battle-hero-metric"><StatIcon kind="health" /> {game.player.health} HP</span>
-                </div>
-                {playerHeroFx === 'damaged' && (
-                  <img className="hero-fx-overlay hero-fx-cracks" src={UI_ASSETS.overlays.heroCracks} alt="" aria-hidden="true" />
-                )}
-                {playerHeroFx === 'healed' && (
-                  <img className="hero-fx-overlay hero-fx-halo" src={UI_ASSETS.overlays.heroHalo} alt="" aria-hidden="true" />
-                )}
-              </div>
+          {/* ─── Player Hero Anchor ─────────────────────────────── */}
+          <div
+            className={[
+              'battle-hero-anchor',
+              'player',
+              playerHeroFx === 'damaged' ? 'is-damaged' : '',
+              playerHeroFx === 'healed' ? 'is-healed' : '',
+              playerLowHp ? 'is-low-hp' : '',
+            ].filter(Boolean).join(' ')}
+          >
+            <span className="battle-hero-side">You</span>
+            <strong className="battle-hero-name">{game.player.name}</strong>
+            <span className="battle-hero-hp"><StatIcon kind="health" /> {game.player.health}</span>
+            <span className="battle-hero-resource" aria-label={`Mana ${activePlayer.mana} of ${activePlayer.maxMana}`}>
+              <StatIcon kind="mana" /> {activePlayer.mana}/{activePlayer.maxMana}
+            </span>
+            <span className="battle-hero-resource momentum" aria-label={`Momentum ${activePlayer.momentum} of 10`}>
+              M {activePlayer.momentum}/10
+            </span>
+            {playerHeroFx === 'damaged' && (
+              <img className="hero-fx-overlay hero-fx-cracks" src={UI_ASSETS.overlays.heroCracks} alt="" aria-hidden="true" />
+            )}
+            {playerHeroFx === 'healed' && (
+              <img className="hero-fx-overlay hero-fx-halo" src={UI_ASSETS.overlays.heroHalo} alt="" aria-hidden="true" />
+            )}
+          </div>
 
-              <div className="battle-resource-summary">
-                <span className="battle-resource-chip" aria-label={`Mana ${activePlayer.mana} of ${activePlayer.maxMana}`}>
-                  <span className="battle-resource-label">Mana</span>
-                  <strong>{activePlayer.mana}/{activePlayer.maxMana}</strong>
-                </span>
-                <span className="battle-resource-chip momentum" aria-label={`Momentum ${activePlayer.momentum} of 10`}>
-                  <span className="battle-resource-label">Momentum</span>
-                  <strong>{activePlayer.momentum}/10</strong>
-                </span>
-              </div>
-            </div>
-
-            <div className={`controls battle-controls ${selectedAttacker !== null ? 'battle-controls-attack-ready' : ''}`}>
-              <button
-                className="primary"
-                onClick={handleBurst}
-                disabled={activePlayer.momentum < 3 || Boolean(game.winner) || !isMyTurn}
-              >
-                Burst
-              </button>
-              <button className="secondary" onClick={handleEndTurn} disabled={Boolean(game.winner) || !isMyTurn}>
-                {!isMyTurn ? (
-                  <><span className="spinner spinner-inline" aria-hidden="true" />Waiting<span className="thinking-dots" /></>
-                ) : (
-                  'End Turn'
-                )}
-              </button>
-              {selectedAttacker !== null && !defenderHasGuard && (
-                <button
-                  className="ghost"
-                  onClick={() => handleAttackTarget('hero')}
-                  disabled={Boolean(game.winner)}
-                >
-                  Strike Hero
-                </button>
+          {/* ─── Action Dock ────────────────────────────────────── */}
+          <div className={`battle-action-dock ${selectedAttacker !== null ? 'battle-action-dock-attack' : ''}`}>
+            <button
+              className="primary"
+              onClick={handleBurst}
+              disabled={activePlayer.momentum < 3 || Boolean(game.winner) || !isMyTurn}
+            >
+              Burst
+            </button>
+            <button className="secondary" onClick={handleEndTurn} disabled={Boolean(game.winner) || !isMyTurn}>
+              {!isMyTurn ? (
+                <><span className="spinner spinner-inline" aria-hidden="true" />Waiting<span className="thinking-dots" /></>
+              ) : (
+                'End Turn'
               )}
-              <button className="ghost" onClick={handleLeaveBattle}>
-                Leave
+            </button>
+            {selectedAttacker !== null && !defenderHasGuard && (
+              <button
+                className="ghost"
+                onClick={() => handleAttackTarget('hero')}
+                disabled={Boolean(game.winner)}
+              >
+                Strike Hero
               </button>
-            </div>
+            )}
+            <button className="ghost" onClick={handleLeaveBattle}>
+              Leave
+            </button>
           </div>
 
           <div className="battle-hand-rail" data-tour-id="battle-hand">

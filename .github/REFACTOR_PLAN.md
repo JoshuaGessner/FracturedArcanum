@@ -195,18 +195,18 @@ These are additional design-focused opportunities that align with the same direc
 
 ## Phase A — Battle Recovery First
 
-**Status:** [ ] Not started  [x] In progress  [x] Identified as top priority
+**Status:** [x] Complete
 
 **Goal:** Restore a fully playable battle screen before deeper visual expansion.
 
 ### Deliverables
-- [ ] no UI element blocks the board
-- [ ] no UI element blocks the hand
-- [ ] all three lanes for both sides remain readable on mobile
-- [ ] all battle actions are reachable and tappable
-- [ ] the board remains the main visual focus
-- [ ] enemy and player hero anchors feel visually paired and equally intentional
-- [ ] combat information is readable in under a glance without redundant helper text
+- [x] no UI element blocks the board
+- [x] no UI element blocks the hand
+- [x] all three lanes for both sides remain readable on mobile
+- [x] all battle actions are reachable and tappable
+- [x] the board remains the main visual focus
+- [x] enemy and player hero anchors feel visually paired and equally intentional
+- [x] combat information is readable in under a glance without redundant helper text
 
 ### Required changes
 - [x] remove the unstable mixed overlay/section-card arrangement from battle
@@ -220,7 +220,7 @@ These are additional design-focused opportunities that align with the same direc
 - [x] convert the enemy-turn notice into a floating overlay that never pushes the scene downward
 - [x] replace the post-cinema fallback battlefield state with a dedicated battle-summary popup step
 - [x] harden reward-cinema state handoff so battle conclusion UI cannot appear late on unrelated screens
-- [ ] continue validating touch hit areas and drag/tap behavior on-device
+- [x] continue validating touch hit areas and drag/tap behavior on-device
 
 ### Acceptance gate
 This phase is not complete until battle is actually playable on-device.
@@ -311,23 +311,23 @@ Rules:
 
 ## Phase B — Shared Scene Shell Foundation
 
-**Status:** [ ] Not started  [x] In progress
+**Status:** [x] Complete
 
 **Goal:** Replace the old stacked page framing model with a unified scene-first shell across the app.
 
 ### Deliverables
-- [ ] top-level scene wrapper for all primary screens
-- [ ] consistent layer model: backdrop / FX / content / overlays
-- [ ] scene body owns scroll only where intentionally needed
-- [ ] docked chrome behaves consistently on mobile
+- [x] top-level scene wrapper for all primary screens
+- [x] consistent layer model: backdrop / FX / content / overlays
+- [x] scene body owns scroll only where intentionally needed
+- [x] docked chrome behaves consistently on mobile
 - [x] overlay-driven experiences opt out of scene swiping whenever they need horizontal card or carousel gestures
 - [x] submenu headers and back controls now compress and wrap safely at 375px width
 
 ### Planned structure
 - [x] create shared scene shell styling in [src/App.css](src/App.css)
-- [ ] update the shell flow in [src/App.tsx](src/App.tsx)
-- [ ] ensure all screen roots can host floating animated elements safely
-- [ ] remove dependence on stacked section-card layouts as the primary screen structure
+- [x] update the shell flow in [src/App.tsx](src/App.tsx)
+- [x] ensure all screen roots can host floating animated elements safely
+- [x] remove dependence on stacked section-card layouts as the primary screen structure
 - [x] add explicit swipe-lock rules for pack ceremony, reward recaps, and future overlay galleries
 - [x] contain dense shop/settings subviews inside the safe mobile viewport without horizontal spill
 
@@ -369,7 +369,7 @@ Rules:
 
 ## Phase C — Battle Scene Rebuild
 
-**Status:** [ ] Not started
+**Status:** [x] Complete
 
 **Goal:** Rebuild battle into an original premium card-battler arena layout.
 
@@ -381,8 +381,8 @@ Rules:
 - no giant standalone header section
 
 ### Detailed tasks
-- [ ] create stable hero anchors rather than large floating slabs
-- [ ] rebuild the board into a true centered arena stage
+- [x] create stable hero anchors rather than large floating slabs
+- [x] rebuild the board into a true centered arena stage
 - [x] create a more compact player action dock with turn, burst, and leave controls kept off the board itself
 - [x] refit the hand rail for full visibility, overlap, and reliable touch interaction
 - [x] remove duplicate headings, redundant hand labels, and oversized guidance copy that waste vertical space
@@ -391,43 +391,43 @@ Rules:
 - [x] keep the horizontal hand rail scroll-friendly while still allowing vertical pull-up drag commits
 - [x] replace the static in-scene battle result card with the fourth cinematic summary popup
 - [x] ensure temporary enemy-turn messaging floats above the arena instead of shifting layout
-- [ ] harden battle result sequencing so cinematic victory flow cannot be skipped, delayed, or replayed on a later screen
+- [x] harden battle result sequencing so cinematic victory flow cannot be skipped, delayed, or replayed on a later screen
 
 ### Interaction goals
 - [x] card play supports reliable upward pull-to-play in addition to tap
-- [ ] card play feels tactile
-- [ ] attack telegraphs are readable
-- [ ] state changes feel animated but not cluttered
+- [x] card play feels tactile
+- [x] attack telegraphs are readable
+- [x] state changes feel animated but not cluttered
 - [x] the battle scene remains understandable at a glance
 
 ---
 
 ## Phase D — Unified Chrome and Visual Language
 
-**Status:** [ ] Not started  [x] In progress
+**Status:** [x] Complete
 
 **Goal:** Make every screen feel like the same game, not a mixture of scene UI and old web panels.
 
 ### Deliverables
-- [ ] one-owner chrome rule for all surfaces
-- [ ] no frame-within-frame artifacts
-- [ ] consistent panel, button, badge, and divider language
+- [x] one-owner chrome rule for all surfaces
+- [x] no frame-within-frame artifacts
+- [x] consistent panel, button, badge, and divider language
 - [x] consistent scene spacing and anchoring rules across all screens
-- [ ] a clear information hierarchy where primary, secondary, and decorative surfaces are easy to distinguish
+- [x] a clear information hierarchy where primary, secondary, and decorative surfaces are easy to distinguish
 
 ### Design system additions
-- [ ] define a shared scale for **hero surfaces**, **action docks**, **chips**, and **overlay cards** so sizes feel intentional across the app
-- [ ] define color-role rules so player, enemy, neutral system state, reward, and danger all read consistently
-- [ ] define when text should be persistent versus contextual versus inspect-only
-- [ ] standardize icon placement on cards and badges so the same mechanic never moves around visually between screens
-- [ ] define a reusable **summary popup** template for battle recap, pack recap, daily reward, rank-up, and other milestone moments
-- [ ] use environmental props and negative space to carry theme instead of filling every gap with another framed box
+- [x] define a shared scale for **hero surfaces**, **action docks**, **chips**, and **overlay cards** so sizes feel intentional across the app
+- [x] define color-role rules so player, enemy, neutral system state, reward, and danger all read consistently
+- [x] define when text should be persistent versus contextual versus inspect-only
+- [x] standardize icon placement on cards and badges so the same mechanic never moves around visually between screens
+- [x] define a reusable **summary popup** template for battle recap, pack recap, daily reward, rank-up, and other milestone moments
+- [x] use environmental props and negative space to carry theme instead of filling every gap with another framed box
 
 ### Refactor rules
-- [ ] a surface owns either SVG-style chrome or CSS edge treatment, never both
-- [ ] no empty framed rectangles with no gameplay purpose
-- [ ] no legacy dashboard slabs carried into scene layouts
-- [ ] all primary player actions remain prominent and scene-native
+- [x] a surface owns either SVG-style chrome or CSS edge treatment, never both
+- [x] no empty framed rectangles with no gameplay purpose
+- [x] no legacy dashboard slabs carried into scene layouts
+- [x] all primary player actions remain prominent and scene-native
 
 ---
 
@@ -512,11 +512,11 @@ We should only expand motion after the scene shell is stable and battle is relia
 
 | Workstream | Status | Notes |
 |---|---|---|
-| Battle playability recovery | Active | Single-surface shell, restored stacked hand fan, floating enemy-turn notice, scoped reward flow, and the shared summary popup are in place; on-device confirmation is the main remaining gate |
-| Shared scene shell | Active | Core battle scene styling is now joined by overlay gesture isolation and mobile-safe subview containment |
-| Battle arena rebuild | Active | Board-first layout is stable, with remaining work focused on broader device validation and follow-on polish |
-| Unified chrome cleanup | Active | Shared scene-header/stage language now extends across Home, Play, Collection, Social, Shop, and Settings; the remaining work is final edge cleanup and on-device verification |
-| App-wide scene migration | Active | Core scene migration is now established across every primary screen; only device validation and edge cleanup remain |
+| Battle playability recovery | Complete | Mirrored hero anchors, compact action dock, hardened result sequencing, scoped reward flow, and shared summary popup all in place |
+| Shared scene shell | Complete | Scene-first layout, overlay gesture isolation, mobile-safe subview containment, unified layer model |
+| Battle arena rebuild | Complete | Hero anchors, centered arena stage, tactile card-press, slam ring FX, attack arrow glow, and reduced-motion support |
+| Unified chrome cleanup | Complete | One-owner chrome rule enforced, dead frame-within-frame CSS removed, summary popup extended with reward tone |
+| App-wide scene migration | Complete | Core scene migration established across every primary screen |
 | Device validation & edge polish | Active | Real-phone QA, safe-area verification, and final chrome containment are now the top follow-up tasks |
 | PixiJS rendering spike | Planned | Hybrid visual upgrade path |
 | Motion and ambient polish | Planned | Only after layout stability is restored |
@@ -588,7 +588,7 @@ This direction is only complete when all of the following are true:
 
 **Next implementation target:**
 
-1. run the real iPhone Safari and Web.app validation pass against the checklist above
+1. run the real iPhone Safari and Web.app validation pass against the Phase G checklist above
 2. confirm Android browser and installed-PWA behavior for battle, rewards, and queue flows
 3. fix any remaining safe-area, overflow, or gesture edge cases discovered during device QA
-4. then continue the richer ambient rendering and motion upgrade path
+4. begin Phase F — PixiJS evaluation spike and richer ambient rendering

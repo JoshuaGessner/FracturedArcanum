@@ -10,7 +10,7 @@ export type SummaryPopupProps = {
   eyebrow?: string
   title: string
   note?: string
-  tone?: 'victory' | 'defeat' | 'draw' | 'neutral'
+  tone?: 'victory' | 'defeat' | 'draw' | 'reward' | 'neutral'
   statusBadge?: string
   highlights?: string[]
   actions: SummaryPopupAction[]
@@ -44,7 +44,7 @@ export function SummaryPopup({
             <h2>{title}</h2>
           </div>
           {statusBadge && (
-            <span className={`deck-status ${tone === 'victory' ? 'ready' : tone === 'neutral' ? '' : 'warning'}`.trim()}>
+            <span className={`deck-status ${tone === 'victory' || tone === 'reward' ? 'ready' : tone === 'neutral' ? '' : 'warning'}`.trim()}>
               {statusBadge}
             </span>
           )}

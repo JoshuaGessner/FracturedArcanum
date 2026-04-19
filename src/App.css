@@ -790,10 +790,8 @@ button:disabled {
 
 /* ─── Section Cards ─────────────────────────────────────────────── */
 /* Single-owner chrome rule: the card owns the border + radius +
-   gradient. The previous panel-frame.svg layer doubled the visible
-   edge against the CSS border on mobile, producing the
-   frame-within-frame look. The frame asset is reserved for explicit
-   ornate panels that opt in via .section-card.framed. */
+   gradient. Surfaces own either SVG chrome or CSS edge treatment,
+   never both — avoid stacking panel-frame.svg on top of a CSS border. */
 
 .section-card, .hero-card {
   background: linear-gradient(135deg, rgba(14, 20, 38, 0.94), rgba(23, 35, 71, 0.86));
@@ -801,13 +799,6 @@ button:disabled {
   border-radius: 18px;
   padding: 14px;
   box-shadow: 0 14px 38px rgba(10, 14, 30, 0.28);
-}
-
-.section-card.framed {
-  background:
-    linear-gradient(135deg, rgba(14, 20, 38, 0.94), rgba(23, 35, 71, 0.86)),
-    url('/generated/ui/panel-frame.svg') center / 100% 100% no-repeat;
-  border-color: transparent;
 }
 
 .hero-card.enemy { border-color: rgba(248, 113, 113, 0.3); }
@@ -1430,157 +1421,116 @@ button:disabled {
 .battle-arena-frame {
   position: relative;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto auto;
-  gap: 8px;
+  grid-template-rows: auto minmax(0, 1fr) auto auto auto;
+  gap: 6px;
   padding: 10px;
   overflow: hidden;
   background: linear-gradient(180deg, rgba(10, 16, 31, 0.96), rgba(31, 45, 88, 0.92));
   backdrop-filter: blur(12px);
 }
 
-.battle-arena-hud {
+/* ─── Hero Anchors (mirrored pair) ─────────────────────────────── */
+.battle-hero-anchor {
   position: relative;
   z-index: 3;
-  display: grid;
-  gap: 6px;
-}
-
-.battle-arena-hud-top {
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: stretch;
-}
-
-.battle-arena-hud-bottom {
-  grid-template-columns: 1fr;
-  align-items: stretch;
-  gap: 6px;
-  padding-top: 0;
-}
-
-.battle-hero-pill {
-  position: relative;
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 8px;
-  min-height: 54px;
-  min-width: 0;
-  width: 100%;
-  padding: 6px 9px;
-  border-radius: 12px;
+  min-height: 36px;
+  padding: 5px 10px;
+  border-radius: var(--radius-md);
   background: rgba(8, 14, 30, 0.76);
   border: 1px solid rgba(147, 197, 253, 0.14);
+  overflow: hidden;
+  transition: box-shadow var(--motion-fast), border-color var(--motion-fast);
 }
 
-.battle-hero-pill.enemy {
-  color: #fca5a5;
+.battle-hero-anchor.enemy {
+  border-color: rgba(248, 113, 113, 0.22);
 }
 
-.battle-hero-pill.player {
-  color: #eff4ff;
-}
-
-.battle-hero-copy {
-  display: grid;
-  gap: 2px;
-  min-width: 0;
+.battle-hero-anchor.player {
+  border-color: rgba(147, 197, 253, 0.22);
 }
 
 .battle-hero-side {
-  font-size: 0.62rem;
-  letter-spacing: 0.08em;
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: rgba(219, 230, 255, 0.72);
+  color: rgba(219, 230, 255, 0.6);
+  flex-shrink: 0;
 }
 
-.battle-hero-pill.enemy .battle-hero-side {
-  color: rgba(254, 202, 202, 0.8);
+.battle-hero-anchor.enemy .battle-hero-side {
+  color: rgba(254, 202, 202, 0.72);
 }
 
-.battle-hero-copy strong {
-  font-size: 0.9rem;
+.battle-hero-name {
+  font-size: 0.82rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.battle-hero-metric {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 0.82rem;
-}
-
-.battle-turn-pill {
-  display: grid;
-  gap: 1px;
-  justify-items: center;
-  align-content: center;
-  justify-self: end;
-  min-width: 124px;
-  text-align: center;
-  padding: 5px 8px;
-  border-radius: 12px;
-  border: 1px solid rgba(251, 191, 36, 0.2);
-  background: linear-gradient(135deg, rgba(20, 25, 44, 0.92), rgba(42, 33, 68, 0.78));
-}
-
-.battle-turn-state {
-  font-size: 0.82rem;
-  color: #f0f4ff;
-}
-
-.battle-status-strip {
-  margin-top: 4px;
-}
-
-.battle-status-strip .badge {
-  border: 1px solid rgba(251, 191, 36, 0.18);
-  background: rgba(251, 191, 36, 0.12);
-}
-
-.battle-player-summary {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 6px 8px;
   min-width: 0;
+  flex: 1 1 0;
 }
 
-.battle-resource-summary {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 6px;
-}
-
-.battle-resource-chip {
+.battle-hero-hp {
   display: inline-flex;
-  align-items: baseline;
-  gap: 6px;
-  padding: 4px 8px;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.battle-hero-anchor.enemy .battle-hero-hp {
+  color: #fca5a5;
+}
+
+.battle-hero-anchor.player .battle-hero-hp {
+  color: var(--text);
+}
+
+.battle-hero-resource {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 6px;
   border-radius: 999px;
   background: rgba(37, 99, 235, 0.14);
   border: 1px solid rgba(147, 197, 253, 0.16);
   color: #dbe6ff;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
-.battle-resource-chip.momentum {
+.battle-hero-resource.momentum {
   background: rgba(251, 191, 36, 0.12);
   border-color: rgba(251, 191, 36, 0.18);
   color: #fff4d4;
 }
 
-.battle-resource-label {
-  font-size: 0.66rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+/* ─── Action Dock ──────────────────────────────────────────────── */
+.battle-action-dock {
+  display: flex;
+  gap: 6px;
+  z-index: 3;
 }
 
-.battle-controls {
-  margin-top: 0;
-  justify-content: stretch;
-  align-self: stretch;
+.battle-action-dock > button {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 34px;
+  padding: 5px 4px;
+  font-size: 0.78rem;
+}
+
+.battle-action-dock-attack {
+  /* Keep the same layout when Strike Hero appears */
 }
 
 /* ─── Pips (Mana / Momentum) ───────────────────────────────────── */
@@ -1717,6 +1667,11 @@ button:disabled {
   border-color: rgba(251, 191, 36, 0.26);
 }
 
+.summary-popup-reward {
+  border-color: rgba(147, 197, 253, 0.3);
+  box-shadow: 0 18px 48px rgba(6, 10, 22, 0.46), 0 0 32px rgba(147, 197, 253, 0.08);
+}
+
 .summary-popup-head {
   display: flex;
   align-items: flex-start;
@@ -1779,19 +1734,22 @@ button:disabled {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 8px;
   width: fit-content;
   max-width: 100%;
   margin: 0 auto;
-  padding: 3px 8px;
+  padding: 3px 10px;
   border-radius: 10px;
   border: 1px solid rgba(147, 197, 253, 0.16);
   background: linear-gradient(135deg, rgba(12, 18, 36, 0.88), rgba(28, 34, 60, 0.74));
 }
 
-.battle-center-status {
-  display: grid;
-  gap: 2px;
+.battle-center-turn {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: rgba(251, 191, 36, 0.75);
+  flex-shrink: 0;
 }
 
 .battle-center-note {
@@ -1800,6 +1758,26 @@ button:disabled {
   color: #dbe6ff;
   text-align: center;
   text-transform: uppercase;
+}
+
+.battle-center-phase {
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 1px 6px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.battle-center-phase.is-player-turn {
+  background: rgba(37, 99, 235, 0.25);
+  color: #93c5fd;
+}
+
+.battle-center-phase.is-enemy-turn {
+  background: rgba(220, 38, 38, 0.2);
+  color: #fca5a5;
 }
 
 .board-grid-battle .slot {
@@ -2134,6 +2112,13 @@ button:disabled {
   transform: translateY(-8px) scale(1.06) rotate(0deg);
 }
 
+/* Tactile press — card briefly compresses before commit. */
+.battle-hand-rail .hand-card:active:not(:disabled):not(.is-dragging) {
+  transform: translateY(-2px) scale(0.97) rotate(0deg);
+  box-shadow: 0 2px 8px rgba(6, 10, 22, 0.5);
+  transition: transform 60ms ease-out, box-shadow 60ms ease-out;
+}
+
 .hand-card:hover:not(:disabled) {
   transform: translateY(-18px) rotate(0deg) scale(1.05);
   box-shadow: 0 18px 40px rgba(6, 10, 22, 0.4), 0 0 16px var(--rarity-color, transparent);
@@ -2395,6 +2380,7 @@ button:disabled {
   border-radius: 16px;
   border: 2px solid var(--rarity-color, var(--border));
   transition: transform 0.2s ease, box-shadow 0.2s ease;
+  -webkit-touch-callout: none;
 }
 
 .builder-card-preview {
@@ -2405,6 +2391,9 @@ button:disabled {
   background: transparent;
   color: inherit;
   text-align: left;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .builder-card-preview:focus-visible {
@@ -3521,8 +3510,8 @@ button.danger:hover { filter: brightness(1.08); }
     padding: 4px 0;
   }
 
-  .battle-controls {
-    justify-content: stretch;
+  .battle-action-dock {
+    flex-wrap: wrap;
   }
 
   .admin-console { grid-column: span 1; }
@@ -3721,46 +3710,22 @@ button.danger:hover { filter: brightness(1.08); }
   .slot { min-height: 88px; padding: 7px; }
   .battle-arena-frame {
     padding: 8px;
-    gap: 8px;
+    gap: 6px;
   }
-  .battle-arena-hud-top {
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: start;
+  .battle-hero-anchor {
+    padding: 4px 8px;
+    gap: 6px;
+    min-height: 30px;
   }
-  .battle-arena-hud-bottom {
-    grid-template-columns: 1fr;
-    align-items: stretch;
-  }
-  .battle-turn-pill {
-    order: 0;
-    min-width: 112px;
-    padding: 4px 7px;
-  }
-  .battle-hero-pill {
-    padding: 6px 8px;
-  }
-  .battle-hero-copy strong {
-    font-size: 0.82rem;
-  }
-  .battle-hero-metric {
+  .battle-hero-name {
     font-size: 0.76rem;
   }
-  .battle-player-summary {
-    display: grid;
-    grid-template-columns: 1fr;
-    align-items: stretch;
-    gap: 4px;
+  .battle-hero-hp {
+    font-size: 0.76rem;
   }
-  .battle-resource-summary {
-    display: grid;
-    grid-column: 1 / -1;
-    width: 100%;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 4px;
-  }
-  .battle-resource-chip {
-    justify-content: space-between;
-    padding: 4px 6px;
+  .battle-hero-resource {
+    font-size: 0.66rem;
+    padding: 1px 5px;
   }
   .battle-board-stack {
     min-height: clamp(200px, 38svh, 300px);
@@ -3780,27 +3745,25 @@ button.danger:hover { filter: brightness(1.08); }
     flex-direction: row;
     align-items: center;
     padding: 3px 6px;
-  }
-  .battle-center-note {
-    font-size: 0.68rem;
-  }
-
-  .battle-controls {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 6px;
   }
-
-  .battle-controls.battle-controls-attack-ready {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .battle-center-note {
+    font-size: 0.62rem;
   }
-
-  .battle-controls > button {
-    width: 100%;
-    min-width: 0;
-    min-height: 38px;
-    padding: 6px 4px;
-    font-size: 0.8rem;
+  .battle-center-turn {
+    font-size: 0.56rem;
+  }
+  .battle-center-phase {
+    font-size: 0.52rem;
+    padding: 1px 4px;
+  }
+  .battle-action-dock {
+    gap: 4px;
+  }
+  .battle-action-dock > button {
+    min-height: 34px;
+    padding: 5px 3px;
+    font-size: 0.74rem;
   }
   .queue-modal { width: 100%; }
   .battle-hand-rail {
@@ -4961,11 +4924,26 @@ button.danger:disabled { opacity: 0.55; transform: none; box-shadow: none; }
   z-index: 4;
 }
 
+.slot.is-slamming::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: inherit;
+  border: 2px solid rgba(253, 230, 138, 0.8);
+  animation: slamRing 400ms ease-out forwards;
+  pointer-events: none;
+}
+
 @keyframes cardSlam {
   0%   { transform: scale(1); }
   35%  { transform: scale(1.18); box-shadow: 0 0 0 4px rgba(253, 230, 138, 0.85), 0 0 32px rgba(253, 230, 138, 0.6) inset; }
   70%  { transform: scale(0.98); }
   100% { transform: scale(1); }
+}
+
+@keyframes slamRing {
+  0%   { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.3); }
 }
 
 /* Attack telegraph — defenders pulse red, invalid defenders desaturate. */
@@ -4994,15 +4972,11 @@ button.danger:disabled { opacity: 0.55; transform: none; box-shadow: none; }
   pointer-events: none;
   z-index: 70;
   overflow: visible;
+  filter: drop-shadow(0 0 6px rgba(220, 38, 38, 0.6));
 }
 
 /* Hero portrait reactions — damage shake, heal halo, low-HP vignette pulse. */
-.battle-hero-pill {
-  position: relative;
-  overflow: hidden;
-}
-
-.battle-hero-pill .hero-fx-overlay {
+.battle-hero-anchor .hero-fx-overlay {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -5012,30 +4986,30 @@ button.danger:disabled { opacity: 0.55; transform: none; box-shadow: none; }
   border-radius: inherit;
 }
 
-.battle-hero-pill .hero-fx-cracks {
+.battle-hero-anchor .hero-fx-cracks {
   animation: heroCrackFlash 520ms ease-out forwards;
   mix-blend-mode: screen;
 }
 
-.battle-hero-pill .hero-fx-halo {
+.battle-hero-anchor .hero-fx-halo {
   animation: heroHaloFlash 520ms ease-out forwards;
 }
 
-.battle-hero-pill.is-damaged {
+.battle-hero-anchor.is-damaged {
   animation: heroShake 380ms cubic-bezier(0.36, 0.07, 0.19, 0.97);
 }
 
-.battle-hero-pill.is-healed {
+.battle-hero-anchor.is-healed {
   box-shadow:
     0 0 0 2px rgba(74, 222, 128, 0.6),
     0 0 22px rgba(34, 197, 94, 0.4);
 }
 
-.battle-hero-pill.is-low-hp {
+.battle-hero-anchor.is-low-hp {
   animation: heroLowHpVignette 1000ms ease-in-out infinite;
 }
 
-.battle-hero-pill.is-low-hp::after {
+.battle-hero-anchor.is-low-hp::after {
   content: '';
   position: absolute;
   inset: 0;
@@ -5078,15 +5052,16 @@ button.danger:disabled { opacity: 0.55; transform: none; box-shadow: none; }
   .slot.is-slamming,
   .slot.is-valid-defender,
   .slot.is-invalid-defender,
-  .battle-hero-pill.is-damaged,
-  .battle-hero-pill.is-healed,
-  .battle-hero-pill.is-low-hp,
-  .battle-hero-pill .hero-fx-cracks,
-  .battle-hero-pill .hero-fx-halo {
+  .battle-hero-anchor.is-damaged,
+  .battle-hero-anchor.is-healed,
+  .battle-hero-anchor.is-low-hp,
+  .battle-hero-anchor .hero-fx-cracks,
+  .battle-hero-anchor .hero-fx-halo {
     animation: none !important;
     transition: none !important;
   }
-  .battle-hero-pill.is-low-hp::after { background: rgba(220, 38, 38, 0.18); }
+  .battle-hero-anchor.is-low-hp::after { background: rgba(220, 38, 38, 0.18); }
+  .slot.is-slamming::after { display: none; }
   .hand-card.is-dragging { transform: rotate(var(--fan-tilt, 0deg)) scale(1.05); }
 }
 
@@ -5145,10 +5120,22 @@ input, textarea, p, .card-text, .note, .mini-text {
 .slot p, .slot .note, .slot .card-text,
 .hand-card p, .hand-card .note, .hand-card .card-text,
 .battle-card p, .battle-card .note, .battle-card .card-text,
-.collection-card p, .collection-card .note, .collection-card .card-text {
+.collection-card p, .collection-card .note, .collection-card .card-text,
+.builder-card p, .builder-card .note, .builder-card .card-text {
   -webkit-user-select: none;
   user-select: none;
   -webkit-touch-callout: none;
+}
+
+/* Prevent iOS Safari image callout on ALL card art, reward, and
+   ceremony images that live inside inspectable surfaces. */
+.slot img, .hand-card img, .builder-card img,
+.card-inspect-modal img, .reward-cinema-overlay img,
+.pack-ceremony-overlay img {
+  -webkit-touch-callout: none;
+  -webkit-user-drag: none;
+  user-select: none;
+  pointer-events: none;
 }
 
 button, [role="button"], .scene-link, .chip {
