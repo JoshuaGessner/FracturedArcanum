@@ -209,23 +209,25 @@ button:disabled {
 }
 .app-shell:not(.battle-shell-active) .scene-stage > .screen-panel.active::-webkit-scrollbar-track { background: transparent; }
 
-/* Battle: use a strict three-row shell on mobile so the status bar,
-   battlefield, and hand each get a controlled height budget without
-   covering one another. */
+/* Battle: the active arena should own the remaining height while banners
+   and the hand rail stay compact around it. */
 .app-shell.battle-shell-active .scene-stage {
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  display: flex;
+  flex-direction: column;
   gap: 8px;
   overflow: hidden;
+  min-height: 0;
 }
 
 .app-shell.battle-shell-active .scene-stage > .screen-panel.active {
   flex: 0 0 auto;
+  min-height: 0;
 }
 
 .app-shell.battle-shell-active .scene-stage > .battlefield.active {
   flex: 1 1 auto;
   min-height: 0;
+  overflow: hidden;
 }
 
 .screen-panel.hidden {
@@ -1262,73 +1264,94 @@ button:disabled {
   opacity: 0.55;
 }
 
-/* ─── Battle Topbar ─────────────────────────────────────────────── */
+/* ─── Battle Arena HUD ─────────────────────────────────────────── */
 
-.battle-topbar {
+.battle-arena-frame {
   position: relative;
-  z-index: 3;
-  padding: 10px 12px;
-  background: linear-gradient(135deg, rgba(10, 16, 31, 0.96), rgba(31, 45, 88, 0.92));
+  padding: 8px;
+  overflow: hidden;
+  background: linear-gradient(180deg, rgba(10, 16, 31, 0.96), rgba(31, 45, 88, 0.92));
   backdrop-filter: blur(12px);
 }
 
-.battle-command-dais {
-  position: relative;
-  overflow: hidden;
-}
-
-.battle-command-dais > * {
-  position: relative;
-  z-index: 1;
-}
-
-.battle-heroes-compact {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-}
-
-.hero-compact {
+.battle-arena-hud {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  z-index: 3;
   display: grid;
-  gap: 1px;
+  gap: 6px;
+}
+
+.battle-arena-hud-top {
+  top: 8px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+}
+
+.battle-arena-hud-bottom {
+  bottom: 8px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 8px;
+}
+
+.battle-hero-pill {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   min-width: 0;
-  flex: 1 1 180px;
-  padding: 8px 10px;
+  padding: 7px 10px;
   border-radius: 12px;
-  background: rgba(8, 14, 30, 0.44);
+  background: rgba(8, 14, 30, 0.7);
   border: 1px solid rgba(147, 197, 253, 0.14);
 }
 
-.hero-compact strong {
-  font-size: 0.92rem;
+.battle-hero-pill.enemy {
+  color: #fca5a5;
 }
 
-.hero-compact .hero-health {
-  font-size: 0.95rem;
+.battle-hero-pill.player {
+  color: #eff4ff;
 }
 
-.hero-compact.enemy { color: #fca5a5; }
+.battle-hero-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
 
-.battle-turn-label { text-align: center; display: grid; gap: 2px; }
-.battle-turn-state { font-size: 0.95rem; color: #f0f4ff; }
+.battle-hero-copy strong {
+  font-size: 0.9rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 
-.battle-objective {
-  padding: 10px 12px;
-  border-radius: 14px;
+.battle-hero-metric {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.82rem;
+}
+
+.battle-turn-pill {
+  display: grid;
+  gap: 2px;
+  justify-items: center;
+  align-content: center;
+  text-align: center;
+  padding: 6px 10px;
+  border-radius: 12px;
   border: 1px solid rgba(251, 191, 36, 0.2);
   background: linear-gradient(135deg, rgba(20, 25, 44, 0.92), rgba(42, 33, 68, 0.78));
 }
 
-.battle-medal {
-  display: grid;
-  place-items: center;
-  padding: 8px;
-}
-
-.battle-medal .rank-badge-art {
-  background: rgba(255, 255, 255, 0.08);
+.battle-turn-state {
+  font-size: 0.9rem;
+  color: #f0f4ff;
 }
 
 .battle-status-strip {
@@ -1340,27 +1363,46 @@ button:disabled {
   background: rgba(251, 191, 36, 0.12);
 }
 
-.battle-action-row {
+.battle-player-summary {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 10px;
   align-items: center;
+  gap: 6px;
 }
 
-.battle-resource-row {
+.battle-resource-summary {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
-  justify-content: flex-start;
-  margin-top: 0;
+  gap: 6px;
+}
+
+.battle-resource-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.14);
+  border: 1px solid rgba(147, 197, 253, 0.16);
+  color: #dbe6ff;
+}
+
+.battle-resource-chip.momentum {
+  background: rgba(251, 191, 36, 0.12);
+  border-color: rgba(251, 191, 36, 0.18);
+  color: #fff4d4;
+}
+
+.battle-resource-label {
+  font-size: 0.66rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .battle-controls {
   margin-top: 0;
-  justify-content: flex-end;
+  justify-content: stretch;
 }
-
-.battle-resource-panel { display: grid; gap: 10px; }
 
 /* ─── Pips (Mana / Momentum) ───────────────────────────────────── */
 
@@ -1452,18 +1494,23 @@ button:disabled {
 }
 
 .battlefield-stage {
-  display: grid;
-  grid-template-rows: minmax(0, 1fr) auto minmax(0, 1fr);
-  gap: 6px;
-  padding-top: 4px;
   height: 100%;
   min-height: 0;
   overflow: hidden;
 }
 
+.battle-board-stack {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 6px;
+  min-height: 0;
+  height: 100%;
+  padding: 72px 0 102px;
+}
+
 .battlefield-side {
   display: grid;
-  gap: 6px;
+  gap: 4px;
   min-height: 0;
 }
 
@@ -1476,6 +1523,9 @@ button:disabled {
   align-items: center;
   justify-content: center;
   gap: 6px;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 auto;
   padding: 3px 8px;
   border-radius: 10px;
   border: 1px solid rgba(147, 197, 253, 0.16);
@@ -1682,9 +1732,10 @@ button:disabled {
   display: grid;
   gap: 6px;
   position: relative;
-  z-index: 1;
+  z-index: 2;
   min-height: 0;
-  max-height: min(20svh, 150px);
+  flex: 0 0 auto;
+  max-height: min(24svh, 172px);
 }
 
 .hand-fan-stage {
@@ -1692,14 +1743,21 @@ button:disabled {
   height: 100%;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
+  gap: 6px;
 }
 
-.battle-hand-head {
-  align-items: end;
+.battle-hand-rail {
+  padding: 8px 8px 6px;
+  background: linear-gradient(180deg, rgba(9, 13, 24, 0.94), rgba(20, 30, 56, 0.92));
+  border-top: 1px solid rgba(147, 197, 253, 0.12);
 }
 
-.battle-hand-note {
-  margin: 0;
+.hand-rail-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
 }
 
 .hand-grid {
@@ -1710,12 +1768,19 @@ button:disabled {
 
 .hand-fan-grid {
   display: flex;
-  align-items: flex-end;
-  gap: 0;
+  align-items: stretch;
+  gap: 8px;
   overflow-x: auto;
   overflow-y: hidden;
   min-height: 0;
-  padding: 6px 4px 10px;
+  padding: 4px 2px 8px;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+}
+
+.hand-fan-grid::-webkit-scrollbar {
+  display: none;
 }
 
 .hand-card {
@@ -1743,12 +1808,17 @@ button:disabled {
 }
 
 .hand-fan-grid .hand-card {
-  flex: 0 0 128px;
-  margin-left: -18px;
+  flex: 0 0 118px;
+  margin-left: 0;
+  scroll-snap-align: start;
 }
 
-.hand-fan-grid .hand-card:first-child {
-  margin-left: 0;
+.battle-hand-rail .hand-card {
+  transform: none;
+}
+
+.battle-hand-rail .hand-card:hover:not(:disabled) {
+  transform: translateY(-10px) scale(1.02);
 }
 
 .hand-card:hover:not(:disabled) {
@@ -3225,19 +3295,37 @@ button.danger:hover { filter: brightness(1.08); }
 
   .mode-switch, .stepper { flex-wrap: wrap; }
   .slot { min-height: 88px; padding: 7px; }
-  .battle-topbar {
-    padding: 8px 10px;
-  }
-  .battle-heroes-compact {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .battle-arena-frame {
+    padding: 6px;
     gap: 6px;
   }
-  .battle-turn-label {
-    grid-column: 1 / -1;
-    padding: 0;
+  .battle-arena-hud-top {
+    grid-template-columns: 1fr;
+  }
+  .battle-turn-pill {
+    order: -1;
+    padding: 4px 8px;
+  }
+  .battle-hero-pill {
+    padding: 6px 8px;
+  }
+  .battle-hero-copy strong {
+    font-size: 0.82rem;
+  }
+  .battle-hero-metric {
+    font-size: 0.76rem;
+  }
+  .battle-resource-summary {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 4px;
+  }
+  .battle-resource-chip {
+    justify-content: space-between;
+    padding: 4px 6px;
   }
   .board-grid-battle .slot {
-    min-height: 58px;
+    min-height: 54px;
     padding: 4px 5px;
   }
   .board-grid-battle .slot .effect-badge {
@@ -3249,10 +3337,10 @@ button.danger:hover { filter: brightness(1.08); }
   .battle-centerline {
     flex-direction: row;
     align-items: center;
-    padding: 4px 6px;
+    padding: 3px 6px;
   }
   .battle-center-note {
-    font-size: 0.7rem;
+    font-size: 0.68rem;
   }
 
   .battle-controls {
@@ -3270,21 +3358,20 @@ button.danger:hover { filter: brightness(1.08); }
     min-width: 0;
     min-height: 38px;
     padding: 6px 4px;
-    font-size: 0.82rem;
-  }
-  .battle-objective .note {
-    display: none;
+    font-size: 0.8rem;
   }
   .queue-modal { width: 100%; }
   .hand-section {
-    max-height: min(19svh, 132px);
+    max-height: min(23svh, 160px);
   }
-  .battle-hand-head .badge,
-  .battle-hand-note {
-    display: none;
+  .hand-rail-head .mini-text {
+    font-size: 0.68rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .hand-card {
-    min-height: 102px;
+    min-height: 108px;
     padding: 6px 8px;
     gap: 3px;
   }
@@ -3306,8 +3393,8 @@ button.danger:hover { filter: brightness(1.08); }
     font-size: 0.78rem;
   }
   .hand-fan-grid .hand-card {
-    flex-basis: 96px;
-    margin-left: -6px;
+    flex-basis: 102px;
+    margin-left: 0;
   }
 
   .builder-grid {
@@ -4419,12 +4506,12 @@ button.danger:disabled { opacity: 0.55; transform: none; box-shadow: none; }
 }
 
 /* Hero portrait reactions — damage shake, heal halo, low-HP vignette pulse. */
-.hero-compact {
+.battle-hero-pill {
   position: relative;
   overflow: hidden;
 }
 
-.hero-compact .hero-fx-overlay {
+.battle-hero-pill .hero-fx-overlay {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -4434,30 +4521,30 @@ button.danger:disabled { opacity: 0.55; transform: none; box-shadow: none; }
   border-radius: inherit;
 }
 
-.hero-compact .hero-fx-cracks {
+.battle-hero-pill .hero-fx-cracks {
   animation: heroCrackFlash 520ms ease-out forwards;
   mix-blend-mode: screen;
 }
 
-.hero-compact .hero-fx-halo {
+.battle-hero-pill .hero-fx-halo {
   animation: heroHaloFlash 520ms ease-out forwards;
 }
 
-.hero-compact.is-damaged {
+.battle-hero-pill.is-damaged {
   animation: heroShake 380ms cubic-bezier(0.36, 0.07, 0.19, 0.97);
 }
 
-.hero-compact.is-healed {
+.battle-hero-pill.is-healed {
   box-shadow:
     0 0 0 2px rgba(74, 222, 128, 0.6),
     0 0 22px rgba(34, 197, 94, 0.4);
 }
 
-.hero-compact.is-low-hp {
+.battle-hero-pill.is-low-hp {
   animation: heroLowHpVignette 1000ms ease-in-out infinite;
 }
 
-.hero-compact.is-low-hp::after {
+.battle-hero-pill.is-low-hp::after {
   content: '';
   position: absolute;
   inset: 0;
@@ -4500,15 +4587,15 @@ button.danger:disabled { opacity: 0.55; transform: none; box-shadow: none; }
   .slot.is-slamming,
   .slot.is-valid-defender,
   .slot.is-invalid-defender,
-  .hero-compact.is-damaged,
-  .hero-compact.is-healed,
-  .hero-compact.is-low-hp,
-  .hero-compact .hero-fx-cracks,
-  .hero-compact .hero-fx-halo {
+  .battle-hero-pill.is-damaged,
+  .battle-hero-pill.is-healed,
+  .battle-hero-pill.is-low-hp,
+  .battle-hero-pill .hero-fx-cracks,
+  .battle-hero-pill .hero-fx-halo {
     animation: none !important;
     transition: none !important;
   }
-  .hero-compact.is-low-hp::after { background: rgba(220, 38, 38, 0.18); }
+  .battle-hero-pill.is-low-hp::after { background: rgba(220, 38, 38, 0.18); }
   .hand-card.is-dragging { transform: rotate(var(--fan-tilt, 0deg)) scale(1.05); }
 }
 

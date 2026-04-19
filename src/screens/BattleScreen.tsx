@@ -58,6 +58,13 @@ export function BattleScreen() {
       ? 'Your command phase'
       : 'Enemy pressure'
   const resultTone = game.winner === 'player' ? 'result-victory' : game.winner === 'enemy' ? 'result-defeat' : 'result-draw'
+  const battleCenterLabel = selectedAttacker === null
+    ? 'Choose a unit to attack'
+    : defenderHasGuard
+      ? 'Guard blocks the hero'
+      : 'Enemy hero exposed'
+  const playerTurnLabel = isMyTurn ? 'Your turn' : 'Holding'
+  const handCountLabel = `Hand (${activePlayer.hand.length})`
 
   // ─── Drag-to-play state ─────────────────────────────────────────────
   const [drag, setDrag] = useState<DragState | null>(null)
@@ -361,19 +368,21 @@ export function BattleScreen() {
         </div>
       )}
 
-      <section className={`battle-topbar section-card battle-command-dais screen-panel ${isBattle ? 'active' : 'hidden'}`}>
-        <div className="battle-hud-main">
-          <div className="battle-heroes-compact">
+      <section className={`battlefield screen-panel ${isBattle ? 'active' : 'hidden'}`}>
+        <article className="section-card battlefield-stage battle-arena-frame" ref={battlefieldRef}>
+          <div className="battle-arena-hud battle-arena-hud-top">
             <div
               className={[
-                'hero-compact',
+                'battle-hero-pill',
                 'enemy',
                 enemyHeroFx === 'damaged' ? 'is-damaged' : '',
                 enemyHeroFx === 'healed' ? 'is-healed' : '',
               ].filter(Boolean).join(' ')}
             >
-              <strong>{game.enemy.name}</strong>
-              <span className="hero-health"><StatIcon kind="health" /> {game.enemy.health}</span>
+              <div className="battle-hero-copy">
+                <strong>{game.enemy.name}</strong>
+                <span className="battle-hero-metric"><StatIcon kind="health" /> {game.enemy.health} HP</span>
+              </div>
               {enemyHeroFx === 'damaged' && (
                 <img className="hero-fx-overlay hero-fx-cracks" src={UI_ASSETS.overlays.heroCracks} alt="" aria-hidden="true" />
               )}
@@ -381,95 +390,17 @@ export function BattleScreen() {
                 <img className="hero-fx-overlay hero-fx-halo" src={UI_ASSETS.overlays.heroHalo} alt="" aria-hidden="true" />
               )}
             </div>
-            <div className="battle-turn-label">
+
+            <div className="battle-turn-pill">
               <span className="eyebrow">Turn {game.turnNumber}</span>
               <strong className="battle-turn-state">{battleStatusLabel}</strong>
-            </div>
-            <div
-              className={[
-                'hero-compact',
-                'player',
-                playerHeroFx === 'damaged' ? 'is-damaged' : '',
-                playerHeroFx === 'healed' ? 'is-healed' : '',
-                playerLowHp ? 'is-low-hp' : '',
-              ].filter(Boolean).join(' ')}
-            >
-              <strong>{game.player.name}</strong>
-              <span className="hero-health"><StatIcon kind="health" /> {game.player.health}</span>
-              {playerHeroFx === 'damaged' && (
-                <img className="hero-fx-overlay hero-fx-cracks" src={UI_ASSETS.overlays.heroCracks} alt="" aria-hidden="true" />
-              )}
-              {playerHeroFx === 'healed' && (
-                <img className="hero-fx-overlay hero-fx-halo" src={UI_ASSETS.overlays.heroHalo} alt="" aria-hidden="true" />
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div className="battle-action-row">
-          <div className="battle-resource-row">
-            <div className="pip-row" aria-label={`Mana ${activePlayer.mana} of ${activePlayer.maxMana}`}>
-              {Array.from({ length: Math.max(activePlayer.maxMana, 1) }).map((_, index) => (
-                <span
-                  key={`mana-${index}`}
-                  className={index < activePlayer.mana ? 'pip filled' : 'pip'}
-                  aria-hidden="true"
-                />
-              ))}
-              <span className="hero-label">Mana</span>
-            </div>
-            <div className="pip-row" aria-label={`Momentum ${activePlayer.momentum} of 10`}>
-              {Array.from({ length: 10 }).map((_, index) => (
-                <span
-                  key={`momentum-${index}`}
-                  className={index < activePlayer.momentum ? 'pip momentum filled' : 'pip momentum'}
-                  aria-hidden="true"
-                />
-              ))}
-              <span className="hero-label">Momentum</span>
+              <span className="mini-text">{battleModeLabel}</span>
             </div>
           </div>
 
-          <div className={`controls battle-controls ${selectedAttacker !== null ? 'battle-controls-attack-ready' : ''}`}>
-            <button
-              className="primary"
-              onClick={handleBurst}
-              disabled={activePlayer.momentum < 3 || Boolean(game.winner) || !isMyTurn}
-            >
-              Burst
-            </button>
-            <button className="secondary" onClick={handleEndTurn} disabled={Boolean(game.winner) || !isMyTurn}>
-              {!isMyTurn ? (
-                <><span className="spinner spinner-inline" aria-hidden="true" />Opponent thinking<span className="thinking-dots" /></>
-              ) : (
-                'End Turn'
-              )}
-            </button>
-            {selectedAttacker !== null && (
-              <button
-                className="ghost"
-                onClick={() => handleAttackTarget('hero')}
-                disabled={defenderHasGuard || Boolean(game.winner)}
-              >
-                Strike Hero
-              </button>
-            )}
-            <button className="ghost" onClick={handleLeaveBattle}>
-              Leave
-            </button>
-          </div>
-        </div>
-      </section>
-
-      <section className={`battlefield screen-panel ${isBattle ? 'active' : 'hidden'}`}>
-        <article className="section-card battlefield-stage" ref={battlefieldRef}>
-          <div className="battlefield-side enemy-side">
-            <div className="section-head battle-side-head">
-              <h2>{game.enemy.name} Frontline</h2>
-              <span className="badge">Enemy {game.enemy.health} HP</span>
-            </div>
-
-            <div className="board-grid board-grid-battle">
+          <div className="battle-board-stack">
+            <div className="battlefield-side enemy-side">
+              <div className="board-grid board-grid-battle">
               {game.enemy.board.map((unit, index) => {
                 if (!unit) {
                   return (
@@ -531,22 +462,11 @@ export function BattleScreen() {
 
           <div className="battle-centerline">
             <div className="battle-center-status">
-              <strong className="battle-center-note">
-                {selectedAttacker === null
-                  ? 'Choose a frontline unit'
-                  : defenderHasGuard
-                    ? 'Guard blocks the hero'
-                    : 'Enemy hero exposed'}
-              </strong>
+              <strong className="battle-center-note">{battleCenterLabel}</strong>
             </div>
           </div>
 
           <div className="battlefield-side player-side">
-            <div className="section-head battle-side-head">
-              <h2>{game.player.name} Frontline</h2>
-              <span className="badge" aria-live="polite">{isMyTurn ? 'Your turn' : 'Holding'}</span>
-            </div>
-
             <div className="board-grid board-grid-battle">
               {game.player.board.map((unit, index) => {
                 if (!unit) {
@@ -613,6 +533,74 @@ export function BattleScreen() {
                   </button>
                 )
               })}
+            </div>
+          </div>
+
+          </div>
+
+          <div className="battle-arena-hud battle-arena-hud-bottom">
+            <div className="battle-player-summary">
+              <div
+                className={[
+                  'battle-hero-pill',
+                  'player',
+                  playerHeroFx === 'damaged' ? 'is-damaged' : '',
+                  playerHeroFx === 'healed' ? 'is-healed' : '',
+                  playerLowHp ? 'is-low-hp' : '',
+                ].filter(Boolean).join(' ')}
+              >
+                <div className="battle-hero-copy">
+                  <strong>{game.player.name}</strong>
+                  <span className="battle-hero-metric"><StatIcon kind="health" /> {game.player.health} HP</span>
+                </div>
+                <span className="badge" aria-live="polite">{playerTurnLabel}</span>
+                {playerHeroFx === 'damaged' && (
+                  <img className="hero-fx-overlay hero-fx-cracks" src={UI_ASSETS.overlays.heroCracks} alt="" aria-hidden="true" />
+                )}
+                {playerHeroFx === 'healed' && (
+                  <img className="hero-fx-overlay hero-fx-halo" src={UI_ASSETS.overlays.heroHalo} alt="" aria-hidden="true" />
+                )}
+              </div>
+
+              <div className="battle-resource-summary">
+                <span className="battle-resource-chip" aria-label={`Mana ${activePlayer.mana} of ${activePlayer.maxMana}`}>
+                  <span className="battle-resource-label">Mana</span>
+                  <strong>{activePlayer.mana}/{activePlayer.maxMana}</strong>
+                </span>
+                <span className="battle-resource-chip momentum" aria-label={`Momentum ${activePlayer.momentum} of 10`}>
+                  <span className="battle-resource-label">Momentum</span>
+                  <strong>{activePlayer.momentum}/10</strong>
+                </span>
+              </div>
+            </div>
+
+            <div className={`controls battle-controls ${selectedAttacker !== null ? 'battle-controls-attack-ready' : ''}`}>
+              <button
+                className="primary"
+                onClick={handleBurst}
+                disabled={activePlayer.momentum < 3 || Boolean(game.winner) || !isMyTurn}
+              >
+                Burst
+              </button>
+              <button className="secondary" onClick={handleEndTurn} disabled={Boolean(game.winner) || !isMyTurn}>
+                {!isMyTurn ? (
+                  <><span className="spinner spinner-inline" aria-hidden="true" />Opponent thinking<span className="thinking-dots" /></>
+                ) : (
+                  'End Turn'
+                )}
+              </button>
+              {selectedAttacker !== null && (
+                <button
+                  className="ghost"
+                  onClick={() => handleAttackTarget('hero')}
+                  disabled={defenderHasGuard || Boolean(game.winner)}
+                >
+                  Strike Hero
+                </button>
+              )}
+              <button className="ghost" onClick={handleLeaveBattle}>
+                Leave
+              </button>
             </div>
           </div>
 
@@ -699,13 +687,10 @@ export function BattleScreen() {
       )}
 
       <section className={`hand-section screen-panel ${isBattle ? 'active' : 'hidden'}`}>
-        <article className="section-card hand-fan-stage" data-tour-id="battle-hand">
-          <div className="section-head battle-hand-head">
-            <div>
-              <h2>Hand</h2>
-              <p className="note battle-hand-note">Tap to cast · hold to inspect.</p>
-            </div>
-            <span className="badge">Mana {activePlayer.mana}/{activePlayer.maxMana}</span>
+        <article className="section-card hand-fan-stage battle-hand-rail" data-tour-id="battle-hand">
+          <div className="hand-rail-head">
+            <span className="badge">{handCountLabel}</span>
+            <span className="mini-text">Tap or drag to play · hold to inspect</span>
           </div>
 
           <div className="hand-grid hand-fan-grid" data-scene-swipe-opt-out>
