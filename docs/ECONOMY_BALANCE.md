@@ -29,16 +29,16 @@ The game uses a single soft currency called **Shards**. All code, UI, and docume
 
 | Source | Amount | Frequency | Per-Session (3 games) |
 |--------|--------|-----------|----------------------|
-| Match win | 50 shards | Per win | 75–150 (at 50–100% WR) |
+| Match win | 30 shards | Per win | 45–90 (at 50–100% WR) |
 | Match loss | 10 shards | Per loss | 10–15 (at 33–50% LR) |
 | Win streak bonus | +5 per streak past 2 (cap +20) | Per qualifying win | Variable |
-| Daily reward | 50 shards | Once per day | 50 |
+| Daily reward | 25 shards | Once per day | 25 |
 | Card breakdown (Common) | 5 shards | Per copy | Variable |
 | Card breakdown (Rare) | 10 shards | Per copy | Variable |
 | Card breakdown (Epic) | 25 shards | Per copy | Variable |
 | Card breakdown (Legendary) | 100 shards | Per copy | Variable |
 
-**Source constants:** `server/db.js` — `WIN_SHARDS = 50`, `LOSS_SHARDS = 10`, `DAILY_SHARDS = 50`
+**Source constants:** `server/db.js` — `WIN_SHARDS = 30`, `LOSS_SHARDS = 10`, `DAILY_SHARDS = 25`
 **Breakdown values:** `server/db.js` — `RARITY_BREAKDOWN_VALUE` map
 **Streak bonus:** +5 shards per streak past 2 wins (capped at +20 extra). Source: `resolveMatchResult()` in `server/db.js`
 **Match duration:** Matches typically last ~5 minutes, making shard income very fast per real-time minute of play.
@@ -50,34 +50,34 @@ Games are fast-paced (typically ~5 minutes per match). Income should be calculat
 **Per-match income (50% win rate across 2 games):**
 
 ```
-1 win (50) + 1 loss (10) = 60 shards per 2 games (~10 minutes)
-Average per match: 30 shards
+1 win (30) + 1 loss (10) = 40 shards per 2 games (~10 minutes)
+Average per match: 20 shards
 ```
 
 **Casual player** (3 matches/day, ~15 minutes, 50% win rate):
 
 ```
-Daily match income:  (1.5 wins × 50) + (1.5 losses × 10) = 75 + 15 = 90 shards
-Daily reward:        50 shards
-Daily total:         140 shards
-Weekly total:        980 shards
+Daily match income:  (1.5 wins × 30) + (1.5 losses × 10) = 45 + 15 = 60 shards
+Daily reward:        25 shards
+Daily total:         85 shards
+Weekly total:        595 shards
 
-That's ~7 Basic packs per day from matches alone, or ~2 per 15-minute session.
+That's ~1.7 Basic packs per day from matches alone, or ~1 per 15-minute session.
 ```
 
 **Dedicated player** (5 matches/day, ~25 minutes, 60% win rate):
 
 ```
-Daily match income:  (3 wins × 50) + (2 losses × 10) = 150 + 20 = 170 shards
+Daily match income:  (3 wins × 30) + (2 losses × 10) = 90 + 20 = 110 shards
 Streak bonus:        ~10 shards (from 3-streak)
-Daily reward:        50 shards
-Daily total:         ~230 shards
-Weekly total:        ~1,610 shards
+Daily reward:        25 shards
+Daily total:         ~145 shards
+Weekly total:        ~1,015 shards
 
-That's ~4.5 Basic packs per day, or 1 Legendary pack every ~2 days.
+That's ~2.9 Basic packs per day, or 1 Legendary pack every ~2.8 days.
 ```
 
-**Key insight:** A single win (50 shards) pays for a Basic pack (50 shards) in one ~5-minute game. Progression feels immediate and rewarding for quick casual sessions.
+**Key insight:** Two wins (60 shards) pay for a Basic pack (50 shards) within one ~10-minute session. Progression still feels immediate for casual play while the lower win reward gives the collection meaningful longevity.
 
 ---
 
@@ -154,21 +154,21 @@ That's ~4.5 Basic packs per day, or 1 Legendary pack every ~2 days.
 
 ### Pack Purchase Frequency
 
-| Pack | Cost | Wins to Earn | Matches (~50% WR) | Casual Player (~140/day) | Dedicated Player (~230/day) |
+| Pack | Cost | Wins to Earn | Matches (~50% WR) | Casual Player (~85/day) | Dedicated Player (~145/day) |
 |------|------|-------------|-------------------|--------------------------|-------------------------------|
-| Basic | 50 | 1 win | 1–2 games (~5–10 min) | ~2.8 per day | ~4.6 per day |
-| Premium | 150 | 3 wins | ~5 games (~25 min) | ~1 per day | ~1.5 per day |
-| Legendary | 400 | 8 wins | ~13 games (~65 min) | 1 every ~3 days | 1 every ~2 days |
+| Basic | 50 | 2 wins | 2–3 games (~10–15 min) | ~1.7 per day | ~2.9 per day |
+| Premium | 150 | 5 wins | ~8 games (~40 min) | 1 every ~1.8 days | ~1 per day |
+| Legendary | 400 | ~14 wins | ~22 games (~110 min) | 1 every ~4.7 days | 1 every ~2.8 days |
 
-**Key metric:** A Basic pack costs exactly 1 win. Players should open their first pack within minutes of playing. The increased win reward (50 shards) ensures immediate gratification for quick casual sessions — a single 5-minute match can yield a pack.
+**Key metric:** Two wins pay for a Basic pack, reachable within a single short session. The gap between income and pack cost is intentional — packs should feel earned rather than automatic. Players open their first pack within the first two games of play.
 
 **Weekly volume:**
 
-| Pack | Casual (980/week) | Dedicated (~1,610/week) |
+| Pack | Casual (595/week) | Dedicated (~1,015/week) |
 |------|-------------------|-------------------------|
-| Basic (if all spent on Basic) | ~19 per week | ~32 per week |
-| Premium (if all spent on Premium) | ~6 per week | ~10 per week |
-| Legendary (if all spent on Legendary) | ~2.4 per week | ~4 per week |
+| Basic (if all spent on Basic) | ~11.9 per week | ~20 per week |
+| Premium (if all spent on Premium) | ~4 per week | ~6.8 per week |
+| Legendary (if all spent on Legendary) | ~1.5 per week | ~2.5 per week |
 
 ---
 
@@ -195,11 +195,11 @@ New Total Copies = Current Total Copies + (Expansion Commons × 3) + (Expansion 
 **Example:** An expansion adding 10C / 7R / 4E / 2L = 30 + 21 + 12 + 2 = 65 additional copies needed.
 
 The collection completion target should scale proportionally:
-- **Core-only:** 2–4 months (dedicated), 4–6 months (casual)
-- **Core + 1 expansion:** 3–5 months (dedicated), 5–8 months (casual)
-- **Core + 2 expansions:** 4–7 months (dedicated), 7–10 months (casual)
+- **Core-only:** 4–5 months (dedicated), 6–8 months (casual)
+- **Core + 1 expansion:** 5–7 months (dedicated), 8–11 months (casual)
+- **Core + 2 expansions:** 7–9 months (dedicated), 10–14 months (casual)
 
-If the timeline exceeds 8 months for a dedicated player, increase earning rates or reduce expansion size.
+If the timeline exceeds 10 months for a dedicated player, increase earning rates or reduce expansion size.
 
 ### Rotation and Collection
 
@@ -214,22 +214,22 @@ New players receive a starter collection via `buildStarterCollection()` in `serv
 
 ### Collection Completion Timeline
 
-**Casual player model** (3 games/day, ~15 min/day, 980 shards/week, buying Basic packs):
-- Basic packs per week: ~19
-- Cards per pack: 4
-- Cards per week: ~76
+**Casual player model** (3 games/day, ~15 min/day, 595 shards/week, buying Basic packs):
+- Basic packs per week: ~11.9
+- Cards per pack: 4 (plus upgrade chances)
+- Cards per week: ~47
 - Assuming ~30% new cards early, ~5% new cards late
-- Estimated time to collect all commons: ~2–4 weeks
-- Estimated time to collect all rares: ~4–7 weeks
-- Estimated time to collect all epics: ~8–14 weeks
-- Estimated full collection: ~14–22 weeks (~3.5–5.5 months)
+- Estimated time to collect all commons: ~3–5 weeks
+- Estimated time to collect all rares: ~6–10 weeks
+- Estimated time to collect all epics: ~12–20 weeks
+- Estimated full collection (max copies): ~28–34 weeks (~7–8 months)
 
-**Dedicated player model** (~5 games/day, ~25 min/day, ~1,610 shards/week, mix of packs):
-- Estimated full collection: ~8–14 weeks (~2–3.5 months)
+**Dedicated player model** (~5 games/day, ~25 min/day, ~1,015 shards/week, mix of packs):
+- Estimated full collection: ~16–22 weeks (~4–5.5 months)
 
-**Target:** A dedicated free player should be able to collect the full Core Set within 2–4 months. A casual player who plays 3 quick games a day reaches it in 4–6 months. This is generous compared to similar F2P card games, which is intentional — the game monetizes through cosmetics, not card scarcity.
+**Target:** A dedicated free player should be able to collect the full Core Set within 4–6 months. A casual player who plays 3 quick games a day reaches it in 6–8 months. This timeline is intentionally longer than in many F2P card games — the game monetizes through cosmetics, not card scarcity, so collection completion is a genuine long-term goal rather than a weekend task.
 
-**First-session experience:** After 3 matches (~15 min), a new player earns 60–150 shards + 50 daily = 110–200 shards. That's 2–4 Basic packs on day one, delivering an immediate "collection growing" feeling.
+**First-session experience:** After 3 matches (~15 min), a new player earns 45–90 shards in match rewards + 25 daily = 70–115 shards. That's 1–2 Basic packs on day one, delivering an immediate "collection growing" feeling without front-loading progression.
 
 ### Duplicate Protection
 
@@ -279,9 +279,9 @@ These are the knobs to turn when the economy needs adjustment. Each lever has se
 
 | Lever | Current Value | Increase Effect | Decrease Effect |
 |-------|--------------|-----------------|-----------------|
-| WIN_SHARDS | 50 | Faster collection; less cosmetic spending | Slower collection; more frustration |
+| WIN_SHARDS | 30 | Faster collection; less cosmetic spending | Slower collection; more frustration |
 | LOSS_SHARDS | 10 | Reduced loss penalty; encourages play | Risk of grind-it-out mentality |
-| DAILY_SHARDS | 50 | Rewards logging in; helps casual players | Less meaningful daily loop |
+| DAILY_SHARDS | 25 | Rewards logging in; helps casual players | Less meaningful daily loop |
 
 ### Cost Levers
 
@@ -311,20 +311,20 @@ These are the knobs to turn when the economy needs adjustment. Each lever has se
 | Metric | Healthy Range | Warning Sign |
 |--------|--------------|--------------|
 | Shards earned per session (3 games) | 60–170 | Below 40 = frustrating; above 250 = too generous |
-| Shards earned per match (average) | 25–55 | Below 15 = not worth playing; above 70 = devalues currency |
-| Packs opened per week (casual) | 12–25 | Below 8 = insufficient income |
-| Days to first Basic pack | 0 (first session) | If >0 = early frustration |
-| Days to first Epic | 1–3 | Above 7 = early frustration |
-| Days to first Legendary | 3–10 | Above 14 = collection feels stalled |
-| Collection % at 30 days (casual) | 40–65% | Below 30% = too slow; above 80% = nothing to chase |
+| Shards earned per match (average) | 15–40 | Below 10 = not worth playing; above 55 = devalues currency |
+| Packs opened per week (casual) | 8–16 | Below 5 = insufficient income |
+| Days to first Basic pack | 0–1 (first or second session) | If >2 = early frustration |
+| Days to first Epic | 2–5 | Above 10 = early frustration |
+| Days to first Legendary | 5–14 | Above 21 = collection feels stalled |
+| Collection % at 30 days (casual) | 25–50% | Below 15% = too slow; above 65% = nothing to chase |
 | Duplicate rate at 50% collection | 20–40% | Above 60% = duplicate protection not working |
-| Cosmetic purchase rate | 1 theme per 1–2 weeks | If never buying = prices too high |
+| Cosmetic purchase rate | 1 theme per 2–4 weeks | If never buying = prices too high |
 
 ### Balance Red Flags
 
 🚩 **Investigate immediately** if any of these occur:
 - A new player cannot build a competitive deck within their first week
-- A daily player runs out of meaningful purchases within 2 months
+- A daily player runs out of meaningful purchases within 4 months
 - Card breakdown is more profitable than playing matches
 - Any single pack type dominates all others in value (nobody buys the other types)
 - Cosmetic prices are so high nobody buys them, or so low everybody has everything
