@@ -1603,7 +1603,7 @@ function AppShell() {
             isRanked,
             battleKind: battleKindForBeats,
             mode: game.mode,
-            shards: data.shardsEarned ?? 50,
+            shards: data.shardsEarned ?? 30,
             ratingDelta: isRanked ? ratingDelta : undefined,
           })
           if (rankCrossed) {
@@ -1919,11 +1919,11 @@ function AppShell() {
       .then((data: { ok: boolean; error?: string; shards?: number; totalEarned?: number }) => {
         if (data.ok) {
           setServerProfile((prev) => prev ? { ...prev, shards: data.shards ?? prev.shards, lastDaily: todayKey, totalEarned: data.totalEarned ?? prev.totalEarned } : prev)
-          setToastMessage('Daily reward claimed: +50 Shards.')
+          setToastMessage('Daily reward claimed: +25 Shards.')
           setJustClaimedDaily(true)
           window.setTimeout(() => setJustClaimedDaily(false), 2000)
           presentRewardCinema(
-            buildDailyClaimSequence({ shards: 50, totalEarned: data.totalEarned }),
+            buildDailyClaimSequence({ shards: 25, totalEarned: data.totalEarned }),
             'daily',
           )
         } else {

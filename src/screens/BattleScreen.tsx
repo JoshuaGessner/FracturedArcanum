@@ -86,7 +86,7 @@ export function BattleScreen() {
     : battleKind === 'local'
       ? 'Casual Duel'
       : game.winner === 'player'
-        ? '+50 Shards'
+        ? '+30 Shards'
         : 'Practice Match'
   const battleCenterLabel = selectedAttacker === null
     ? (isMyTurn ? 'Deploy or strike' : 'Hold formation')
