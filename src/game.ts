@@ -111,10 +111,10 @@ export const CARD_LIBRARY: CardTemplate[] = [
   { id: 'field-medic', name: 'Battle Mender', cost: 3, attack: 2, health: 3, icon: '⛑️', text: 'Restore 3 health to your hero on summon.', effect: 'heal', rarity: 'common', tribe: 'warrior' },
   { id: 'sand-elemental', name: 'Dust Horror', cost: 4, attack: 3, health: 4, icon: '🏜️', text: 'Bolster: give a random friendly unit +1 health.', effect: 'bolster', rarity: 'common', tribe: 'elemental' },
   { id: 'pack-wolf', name: 'Starving Pack', cost: 4, attack: 4, health: 3, icon: '🐺', text: 'Empower: every ally bares its teeth (+1 attack on summon).', effect: 'empower', rarity: 'common', tribe: 'beast' },
-  { id: 'clockwork-knight', name: 'Geared Thrall', cost: 4, attack: 4, health: 4, icon: '⚙️', text: 'Reliable mid-game thrall. The gears whisper.', rarity: 'common', tribe: 'mech' },
-  { id: 'storm-brute', name: 'Thunderous Colossus', cost: 5, attack: 5, health: 4, icon: '⛈️', text: 'A tall, wrong-angled thing that closes games fast.', rarity: 'common', tribe: 'elemental' },
+  { id: 'clockwork-knight', name: 'Geared Thrall', cost: 4, attack: 4, health: 5, icon: '⚙️', text: 'Reliable mid-game thrall. The gears whisper.', rarity: 'common', tribe: 'mech' },
+  { id: 'storm-brute', name: 'Thunderous Colossus', cost: 5, attack: 5, health: 6, icon: '⛈️', text: 'A tall, wrong-angled thing that closes games fast.', rarity: 'common', tribe: 'elemental' },
   { id: 'siege-turtle', name: 'Carapace Wyrm', cost: 5, attack: 2, health: 8, icon: '🐢', text: 'Guard: must be attacked first. Its shell is older than the city.', effect: 'guard', rarity: 'common', tribe: 'beast' },
-  { id: 'flame-juggler', name: 'Fire-Eater Cultist', cost: 4, attack: 3, health: 3, icon: '🔥', text: 'Blast: deal 2 to the opposing hero.', effect: 'blast', rarity: 'common', tribe: 'elemental' },
+  { id: 'flame-juggler', name: 'Fire-Eater Cultist', cost: 4, attack: 3, health: 4, icon: '🔥', text: 'Blast: deal 1 to the opposing hero.', effect: 'blast', rarity: 'common', tribe: 'elemental' },
   { id: 'highland-archer', name: 'Barrow Archer', cost: 3, attack: 3, health: 2, icon: '🏹', text: 'Poison: deal 1 damage to all enemy units on summon. Tipped with grave-dust.', effect: 'poison', rarity: 'common', tribe: 'warrior' },
   { id: 'moss-treant', name: 'Fungal Treant', cost: 5, attack: 4, health: 5, icon: '🍄', text: 'Heal 2 to your hero on summon. Its spores mend and madden.', effect: 'heal', rarity: 'common', tribe: 'nature' },
   { id: 'coral-guardian', name: 'Coral Bastion', cost: 4, attack: 2, health: 5, icon: '🪸', text: 'Shield: give your hero +2 armor on summon.', effect: 'shield', rarity: 'common', tribe: 'nature' },
@@ -160,7 +160,7 @@ export const CARD_LIBRARY: CardTemplate[] = [
   { id: 'storm-titan', name: 'Storm Herald', cost: 7, attack: 6, health: 6, icon: '⛈️', text: 'Blast: deal 3 to enemy hero. Draw a card.', effect: 'blast', rarity: 'epic', tribe: 'elemental' },
   { id: 'necro-sage', name: 'Charnel Sage', cost: 5, attack: 3, health: 5, icon: '☠️', text: 'Summon: fill empty lanes with 2/2 Ghoul tokens.', effect: 'summon', rarity: 'epic', tribe: 'undead' },
   { id: 'druid-elder', name: 'Verdant Elder', cost: 5, attack: 3, health: 6, icon: '🌿', text: 'Heal 4 to hero. Bolster all friendly units +1 health.', effect: 'heal', rarity: 'epic', tribe: 'nature' },
-  { id: 'shadow-assassin', name: 'Whispering Assassin', cost: 5, attack: 6, health: 3, icon: '🗡️', text: 'Charge. Lifesteal: heal for damage dealt.', effect: 'charge', rarity: 'epic', tribe: 'undead' },
+  { id: 'shadow-assassin', name: 'Whispering Assassin', cost: 5, attack: 5, health: 3, icon: '🗡️', text: 'Charge. Lifesteal: heal for damage dealt.', effect: 'charge', rarity: 'epic', tribe: 'undead' },
   { id: 'arcane-golem', name: 'Runic Husk', cost: 6, attack: 5, health: 5, icon: '🔮', text: 'Rally: gain 3 Momentum on summon. Draw 1.', effect: 'rally', rarity: 'epic', tribe: 'arcane' },
 
   // ═══════════════════════════════════════════════════════════════════
@@ -314,6 +314,7 @@ const CARD_PARAMS: Record<string, CardParams> = {
   'fire-imp':            { amount: 1 }, // Blast 1 (under-rarity)
   'field-medic':         { amount: 3 }, // Heal 3
   'coral-guardian':      { amount: 2 }, // Shield 2 (under-rarity)
+  'flame-juggler':       { amount: 1 }, // Blast 1 — differentiated from rare ember-witch (Blast 2)
 
   // ── Rare overrides
   'runebound-oracle':    { amount: 2 }, // Draw 2
