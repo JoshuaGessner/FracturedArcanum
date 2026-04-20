@@ -77,6 +77,19 @@
 | `public/generated/cards` | 90 generated card illustrations |
 | `public/generated/asset-manifest.json` | 173-entry manifest for generated assets |
 
+## Game design documentation
+
+| Document | Purpose |
+|----------|---------|
+| `docs/GAME_DESIGN_BIBLE.md` | Master design document — vision, mechanics, card taxonomy, tribes, keywords, collectible registry, and procedures for adding new content |
+| `docs/CARD_BALANCE_FRAMEWORK.md` | Vanilla stat formula, keyword tax table, rarity power curves, mana curve targets, and the balance audit checklist |
+| `docs/ECONOMY_BALANCE.md` | Currency earning rates, pack value math, collection progression timeline, economy tuning levers, and health metrics |
+| `docs/CARD_CATALOG.md` | Complete card-by-card reference with stats, balance deltas, tribe/keyword distributions, and flagged outliers |
+| `docs/monetization-plan.md` | Paid offerings, cosmetic pricing, fairness covenant, and implementation path |
+| `docs/asset-pipeline.md` | SVG generation pipeline, semantic registry workflow, and adding new art |
+| `docs/aaa-asset-pipeline.md` | AI-generated asset production workflow and quality gates |
+| `docs/release-checklist.md` | Pre-deploy validation checklist |
+
 ## Build and verification commands
 
 | Command | Purpose |
