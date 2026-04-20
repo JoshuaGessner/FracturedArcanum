@@ -14,7 +14,7 @@ describe('TopBar mobile variants', () => {
         screenTitle="Arena Home"
         serverProfile={{
           username: 'josh',
-          runes: 180,
+          shards: 180,
           seasonRating: 1210,
           wins: 3,
           losses: 2,
@@ -43,7 +43,7 @@ describe('TopBar mobile variants', () => {
         screenTitle="Collection"
         serverProfile={{
           username: 'josh',
-          runes: 180,
+          shards: 180,
           seasonRating: 1210,
           wins: 3,
           losses: 2,
