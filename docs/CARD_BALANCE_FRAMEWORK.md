@@ -402,3 +402,140 @@ When seasonal data reveals that a card is over- or under-performing:
 | **Emergency ban** | Card enables a 0-counterplay combo discovered post-release | Remove from Ranked play immediately; schedule fix in next patch |
 
 **Documentation requirement:** Every balance change must update CARD_CATALOG.md with a changelog entry and the season it was applied.
+
+---
+
+## 11. Five-Year Seasonal Schedule (2026–2030)
+
+This schedule maps the complete expansion and rotation roadmap for Fractured Arcanum. Each season introduces one card expansion, one cosmetic release, a seasonal balance patch window, and seasonal thematic flavor.
+
+### Schedule Format
+
+Each season runs ~3 months. The **expansion** column defines the card set; the **cosmetic** column defines the seasonal cosmetic drop; the **rotation** column marks which older set rotates out of Ranked (if applicable, per the 4-season lifespan rule in §10).
+
+### Year 1 — 2026: The Shattering
+
+The first year establishes the world and the core tribes. Expansions fill tribe gaps (Dragon, Demon) and introduce the first seasonal mechanic.
+
+| Season | Set Tag | Expansion Name | Theme | New Cards | New Keyword | Cosmetic Release | Rotation |
+|--------|---------|---------------|-------|-----------|-------------|-----------------|----------|
+| S1 (Jan–Mar) | `SET-S1-CORE` | **Core Set** (already released) | The shattered boundary; all tribes | 70 (permanent) | All 21 base keywords | Royal Arcane, Ember Court, Moonwell Glow (themes); 5 card borders | None (Core) |
+| S2 (Apr–Jun) | `SET-S2-2026` | **Rift of the Serpent Kings** | Draconic awakening — wyrms, serpent-kin, and sky-leviathans | 20 (8C/6R/4E/2L) | **Ambush** (stealth for 1 turn; cannot be targeted) | Crimson Sanctum theme (200 runes) | None |
+| S3 (Jul–Sep) | `SET-S3-2026` | **Tides of the Drowned** | Abyssal horror — deep-sea entities, coral corruption, drowned dead | 22 (9C/7R/4E/2L) | **Corrode** (reduce target's ATK by N) | Verdant Hollow theme (220 runes) | None |
+| S4 (Oct–Dec) | `SET-S4-2026` | **Feast of the Hollow** | Harvest dread — fungal overgrowth, bone-fields, hunger made flesh | 20 (8C/6R/4E/2L) | None (reinforce Deathrattle, Poison) | Azure Depths theme (250 runes); Halloween event border | None |
+
+**Year 1 tribe goals:** +3 Dragon, +2 Demon, +1 Warrior Epic, +2 Undead Common. By end of Year 1, all tribes ≥ 5 cards.
+
+### Year 2 — 2027: The Corruption Spreads
+
+The world fractures further. Existing keywords deepen, one new mechanic per expansion. Rotation begins.
+
+| Season | Set Tag | Expansion Name | Theme | New Cards | New Keyword | Cosmetic Release | Rotation |
+|--------|---------|---------------|-------|-----------|-------------|-----------------|----------|
+| S1 (Jan–Mar) | `SET-S1-2027` | **Echoes of the Forgewright** | Heretical machines — sentient engines, brass abominations, forge-cults | 22 (9C/7R/4E/2L) | **Overcharge** (double this unit's next attack, then it takes 2 self-damage) | Golden Spire theme (280 runes) | None |
+| S2 (Apr–Jun) | `SET-S2-2027` | **Veil of the Starless** | Cosmic void — entities beyond the stars, null-space incursions | 20 (8C/6R/4E/2L) | None (reinforce Silence, Empower, Frostbite) | Void Eclipse theme (350 runes) | `SET-S2-2026` rotates out |
+| S3 (Jul–Sep) | `SET-S3-2027` | **Wrath of the Thornmother** | Primordial nature — ancient forests, vine-horrors, mycelial hiveminds | 22 (9C/7R/4E/2L) | **Rootbind** (enemy unit cannot attack for 1 turn; weaker than Frostbite, costs less) | Frost Tomb theme (300 runes) | `SET-S3-2026` rotates out |
+| S4 (Oct–Dec) | `SET-S4-2027` | **Dirge of the Bone Court** | Undead aristocracy — revenant lords, ossuary politics, death-masquerades | 20 (8C/6R/4E/2L) | None (reinforce Deathrattle, Siphon, Drain) | Ember Forge theme (280 runes); Halloween event border | `SET-S4-2026` rotates out |
+
+### Year 3 — 2028: The Convergence
+
+Dimensions bleed together. Cross-tribe synergies emerge. The meta matures.
+
+| Season | Set Tag | Expansion Name | Theme | New Cards | New Keyword | Cosmetic Release | Rotation |
+|--------|---------|---------------|-------|-----------|-------------|-----------------|----------|
+| S1 (Jan–Mar) | `SET-S1-2028` | **Rift Confluence** | Dimensional merging — hybrid entities, tribe-crossover cards | 24 (10C/7R/5E/2L) | **Flux** (on summon, transform into a random card of the same cost) | Shattered Prism theme (300 runes) | `SET-S1-2027` rotates out |
+| S2 (Apr–Jun) | `SET-S2-2028` | **Court of the Eyeless** | Forbidden knowledge — blind seers, glyph-madness, library-horrors | 20 (8C/6R/4E/2L) | None (reinforce Draw, Rally, Silence) | Eyeless Scribe theme (320 runes) | `SET-S2-2027` rotates out |
+| S3 (Jul–Sep) | `SET-S3-2028` | **Maw of the Worldeater** | Cosmic predators — planet-scale horrors, gravity-distortion, void whales | 22 (9C/7R/4E/2L) | **Devour** (destroy an enemy unit with less HP than this unit's ATK) | Abyssal Maw theme (340 runes) | `SET-S3-2027` rotates out |
+| S4 (Oct–Dec) | `SET-S4-2028` | **The Hollow Masquerade** | Deception — shapeshifters, mirror-entities, masked cultists | 20 (8C/6R/4E/2L) | None (reinforce Ambush, Corrode) | Masked Revenant theme (300 runes); Halloween event border | `SET-S4-2027` rotates out |
+
+### Year 4 — 2029: The Reckoning
+
+The void's agenda becomes clear. Power levels peak. Legendary events introduce limited-time challenge modes.
+
+| Season | Set Tag | Expansion Name | Theme | New Cards | New Keyword | Cosmetic Release | Rotation |
+|--------|---------|---------------|-------|-----------|-------------|-----------------|----------|
+| S1 (Jan–Mar) | `SET-S1-2029` | **Crucible of the Heresiarch** | Forged blasphemy — weapon-entities, soul-bound armaments, war-angels | 22 (9C/7R/4E/2L) | **Forgebound** (this unit gains +1/+1 each time you play another Mech) | Heresiarch's Crown theme (350 runes) | `SET-S1-2028` rotates out |
+| S2 (Apr–Jun) | `SET-S2-2029` | **Whispers of the Last Prophet** | Prophecy — fate-weavers, timeline fractures, deja vu mechanics | 20 (8C/6R/4E/2L) | None (reinforce Flux, Draw, Empower) | Last Prophet theme (360 runes) | `SET-S2-2028` rotates out |
+| S3 (Jul–Sep) | `SET-S3-2029` | **Dominion of the Deep Ones** | Abyssal conquest — underwater civilizations, coral-empires, tidal war | 22 (9C/7R/4E/2L) | **Submerge** (return this unit to your hand at end of turn; costs 1 less next time) | Deep One's Throne theme (340 runes) | `SET-S3-2028` rotates out |
+| S4 (Oct–Dec) | `SET-S4-2029` | **Night of the Thousand Maws** | Swarm horror — hive-entities, spawn-storms, endless hunger | 20 (8C/6R/4E/2L) | None (reinforce Summon, Deathrattle, Overwhelm) | Thousand Maws theme (320 runes); Halloween event border | `SET-S4-2028` rotates out |
+
+### Year 5 — 2030: The Eternal Fracture
+
+The final arc. Maximum card variety. The meta is broadest. Sets begin a second rotation cycle.
+
+| Season | Set Tag | Expansion Name | Theme | New Cards | New Keyword | Cosmetic Release | Rotation |
+|--------|---------|---------------|-------|-----------|-------------|-----------------|----------|
+| S1 (Jan–Mar) | `SET-S1-2030` | **Architects of the Void** | Creation mythos — entities that built the void, reality-shapers, origin-horrors | 24 (10C/7R/5E/2L) | **Reshape** (change one lane's unit into a copy of an adjacent friendly unit) | Architect's Nexus theme (380 runes) | `SET-S1-2029` rotates out |
+| S2 (Apr–Jun) | `SET-S2-2030` | **Funeral of Suns** | Stellar collapse — dying-star entities, gravity-wraiths, light-eaters | 20 (8C/6R/4E/2L) | None (reinforce Devour, Overcharge, Blast) | Dying Sun theme (400 runes) | `SET-S2-2029` rotates out |
+| S3 (Jul–Sep) | `SET-S3-2030` | **The Unraveling** | Reality breaks — glitch-entities, paradox-beasts, fractured timeline | 22 (9C/7R/4E/2L) | **Paradox** (on death, summon a copy of this unit with swapped ATK/HP) | Unraveled Reality theme (380 runes) | `SET-S3-2029` rotates out |
+| S4 (Oct–Dec) | `SET-S4-2030` | **Apotheosis** | Ascension — mortal-to-god transformations, ultimate horrors, endgame entities | 24 (10C/8R/4E/2L) | None (all keywords supported; capstone set) | Apotheosis theme (420 runes); Halloween event border; Anniversary border | `SET-S4-2029` rotates out |
+
+### Schedule Summary
+
+| Year | Total New Cards | New Keywords | Themes Released | Sets Rotated Out |
+|------|----------------|-------------|-----------------|-----------------|
+| 2026 | 62 (+ 70 Core) | Ambush, Corrode | 3 + 3 new | 0 |
+| 2027 | 84 | Overcharge, Rootbind | 4 | 3 (S2–S4 2026) |
+| 2028 | 86 | Flux, Devour | 4 | 4 (S1–S4 2027) |
+| 2029 | 84 | Forgebound, Submerge | 4 | 4 (S1–S4 2028) |
+| 2030 | 90 | Reshape, Paradox | 4 | 4 (S1–S4 2029) |
+| **Total** | **406 expansion + 70 Core** | **10 new keywords** | **22 themes** | **15 rotations** |
+
+### Active Card Pool Size Over Time
+
+At any point, the legal Ranked card pool = Core (70) + last 4 seasonal expansions.
+
+| Point in Time | Active Sets | Approx. Active Cards |
+|--------------|-------------|---------------------|
+| S1 2026 (launch) | Core only | 70 |
+| S4 2026 (end Y1) | Core + S2–S4 2026 | ~132 |
+| S4 2027 (end Y2) | Core + S1–S4 2027 | ~154 |
+| S4 2028 (end Y3) | Core + S1–S4 2028 | ~156 |
+| S4 2029 (end Y4) | Core + S1–S4 2029 | ~154 |
+| S4 2030 (end Y5) | Core + S1–S4 2030 | ~156 |
+
+The active pool stabilizes around **150–160 cards** after Year 2, keeping the meta manageable while providing variety.
+
+### Cosmetic Pricing Progression
+
+Theme costs escalate modestly over time to serve as long-term goals for veteran players:
+
+| Period | Cost Range | Rationale |
+|--------|-----------|-----------|
+| Launch (2026) | 0–180 runes | Accessible to new players; quick cosmetic reward loop |
+| Year 1 expansions | 200–250 runes | Modest increase; ~1.5–2 days of casual play |
+| Year 2 | 280–350 runes | ~2–2.5 days of casual play; milestone purchases |
+| Year 3 | 300–340 runes | Stable; variety rewards veterans |
+| Year 4 | 320–360 runes | Prestige tier; dedicated player goals |
+| Year 5 | 380–420 runes | Premium end-game cosmetics; 3 days of casual play |
+
+**Invariant:** No theme should ever cost more than 1 Legendary pack (400 runes) until Year 5. Players should always prefer cards over cosmetics for competitive progression.
+
+### Seasonal Balance Patch Windows
+
+Each season includes a dedicated balance patch window:
+
+| Window | Timing | Scope |
+|--------|--------|-------|
+| **Pre-expansion** | 1 week before new set launch | Emergency fixes for dominant cards in the outgoing meta |
+| **Mid-season** | 6 weeks into the season | Data-driven adjustments per thresholds in §10 (win rate, inclusion rate) |
+| **Pre-rotation** | 1 week before rotation | Verify the rotation doesn't break any core archetype |
+
+### New Keyword Tax Values
+
+New keywords introduced in expansions must be assigned tax values before release. Proposed taxes for the scheduled keywords:
+
+| Keyword | Proposed Tax | Rationale |
+|---------|-------------|-----------|
+| Ambush (Y1-S2) | −1 | 1-turn protection; similar to Enrage in conditional value |
+| Corrode (Y1-S3) | −0.5 per 1 ATK reduced | Weaker than direct damage; debuff has conditional value |
+| Overcharge (Y2-S1) | −1.5 | Powerful burst + self-damage drawback balances it |
+| Rootbind (Y2-S3) | −1 | Weaker than Frostbite (1 turn vs full exhaust) |
+| Flux (Y3-S1) | −1 | Random transformation is high-variance; exciting but unreliable |
+| Devour (Y3-S3) | −2 | Conditional hard removal; very powerful when triggered |
+| Forgebound (Y4-S1) | −1 | Tribal scaling; conditional on playing same-tribe units |
+| Submerge (Y4-S3) | −1.5 | Board evasion + cost reduction; strong tempo tool |
+| Reshape (Y5-S1) | −2 | Soft removal + board manipulation; complex and powerful |
+| Paradox (Y5-S3) | −1 | Deathrattle variant; stat-swap makes it unpredictable |
+
+**These values are proposals** and must be validated via the balance audit checklist (Section 7) when each keyword is actually designed and implemented.

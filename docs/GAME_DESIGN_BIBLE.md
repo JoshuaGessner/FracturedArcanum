@@ -216,11 +216,21 @@ All collectible items in the game. When adding new collectibles, register them h
 
 Tracked in `CARD_LIBRARY` in `src/game.ts`. Full catalog maintained in [`docs/CARD_CATALOG.md`](CARD_CATALOG.md).
 
-All current cards belong to the **Core Set** — these are permanent and never rotate out of Ranked play. Future expansion sets will be tracked here with their set tags. See [`docs/CARD_BALANCE_FRAMEWORK.md` §10](CARD_BALANCE_FRAMEWORK.md#10-seasonal-expansion--rotation-system) for rotation rules.
+All current cards belong to the **Core Set** — these are permanent and never rotate out of Ranked play. Future expansion sets will be tracked here with their set tags. See [`docs/CARD_BALANCE_FRAMEWORK.md` §10](CARD_BALANCE_FRAMEWORK.md#10-seasonal-expansion--rotation-system) for rotation rules and the full **Five-Year Seasonal Schedule** (§11) for the complete expansion roadmap through 2030.
 
 | Set | Tag | Cards | Status |
 |-----|-----|-------|--------|
 | Core | `SET-S1-CORE` | 70 | ✅ Permanent — never rotates |
+
+#### Planned Expansion Sets (Year 1)
+
+| Season | Set Tag | Expansion Name | Cards | New Keyword |
+|--------|---------|---------------|-------|-------------|
+| S2 2026 | `SET-S2-2026` | Rift of the Serpent Kings | 20 | Ambush |
+| S3 2026 | `SET-S3-2026` | Tides of the Drowned | 22 | Corrode |
+| S4 2026 | `SET-S4-2026` | Feast of the Hollow | 20 | — |
+
+See [`CARD_BALANCE_FRAMEWORK.md` §11](CARD_BALANCE_FRAMEWORK.md#11-five-year-seasonal-schedule-2026-2030) for the complete 5-year schedule covering Years 1–5 (2026–2030), including all 20 expansion sets, 10 new keywords, 22 cosmetic themes, and rotation order.
 
 ### Cosmetic Themes
 

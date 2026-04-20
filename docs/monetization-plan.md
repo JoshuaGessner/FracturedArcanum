@@ -69,6 +69,8 @@ Includes:
 
 **Economy impact:** Pass holders earn roughly 30–50% more Runes per week from bonus quests. This accelerates collection but does not grant exclusive cards.
 
+**Seasonal alignment:** Each pass aligns with one expansion season. See [`CARD_BALANCE_FRAMEWORK.md` §11](CARD_BALANCE_FRAMEWORK.md#11-five-year-seasonal-schedule-2026-2030) for the full 5-year schedule of 20 seasonal passes, expansion sets, and cosmetic releases.
+
 ### 3. Cosmetic Shop — *The Curator's Vault*
 
 **Price tiers:**

@@ -321,13 +321,14 @@ Planned features that will need economy integration (validate against this docum
 
 ### Expansion Economy Impact
 
-When releasing a new expansion:
+When releasing a new expansion (see the full 5-year seasonal schedule in [`CARD_BALANCE_FRAMEWORK.md` §11](CARD_BALANCE_FRAMEWORK.md#11-five-year-seasonal-schedule-2026-2030)):
 
 1. **Recalculate collection timelines** per the formula in Section 5
 2. **Consider catch-up mechanics** — if rotated sets leave gaps in new player collections
 3. **Model pack value shift** — adding cards to the pool dilutes guaranteed-rarity slots; verify Basic pack value doesn't drop below 40% return rate
 4. **Season pass alignment** — if a seasonal pass exists, expansion timing should coincide with new pass seasons
 5. **Update Section 5** — add new row to the Total Collection Size table with the expansion's cards
+6. **Cosmetic pricing check** — verify new seasonal theme cost follows the escalation curve in §11 Cosmetic Pricing Progression
 
 ### Trading System Safeguards
 

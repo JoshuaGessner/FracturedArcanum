@@ -29,8 +29,8 @@ A design documentation suite lives in `docs/`. **Consult it before adding, modif
 | Design Document | Covers |
 |-----------------|--------|
 | `docs/GAME_DESIGN_BIBLE.md` | Master design document — vision, mechanics, card taxonomy, tribes, keywords, collectible registry, and procedures for adding new content |
-| `docs/CARD_BALANCE_FRAMEWORK.md` | Vanilla stat formula, keyword tax table, rarity power curves, mana curve targets, and the balance audit checklist |
-| `docs/ECONOMY_BALANCE.md` | Currency earning rates, pack value math, collection progression timeline, economy tuning levers, and health metrics |
+| `docs/CARD_BALANCE_FRAMEWORK.md` | Vanilla stat formula, keyword tax table, rarity power curves, mana curve targets, balance audit checklist, seasonal expansion/rotation rules (§10), and the **5-year seasonal schedule** (§11) covering all expansion sets, keywords, cosmetics, and rotation order through 2030 |
+| `docs/ECONOMY_BALANCE.md` | Currency earning rates (WIN_RUNES=50), pack value math, collection progression timeline, economy tuning levers, and health metrics |
 | `docs/CARD_CATALOG.md` | Complete card-by-card reference with stats, balance deltas, tribe/keyword distributions, and flagged outliers |
 | `docs/monetization-plan.md` | Paid offerings, cosmetic pricing, fairness covenant, and implementation path |
 
