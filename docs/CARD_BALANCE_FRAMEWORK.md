@@ -509,7 +509,7 @@ Theme costs escalate modestly over time to serve as long-term goals for veteran 
 | Year 4 | 320–360 runes | Prestige tier; dedicated player goals |
 | Year 5 | 380–420 runes | Premium end-game cosmetics; 3 days of casual play |
 
-**Invariant:** No theme should ever cost more than 1 Legendary pack (400 runes) until Year 5. Players should always prefer cards over cosmetics for competitive progression.
+**Invariant:** No theme should cost more than 1 Legendary pack (400 runes) through Year 4. In Year 5, premium anniversary themes may exceed this cap by up to 5% (420 max) as prestige items for veteran players.
 
 ### Seasonal Balance Patch Windows
 
