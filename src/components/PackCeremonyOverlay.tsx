@@ -12,7 +12,7 @@ type PackCeremonyOverlayProps = {
   cards: OpenedPackCard[]
   packId: string
   packCost: number
-  runes: number
+  shards: number
   prevCollection: CardCollection
   soundEnabled: boolean
   hapticsEnabled: boolean
@@ -30,7 +30,7 @@ export function PackCeremonyOverlay({
   cards,
   packId,
   packCost,
-  runes,
+  shards,
   prevCollection,
   soundEnabled,
   hapticsEnabled,
@@ -189,7 +189,7 @@ export function PackCeremonyOverlay({
     window.setTimeout(onClose, 240)
   }, [onClose, reducedMotion])
 
-  const canOpenAnother = runes >= packCost && packOpening === null
+  const canOpenAnother = shards >= packCost && packOpening === null
 
   if (cards.length === 0) return null
 

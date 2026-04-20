@@ -7,7 +7,7 @@ import { getStreakTier } from '../utils'
 export function HomeScreen() {
   const { activeScreen, dailyQuest, justClaimedDaily, seasonName, seasonEnd } = useAppShell()
   const { gameInProgress, game, handleResumeBattle, handleAbandonBattle, isRankedBattle } = useGame()
-  const { record, winRate, selectedDeckSize, serverProfile, rankLabel, runes, canClaimDailyReward, nextRewardLabel } = useProfile()
+  const { record, winRate, selectedDeckSize, serverProfile, rankLabel, shards, canClaimDailyReward, nextRewardLabel } = useProfile()
 
   const streakTier = getStreakTier(record.streak)
   const [seasonCountdown, setSeasonCountdown] = useState<string | null>(null)
@@ -82,7 +82,7 @@ export function HomeScreen() {
           note={`${seasonName}${seasonCountdown ? ` · ${seasonCountdown}` : ''}`}
           badges={(
             <>
-              <span className="badge">{runes} Shards</span>
+              <span className="badge">{shards} Shards</span>
               <span className={`badge streak-badge streak-${streakTier}`}>{record.streak} Streak</span>
             </>
           )}

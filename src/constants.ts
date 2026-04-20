@@ -190,7 +190,7 @@ export const STORAGE_KEYS = {
   ambient: 'fractured-arcanum.ambient',
   gestures: 'fractured-arcanum.gestures',
   haptics: 'fractured-arcanum.haptics',
-  runes: 'fractured-arcanum.shards',
+  shards: 'fractured-arcanum.shards',
   ownedThemes: 'fractured-arcanum.owned-themes',
   selectedTheme: 'fractured-arcanum.selected-theme',
   lastDailyClaim: 'fractured-arcanum.last-daily-claim',

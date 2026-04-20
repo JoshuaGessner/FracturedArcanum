@@ -278,7 +278,7 @@ function createDefaultAdminStore() {
   return {
     updatedAt: new Date().toISOString(),
     settings: {
-      motd: 'Season of Runes is live. Queue up and climb the ladder.',
+      motd: 'Season of Shards is live. Queue up and climb the ladder.',
       quest: 'Win 1 ranked arena match',
       featuredMode: 'Ranked Blitz',
       maintenanceMode: false,
@@ -984,7 +984,7 @@ function sanitizeProfile(profile, username, accountId, role) {
     displayName: profile.display_name ?? username ?? '',
     username: username ?? '',
     role: resolvedRole,
-    runes: profile.runes,
+    shards: profile.shards,
     seasonRating: profile.season_rating,
     wins: profile.wins,
     losses: profile.losses,
