@@ -23,7 +23,13 @@ Fractured Arcanum's economy follows the **Ritual Offering** model — progress f
 
 ## 2. Currency — Runes (Shards)
 
-The game uses a single soft currency called **Runes** (referred to as "shards" in the codebase and "Runestones" in the monetization plan — these should be unified to **Runes** across all documentation).
+The game uses a single soft currency called **Runes**. Current naming across the codebase:
+- Server variables: `runes` (e.g., `WIN_RUNES`)
+- Server error messages: "Runestones" (unified in `server/db.js`)
+- Client UI labels: "Shards" (displayed to players)
+- Documentation: "Runes" (canonical name)
+
+**Unification target:** All player-facing text should eventually say "Shards" (the in-universe name). Internal code and documentation use "Runes".
 
 ### Earning Rates
 
