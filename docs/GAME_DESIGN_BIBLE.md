@@ -9,7 +9,7 @@
 
 ### Core Fantasy
 
-Fractured Arcanum is a **cosmic-horror lane-based card battler** set in a world where the boundary between reality and the void has shattered. Players are summoners who channel eldritch forces — commanding horrors, cultists, corrupted machines, and forgotten entities drawn from dimensions beyond mortal comprehension.
+Fractured Arcanum is a **cosmic-horror lane-based card battler** set in a world where the boundary between reality and the void has shattered. Players are summoners who channel eldritch forces, commanding horrors, cultists, corrupted machines, and forgotten entities. These abominations are drawn from dimensions beyond mortal comprehension.
 
 The game should feel like:
 - **Dread made playable** — every card on the board is something that should not exist

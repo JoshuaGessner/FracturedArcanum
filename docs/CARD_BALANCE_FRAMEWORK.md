@@ -33,7 +33,7 @@ Where **Total Stats = Attack + Health**.
 
 - **+1 stat point** is acceptable for vanilla units (no effect) at any rarity as a "no-keyword bonus"
 - **−1 to −3 stat points** are used to pay for keywords (see keyword tax below)
-- Legendary cards may exceed the baseline by +2 to +4 given their 1-copy deck limit, high mana cost (7–9), and role as game-ending threats. This is the **Legendary Allowance**.
+- Legendary cards may exceed the baseline by +1 to +4 given their 1-copy deck limit, high mana cost (7–9), and role as game-ending threats. This is the **Legendary Allowance**. Higher keyword density justifies higher stat over-budget (e.g., single-keyword legendary = +1, triple-keyword = +4).
 - **Tribe exceptions** (documented in Section 5a) may permit a keyword from a tribe's "Avoid" list when there is strong thematic or gameplay justification
 
 ---
