@@ -147,7 +147,7 @@ Weekly total:        1,120 runes
 
 ## 5. Collection Progression
 
-### Total Collection Size
+### Total Collection Size — Core Set (`SET-S1-CORE`)
 
 | Rarity | Cards | Max Copies | Total Copies Needed |
 |--------|-------|------------|-------------------|
@@ -156,6 +156,30 @@ Weekly total:        1,120 runes
 | Epic | 14 | 3 | 42 |
 | Legendary | 6 | 1 | 6 |
 | **Total** | **70** | — | **198** |
+
+### Expansion Impact on Collection
+
+When a new expansion is released, recalculate using this formula:
+
+```
+New Total Copies = Current Total Copies + (Expansion Commons × 3) + (Expansion Rares × 3) + (Expansion Epics × 3) + (Expansion Legendaries × 1)
+```
+
+**Example:** An expansion adding 10C / 7R / 4E / 2L = 30 + 21 + 12 + 2 = 65 additional copies needed.
+
+The collection completion target should scale proportionally:
+- **Core-only:** 4–6 months (current)
+- **Core + 1 expansion:** 5–8 months
+- **Core + 2 expansions:** 7–10 months
+
+If the timeline exceeds 10 months for a dedicated player, increase earning rates or reduce expansion size.
+
+### Rotation and Collection
+
+When a set rotates out of Ranked:
+- Players keep all cards from the rotated set (available in casual/AI modes)
+- The "active collection" shrinks, making it easier for new players to be competitive
+- Pack contents should shift to only include legal-set cards (preventing frustration of pulling rotated cards)
 
 ### Starter Collection
 
@@ -292,6 +316,18 @@ Planned features that will need economy integration (validate against this docum
 - **Season rewards** — end-of-season rune/pack bonuses based on final rating
 - **Quest system** — daily/weekly challenges with specific rune rewards
 - **Trading economy** — card trades between friends (already implemented; monitor for economy exploitation)
+- **Expansion packs** — new pack types that guarantee cards from a specific expansion set
+- **Catch-up packs** — discounted packs for older sets to help returning players; economy must be modeled before adding
+
+### Expansion Economy Impact
+
+When releasing a new expansion:
+
+1. **Recalculate collection timelines** per the formula in Section 5
+2. **Consider catch-up mechanics** — if rotated sets leave gaps in new player collections
+3. **Model pack value shift** — adding cards to the pool dilutes guaranteed-rarity slots; verify Basic pack value doesn't drop below 40% return rate
+4. **Season pass alignment** — if a seasonal pass exists, expansion timing should coincide with new pass seasons
+5. **Update Section 5** — add new row to the Total Collection Size table with the expansion's cards
 
 ### Trading System Safeguards
 

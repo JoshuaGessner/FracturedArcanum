@@ -212,9 +212,15 @@ Tokens are units created by Summon effects. They cannot exist in decks or hands.
 
 All collectible items in the game. When adding new collectibles, register them here first.
 
-### Cards (70 total)
+### Cards (70 total — Core Set `SET-S1-CORE`)
 
 Tracked in `CARD_LIBRARY` in `src/game.ts`. Full catalog maintained in [`docs/CARD_CATALOG.md`](CARD_CATALOG.md).
+
+All current cards belong to the **Core Set** — these are permanent and never rotate out of Ranked play. Future expansion sets will be tracked here with their set tags. See [`docs/CARD_BALANCE_FRAMEWORK.md` §10](CARD_BALANCE_FRAMEWORK.md#10-seasonal-expansion--rotation-system) for rotation rules.
+
+| Set | Tag | Cards | Status |
+|-----|-----|-------|--------|
+| Core | `SET-S1-CORE` | 70 | ✅ Permanent — never rotates |
 
 ### Cosmetic Themes
 
@@ -266,33 +272,37 @@ Tracked in `CARD_BORDERS` in `server/db.js`.
 
 ### Adding a New Card
 
-1. **Design** — define card in this bible first (name, stats, tribe, keywords, rarity, flavor text)
-2. **Balance check** — validate against [`docs/CARD_BALANCE_FRAMEWORK.md`](CARD_BALANCE_FRAMEWORK.md) stat budget
-3. **Implement** — add to `CARD_LIBRARY` in `src/game.ts`
-4. **Params** — if the card has non-default effect amounts or multi-keyword behavior, add to `CARD_PARAMS`
-5. **Art** — add blueprint to `scripts/generate-brand-assets.mjs`, regenerate, verify manifest
-6. **Test** — add test cases in `src/game.test.ts` for the new card's effect resolution
-7. **Build** — run `npm run build:engine` then `npm run build`
-8. **Economy check** — verify the card doesn't break pack value or collection progression math
-9. **Update docs** — update [`docs/CARD_CATALOG.md`](CARD_CATALOG.md) and this bible's collectible registry
+1. **Design** — define card in this bible first (name, stats, tribe, keywords, rarity, flavor text, target set tag)
+2. **Balance check** — validate against [`docs/CARD_BALANCE_FRAMEWORK.md`](CARD_BALANCE_FRAMEWORK.md) stat budget and keyword tax
+3. **Audit checklist** — run the full 10-point balance audit from CARD_BALANCE_FRAMEWORK.md Section 7
+4. **Redundancy check** — verify no existing card at the same cost/rarity/keyword is made obsolete (see Card Catalog redundancy analysis)
+5. **Implement** — add to `CARD_LIBRARY` in `src/game.ts`
+6. **Params** — if the card has non-default effect amounts or multi-keyword behavior, add to `CARD_PARAMS`
+7. **Art** — add blueprint to `scripts/generate-brand-assets.mjs`, regenerate, verify manifest
+8. **Test** — add test cases in `src/game.test.ts` for the new card's effect resolution
+9. **Build** — run `npm run build:engine` then `npm run build`
+10. **Economy check** — verify the card doesn't break pack value or collection progression math; recalculate timelines in [`docs/ECONOMY_BALANCE.md`](ECONOMY_BALANCE.md)
+11. **Update docs** — update [`docs/CARD_CATALOG.md`](CARD_CATALOG.md) (add card entry + update distributions), this bible's collectible registry, and add a change log entry
 
 ### Adding a New Keyword
 
-1. **Design** — define keyword behavior, default amount, and balance cost
+1. **Design** — define keyword behavior, default amount, balance cost (stat tax), and affected tribe affinities
 2. **Add type** — extend `CardEffect` union in `src/game.ts`
 3. **Implement resolver** — add case in `playCard()` or `attack()` in `src/game.ts`
 4. **Default amount** — add to `DEFAULT_EFFECT_AMOUNT` if it uses an amount
-5. **Update docs** — add to this bible's keyword table and balance framework
-6. **Test** — add comprehensive test cases
-7. **Build** — run `npm run build:engine` then `npm run build`
+5. **Update balance framework** — add to keyword tax table and tribe affinity matrix in [`docs/CARD_BALANCE_FRAMEWORK.md`](CARD_BALANCE_FRAMEWORK.md)
+6. **Update docs** — add to this bible's keyword table (Section 4), CARD_CATALOG.md keyword distribution
+7. **Test** — add comprehensive test cases
+8. **Build** — run `npm run build:engine` then `npm run build`
 
 ### Adding a New Tribe
 
-1. **Design** — define thematic and mechanical identity in this bible
+1. **Design** — define thematic and mechanical identity in this bible (Section 3)
 2. **Add type** — extend `CardTribe` union in `src/game.ts`
-3. **Art** — create tribe visual identity in asset pipeline
-4. **Test** — verify existing logic handles the new tribe
-5. **Update docs** — add to this bible's tribe table
+3. **Update balance framework** — add tribe to affinity matrix with Primary/Secondary/Avoid keywords
+4. **Art** — create tribe visual identity in asset pipeline
+5. **Test** — verify existing logic handles the new tribe
+6. **Update docs** — add to this bible's tribe table and CARD_BALANCE_FRAMEWORK.md tribe count table
 
 ### Adding a New Collectible Type
 
@@ -300,6 +310,26 @@ Tracked in `CARD_BORDERS` in `server/db.js`.
 2. **Economy check** — validate against [`docs/ECONOMY_BALANCE.md`](ECONOMY_BALANCE.md)
 3. **Implement** — server persistence in `server/db.js`, API in `server/server.js`, client display
 4. **Update docs** — add to this bible's collectible registry
+
+### Releasing a New Expansion
+
+1. **Design phase** — use CARD_BALANCE_FRAMEWORK.md Section 10 expansion design checklist
+2. **Assign set tag** — e.g., `SET-S2-2026` for Season 2, 2026
+3. **Design all cards** — follow "Adding a New Card" procedure for each card
+4. **Run expansion-level checks** — curve distribution, tribe fill, rarity ratios, archetype support
+5. **Update economy** — recalculate collection completion timeline with expanded card pool
+6. **Process any rotation** — follow CARD_BALANCE_FRAMEWORK.md rotation impact procedure for outgoing sets
+7. **Update all docs** — add set to this bible's collectible registry, CARD_CATALOG.md (new section per set), economy calculations
+8. **Full test** — `npm run release:check`
+
+### Seasonal Balance Patch
+
+1. **Identify problem cards** — review win rates, deck inclusion rates, community feedback
+2. **Propose changes** — use CARD_BALANCE_FRAMEWORK.md threshold table (stat adjustment, effect change, rarity shift, or emergency ban)
+3. **Validate** — run balance audit on each changed card
+4. **Implement** — modify `CARD_LIBRARY` and/or `CARD_PARAMS` in `src/game.ts`
+5. **Update CARD_CATALOG.md** — update card entry, add to Balance Change Log
+6. **Build + test** — `npm run build:engine && npm run build && npm test`
 
 ---
 

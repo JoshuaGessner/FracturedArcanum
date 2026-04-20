@@ -33,7 +33,8 @@ Where **Total Stats = Attack + Health**.
 
 - **+1 stat point** is acceptable for vanilla units (no effect) at any rarity as a "no-keyword bonus"
 - **−1 to −3 stat points** are used to pay for keywords (see keyword tax below)
-- Legendary cards may exceed the baseline by +1 to +2 given their 1-copy deck limit and high cost
+- Legendary cards may exceed the baseline by +2 to +4 given their 1-copy deck limit, high mana cost (7–9), and role as game-ending threats. This is the **Legendary Allowance**.
+- **Tribe exceptions** (documented in Section 5a) may permit a keyword from a tribe's "Avoid" list when there is strong thematic or gameplay justification
 
 ---
 
@@ -194,6 +195,17 @@ Each tribe should have at least 5 cards in the library to support tribal synergi
 | Dragon | 3 | ⚠️ Light — consider adding 2–3 more in next expansion |
 | None | 0 | N/A — not a tribal identity |
 
+### 5a. Tribe Keyword Exceptions
+
+The "Avoid" column in the affinity table is a guideline, not a hard block. Documented exceptions exist when there is strong thematic or gameplay justification. Every exception must be recorded here.
+
+| Card | Tribe | Avoided Keyword | Justification |
+|------|-------|-----------------|---------------|
+| Carapace Wyrm (siege-turtle) | Beast | Guard | A giant ancient turtle is thematically a natural blocker; the 2/8 stat line reflects a massive defensive creature |
+| Venomous Serpent-Kin (venom-drake) | Dragon | Poison | Serpent-kin are explicitly venomous in flavor; Poison fits the "corrosive wyrm" archetype within the cosmic horror setting |
+
+**Rule:** No more than 1 exception per tribe per expansion set. If a tribe accumulates 3+ exceptions across all sets, the affinity table should be revisited and the secondary column updated.
+
 ---
 
 ## 6. Archetype Support
@@ -271,11 +283,19 @@ Cards with **Delta > +2** or **Delta < −2** should be flagged for review.
 
 | Card | Delta | Reason |
 |------|-------|--------|
-| Copper Automaton (1-cost, 1/3, vanilla) | +1 | Intentional — vanilla bonus for no keyword |
-| Siege Turtle (5-cost, 2/8, Guard) | 0 | Health-skewed distribution is fine for Guard |
-| Crystal Golem (5-cost, 3/8, Guard) | 0 | Same as Siege Turtle pattern |
-| Glacial Colossus (7-cost, 4/10, Frostbite-all + Guard) | −1 | Multi-keyword tax applied; the freeze-all justifies stat loss |
-| All Legendaries | +1 to +3 | Intentional — 1-copy limit and high cost justify premium stats |
+| Copper Automaton (1-cost, 1/3, vanilla) | +1 | Intentional — vanilla bonus for no keyword; 1 ATK makes it non-threatening |
+| Rust Golem (2-cost, 1/5, Guard) | +1 | Intentional — 1 ATK makes the extra health non-threatening offensively |
+| Siege Turtle (5-cost, 2/8, Guard) | 0 | Health-skewed distribution is fine for Guard; beast tribe exception (Section 5a) |
+| Crystal Golem (5-cost, 3/8, Guard) | +1 | Same as Siege Turtle pattern; slight rare bonus |
+| Glacial Colossus (7-cost, 4/10, Frostbite-all + Guard) | 0 | Multi-keyword tax + freeze-all premium balances the health |
+| Drakarion (8-cost, 8/8, Charge + Cleave) | +4 | **Legendary Allowance** — 1-copy limit, 8-mana cost, hard-countered by Guard walls |
+| Zephyr (9-cost, 7/10, Frostbite-all + Guard + Blast 4) | +4 | **Legendary Allowance** — 9-mana finisher, triple-keyword justifies premium |
+| Velara (8-cost, 5/9, Heal-full + Empower 2) | ~+1 | **Legendary Allowance** — late-game stabilizer; heal-to-full is the primary value |
+| Malachar (8-cost, 6/7, Silence-all + Summon 3/3s) | varies | **Legendary Allowance** — board-reset effect is the real payload; stats below vanilla |
+| Kronos (9-cost, 8/8, Empower 3 + Shield 5) | +3.5 | **Legendary Allowance** — 9-mana cost; team-wide buff requires existing board |
+| Aethon (7-cost, 5/6, Draw 3 + Rally 3) | +3 | **Legendary Allowance** — pure value engine; 7-mana is late but not game-ending body |
+| Blood Queen (6-cost, 5/5, Siphon 3 + Lifesteal) | +3 | **Epic Multi-Keyword** — intentional; Lifesteal only triggers in combat, requires surviving |
+| Necro-Sage (5-cost, 3/5, Summon-all 2/2s) | −3 to +9 | Board-dependent — dead on full board, up to 12 extra stats on empty board; highly volatile |
 
 ---
 
@@ -290,3 +310,95 @@ When designing new cards for set expansions:
 5. **Test against existing presets** — new cards should not make preset decks obsolete
 6. **Preserve the horror** — every new card must pass the Lovecraftian tone check
 7. **Run the full audit** — every new card must pass the balance checklist in Section 7
+
+---
+
+## 10. Seasonal Expansion & Rotation System
+
+Fractured Arcanum uses a seasonal expansion model to keep the meta fresh, introduce new content, and ensure long-term balance. This section governs how new cards enter the game and how older sets are managed.
+
+### Set Identity
+
+Every card belongs to a **set**, identified by a set tag. Sets are released seasonally.
+
+| Field | Format | Example |
+|-------|--------|---------|
+| Set tag | `SET-{season}{year}` | `SET-S1-CORE` (Core set), `SET-S2-2026` (Season 2, 2026) |
+| Season cadence | Quarterly (4 seasons per year) | S1 = Jan–Mar, S2 = Apr–Jun, S3 = Jul–Sep, S4 = Oct–Dec |
+
+The current 70 cards all belong to the **Core Set** (`SET-S1-CORE`). Core set cards are never rotated out — they form the permanent foundation.
+
+### Expansion Size Targets
+
+| Rarity | Per Expansion | Rationale |
+|--------|---------------|-----------|
+| Common | 8–12 | Fill curve/tribe gaps; simple workhorse units |
+| Rare | 6–8 | Archetype enablers; moderate complexity |
+| Epic | 3–5 | Build-around threats; complex multi-keyword |
+| Legendary | 1–2 | Named entities; unique game-changers |
+| **Total** | **18–27** | Small enough to digest, large enough to shift the meta |
+
+### Expansion Design Checklist
+
+Before finalizing a new expansion, verify:
+
+- [ ] **Curve gaps**: Does this expansion improve mana curve distribution toward ideals in Section 4?
+- [ ] **Tribe gaps**: Does this expansion add cards to tribes with <5 members (Dragon, Demon)?
+- [ ] **Rarity ratios**: Does the expansion maintain ~40/30/20/10 rarity split?
+- [ ] **New keyword cap**: At most 1 new keyword introduced per expansion
+- [ ] **Existing keyword support**: At least 2 cards using under-represented keywords (Enrage, Fury, Shield)
+- [ ] **Archetype support**: Does this expansion enable at least 1 new deck archetype or strengthen a weak one?
+- [ ] **No strictly-better additions**: No new card is strictly better than a same-cost, same-rarity existing card
+- [ ] **Preset deck validity**: Preset decks still function without expansion cards
+- [ ] **Economy impact**: Collection timeline in [ECONOMY_BALANCE.md](ECONOMY_BALANCE.md) recalculated with new total card count
+- [ ] **Lovecraftian tone check**: Every card name, flavor text, and tribe fits the cosmic horror identity
+
+### Rotation Rules
+
+Rotation prevents the card pool from growing unbounded and keeps the meta dynamic.
+
+| Rule | Detail |
+|------|--------|
+| **Core set is permanent** | The 70 cards in `SET-S1-CORE` never rotate out |
+| **Expansion lifespan** | Each expansion set is legal for 4 seasons (1 year) after release |
+| **Rotation timing** | At the start of each new expansion release, the oldest non-Core set rotates out |
+| **Rotated cards remain owned** | Players keep rotated cards in their collection; they just cannot be used in Ranked play |
+| **Casual mode** | All cards from all sets are always legal in AI and casual modes |
+| **Rotation announcement** | Rotation schedule must be published at least 1 season (3 months) in advance |
+
+### Rotation Impact Procedure
+
+When a set rotates out:
+
+1. **Identify affected preset decks** — update any preset that uses rotated cards
+2. **Check archetype viability** — ensure at least one version of each core archetype (Aggro, Control, Midrange, Tempo) remains viable
+3. **Update economy math** — recalculate collection completion timeline with the new legal card pool
+4. **Update CARD_CATALOG.md** — mark rotated cards with `[ROTATED]` tag and their set of origin
+5. **Update GAME_DESIGN_BIBLE.md** — adjust collectible registry counts
+6. **Announce** — publish rotation guide with recommended deck substitutions
+
+### Power Creep Prevention
+
+The following invariants prevent long-term power creep across expansions:
+
+| Invariant | Rule |
+|-----------|------|
+| **Stat ceiling** | No expansion card may exceed the Core set's vanilla budget by more than the Legendary Allowance (+4 stats) |
+| **Keyword tax consistency** | Keyword tax values in Section 2 are global and do not change per expansion |
+| **No free keywords** | Every keyword always has a non-zero stat cost; no expansion may introduce a 0-tax keyword |
+| **Max keywords per card** | Commons: 1, Rares: 2, Epics: 3, Legendaries: 4 — never increases |
+| **Backward compatibility** | New keywords must not invalidate existing keyword interactions (e.g., a new keyword that bypasses Guard) |
+| **Deck size limits** | MIN_DECK_SIZE (10) and MAX_DECK_SIZE (16) do not change between expansions |
+
+### Balancing Existing Cards Across Seasons
+
+When seasonal data reveals that a card is over- or under-performing:
+
+| Action | Threshold | Process |
+|--------|-----------|---------|
+| **Stat adjustment** | Win rate in decks containing this card is >58% or <42% over 2+ weeks | Adjust ATK or HP by ±1; update CARD_CATALOG.md; run full build + test |
+| **Effect amount change** | Card appears in >70% of all Ranked decks at its cost tier | Adjust keyword amount in CARD_PARAMS; update CARD_CATALOG.md |
+| **Rarity promotion/demotion** | Card's complexity no longer matches its tier after meta shifts | Move rarity in CARD_LIBRARY; update economy calculations |
+| **Emergency ban** | Card enables a 0-counterplay combo discovered post-release | Remove from Ranked play immediately; schedule fix in next patch |
+
+**Documentation requirement:** Every balance change must update CARD_CATALOG.md with a changelog entry and the season it was applied.
