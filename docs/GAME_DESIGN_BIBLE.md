@@ -236,7 +236,7 @@ See [`CARD_BALANCE_FRAMEWORK.md` §11](CARD_BALANCE_FRAMEWORK.md#11-five-year-se
 
 Tracked in `THEME_COSTS` in `server/db.js` and `THEME_OFFERS` in `src/constants.ts`.
 
-| Theme | Cost (Runes) | Thematic Note |
+| Theme | Cost (Shards) | Thematic Note |
 |-------|-------------|---------------|
 | Royal Arcane | 0 (default) | Regal arcane tournament finish |
 | Ember Court | 120 | Warm volcanic glow — heretical forge flames |
@@ -244,7 +244,7 @@ Tracked in `THEME_COSTS` in `server/db.js` and `THEME_OFFERS` in `src/constants.
 
 **Future themes** (planned for seasonal expansion releases — see Seasonal Schedule in CARD_BALANCE_FRAMEWORK.md §10):
 
-| Theme | Target Cost (Runes) | Target Season | Thematic Note |
+| Theme | Target Cost (Shards) | Target Season | Thematic Note |
 |-------|-------------------|---------------|---------------|
 | Crimson Sanctum | 200 | S2-2026 | Blood-ritual red — cultist chambers |
 | Verdant Hollow | 220 | S3-2026 | Toxic growth green — fungal overgrowth |
@@ -258,7 +258,7 @@ Tracked in `THEME_COSTS` in `server/db.js` and `THEME_OFFERS` in `src/constants.
 
 Tracked in `CARD_BORDERS` in `server/db.js`.
 
-| Border | Cost (Runes) | Thematic Note |
+| Border | Cost (Shards) | Thematic Note |
 |--------|-------------|---------------|
 | Default | 0 | Standard brass frame |
 | Bronze | 90 | Tarnished devotion |
@@ -268,7 +268,7 @@ Tracked in `CARD_BORDERS` in `server/db.js`.
 
 ### Card Packs
 
-| Pack | Cost (Runes) | Contents | Earn Time | Thematic Note |
+| Pack | Cost (Shards) | Contents | Earn Time | Thematic Note |
 |------|-------------|----------|-----------|---------------|
 | Basic | 50 | 3 Common + 1 Rare (upgrade chance) | 1 win (~5 min) | Acolyte's offering |
 | Premium | 150 | 3 Common + 1 Rare + 1 Epic guaranteed | ~3 wins (~15 min) | Cultist's tithe |

@@ -8,8 +8,8 @@
 |-------|------|---------|
 | `accounts` | 22 | id, username, password_hash, display_name, created_at, last_login, device_fp, created_ip_hash, created_ua_hash, flags, role |
 | `sessions` | 33 | token, account_id (FK), created_at, expires_at, ip_hash |
-| `player_profiles` | 40 | account_id (PK FK), runes, season_rating, wins, losses, streak, deck_config, owned_themes, selected_theme, last_daily, total_earned, updated_at, owned_cards, owned_card_borders, selected_card_border |
-| `match_log` | 54 | id, account_id (FK), opponent, mode, result, turns, runes_earned, rating_delta, played_at |
+| `player_profiles` | 40 | account_id (PK FK), shards, season_rating, wins, losses, streak, deck_config, owned_themes, selected_theme, last_daily, total_earned, updated_at, owned_cards, owned_card_borders, selected_card_border |
+| `match_log` | 54 | id, account_id (FK), opponent, mode, result, turns, shards_earned, rating_delta, played_at |
 | `social_friends` | 64 | account_id (FK), friend_account_id (FK), created_at |
 | `clans` | 72 | id, name, tag, invite_code, owner_account_id (FK), created_at |
 | `clan_members` | 80 | clan_id (FK), account_id (PK FK), role, joined_at |
@@ -109,9 +109,9 @@
 ### Constants
 | Constant | Value | Line |
 |----------|-------|------|
-| `WIN_RUNES` | 30 | 636 |
-| `LOSS_RUNES` | 10 | 637 |
-| `DAILY_RUNES` | 50 | 638 |
+| `WIN_SHARDS` | 30 | 636 |
+| `LOSS_SHARDS` | 10 | 637 |
+| `DAILY_SHARDS` | 50 | 638 |
 | `WIN_RATING` | +25 | 639 |
 | `LOSS_RATING` | -15 | 640 |
 | `RATING_FLOOR` | 1000 | 641 |
@@ -119,9 +119,9 @@
 ### Functions
 | Function | Line | Purpose |
 |----------|------|---------|
-| `claimDailyReward(accountId)` | 679 | 50 runes daily |
+| `claimDailyReward(accountId)` | 679 | 50 shards daily |
 | `purchaseTheme(accountId, themeId)` | 691 | Buy theme |
-| `resolveMatchResult(...)` | 1095 | Award runes/rating |
+| `resolveMatchResult(...)` | 1095 | Award shards/rating |
 
 ## Card Borders (Lines 724–778)
 
@@ -141,7 +141,7 @@ Border catalog: default (0), bronze (90), frost (180), solar (280), void (420)
 
 | Function | Line | Purpose |
 |----------|------|---------|
-| `breakdownCard(accountId, cardId, qty)` | 793 | Convert excess copies → runes |
+| `breakdownCard(accountId, cardId, qty)` | 793 | Convert excess copies → shards |
 
 ## Card Pack System (Lines 1411–1514)
 

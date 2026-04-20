@@ -130,7 +130,7 @@
 ### Economy & Shop (Lines 895–1041)
 | Route | Method | Line | Purpose |
 |-------|--------|------|---------|
-| `/api/cards/breakdown` | POST | 895 | Cards → Runes |
+| `/api/cards/breakdown` | POST | 895 | Cards → Shards |
 | `/api/shop/borders` | GET | 911 | Border catalog |
 | `/api/shop/border` | POST | 915 | Purchase border |
 | `/api/me/border` | POST | 925 | Select border |

@@ -420,9 +420,9 @@ The first year establishes the world and the core tribes. Expansions fill tribe 
 | Season | Set Tag | Expansion Name | Theme | New Cards | New Keyword | Cosmetic Release | Rotation |
 |--------|---------|---------------|-------|-----------|-------------|-----------------|----------|
 | S1 (Jan–Mar) | `SET-S1-CORE` | **Core Set** (already released) | The shattered boundary; all tribes | 70 (permanent) | All 21 base keywords | Royal Arcane, Ember Court, Moonwell Glow (themes); 5 card borders | None (Core) |
-| S2 (Apr–Jun) | `SET-S2-2026` | **Rift of the Serpent Kings** | Draconic awakening — wyrms, serpent-kin, and sky-leviathans | 20 (8C/6R/4E/2L) | **Ambush** (stealth for 1 turn; cannot be targeted) | Crimson Sanctum theme (200 runes) | None |
-| S3 (Jul–Sep) | `SET-S3-2026` | **Tides of the Drowned** | Abyssal horror — deep-sea entities, coral corruption, drowned dead | 22 (9C/7R/4E/2L) | **Corrode** (reduce target's ATK by N) | Verdant Hollow theme (220 runes) | None |
-| S4 (Oct–Dec) | `SET-S4-2026` | **Feast of the Hollow** | Harvest dread — fungal overgrowth, bone-fields, hunger made flesh | 20 (8C/6R/4E/2L) | None (reinforce Deathrattle, Poison) | Azure Depths theme (250 runes); Halloween event border | None |
+| S2 (Apr–Jun) | `SET-S2-2026` | **Rift of the Serpent Kings** | Draconic awakening — wyrms, serpent-kin, and sky-leviathans | 20 (8C/6R/4E/2L) | **Ambush** (stealth for 1 turn; cannot be targeted) | Crimson Sanctum theme (200 shards) | None |
+| S3 (Jul–Sep) | `SET-S3-2026` | **Tides of the Drowned** | Abyssal horror — deep-sea entities, coral corruption, drowned dead | 22 (9C/7R/4E/2L) | **Corrode** (reduce target's ATK by N) | Verdant Hollow theme (220 shards) | None |
+| S4 (Oct–Dec) | `SET-S4-2026` | **Feast of the Hollow** | Harvest dread — fungal overgrowth, bone-fields, hunger made flesh | 20 (8C/6R/4E/2L) | None (reinforce Deathrattle, Poison) | Azure Depths theme (250 shards); Halloween event border | None |
 
 **Year 1 tribe goals:** +3 Dragon, +2 Demon, +1 Warrior Epic, +2 Undead Common. By end of Year 1, all tribes ≥ 5 cards.
 
@@ -432,10 +432,10 @@ The world fractures further. Existing keywords deepen, one new mechanic per expa
 
 | Season | Set Tag | Expansion Name | Theme | New Cards | New Keyword | Cosmetic Release | Rotation |
 |--------|---------|---------------|-------|-----------|-------------|-----------------|----------|
-| S1 (Jan–Mar) | `SET-S1-2027` | **Echoes of the Forgewright** | Heretical machines — sentient engines, brass abominations, forge-cults | 22 (9C/7R/4E/2L) | **Overcharge** (double this unit's next attack, then it takes 2 self-damage) | Golden Spire theme (280 runes) | None |
-| S2 (Apr–Jun) | `SET-S2-2027` | **Veil of the Starless** | Cosmic void — entities beyond the stars, null-space incursions | 20 (8C/6R/4E/2L) | None (reinforce Silence, Empower, Frostbite) | Void Eclipse theme (350 runes) | `SET-S2-2026` rotates out |
-| S3 (Jul–Sep) | `SET-S3-2027` | **Wrath of the Thornmother** | Primordial nature — ancient forests, vine-horrors, mycelial hiveminds | 22 (9C/7R/4E/2L) | **Rootbind** (enemy unit cannot attack for 1 turn; weaker than Frostbite, costs less) | Frost Tomb theme (300 runes) | `SET-S3-2026` rotates out |
-| S4 (Oct–Dec) | `SET-S4-2027` | **Dirge of the Bone Court** | Undead aristocracy — revenant lords, ossuary politics, death-masquerades | 20 (8C/6R/4E/2L) | None (reinforce Deathrattle, Siphon, Drain) | Ember Forge theme (280 runes); Halloween event border | `SET-S4-2026` rotates out |
+| S1 (Jan–Mar) | `SET-S1-2027` | **Echoes of the Forgewright** | Heretical machines — sentient engines, brass abominations, forge-cults | 22 (9C/7R/4E/2L) | **Overcharge** (double this unit's next attack, then it takes 2 self-damage) | Golden Spire theme (280 shards) | None |
+| S2 (Apr–Jun) | `SET-S2-2027` | **Veil of the Starless** | Cosmic void — entities beyond the stars, null-space incursions | 20 (8C/6R/4E/2L) | None (reinforce Silence, Empower, Frostbite) | Void Eclipse theme (350 shards) | `SET-S2-2026` rotates out |
+| S3 (Jul–Sep) | `SET-S3-2027` | **Wrath of the Thornmother** | Primordial nature — ancient forests, vine-horrors, mycelial hiveminds | 22 (9C/7R/4E/2L) | **Rootbind** (enemy unit cannot attack for 1 turn; weaker than Frostbite, costs less) | Frost Tomb theme (300 shards) | `SET-S3-2026` rotates out |
+| S4 (Oct–Dec) | `SET-S4-2027` | **Dirge of the Bone Court** | Undead aristocracy — revenant lords, ossuary politics, death-masquerades | 20 (8C/6R/4E/2L) | None (reinforce Deathrattle, Siphon, Drain) | Ember Forge theme (280 shards); Halloween event border | `SET-S4-2026` rotates out |
 
 ### Year 3 — 2028: The Convergence
 
@@ -443,10 +443,10 @@ Dimensions bleed together. Cross-tribe synergies emerge. The meta matures.
 
 | Season | Set Tag | Expansion Name | Theme | New Cards | New Keyword | Cosmetic Release | Rotation |
 |--------|---------|---------------|-------|-----------|-------------|-----------------|----------|
-| S1 (Jan–Mar) | `SET-S1-2028` | **Rift Confluence** | Dimensional merging — hybrid entities, tribe-crossover cards | 24 (10C/7R/5E/2L) | **Flux** (on summon, transform into a random card of the same cost) | Shattered Prism theme (300 runes) | `SET-S1-2027` rotates out |
-| S2 (Apr–Jun) | `SET-S2-2028` | **Court of the Eyeless** | Forbidden knowledge — blind seers, glyph-madness, library-horrors | 20 (8C/6R/4E/2L) | None (reinforce Draw, Rally, Silence) | Eyeless Scribe theme (320 runes) | `SET-S2-2027` rotates out |
-| S3 (Jul–Sep) | `SET-S3-2028` | **Maw of the Worldeater** | Cosmic predators — planet-scale horrors, gravity-distortion, void whales | 22 (9C/7R/4E/2L) | **Devour** (destroy an enemy unit with less HP than this unit's ATK) | Abyssal Maw theme (340 runes) | `SET-S3-2027` rotates out |
-| S4 (Oct–Dec) | `SET-S4-2028` | **The Hollow Masquerade** | Deception — shapeshifters, mirror-entities, masked cultists | 20 (8C/6R/4E/2L) | None (reinforce Ambush, Corrode) | Masked Revenant theme (300 runes); Halloween event border | `SET-S4-2027` rotates out |
+| S1 (Jan–Mar) | `SET-S1-2028` | **Rift Confluence** | Dimensional merging — hybrid entities, tribe-crossover cards | 24 (10C/7R/5E/2L) | **Flux** (on summon, transform into a random card of the same cost) | Shattered Prism theme (300 shards) | `SET-S1-2027` rotates out |
+| S2 (Apr–Jun) | `SET-S2-2028` | **Court of the Eyeless** | Forbidden knowledge — blind seers, glyph-madness, library-horrors | 20 (8C/6R/4E/2L) | None (reinforce Draw, Rally, Silence) | Eyeless Scribe theme (320 shards) | `SET-S2-2027` rotates out |
+| S3 (Jul–Sep) | `SET-S3-2028` | **Maw of the Worldeater** | Cosmic predators — planet-scale horrors, gravity-distortion, void whales | 22 (9C/7R/4E/2L) | **Devour** (destroy an enemy unit with less HP than this unit's ATK) | Abyssal Maw theme (340 shards) | `SET-S3-2027` rotates out |
+| S4 (Oct–Dec) | `SET-S4-2028` | **The Hollow Masquerade** | Deception — shapeshifters, mirror-entities, masked cultists | 20 (8C/6R/4E/2L) | None (reinforce Ambush, Corrode) | Masked Revenant theme (300 shards); Halloween event border | `SET-S4-2027` rotates out |
 
 ### Year 4 — 2029: The Reckoning
 
@@ -454,10 +454,10 @@ The void's agenda becomes clear. Power levels peak. Legendary events introduce l
 
 | Season | Set Tag | Expansion Name | Theme | New Cards | New Keyword | Cosmetic Release | Rotation |
 |--------|---------|---------------|-------|-----------|-------------|-----------------|----------|
-| S1 (Jan–Mar) | `SET-S1-2029` | **Crucible of the Heresiarch** | Forged blasphemy — weapon-entities, soul-bound armaments, war-angels | 22 (9C/7R/4E/2L) | **Forgebound** (this unit gains +1/+1 each time you play another Mech) | Heresiarch's Crown theme (350 runes) | `SET-S1-2028` rotates out |
-| S2 (Apr–Jun) | `SET-S2-2029` | **Whispers of the Last Prophet** | Prophecy — fate-weavers, timeline fractures, deja vu mechanics | 20 (8C/6R/4E/2L) | None (reinforce Flux, Draw, Empower) | Last Prophet theme (360 runes) | `SET-S2-2028` rotates out |
-| S3 (Jul–Sep) | `SET-S3-2029` | **Dominion of the Deep Ones** | Abyssal conquest — underwater civilizations, coral-empires, tidal war | 22 (9C/7R/4E/2L) | **Submerge** (return this unit to your hand at end of turn; costs 1 less next time) | Deep One's Throne theme (340 runes) | `SET-S3-2028` rotates out |
-| S4 (Oct–Dec) | `SET-S4-2029` | **Night of the Thousand Maws** | Swarm horror — hive-entities, spawn-storms, endless hunger | 20 (8C/6R/4E/2L) | None (reinforce Summon, Deathrattle, Overwhelm) | Thousand Maws theme (320 runes); Halloween event border | `SET-S4-2028` rotates out |
+| S1 (Jan–Mar) | `SET-S1-2029` | **Crucible of the Heresiarch** | Forged blasphemy — weapon-entities, soul-bound armaments, war-angels | 22 (9C/7R/4E/2L) | **Forgebound** (this unit gains +1/+1 each time you play another Mech) | Heresiarch's Crown theme (350 shards) | `SET-S1-2028` rotates out |
+| S2 (Apr–Jun) | `SET-S2-2029` | **Whispers of the Last Prophet** | Prophecy — fate-weavers, timeline fractures, deja vu mechanics | 20 (8C/6R/4E/2L) | None (reinforce Flux, Draw, Empower) | Last Prophet theme (360 shards) | `SET-S2-2028` rotates out |
+| S3 (Jul–Sep) | `SET-S3-2029` | **Dominion of the Deep Ones** | Abyssal conquest — underwater civilizations, coral-empires, tidal war | 22 (9C/7R/4E/2L) | **Submerge** (return this unit to your hand at end of turn; costs 1 less next time) | Deep One's Throne theme (340 shards) | `SET-S3-2028` rotates out |
+| S4 (Oct–Dec) | `SET-S4-2029` | **Night of the Thousand Maws** | Swarm horror — hive-entities, spawn-storms, endless hunger | 20 (8C/6R/4E/2L) | None (reinforce Summon, Deathrattle, Overwhelm) | Thousand Maws theme (320 shards); Halloween event border | `SET-S4-2028` rotates out |
 
 ### Year 5 — 2030: The Eternal Fracture
 
@@ -465,10 +465,10 @@ The final arc. Maximum card variety. The meta is broadest. Sets begin a second r
 
 | Season | Set Tag | Expansion Name | Theme | New Cards | New Keyword | Cosmetic Release | Rotation |
 |--------|---------|---------------|-------|-----------|-------------|-----------------|----------|
-| S1 (Jan–Mar) | `SET-S1-2030` | **Architects of the Void** | Creation mythos — entities that built the void, reality-shapers, origin-horrors | 24 (10C/7R/5E/2L) | **Reshape** (change one lane's unit into a copy of an adjacent friendly unit) | Architect's Nexus theme (380 runes) | `SET-S1-2029` rotates out |
-| S2 (Apr–Jun) | `SET-S2-2030` | **Funeral of Suns** | Stellar collapse — dying-star entities, gravity-wraiths, light-eaters | 20 (8C/6R/4E/2L) | None (reinforce Devour, Overcharge, Blast) | Dying Sun theme (400 runes) | `SET-S2-2029` rotates out |
-| S3 (Jul–Sep) | `SET-S3-2030` | **The Unraveling** | Reality breaks — glitch-entities, paradox-beasts, fractured timeline | 22 (9C/7R/4E/2L) | **Paradox** (on death, summon a copy of this unit with swapped ATK/HP) | Unraveled Reality theme (380 runes) | `SET-S3-2029` rotates out |
-| S4 (Oct–Dec) | `SET-S4-2030` | **Apotheosis** | Ascension — mortal-to-god transformations, ultimate horrors, endgame entities | 24 (10C/8R/4E/2L) | None (all keywords supported; capstone set) | Apotheosis theme (420 runes); Halloween event border; Anniversary border | `SET-S4-2029` rotates out |
+| S1 (Jan–Mar) | `SET-S1-2030` | **Architects of the Void** | Creation mythos — entities that built the void, reality-shapers, origin-horrors | 24 (10C/7R/5E/2L) | **Reshape** (change one lane's unit into a copy of an adjacent friendly unit) | Architect's Nexus theme (380 shards) | `SET-S1-2029` rotates out |
+| S2 (Apr–Jun) | `SET-S2-2030` | **Funeral of Suns** | Stellar collapse — dying-star entities, gravity-wraiths, light-eaters | 20 (8C/6R/4E/2L) | None (reinforce Devour, Overcharge, Blast) | Dying Sun theme (400 shards) | `SET-S2-2029` rotates out |
+| S3 (Jul–Sep) | `SET-S3-2030` | **The Unraveling** | Reality breaks — glitch-entities, paradox-beasts, fractured timeline | 22 (9C/7R/4E/2L) | **Paradox** (on death, summon a copy of this unit with swapped ATK/HP) | Unraveled Reality theme (380 shards) | `SET-S3-2029` rotates out |
+| S4 (Oct–Dec) | `SET-S4-2030` | **Apotheosis** | Ascension — mortal-to-god transformations, ultimate horrors, endgame entities | 24 (10C/8R/4E/2L) | None (all keywords supported; capstone set) | Apotheosis theme (420 shards); Halloween event border; Anniversary border | `SET-S4-2029` rotates out |
 
 ### Schedule Summary
 
@@ -502,14 +502,14 @@ Theme costs escalate modestly over time to serve as long-term goals for veteran 
 
 | Period | Cost Range | Matches to Earn (wins at 50% WR) | Rationale |
 |--------|-----------|----------------------------------|-----------|
-| Launch (2026) | 0–180 runes | 0–4 wins (~20 min) | Accessible to new players; quick cosmetic reward loop |
-| Year 1 expansions | 200–250 runes | 4–5 wins (~25 min) | Modest increase; earnable in a single session |
-| Year 2 | 280–350 runes | 6–7 wins (~35 min) | ~2 casual sessions; milestone purchases |
-| Year 3 | 300–340 runes | 6–7 wins (~35 min) | Stable; variety rewards veterans |
-| Year 4 | 320–360 runes | 7–8 wins (~40 min) | Prestige tier; dedicated player goals |
-| Year 5 | 380–420 runes | 8–9 wins (~45 min) | Premium end-game cosmetics; ~2–3 casual sessions |
+| Launch (2026) | 0–180 shards | 0–4 wins (~20 min) | Accessible to new players; quick cosmetic reward loop |
+| Year 1 expansions | 200–250 shards | 4–5 wins (~25 min) | Modest increase; earnable in a single session |
+| Year 2 | 280–350 shards | 6–7 wins (~35 min) | ~2 casual sessions; milestone purchases |
+| Year 3 | 300–340 shards | 6–7 wins (~35 min) | Stable; variety rewards veterans |
+| Year 4 | 320–360 shards | 7–8 wins (~40 min) | Prestige tier; dedicated player goals |
+| Year 5 | 380–420 shards | 8–9 wins (~45 min) | Premium end-game cosmetics; ~2–3 casual sessions |
 
-**Invariant:** No theme should cost more than 1 Legendary pack (400 runes) through Year 4. In Year 5, premium anniversary themes may exceed this cap by up to 5% (420 max) as prestige items for veteran players.
+**Invariant:** No theme should cost more than 1 Legendary pack (400 shards) through Year 4. In Year 5, premium anniversary themes may exceed this cap by up to 5% (420 max) as prestige items for veteran players.
 
 ### Seasonal Balance Patch Windows
 

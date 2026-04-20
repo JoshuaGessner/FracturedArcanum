@@ -34,10 +34,10 @@ This is a **covenant**, not a guideline. Breaking it breaks the game.
 Ship with:
 
 - Free core gameplay (AI Skirmish + Ranked Duels)
-- Daily Reward Vault (50 Runes per day — see [Economy Balance](ECONOMY_BALANCE.md))
-- Earnable Runes from matches (50 win / 10 loss)
-- 3 cosmetic themes (0–180 Runes each, with more planned for seasonal releases)
-- 5 card borders (0–420 Runes each)
+- Daily Reward Vault (50 Shards per day — see [Economy Balance](ECONOMY_BALANCE.md))
+- Earnable Shards from matches (50 win / 10 loss)
+- 3 cosmetic themes (0–180 Shards each, with more planned for seasonal releases)
+- 5 card borders (0–420 Shards each)
 - No gameplay power sold for money
 
 This is the safest and cleanest first monetization posture.
@@ -51,11 +51,11 @@ This is the safest and cleanest first monetization posture.
 **Price:** $2.99 (one-time purchase)
 
 Includes:
-- One exclusive cosmetic theme: **Abyssal Sanctum** (dark teal + bioluminescent accents — not available for Runes)
-- 200 bonus Runes
+- One exclusive cosmetic theme: **Abyssal Sanctum** (dark teal + bioluminescent accents — not available for Shards)
+- 200 bonus Shards
 - One-time value purchase; cannot be re-bought
 
-**Economy impact:** 200 Runes = 4 Basic packs = about 4 wins worth of matches (~20 min of play). Meaningful shortcut for a new player's first session, but not game-breaking — they'd earn the same amount in a short play session.
+**Economy impact:** 200 Shards = 4 Basic packs = about 4 wins worth of matches (~20 min of play). Meaningful shortcut for a new player's first session, but not game-breaking — they'd earn the same amount in a short play session.
 
 ### 2. Seasonal Pass — *The Rite of Seasons*
 
@@ -63,11 +63,11 @@ Includes:
 
 Includes:
 - Extra cosmetic reward track (alternate hero frames, animated card backs, exclusive borders)
-- 2–3 bonus weekly quests (Rune rewards only — no card advantages)
+- 2–3 bonus weekly quests (Shard rewards only — no card advantages)
 - Season-exclusive title and profile flair
-- End-of-season bonus Runes based on participation
+- End-of-season bonus Shards based on participation
 
-**Economy impact:** Pass holders earn roughly 30–50% more Runes per week from bonus quests. This accelerates collection but does not grant exclusive cards.
+**Economy impact:** Pass holders earn roughly 30–50% more Shards per week from bonus quests. This accelerates collection but does not grant exclusive cards.
 
 **Seasonal alignment:** Each pass aligns with one expansion season. See [`CARD_BALANCE_FRAMEWORK.md` §11](CARD_BALANCE_FRAMEWORK.md#11-five-year-seasonal-schedule-2026-2030) for the full 5-year schedule of 20 seasonal passes, expansion sets, and cosmetic releases.
 
@@ -87,17 +87,17 @@ Includes:
 
 ## Pricing Alignment with Free Economy
 
-| Item | Paid Price | Rune Equivalent | Free Earn Time |
+| Item | Paid Price | Shard Equivalent | Free Earn Time |
 |------|-----------|----------------|----------------|
-| Starter Bundle (200 Runes) | $2.99 | 200 Runes | ~4 wins (~20 min play) |
-| Ember Court theme (in-game) | — | 120 Runes | ~3 wins (~15 min) |
-| Moonwell Glow theme (in-game) | — | 180 Runes | ~4 wins (~20 min) |
-| Card border: Bronze (in-game) | — | 90 Runes | ~2 wins (~10 min) |
-| Card border: Void (in-game) | — | 420 Runes | ~9 wins (~45 min) |
-| Basic Pack | — | 50 Runes | 1 win (~5 min) |
-| Premium Pack | — | 150 Runes | ~3 wins (~15 min) |
-| Legendary Pack | — | 400 Runes | ~8 wins (~40 min) |
-| Premium theme (paid-only) | $1.99 | Not purchasable with Runes | Exclusive |
+| Starter Bundle (200 Shards) | $2.99 | 200 Shards | ~4 wins (~20 min play) |
+| Ember Court theme (in-game) | — | 120 Shards | ~3 wins (~15 min) |
+| Moonwell Glow theme (in-game) | — | 180 Shards | ~4 wins (~20 min) |
+| Card border: Bronze (in-game) | — | 90 Shards | ~2 wins (~10 min) |
+| Card border: Void (in-game) | — | 420 Shards | ~9 wins (~45 min) |
+| Basic Pack | — | 50 Shards | 1 win (~5 min) |
+| Premium Pack | — | 150 Shards | ~3 wins (~15 min) |
+| Legendary Pack | — | 400 Shards | ~8 wins (~40 min) |
+| Premium theme (paid-only) | $1.99 | Not purchasable with Shards | Exclusive |
 
 **Rule:** Paid-exclusive items are cosmetic-only. All gameplay-relevant content (cards, packs) is earnable through play. Matches are quick (~5 min), so "Free Earn Time" reflects actual play time, not calendar days.
 
@@ -109,7 +109,7 @@ Includes:
 - ❌ Paywalled game modes or matchmaking tiers
 - ❌ Aggressive ads, forced interstitials, or reward-gating ads
 - ❌ Hidden timers, misleading bundle values, or artificial urgency
-- ❌ Loot boxes with real-money purchase (Rune-purchased packs are fine — odds are transparent)
+- ❌ Loot boxes with real-money purchase (Shard-purchased packs are fine — odds are transparent)
 - ❌ Any cosmetic that provides gameplay information advantage (e.g., card borders that reveal rarity)
 
 ---
@@ -131,7 +131,7 @@ See [Economy Balance — Health Metrics](ECONOMY_BALANCE.md#8-economy-health-met
 
 ## Implementation Path
 
-1. **Now:** Keep the current Vault and Runes system as the free progression loop
+1. **Now:** Keep the current Vault and Shards system as the free progression loop
 2. **Next:** Add a server-backed catalog for cosmetic SKUs (themes, borders, board skins)
 3. **Later:** Add platform billing integration only when the free retention loop is proven stable
 4. **Always:** Keep all paid content cosmetic-first; validate against the Covenant of Fair Play
@@ -142,8 +142,8 @@ See [Economy Balance — Health Metrics](ECONOMY_BALANCE.md#8-economy-health-met
 
 For this project, the best simple monetization model is:
 
-- **Cosmetic themes** — earnable with Runes or exclusive via paid bundles
-- **Seasonal reward pass** — cosmetic track with bonus quest Runes
+- **Cosmetic themes** — earnable with Shards or exclusive via paid bundles
+- **Seasonal reward pass** — cosmetic track with bonus quest Shards
 - **Small optional starter bundle** — one-time $2.99 value purchase
 
 That keeps Fractured Arcanum competitive, fair, thematically coherent, and much easier to ship.
