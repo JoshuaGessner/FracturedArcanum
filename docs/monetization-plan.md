@@ -1,92 +1,149 @@
-# Fractured Arcanum Monetization Plan
+# Fractured Arcanum — Monetization Plan
+
+> **Paid offerings, cosmetic pricing, and fairness rules.**
+> Part of the design documentation suite. See also: [Game Design Bible](GAME_DESIGN_BIBLE.md) | [Economy Balance](ECONOMY_BALANCE.md).
+
+---
 
 ## Goals
 
-- Keep the game fair and clearly non-pay-to-win
+- Keep the game fair and clearly non-pay-to-win — the void does not favor the wealthy
 - Monetize through cosmetics and optional progression boosts only
-- Preserve a strong free player experience
+- Preserve a strong free player experience — every Acolyte can become a Herald through devotion alone
 - Keep pricing simple and low-friction for a mobile-first audience
+- All paid content is thematically aligned with the Lovecraftian cosmic-horror identity
 
-## Recommended launch approach
+---
 
-### Phase 1: soft launch friendly
+## Core Principle — The Covenant of Fair Play
+
+No amount of real money should ever purchase:
+- Cards that are mechanically stronger than free cards
+- Access to game modes that free players cannot reach
+- Rating or matchmaking advantages
+- Any gameplay advantage that cannot be earned through play
+
+This is a **covenant**, not a guideline. Breaking it breaks the game.
+
+---
+
+## Recommended Launch Approach
+
+### Phase 1 — The First Offering (Soft Launch)
 
 Ship with:
 
-- free core gameplay
-- daily reward vault
-- earnable Runestones
-- cosmetic themes and board skins
-- no gameplay power sold for money
+- Free core gameplay (AI Skirmish + Ranked Duels)
+- Daily Reward Vault (50 Shards per day — see [Economy Balance](ECONOMY_BALANCE.md))
+- Earnable Shards from matches (50 win / 10 loss)
+- 3 cosmetic themes (0–180 Shards each, with more planned for seasonal releases)
+- 5 card borders (0–420 Shards each)
+- No gameplay power sold for money
 
 This is the safest and cleanest first monetization posture.
 
-## Simple paid offerings
+---
 
-### 1. Starter Bundle
+## Paid Offerings
 
-Suggested price: $2.99
+### 1. Starter Bundle — *The Initiate's Pact*
 
-Includes:
-
-- one exclusive board or profile theme
-- bonus Runestones
-- one-time value purchase
-
-### 2. Seasonal Pass
-
-Suggested price: $4.99 to $6.99
+**Price:** $2.99 (one-time purchase)
 
 Includes:
+- One exclusive cosmetic theme: **Abyssal Sanctum** (dark teal + bioluminescent accents — not available for Shards)
+- 200 bonus Shards
+- One-time value purchase; cannot be re-bought
 
-- extra cosmetic reward track
-- alternate hero frames
-- animated card backs
-- bonus quests
+**Economy impact:** 200 Shards = 4 Basic packs = about 4 wins worth of matches (~20 min of play). Meaningful shortcut for a new player's first session, but not game-breaking — they'd earn the same amount in a short play session.
 
-### 3. Cosmetic Shop
+### 2. Seasonal Pass — *The Rite of Seasons*
 
-Suggested price tiers:
+**Price:** $4.99–$6.99 per season
 
-- $0.99 to $2.99 for small cosmetics
-- $3.99 to $7.99 for premium themed bundles
+Includes:
+- Extra cosmetic reward track (alternate hero frames, animated card backs, exclusive borders)
+- 2–3 bonus weekly quests (Shard rewards only — no card advantages)
+- Season-exclusive title and profile flair
+- End-of-season bonus Shards based on participation
 
-Examples:
+**Economy impact:** Pass holders earn roughly 30–50% more Shards per week from bonus quests. This accelerates collection but does not grant exclusive cards.
 
-- board skins
-- UI themes
-- emote packs
-- victory screen flair
+**Seasonal alignment:** Each pass aligns with one expansion season. See [`CARD_BALANCE_FRAMEWORK.md` §11](CARD_BALANCE_FRAMEWORK.md#11-five-year-seasonal-schedule-2026-2030) for the full 5-year schedule of 20 seasonal passes, expansion sets, and cosmetic releases.
 
-## Avoid
+### 3. Cosmetic Shop — *The Curator's Vault*
 
-- selling stronger cards
-- paywalled core modes
-- aggressive ads or forced interstitials
-- hidden timers or misleading bundles
+**Price tiers:**
+- $0.99–$2.99 for individual cosmetics (board skins, emote packs)
+- $3.99–$7.99 for premium themed bundles
 
-## Metrics to watch
+**Examples:**
+- **Board skins:** Alternate arena backdrops (The Sunken Cathedral, The Brass Foundry, The Fungal Depths)
+- **UI themes:** Color palette overrides with unique chrome textures
+- **Emote packs:** Thematic in-match emotes (Eldritch Whisper, Void Salute, The Unspeakable Nod)
+- **Victory flair:** Custom victory screen animations and defeat transitions
 
-- daily active users
-- retention at day 1, 7, and 30
-- reward claim rate
-- conversion from free users to first purchase
-- cosmetic equip rate
-- pass completion rate
+---
 
-## Implementation path
+## Pricing Alignment with Free Economy
 
-1. keep the current Vault and Runestones system as the free loop
-2. add a server-backed catalog for cosmetic SKUs
-3. add platform billing later only when the free retention loop is stable
-4. keep all paid content cosmetic-first
+| Item | Paid Price | Shard Equivalent | Free Earn Time |
+|------|-----------|----------------|----------------|
+| Starter Bundle (200 Shards) | $2.99 | 200 Shards | ~4 wins (~20 min play) |
+| Ember Court theme (in-game) | — | 120 Shards | ~3 wins (~15 min) |
+| Moonwell Glow theme (in-game) | — | 180 Shards | ~4 wins (~20 min) |
+| Card border: Bronze (in-game) | — | 90 Shards | ~2 wins (~10 min) |
+| Card border: Void (in-game) | — | 420 Shards | ~9 wins (~45 min) |
+| Basic Pack | — | 50 Shards | 1 win (~5 min) |
+| Premium Pack | — | 150 Shards | ~3 wins (~15 min) |
+| Legendary Pack | — | 400 Shards | ~8 wins (~40 min) |
+| Premium theme (paid-only) | $1.99 | Not purchasable with Shards | Exclusive |
 
-## Current recommendation
+**Rule:** Paid-exclusive items are cosmetic-only. All gameplay-relevant content (cards, packs) is earnable through play. Matches are quick (~5 min), so "Free Earn Time" reflects actual play time, not calendar days.
+
+---
+
+## What We Avoid — The Forbidden Practices
+
+- ❌ Selling stronger cards or exclusive gameplay mechanics
+- ❌ Paywalled game modes or matchmaking tiers
+- ❌ Aggressive ads, forced interstitials, or reward-gating ads
+- ❌ Hidden timers, misleading bundle values, or artificial urgency
+- ❌ Loot boxes with real-money purchase (Shard-purchased packs are fine — odds are transparent)
+- ❌ Any cosmetic that provides gameplay information advantage (e.g., card borders that reveal rarity)
+
+---
+
+## Metrics to Watch
+
+| Metric | Target | Warning Threshold |
+|--------|--------|-------------------|
+| Daily active users | Growing or stable | 10%+ decline week-over-week |
+| Day 1 / Day 7 / Day 30 retention | 40% / 20% / 10% | Below 30% / 10% / 5% |
+| Daily reward claim rate | >70% of DAU | Below 50% |
+| Free → first purchase conversion | 3–8% | Below 1% or above 15% |
+| Cosmetic equip rate | >30% of owners equip purchases | Below 10% (buyers not using items) |
+| Pass completion rate | >60% of purchasers | Below 40% (pass feels unrewarding) |
+
+See [Economy Balance — Health Metrics](ECONOMY_BALANCE.md#8-economy-health-metrics) for currency-specific metrics.
+
+---
+
+## Implementation Path
+
+1. **Now:** Keep the current Vault and Shards system as the free progression loop
+2. **Next:** Add a server-backed catalog for cosmetic SKUs (themes, borders, board skins)
+3. **Later:** Add platform billing integration only when the free retention loop is proven stable
+4. **Always:** Keep all paid content cosmetic-first; validate against the Covenant of Fair Play
+
+---
+
+## Current Recommendation
 
 For this project, the best simple monetization model is:
 
-- cosmetic themes
-- seasonal reward pass
-- small optional starter bundle
+- **Cosmetic themes** — earnable with Shards or exclusive via paid bundles
+- **Seasonal reward pass** — cosmetic track with bonus quest Shards
+- **Small optional starter bundle** — one-time $2.99 value purchase
 
-That keeps Fractured Arcanum competitive, fair, and much easier to ship.
+That keeps Fractured Arcanum competitive, fair, thematically coherent, and much easier to ship.

@@ -49,7 +49,7 @@ db.exec(`
 
   CREATE TABLE IF NOT EXISTS player_profiles (
     account_id     TEXT PRIMARY KEY REFERENCES accounts(id) ON DELETE CASCADE,
-    runes          INTEGER NOT NULL DEFAULT 120,
+    shards         INTEGER NOT NULL DEFAULT 120,
     season_rating  INTEGER NOT NULL DEFAULT 1200,
     wins           INTEGER NOT NULL DEFAULT 0,
     losses         INTEGER NOT NULL DEFAULT 0,
@@ -69,7 +69,7 @@ db.exec(`
     mode       TEXT NOT NULL,
     result     TEXT NOT NULL,
     turns      INTEGER NOT NULL DEFAULT 0,
-    runes_earned INTEGER NOT NULL DEFAULT 0,
+    shards_earned INTEGER NOT NULL DEFAULT 0,
     rating_delta INTEGER NOT NULL DEFAULT 0,
     played_at  TEXT NOT NULL DEFAULT (datetime('now'))
   );
@@ -801,23 +801,23 @@ export function selectTheme(accountId, themeId) {
 // ─── Economy operations (server-authoritative) ──────────────────────────────
 
 const THEME_COSTS = { royal: 0, ember: 120, moon: 180 }
-const WIN_RUNES = 50
-const LOSS_RUNES = 10
-const DAILY_RUNES = 50
+const WIN_SHARDS = 30
+const LOSS_SHARDS = 10
+const DAILY_SHARDS = 25
 const WIN_RATING = 25
 const LOSS_RATING = 15
 const RATING_FLOOR = 1000
 
-const _grantRunes = db.prepare(`
+const _grantShards = db.prepare(`
   UPDATE player_profiles
-  SET runes = runes + ?, total_earned = total_earned + MAX(0, ?), updated_at = datetime('now')
+  SET shards = shards + ?, total_earned = total_earned + MAX(0, ?), updated_at = datetime('now')
   WHERE account_id = ?
 `)
 
-const _deductRunes = db.prepare(`
+const _deductShards = db.prepare(`
   UPDATE player_profiles
-  SET runes = runes - ?, updated_at = datetime('now')
-  WHERE account_id = ? AND runes >= ?
+  SET shards = shards - ?, updated_at = datetime('now')
+  WHERE account_id = ? AND shards >= ?
 `)
 
 const _addOwnedTheme = db.prepare(`
@@ -828,7 +828,7 @@ const _addOwnedTheme = db.prepare(`
 
 const _setDailyClaim = db.prepare(`
   UPDATE player_profiles
-  SET last_daily = ?, runes = runes + ?, total_earned = total_earned + ?, updated_at = datetime('now')
+  SET last_daily = ?, shards = shards + ?, total_earned = total_earned + ?, updated_at = datetime('now')
   WHERE account_id = ?
 `)
 
@@ -845,7 +845,7 @@ const _updateRecord = db.prepare(`
 `)
 
 const _insertMatch = db.prepare(`
-  INSERT INTO match_log (id, account_id, opponent, mode, result, turns, runes_earned, rating_delta)
+  INSERT INTO match_log (id, account_id, opponent, mode, result, turns, shards_earned, rating_delta)
   VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 `)
 
@@ -858,8 +858,8 @@ export function claimDailyReward(accountId) {
     return { ok: false, error: 'Daily reward already claimed today.' }
   }
 
-  _setDailyClaim.run(todayKey, DAILY_RUNES, DAILY_RUNES, accountId)
-  return { ok: true, amount: DAILY_RUNES, newBalance: profile.runes + DAILY_RUNES }
+  _setDailyClaim.run(todayKey, DAILY_SHARDS, DAILY_SHARDS, accountId)
+  return { ok: true, amount: DAILY_SHARDS, newBalance: profile.shards + DAILY_SHARDS }
 }
 
 export function purchaseTheme(accountId, themeId) {
@@ -873,13 +873,13 @@ export function purchaseTheme(accountId, themeId) {
     return { ok: false, error: 'Theme already owned.' }
   }
 
-  if (cost > 0 && profile.runes < cost) {
-    return { ok: false, error: 'Not enough Runestones.' }
+  if (cost > 0 && profile.shards < cost) {
+    return { ok: false, error: 'Not enough Shards.' }
   }
 
   const tx = db.transaction(() => {
     if (cost > 0) {
-      _deductRunes.run(cost, accountId, cost)
+      _deductShards.run(cost, accountId, cost)
     }
     const updated = [...profile.owned_themes, themeId]
     _addOwnedTheme.run(JSON.stringify(updated), accountId)
@@ -888,7 +888,7 @@ export function purchaseTheme(accountId, themeId) {
 
   tx()
   const refreshed = getProfile(accountId)
-  return { ok: true, runes: refreshed.runes, ownedThemes: refreshed.owned_themes }
+  return { ok: true, shards: refreshed.shards, ownedThemes: refreshed.owned_themes }
 }
 
 // ─── Card border cosmetic system ─────────────────────────────────────
@@ -931,13 +931,13 @@ export function purchaseCardBorder(accountId, borderId) {
     return { ok: false, error: 'Card border already owned.' }
   }
 
-  if (entry.cost > 0 && profile.runes < entry.cost) {
-    return { ok: false, error: 'Not enough Shards for that card border.' }
+  if (entry.cost > 0 && profile.shards < entry.cost) {
+    return { ok: false, error: 'Not enough Shards.' }
   }
 
   const tx = db.transaction(() => {
     if (entry.cost > 0) {
-      _deductRunes.run(entry.cost, accountId, entry.cost)
+      _deductShards.run(entry.cost, accountId, entry.cost)
     }
     const updated = [...profile.owned_card_borders, borderId]
     _setOwnedCardBorders.run(JSON.stringify(updated), accountId)
@@ -948,7 +948,7 @@ export function purchaseCardBorder(accountId, borderId) {
   const refreshed = getProfile(accountId)
   return {
     ok: true,
-    runes: refreshed.runes,
+    shards: refreshed.shards,
     ownedCardBorders: refreshed.owned_card_borders,
     selectedCardBorder: refreshed.selected_card_border,
   }
@@ -1025,7 +1025,7 @@ export function breakdownCard(accountId, cardId, qty) {
 
   const tx = db.transaction(() => {
     _setOwnedCards.run(JSON.stringify(updatedOwned), accountId)
-    _grantRunes.run(totalRefund, totalRefund, accountId)
+    _grantShards.run(totalRefund, totalRefund, accountId)
   })
   tx()
 
@@ -1036,7 +1036,7 @@ export function breakdownCard(accountId, cardId, qty) {
     refunded: totalRefund,
     refundPer,
     qty: requested,
-    runes: refreshed.runes,
+    shards: refreshed.shards,
     owned: refreshed.owned_cards,
   }
 }
@@ -1045,7 +1045,7 @@ export function resolveMatchResult(accountId, opponent, mode, result, turns) {
   const profile = getProfile(accountId)
   if (!profile) return { ok: false, error: 'Profile not found.' }
 
-  let runesEarned = 0
+  let shardsEarned = 0
   let ratingDelta = 0
   let newStreak = profile.streak
 
@@ -1053,15 +1053,15 @@ export function resolveMatchResult(accountId, opponent, mode, result, turns) {
   const ratingEligible = mode === 'duel'
 
   if (result === 'win') {
-    runesEarned = WIN_RUNES
+    shardsEarned = WIN_SHARDS
     ratingDelta = ratingEligible ? WIN_RATING : 0
     newStreak = profile.streak + 1
-    // Streak bonus: extra 5 runes per streak after 2
+    // Streak bonus: extra 5 shards per streak after 2
     if (newStreak > 2) {
-      runesEarned += Math.min(20, (newStreak - 2) * 5)
+      shardsEarned += Math.min(20, (newStreak - 2) * 5)
     }
   } else if (result === 'loss') {
-    runesEarned = LOSS_RUNES
+    shardsEarned = LOSS_SHARDS
     ratingDelta = ratingEligible ? -LOSS_RATING : 0
     newStreak = 0
   }
@@ -1069,7 +1069,7 @@ export function resolveMatchResult(accountId, opponent, mode, result, turns) {
   const matchId = `m-${randomBytes(8).toString('hex')}`
 
   const tx = db.transaction(() => {
-    _grantRunes.run(runesEarned, runesEarned, accountId)
+    _grantShards.run(shardsEarned, shardsEarned, accountId)
     _updateRating.run(RATING_FLOOR, ratingDelta, accountId)
     _updateRecord.run(
       result === 'win' ? 1 : 0,
@@ -1077,7 +1077,7 @@ export function resolveMatchResult(accountId, opponent, mode, result, turns) {
       newStreak,
       accountId,
     )
-    _insertMatch.run(matchId, accountId, opponent, mode, result, turns, runesEarned, ratingDelta)
+    _insertMatch.run(matchId, accountId, opponent, mode, result, turns, shardsEarned, ratingDelta)
   })
 
   tx()
@@ -1085,10 +1085,10 @@ export function resolveMatchResult(accountId, opponent, mode, result, turns) {
   return {
     ok: true,
     matchId,
-    runesEarned,
+    shardsEarned,
     ratingDelta,
     streak: refreshed.streak,
-    runes: refreshed.runes,
+    shards: refreshed.shards,
     seasonRating: refreshed.season_rating,
     wins: refreshed.wins,
     losses: refreshed.losses,
@@ -1445,7 +1445,7 @@ export function openPack(accountId, packType) {
 
   const profile = getProfile(accountId)
   if (!profile) return { ok: false, error: 'Profile not found.' }
-  if (profile.runes < packDef.cost) return { ok: false, error: 'Not enough Runestones.' }
+  if (profile.shards < packDef.cost) return { ok: false, error: 'Not enough Shards.' }
 
   // Roll cards
   const cards = packDef.slots.map((slot) => {
@@ -1461,7 +1461,7 @@ export function openPack(accountId, packType) {
   const ownedRow = _getOwnedCards.get(accountId)
   const owned = ownedRow ? normalizeOwnedCards(ownedRow.owned_cards) : buildStarterCollection()
 
-  // Duplicate protection: if card already max copies (common/rare/epic: 2, legendary: 1), grant rune refund
+  // Duplicate protection: if card already max copies (common/rare/epic: 2, legendary: 1), grant shard refund
   let refund = 0
   const RARITY_REFUND = { common: 5, rare: 10, epic: 25, legendary: 100 }
   const MAX_COPIES = { common: GAME_MAX_COPIES, rare: GAME_MAX_COPIES, epic: GAME_MAX_COPIES, legendary: MAX_LEGENDARY_COPIES }
@@ -1480,8 +1480,8 @@ export function openPack(accountId, packType) {
   const netCost = packDef.cost - refund
 
   const tx = db.transaction(() => {
-    _deductRunes.run(packDef.cost, accountId, packDef.cost)
-    if (refund > 0) _grantRunes.run(refund, 0, accountId)
+    _deductShards.run(packDef.cost, accountId, packDef.cost)
+    if (refund > 0) _grantShards.run(refund, 0, accountId)
     _setOwnedCards.run(JSON.stringify(owned), accountId)
   })
   tx()
@@ -1492,7 +1492,7 @@ export function openPack(accountId, packType) {
     cards,
     refund,
     netCost,
-    runes: refreshed.runes,
+    shards: refreshed.shards,
   }
 }
 

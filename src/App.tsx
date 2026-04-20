@@ -144,7 +144,7 @@ function AppShell() {
 
   // ─── Server-authoritative player state ────────────────────────────────
   const [serverProfile, setServerProfile] = useState<ServerProfile | null>(null)
-  const runes = serverProfile?.runes ?? 0
+  const shards = serverProfile?.shards ?? 0
   const seasonRating = serverProfile?.seasonRating ?? 1200
   const record = { wins: serverProfile?.wins ?? 0, losses: serverProfile?.losses ?? 0, streak: serverProfile?.streak ?? 0 }
   const ownedThemes = serverProfile?.ownedThemes ?? ['royal'] as CosmeticTheme[]
@@ -1286,7 +1286,7 @@ function AppShell() {
         ok: boolean
         error?: string
         refunded?: number
-        runes?: number
+        shards?: number
         owned?: Record<string, number>
       }) => {
         if (!data.ok) {
@@ -1297,7 +1297,7 @@ function AppShell() {
           prev
             ? {
                 ...prev,
-                runes: data.runes ?? prev.runes,
+                shards: data.shards ?? prev.shards,
               }
             : prev,
         )
@@ -1319,8 +1319,8 @@ function AppShell() {
       void handleSelectBorder(borderId)
       return
     }
-    if (runes < cost) {
-      setToastMessage(`Need ${cost - runes} more Shards for that border.`)
+    if (shards < cost) {
+      setToastMessage(`Need ${cost - shards} more Shards for that border.`)
       return
     }
     void authFetch('/api/shop/border', authToken, {
@@ -1331,7 +1331,7 @@ function AppShell() {
       .then((data: {
         ok: boolean
         error?: string
-        runes?: number
+        shards?: number
         ownedCardBorders?: CardBorder[]
         selectedCardBorder?: CardBorder
       }) => {
@@ -1343,7 +1343,7 @@ function AppShell() {
           prev
             ? {
                 ...prev,
-                runes: data.runes ?? prev.runes,
+                shards: data.shards ?? prev.shards,
                 ownedCardBorders: data.ownedCardBorders ?? prev.ownedCardBorders,
                 selectedCardBorder: data.selectedCardBorder ?? prev.selectedCardBorder,
               }
@@ -1571,7 +1571,7 @@ function AppShell() {
         body: { opponent: game.enemy.name, mode: game.mode, result, turns: game.turnNumber },
       })
         .then((r) => r.json())
-        .then((data: { ok: boolean; runes?: number; seasonRating?: number; wins?: number; losses?: number; streak?: number; runesEarned?: number }) => {
+        .then((data: { ok: boolean; shards?: number; seasonRating?: number; wins?: number; losses?: number; streak?: number; shardsEarned?: number }) => {
           if (!data.ok) return
           // Stale response — a new match has started since this request.
           if (resolvedMatchKeyRef.current !== capturedKey) return
@@ -1579,7 +1579,7 @@ function AppShell() {
             prev
               ? {
                   ...prev,
-                  runes: data.runes ?? prev.runes,
+                  shards: data.shards ?? prev.shards,
                   seasonRating: data.seasonRating ?? prev.seasonRating,
                   wins: data.wins ?? prev.wins,
                   losses: data.losses ?? prev.losses,
@@ -1603,7 +1603,7 @@ function AppShell() {
             isRanked,
             battleKind: battleKindForBeats,
             mode: game.mode,
-            shards: data.runesEarned ?? 50,
+            shards: data.shardsEarned ?? 30,
             ratingDelta: isRanked ? ratingDelta : undefined,
           })
           if (rankCrossed) {
@@ -1916,14 +1916,14 @@ function AppShell() {
     feedback('claim', soundEnabled, hapticsEnabled)
     void authFetch('/api/me/daily', authToken, { method: 'POST' })
       .then((r) => r.json())
-      .then((data: { ok: boolean; error?: string; runes?: number; totalEarned?: number }) => {
+      .then((data: { ok: boolean; error?: string; shards?: number; totalEarned?: number }) => {
         if (data.ok) {
-          setServerProfile((prev) => prev ? { ...prev, runes: data.runes ?? prev.runes, lastDaily: todayKey, totalEarned: data.totalEarned ?? prev.totalEarned } : prev)
-          setToastMessage('Daily reward claimed: +50 Shards.')
+          setServerProfile((prev) => prev ? { ...prev, shards: data.shards ?? prev.shards, lastDaily: todayKey, totalEarned: data.totalEarned ?? prev.totalEarned } : prev)
+          setToastMessage('Daily reward claimed: +25 Shards.')
           setJustClaimedDaily(true)
           window.setTimeout(() => setJustClaimedDaily(false), 2000)
           presentRewardCinema(
-            buildDailyClaimSequence({ shards: 50, totalEarned: data.totalEarned }),
+            buildDailyClaimSequence({ shards: 25, totalEarned: data.totalEarned }),
             'daily',
           )
         } else {
@@ -1931,7 +1931,7 @@ function AppShell() {
         }
       })
       .catch(() => setToastMessage('Network error claiming daily reward.'))
-    void sendAnalytics('reward_claim', { amount: 50, currency: 'shards', screen: activeScreen, viewport: getScreenBucket() }, 'vault')
+    void sendAnalytics('reward_claim', { amount: 25, currency: 'shards', screen: activeScreen, viewport: getScreenBucket() }, 'vault')
   }
 
   function handleEquipTheme(themeId: CosmeticTheme, cost: number) {
@@ -1942,7 +1942,7 @@ function AppShell() {
 
     const alreadyOwned = ownedThemes.includes(themeId)
 
-    if (!alreadyOwned && runes < cost) {
+    if (!alreadyOwned && shards < cost) {
       setToastMessage('Not enough Shards yet for that cosmetic theme.')
       return
     }
@@ -1950,12 +1950,12 @@ function AppShell() {
     if (!alreadyOwned) {
       void authFetch('/api/shop/theme', authToken, { method: 'POST', body: { themeId } })
         .then((r) => r.json())
-        .then((data: { ok: boolean; error?: string; runes?: number; ownedThemes?: CosmeticTheme[] }) => {
+        .then((data: { ok: boolean; error?: string; shards?: number; ownedThemes?: CosmeticTheme[] }) => {
           if (data.ok) {
             setServerProfile((prev) =>
               prev ? {
                 ...prev,
-                runes: data.runes ?? prev.runes,
+                shards: data.shards ?? prev.shards,
                 ownedThemes: data.ownedThemes ?? prev.ownedThemes,
                 selectedTheme: themeId,
               } : prev,
@@ -2324,7 +2324,7 @@ function AppShell() {
         error?: string
         cards?: OpenedPackCard[]
         refund?: number
-        runes?: number
+        shards?: number
       }
 
       if (!response.ok || !data.ok) {
@@ -2333,7 +2333,7 @@ function AppShell() {
 
       setOpenedPackCards(data.cards ?? [])
       setLastPackRefund(data.refund ?? 0)
-      setServerProfile((prev) => (prev ? { ...prev, runes: data.runes ?? prev.runes } : prev))
+      setServerProfile((prev) => (prev ? { ...prev, shards: data.shards ?? prev.shards } : prev))
       const collectionResponse = await authFetch('/api/me/collection', authToken)
       const collectionData = (await collectionResponse.json()) as { ok?: boolean; collection?: CardCollection }
       setCollection(collectionData.collection ?? {})
@@ -2951,7 +2951,7 @@ function AppShell() {
     setupRequired, setupForm, setSetupForm, setupError, setupLoading,
     handleSetup, handleAuth, handleLogout,
     // Profile (derived; raw state lives in AppShell)
-    serverProfile, setServerProfile, runes, seasonRating, record,
+    serverProfile, setServerProfile, shards, seasonRating, record,
     ownedThemes, selectedTheme, ownedCardBorders, selectedCardBorder,
     lastDailyClaim, accountRole, isAdminRole, isOwnerRole,
     rankLabel, totalGames, winRate, rankProgress, nextRankTarget, nextRewardLabel,

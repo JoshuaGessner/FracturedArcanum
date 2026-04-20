@@ -10,7 +10,7 @@ const getCardIcon = (id: string): string => _getCardIcon(id, CARD_LIBRARY)
 
 export function SocialScreen() {
   const { activeScreen } = useAppShell()
-  const { serverProfile, rankLabel, totalGames, winRate, runes, collection } = useProfile()
+  const { serverProfile, rankLabel, totalGames, winRate, shards, collection } = useProfile()
   const { leaderboardEntries } = useQueue()
   const {
     friends, friendUsernameInput, setFriendUsernameInput, handleAddFriend, socialLoading,
@@ -95,7 +95,7 @@ export function SocialScreen() {
                 <span className="badge">{onlineFriends} online</span>
                 <span className="badge">{pendingTrades} trades</span>
                 <span className="badge">{clan ? clan.tag : 'Solo'}</span>
-                <span className="badge">{totalGames}G · {winRate}%W · {runes}R</span>
+                <span className="badge">{totalGames}G · {winRate}%W · {shards}S</span>
               </>
             )}
             tiles={socialTiles}

@@ -13,7 +13,7 @@ const RARITY_REFUND = { common: 5, rare: 10, epic: 25, legendary: 100 } as const
 export function ShopScreen() {
   const { activeScreen, loggedIn, soundEnabled, hapticsEnabled, presentRewardCinema, lastPackRefund, setLastPackRefund } = useAppShell()
   const {
-    runes, totalOwnedCards, nextRewardLabel, canClaimDailyReward, handleClaimDailyReward,
+    shards, totalOwnedCards, nextRewardLabel, canClaimDailyReward, handleClaimDailyReward,
     ownedThemes, selectedTheme, handleEquipTheme,
     ownedCardBorders, selectedCardBorder, handlePurchaseBorder,
     packOffers, packOpening, openedPackCards, handleOpenPack,
@@ -45,7 +45,7 @@ export function ShopScreen() {
   const bazaarTiles: SceneHeaderTile[] = [
     {
       kicker: 'Shard Cache',
-      value: `${runes}`,
+      value: `${shards}`,
       note: 'Spend on packs, themes, and borders',
     },
     {
@@ -154,7 +154,7 @@ export function ShopScreen() {
             note="Featured stock, shard pressure, and faster routes into the vault."
             badges={(
               <>
-                <span className="badge">{runes} Shards</span>
+                <span className="badge">{shards} Shards</span>
                 <span className="badge">Next: {nextRewardLabel}</span>
                 <button className="ghost mini" onClick={() => startMatch('ai')}>
                   Earn in Battle
@@ -172,7 +172,7 @@ export function ShopScreen() {
           <article className={`section-card utility-card reward-vault-card ${canClaimDailyReward ? 'claim-ready' : ''}`}>
             <div className="section-head compact">
               <h3>Reward Vault</h3>
-              <span className="badge">{runes} Shards</span>
+              <span className="badge">{shards} Shards</span>
             </div>
             <p className="note">Claim your daily payout here and jump back into battle to refill the vault.</p>
             <div className="controls">
@@ -225,7 +225,7 @@ export function ShopScreen() {
               {CARD_BORDER_OFFERS.map((border) => {
                 const owned = ownedCardBorders.includes(border.id)
                 const equipped = selectedCardBorder === border.id
-                const canAfford = runes >= border.cost
+                const canAfford = shards >= border.cost
                 return (
                   <div className="theme-offer-card" key={border.id}>
                     <div className={`border-preview border-${border.id}`} aria-hidden="true">
@@ -266,7 +266,7 @@ export function ShopScreen() {
                   <div className="badges">
                     <span className="badge">{pack.cost} Shards</span>
                   </div>
-                  <button className="primary" onClick={() => handleClickOpenPack(pack.id)} disabled={packOpening === pack.id || runes < pack.cost}>
+                  <button className="primary" onClick={() => handleClickOpenPack(pack.id)} disabled={packOpening === pack.id || shards < pack.cost}>
                     {packOpening === pack.id ? (
                       <><span className="spinner spinner-inline" aria-hidden="true" />Opening…</>
                     ) : (
@@ -387,7 +387,7 @@ export function ShopScreen() {
           cards={openedPackCards}
           packId={ceremonyPack.id}
           packCost={ceremonyPack.cost}
-          runes={runes}
+          shards={shards}
           prevCollection={prevCollectionSnapshot ?? collection}
           soundEnabled={soundEnabled}
           hapticsEnabled={hapticsEnabled}

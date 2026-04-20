@@ -203,14 +203,14 @@ describe('friend gating', () => {
 })
 
 describe('resolveMatchResult mode gating', () => {
-  it('unranked mode grants runes but does not change season rating', () => {
+  it('unranked mode grants shards but does not change season rating', () => {
     const a = makeAccount('unrankedplayer')
     const before = db.getProfile(a)
     const result = db.resolveMatchResult(a, 'opponent', 'unranked', 'win', 5)
     expect(result.ok).toBe(true)
     expect(result.ratingDelta).toBe(0)
     expect(result.seasonRating).toBe(before.season_rating)
-    expect(result.runesEarned).toBeGreaterThan(0)
+    expect(result.shardsEarned).toBeGreaterThan(0)
   })
 
   it('duel mode adjusts season rating', () => {
@@ -401,11 +401,11 @@ describe('shard breakdown', () => {
     const empty = db.saveDeck(id, {})
     expect(empty.ok).toBe(true)
 
-    const baseRunes = db.getProfile(id).runes
+    const baseShards = db.getProfile(id).shards
     const result = db.breakdownCard(id, cardId, 1)
     expect(result.ok, result.error).toBe(true)
     expect(result.refunded).toBeGreaterThan(0)
-    expect(db.getProfile(id).runes).toBe(baseRunes + result.refunded)
+    expect(db.getProfile(id).shards).toBe(baseShards + result.refunded)
   })
 
   it('refuses to break down copies needed by saved decks', () => {

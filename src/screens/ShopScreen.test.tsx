@@ -33,9 +33,9 @@ function buildShellValue(overrides: Partial<AppShellContextValue> = {}): AppShel
     handleSetup: asyncNoop,
     handleAuth: asyncNoop,
     handleLogout: noop,
-    serverProfile: { accountId: 'acct-1', username: 'josh', displayName: 'Josh', role: 'user', runes: 180, seasonRating: 1210, wins: 3, losses: 2, streak: 1, deckConfig: {}, ownedThemes: ['royal'], selectedTheme: 'royal', ownedCardBorders: ['default'], selectedCardBorder: 'default', lastDaily: '', totalEarned: 0 },
+    serverProfile: { accountId: 'acct-1', username: 'josh', displayName: 'Josh', role: 'user', shards: 180, seasonRating: 1210, wins: 3, losses: 2, streak: 1, deckConfig: {}, ownedThemes: ['royal'], selectedTheme: 'royal', ownedCardBorders: ['default'], selectedCardBorder: 'default', lastDaily: '', totalEarned: 0 },
     setServerProfile: noop,
-    runes: 180,
+    shards: 180,
     seasonRating: 1210,
     record: { wins: 3, losses: 2, streak: 1 },
     ownedThemes: ['royal'] as CosmeticTheme[],
@@ -215,7 +215,7 @@ describe('ShopScreen hub flow', () => {
         cards={[{ id: 'spark-imp', rarity: 'common', duplicate: false }]}
         packId="standard"
         packCost={20}
-        runes={100}
+        shards={100}
         prevCollection={{}}
         soundEnabled={false}
         hapticsEnabled={false}
@@ -264,7 +264,7 @@ describe('ShopScreen hub flow', () => {
         cards={[{ id: 'spark-imp', rarity: 'common', duplicate: false }]}
         packId="standard"
         packCost={20}
-        runes={100}
+        shards={100}
         prevCollection={{}}
         soundEnabled={false}
         hapticsEnabled={false}
@@ -283,7 +283,7 @@ describe('ShopScreen hub flow', () => {
         cards={[{ id: 'bog-lurker', rarity: 'rare', duplicate: false }]}
         packId="standard"
         packCost={20}
-        runes={100}
+        shards={100}
         prevCollection={{}}
         soundEnabled={false}
         hapticsEnabled={false}

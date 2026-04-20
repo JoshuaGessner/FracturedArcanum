@@ -457,7 +457,7 @@ Rules:
 
 ### Shop
 - [x] become a merchant/bazaar scene
-- [x] packs, cosmetics, and rune economy appear as anchored displays and rails
+- [x] packs, cosmetics, and shard economy appear as anchored displays and rails
 - [x] pack opening and reveal review stay fully inside the active shop flow without using battle-victory framing
 - [x] newly opened cards are browsed cleanly with swipe-safe overlays and no accidental section changes
 

@@ -32,7 +32,7 @@ import { readStoredValue } from '../utils'
  * `useProfileState()` to drive state changes from those handlers and from
  * socket-driven payloads.
  *
- * `serverProfile` and the values derived from it (`runes`, `seasonRating`,
+ * `serverProfile` and the values derived from it (`shards`, `seasonRating`,
  * `rankLabel`, etc.) intentionally remain in AppShell for now — they will
  * migrate when the AppContext (auth/profile root) split lands.
  */

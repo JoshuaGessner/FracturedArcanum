@@ -22,6 +22,20 @@ A detailed code index lives in `.github/index/`. **Consult it before writing or 
 
 **Workflow:** Index file → locate section → read actual source lines → implement change. Never guess at function signatures, state variables, or line numbers — verify from the index, then confirm in source.
 
+### Game Design Documentation
+
+A design documentation suite lives in `docs/`. **Consult it before adding, modifying, or balancing any game content** — cards, effects, keywords, tribes, economy values, collectibles, or cosmetic pricing.
+
+| Design Document | Covers |
+|-----------------|--------|
+| `docs/GAME_DESIGN_BIBLE.md` | Master design document — vision, mechanics, card taxonomy, tribes, keywords, collectible registry, and procedures for adding new content |
+| `docs/CARD_BALANCE_FRAMEWORK.md` | Vanilla stat formula, keyword tax table, rarity power curves, mana curve targets, balance audit checklist, seasonal expansion/rotation rules (§10), and the **5-year seasonal schedule** (§11) covering all expansion sets, keywords, cosmetics, and rotation order through 2030 |
+| `docs/ECONOMY_BALANCE.md` | Currency earning rates (WIN_SHARDS=50, ~5 min matches), pack value math, collection progression timeline, economy tuning levers, and health metrics |
+| `docs/CARD_CATALOG.md` | Complete card-by-card reference with stats, balance deltas, tribe/keyword distributions, and flagged outliers |
+| `docs/monetization-plan.md` | Paid offerings, cosmetic pricing, fairness covenant, and implementation path |
+
+**Game content workflow:** Design Bible → Balance Framework → implement in `src/game.ts` → update Card Catalog → verify economy impact → test → build. Every new card must pass the balance audit checklist in `CARD_BALANCE_FRAMEWORK.md` before merging.
+
 ---
 
 ## 2 — Mandatory Coding Standards
@@ -68,6 +82,8 @@ A detailed code index lives in `.github/index/`. **Consult it before writing or 
 - Board size is fixed at 3 lanes (`BOARD_SIZE = 3`).
 - `passTurn()` handles end-of-turn + beginning of next turn (mana increment, draw, unit readiness).
 - When modifying game logic, always edit `src/game.ts` then rebuild with `npm run build:engine`.
+- When adding or modifying cards, consult `docs/CARD_BALANCE_FRAMEWORK.md` for the stat budget formula and keyword tax table. Every new card must pass the balance audit checklist before merging.
+- When modifying economy constants (shard rewards, pack costs, breakdown values), consult `docs/ECONOMY_BALANCE.md` and recalculate the affected progression timelines. Remember that matches are ~5 minutes long, so economy estimates should use matches/sessions, not hours/days.
 
 ### Server Rules
 - Validate all inputs at the boundary (API routes and socket handlers).

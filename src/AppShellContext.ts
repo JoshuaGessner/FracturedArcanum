@@ -63,7 +63,7 @@ export type AppShellContextValue = {
   // ─── Derived profile (owned by AppShell, sourced from serverProfile) ──
   serverProfile: ServerProfile | null
   setServerProfile: React.Dispatch<React.SetStateAction<ServerProfile | null>>
-  runes: number
+  shards: number
   seasonRating: number
   record: { wins: number; losses: number; streak: number }
   ownedThemes: CosmeticTheme[]

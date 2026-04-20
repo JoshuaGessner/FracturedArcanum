@@ -133,7 +133,7 @@ export type ServerProfile = {
   displayName?: string
   username: string
   role?: 'user' | 'admin' | 'owner'
-  runes: number
+  shards: number
   seasonRating: number
   wins: number
   losses: number

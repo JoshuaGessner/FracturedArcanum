@@ -12,7 +12,7 @@ export type ProfileContextValue = ProfileStateValue &
     AppShellContextValue,
     | 'serverProfile'
     | 'setServerProfile'
-    | 'runes'
+    | 'shards'
     | 'seasonRating'
     | 'record'
     | 'ownedThemes'
@@ -56,7 +56,7 @@ export function useProfile(): ProfileContextValue {
     ...profile,
     serverProfile: shell.serverProfile,
     setServerProfile: shell.setServerProfile,
-    runes: shell.runes,
+    shards: shell.shards,
     seasonRating: shell.seasonRating,
     record: shell.record,
     ownedThemes: shell.ownedThemes,

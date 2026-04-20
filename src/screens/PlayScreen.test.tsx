@@ -33,7 +33,7 @@ function buildShellValue(overrides: Partial<AppShellContextValue> = {}): AppShel
     handleLogout: noop,
     serverProfile: null,
     setServerProfile: noop,
-    runes: 0,
+    shards: 0,
     seasonRating: 1200,
     record: { wins: 0, losses: 0, streak: 0 },
     ownedThemes: ['royal'] as CosmeticTheme[],
