@@ -338,7 +338,7 @@ const CARD_PARAMS: Record<string, CardParams> = {
   'arcane-artificer':    { summonOne: { id: 'token-wisp', name: 'Wisp', icon: '✨', attack: 1, health: 1 } },
   'ghost-knight':        { deathrattle: { kind: 'damage-hero', amount: 2 } },
   'lava-hound':          { deathrattle: { kind: 'damage-all-enemy-units', amount: 3 } },
-  'thunder-hawk':        { grantsKeyword: 'charge' }, // Cleave (primary) + Charge — card text: "Charge and Cleave"
+  'thunder-hawk':        { grantsKeyword: 'charge' }, // Primary: Cleave; grants Charge — card text: "Charge and Cleave"
 
   // ── Epic overrides
   'nether-witch':        { extras: [{ kind: 'draw' }] },                      // Blast 2 + Draw

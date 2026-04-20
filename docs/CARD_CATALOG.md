@@ -79,7 +79,7 @@ All 70 cards below belong to the **Core Set**. Core set cards are permanent — 
 | 10 | crimson-berserker | Blood-Maddened Zealot | 4 | 5/3 | 8 | 9 | Enrage | — | Warrior | 0 | Enrage −1 tax |
 | 11 | ghost-knight | Shade Knight | 3 | 3/3 | 6 | 7 | Deathrattle | DR: 2 hero dmg | Undead | 0 | DR −1 tax |
 | 12 | war-mammoth | Chitinous Behemoth | 5 | 5/5 | 10 | 11 | Overwhelm | — | Beast | 0 | Overwhelm −1 tax |
-| 13 | thunder-hawk | Storm Carrion | 3 | 4/2 | 6 | 7 | Cleave | Charge (via params) | Beast | +4 | Cleave −2 + Charge −2 + multi −1 = −5 tax; stats are very generous — flagged |
+| 13 | thunder-hawk | Storm Carrion | 3 | 4/2 | 6 | 7 | Cleave | Charge (via params) | Beast | +4 | Cleave −2 + Charge −2 + multi −1 = −5 tax; expected stats = 7 − 5 = 2; actual = 6; flagged |
 | 14 | hex-spider | Weaver of Ill Omen | 2 | 2/3 | 5 | 5 | Poison 1 | — | Beast | +1 | Poison −1 tax; slight over |
 | 15 | iron-clad | Iron-Clad Devotee | 5 | 4/6 | 10 | 11 | Guard | Shield 2 | Mech | 0 | Guard −1 + Shield −1 + multi −1 = −3 |
 | 16 | shadow-dancer | Umbral Dancer | 4 | 4/3 | 7 | 9 | Lifesteal | — | Undead | 0 | Lifesteal −2 tax |
