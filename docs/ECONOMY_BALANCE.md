@@ -21,33 +21,27 @@ Fractured Arcanum's economy follows the **Ritual Offering** model — progress f
 
 ---
 
-## 2. Currency — Runes (Shards)
+## 2. Currency — Shards
 
-The game uses a single soft currency called **Runes**. Current naming across the codebase:
-- Server variables: `runes` (e.g., `WIN_RUNES`)
-- Server error messages: "Runestones" (unified in `server/db.js`)
-- Client UI labels: "Shards" (displayed to players)
-- Documentation: "Runes" (canonical name)
-
-**Unification target:** All player-facing text should eventually say "Shards" (the in-universe name). Internal code and documentation use "Runes".
+The game uses a single soft currency called **Shards**. All code, UI, and documentation use "Shards" consistently. Server constants use `WIN_SHARDS`, `LOSS_SHARDS`, `DAILY_SHARDS`. The database column is `shards`.
 
 ### Earning Rates
 
 | Source | Amount | Frequency | Per-Session (3 games) |
 |--------|--------|-----------|----------------------|
-| Match win | 50 runes | Per win | 75–150 (at 50–100% WR) |
-| Match loss | 10 runes | Per loss | 10–15 (at 33–50% LR) |
+| Match win | 50 shards | Per win | 75–150 (at 50–100% WR) |
+| Match loss | 10 shards | Per loss | 10–15 (at 33–50% LR) |
 | Win streak bonus | +5 per streak past 2 (cap +20) | Per qualifying win | Variable |
-| Daily reward | 50 runes | Once per day | 50 |
-| Card breakdown (Common) | 5 runes | Per copy | Variable |
-| Card breakdown (Rare) | 10 runes | Per copy | Variable |
-| Card breakdown (Epic) | 25 runes | Per copy | Variable |
-| Card breakdown (Legendary) | 100 runes | Per copy | Variable |
+| Daily reward | 50 shards | Once per day | 50 |
+| Card breakdown (Common) | 5 shards | Per copy | Variable |
+| Card breakdown (Rare) | 10 shards | Per copy | Variable |
+| Card breakdown (Epic) | 25 shards | Per copy | Variable |
+| Card breakdown (Legendary) | 100 shards | Per copy | Variable |
 
-**Source constants:** `server/db.js` — `WIN_RUNES = 50`, `LOSS_RUNES = 10`, `DAILY_RUNES = 50`
+**Source constants:** `server/db.js` — `WIN_SHARDS = 50`, `LOSS_SHARDS = 10`, `DAILY_SHARDS = 50`
 **Breakdown values:** `server/db.js` — `RARITY_BREAKDOWN_VALUE` map
-**Streak bonus:** +5 runes per streak past 2 wins (capped at +20 extra). Source: `resolveMatchResult()` in `server/db.js`
-**Match duration:** Matches typically last ~5 minutes, making rune income very fast per real-time minute of play.
+**Streak bonus:** +5 shards per streak past 2 wins (capped at +20 extra). Source: `resolveMatchResult()` in `server/db.js`
+**Match duration:** Matches typically last ~5 minutes, making shard income very fast per real-time minute of play.
 
 ### Weekly Income Model
 
@@ -56,17 +50,17 @@ Games are fast-paced (typically ~5 minutes per match). Income should be calculat
 **Per-match income (50% win rate across 2 games):**
 
 ```
-1 win (50) + 1 loss (10) = 60 runes per 2 games (~10 minutes)
-Average per match: 30 runes
+1 win (50) + 1 loss (10) = 60 shards per 2 games (~10 minutes)
+Average per match: 30 shards
 ```
 
 **Casual player** (3 matches/day, ~15 minutes, 50% win rate):
 
 ```
-Daily match income:  (1.5 wins × 50) + (1.5 losses × 10) = 75 + 15 = 90 runes
-Daily reward:        50 runes
-Daily total:         140 runes
-Weekly total:        980 runes
+Daily match income:  (1.5 wins × 50) + (1.5 losses × 10) = 75 + 15 = 90 shards
+Daily reward:        50 shards
+Daily total:         140 shards
+Weekly total:        980 shards
 
 That's ~7 Basic packs per day from matches alone, or ~2 per 15-minute session.
 ```
@@ -74,28 +68,28 @@ That's ~7 Basic packs per day from matches alone, or ~2 per 15-minute session.
 **Dedicated player** (5 matches/day, ~25 minutes, 60% win rate):
 
 ```
-Daily match income:  (3 wins × 50) + (2 losses × 10) = 150 + 20 = 170 runes
-Streak bonus:        ~10 runes (from 3-streak)
-Daily reward:        50 runes
-Daily total:         ~230 runes
-Weekly total:        ~1,610 runes
+Daily match income:  (3 wins × 50) + (2 losses × 10) = 150 + 20 = 170 shards
+Streak bonus:        ~10 shards (from 3-streak)
+Daily reward:        50 shards
+Daily total:         ~230 shards
+Weekly total:        ~1,610 shards
 
 That's ~4.5 Basic packs per day, or 1 Legendary pack every ~2 days.
 ```
 
-**Key insight:** A single win (50 runes) pays for a Basic pack (50 runes) in one ~5-minute game. Progression feels immediate and rewarding for quick casual sessions.
+**Key insight:** A single win (50 shards) pays for a Basic pack (50 shards) in one ~5-minute game. Progression feels immediate and rewarding for quick casual sessions.
 
 ---
 
-## 3. Spending — Where Runes Go
+## 3. Spending — Where Shards Go
 
 ### Card Packs
 
 | Pack | Cost | Guaranteed Contents | Upgrade Chance |
 |------|------|-------------------|----------------|
-| Basic | 50 runes | 3 Common + 1 Rare | Each slot can upgrade by rarity |
-| Premium | 150 runes | 3 Common + 1 Rare + 1 Epic | Each slot can upgrade |
-| Legendary | 400 runes | 1 Common + 2 Rare + 1 Epic + 1 Legendary | Each slot can upgrade |
+| Basic | 50 shards | 3 Common + 1 Rare | Each slot can upgrade by rarity |
+| Premium | 150 shards | 3 Common + 1 Rare + 1 Epic | Each slot can upgrade |
+| Legendary | 400 shards | 1 Common + 2 Rare + 1 Epic + 1 Legendary | Each slot can upgrade |
 
 **Source:** `server/db.js` — `PACK_DEFS`
 
@@ -114,22 +108,22 @@ That's ~4.5 Basic packs per day, or 1 Legendary pack every ~2 days.
 
 | Theme | Cost |
 |-------|------|
-| Royal Arcane (default) | 0 runes |
-| Ember Court | 120 runes |
-| Moonwell Glow | 180 runes |
+| Royal Arcane (default) | 0 shards |
+| Ember Court | 120 shards |
+| Moonwell Glow | 180 shards |
 
 **Source:** `server/db.js` — `THEME_COSTS`; `src/constants.ts` — `THEME_OFFERS`
 
-**Design note:** The theme catalog is intentionally small at launch. Additional themes (Crimson Sanctum, Verdant Hollow, Azure Depths, Golden Spire, Void Eclipse, Frost Tomb, Ember Forge at 150–400 runes) are planned for future seasonal releases. See the Seasonal Schedule in [`docs/CARD_BALANCE_FRAMEWORK.md` §10](CARD_BALANCE_FRAMEWORK.md#10-seasonal-expansion--rotation-system) for the cosmetic expansion roadmap.
+**Design note:** The theme catalog is intentionally small at launch. Additional themes (Crimson Sanctum, Verdant Hollow, Azure Depths, Golden Spire, Void Eclipse, Frost Tomb, Ember Forge at 150–400 shards) are planned for future seasonal releases. See the Seasonal Schedule in [`docs/CARD_BALANCE_FRAMEWORK.md` §10](CARD_BALANCE_FRAMEWORK.md#10-seasonal-expansion--rotation-system) for the cosmetic expansion roadmap.
 
 ### Card Borders
 
 | Border | Cost |
 |--------|------|
-| Bronze | 90 runes |
-| Frost | 180 runes |
-| Solar | 280 runes |
-| Void | 420 runes |
+| Bronze | 90 shards |
+| Frost | 180 shards |
+| Solar | 280 shards |
+| Void | 420 shards |
 
 ---
 
@@ -137,25 +131,25 @@ That's ~4.5 Basic packs per day, or 1 Legendary pack every ~2 days.
 
 ### Expected Value per Pack
 
-**Basic Pack (50 runes):**
-- 3 Common (guaranteed): 3 × 5 = 15 runes breakdown value
-- 1 Rare (guaranteed): 1 × 10 = 10 runes breakdown value
-- Base breakdown value: 25 runes (50% return if all duplicates)
+**Basic Pack (50 shards):**
+- 3 Common (guaranteed): 3 × 5 = 15 shards breakdown value
+- 1 Rare (guaranteed): 1 × 10 = 10 shards breakdown value
+- Base breakdown value: 25 shards (50% return if all duplicates)
 - New-card value: significantly higher for incomplete collections
 
-**Premium Pack (150 runes):**
-- 3 Common: 15 runes
-- 1 Rare: 10 runes
-- 1 Epic (guaranteed): 25 runes
-- Base breakdown value: 50 runes (33% return)
+**Premium Pack (150 shards):**
+- 3 Common: 15 shards
+- 1 Rare: 10 shards
+- 1 Epic (guaranteed): 25 shards
+- Base breakdown value: 50 shards (33% return)
 - Premium over basic: guaranteed Epic access
 
-**Legendary Pack (400 runes):**
-- 1 Common: 5 runes
-- 2 Rare: 20 runes
-- 1 Epic: 25 runes
-- 1 Legendary (guaranteed): 100 runes
-- Base breakdown value: 150 runes (37.5% return)
+**Legendary Pack (400 shards):**
+- 1 Common: 5 shards
+- 2 Rare: 20 shards
+- 1 Epic: 25 shards
+- 1 Legendary (guaranteed): 100 shards
+- Base breakdown value: 150 shards (37.5% return)
 - Premium: guaranteed Legendary card
 
 ### Pack Purchase Frequency
@@ -166,7 +160,7 @@ That's ~4.5 Basic packs per day, or 1 Legendary pack every ~2 days.
 | Premium | 150 | 3 wins | ~5 games (~25 min) | ~1 per day | ~1.5 per day |
 | Legendary | 400 | 8 wins | ~13 games (~65 min) | 1 every ~3 days | 1 every ~2 days |
 
-**Key metric:** A Basic pack costs exactly 1 win. Players should open their first pack within minutes of playing. The increased win reward (50 runes) ensures immediate gratification for quick casual sessions — a single 5-minute match can yield a pack.
+**Key metric:** A Basic pack costs exactly 1 win. Players should open their first pack within minutes of playing. The increased win reward (50 shards) ensures immediate gratification for quick casual sessions — a single 5-minute match can yield a pack.
 
 **Weekly volume:**
 
@@ -220,7 +214,7 @@ New players receive a starter collection via `buildStarterCollection()` in `serv
 
 ### Collection Completion Timeline
 
-**Casual player model** (3 games/day, ~15 min/day, 980 runes/week, buying Basic packs):
+**Casual player model** (3 games/day, ~15 min/day, 980 shards/week, buying Basic packs):
 - Basic packs per week: ~19
 - Cards per pack: 4
 - Cards per week: ~76
@@ -230,12 +224,12 @@ New players receive a starter collection via `buildStarterCollection()` in `serv
 - Estimated time to collect all epics: ~8–14 weeks
 - Estimated full collection: ~14–22 weeks (~3.5–5.5 months)
 
-**Dedicated player model** (~5 games/day, ~25 min/day, ~1,610 runes/week, mix of packs):
+**Dedicated player model** (~5 games/day, ~25 min/day, ~1,610 shards/week, mix of packs):
 - Estimated full collection: ~8–14 weeks (~2–3.5 months)
 
 **Target:** A dedicated free player should be able to collect the full Core Set within 2–4 months. A casual player who plays 3 quick games a day reaches it in 4–6 months. This is generous compared to similar F2P card games, which is intentional — the game monetizes through cosmetics, not card scarcity.
 
-**First-session experience:** After 3 matches (~15 min), a new player earns 60–150 runes + 50 daily = 110–200 runes. That's 2–4 Basic packs on day one, delivering an immediate "collection growing" feeling.
+**First-session experience:** After 3 matches (~15 min), a new player earns 60–150 shards + 50 daily = 110–200 shards. That's 2–4 Basic packs on day one, delivering an immediate "collection growing" feeling.
 
 ### Duplicate Protection
 
@@ -285,15 +279,15 @@ These are the knobs to turn when the economy needs adjustment. Each lever has se
 
 | Lever | Current Value | Increase Effect | Decrease Effect |
 |-------|--------------|-----------------|-----------------|
-| WIN_RUNES | 50 | Faster collection; less cosmetic spending | Slower collection; more frustration |
-| LOSS_RUNES | 10 | Reduced loss penalty; encourages play | Risk of grind-it-out mentality |
-| DAILY_RUNES | 50 | Rewards logging in; helps casual players | Less meaningful daily loop |
+| WIN_SHARDS | 50 | Faster collection; less cosmetic spending | Slower collection; more frustration |
+| LOSS_SHARDS | 10 | Reduced loss penalty; encourages play | Risk of grind-it-out mentality |
+| DAILY_SHARDS | 50 | Rewards logging in; helps casual players | Less meaningful daily loop |
 
 ### Cost Levers
 
 | Lever | Current Value | Increase Effect | Decrease Effect |
 |-------|--------------|-----------------|-----------------|
-| Basic pack cost | 50 | Slower card collection | Faster devaluation of runes |
+| Basic pack cost | 50 | Slower card collection | Faster devaluation of shards |
 | Premium pack cost | 150 | Premium feels more exclusive | Easier Epic access |
 | Legendary pack cost | 400 | Legendary feels more earned | Faster Legendary acquisition |
 | Theme costs | 0–180 | Cosmetics as short-term goals | Quick cosmetic completion |
@@ -316,8 +310,8 @@ These are the knobs to turn when the economy needs adjustment. Each lever has se
 
 | Metric | Healthy Range | Warning Sign |
 |--------|--------------|--------------|
-| Runes earned per session (3 games) | 60–170 | Below 40 = frustrating; above 250 = too generous |
-| Runes earned per match (average) | 25–55 | Below 15 = not worth playing; above 70 = devalues currency |
+| Shards earned per session (3 games) | 60–170 | Below 40 = frustrating; above 250 = too generous |
+| Shards earned per match (average) | 25–55 | Below 15 = not worth playing; above 70 = devalues currency |
 | Packs opened per week (casual) | 12–25 | Below 8 = insufficient income |
 | Days to first Basic pack | 0 (first session) | If >0 = early frustration |
 | Days to first Epic | 1–3 | Above 7 = early frustration |
@@ -343,15 +337,15 @@ Planned features that will need economy integration (validate against this docum
 
 ### From Monetization Plan
 
-- **Starter Bundle** ($2.99) — one-time cosmetic + rune bonus
+- **Starter Bundle** ($2.99) — one-time cosmetic + shard bonus
 - **Seasonal Pass** ($4.99–$6.99) — extra cosmetic reward track
 - **Cosmetic Shop** ($0.99–$7.99) — board skins, emote packs, victory flair
 
 ### Future Considerations
 
-- **Crafting system** — targeted card creation from breakdown runes (higher cost than breakdown value to maintain pack incentive)
-- **Season rewards** — end-of-season rune/pack bonuses based on final rating
-- **Quest system** — daily/weekly challenges with specific rune rewards
+- **Crafting system** — targeted card creation from breakdown shards (higher cost than breakdown value to maintain pack incentive)
+- **Season rewards** — end-of-season shard/pack bonuses based on final rating
+- **Quest system** — daily/weekly challenges with specific shard rewards
 - **Trading economy** — card trades between friends (already implemented; monitor for economy exploitation)
 - **Expansion packs** — new pack types that guarantee cards from a specific expansion set
 - **Catch-up packs** — discounted packs for older sets to help returning players; economy must be modeled before adding
@@ -375,7 +369,7 @@ The existing trade system (`server/db.js` — `trades` table) includes:
 - Maximum 6 items per side (`MAX_TRADE_ITEMS_PER_SIDE`)
 - Ownership validation on both sides
 
-**Economy note:** Card trading does not create or destroy runes. It only redistributes cards. Monitor for:
+**Economy note:** Card trading does not create or destroy shards. It only redistributes cards. Monitor for:
 - Trade inflation (rare cards becoming too easy to acquire through social networks)
 - Alt-account funneling (sybil checks in account creation help prevent this)
 
