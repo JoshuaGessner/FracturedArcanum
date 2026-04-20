@@ -224,18 +224,25 @@ All current cards belong to the **Core Set** — these are permanent and never r
 
 ### Cosmetic Themes
 
-Tracked in `COSMETIC_THEMES` in `src/constants.ts` and `src/types.ts`.
+Tracked in `THEME_COSTS` in `server/db.js` and `THEME_OFFERS` in `src/constants.ts`.
 
 | Theme | Cost (Runes) | Thematic Note |
 |-------|-------------|---------------|
-| Obsidian Rift | 0 (default) | Deep void black — the shattered boundary |
-| Crimson Sanctum | 150 | Blood-ritual red — cultist chambers |
-| Verdant Hollow | 200 | Toxic growth green — fungal overgrowth |
-| Azure Depths | 250 | Deep-ocean blue — abyssal trenches |
-| Golden Spire | 300 | Forbidden gold — heretical temple |
-| Void Eclipse | 400 | Null purple — cosmic void |
-| Frost Tomb | 350 | Rime white — frozen catacomb |
-| Ember Forge | 300 | Forge orange — heretical machine-works |
+| Royal Arcane | 0 (default) | Regal arcane tournament finish |
+| Ember Court | 120 | Warm volcanic glow — heretical forge flames |
+| Moonwell Glow | 180 | Cool luminous highlights — abyssal moonlight |
+
+**Future themes** (planned for seasonal expansion releases — see Seasonal Schedule in CARD_BALANCE_FRAMEWORK.md §10):
+
+| Theme | Target Cost (Runes) | Target Season | Thematic Note |
+|-------|-------------------|---------------|---------------|
+| Crimson Sanctum | 200 | S2-2026 | Blood-ritual red — cultist chambers |
+| Verdant Hollow | 220 | S3-2026 | Toxic growth green — fungal overgrowth |
+| Azure Depths | 250 | S4-2026 | Deep-ocean blue — abyssal trenches |
+| Golden Spire | 280 | S1-2027 | Forbidden gold — heretical temple |
+| Void Eclipse | 350 | S2-2027 | Null purple — cosmic void |
+| Frost Tomb | 300 | S3-2027 | Rime white — frozen catacomb |
+| Ember Forge | 280 | S4-2027 | Forge orange — heretical machine-works |
 
 ### Card Borders
 

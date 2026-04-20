@@ -35,8 +35,8 @@ Ship with:
 
 - Free core gameplay (AI Skirmish + Ranked Duels)
 - Daily Reward Vault (50 Runes per day — see [Economy Balance](ECONOMY_BALANCE.md))
-- Earnable Runes from matches (30 win / 10 loss)
-- 8 cosmetic themes (150–400 Runes each)
+- Earnable Runes from matches (50 win / 10 loss)
+- 3 cosmetic themes (0–180 Runes each, with more planned for seasonal releases)
 - 5 card borders (0–420 Runes each)
 - No gameplay power sold for money
 
@@ -55,7 +55,7 @@ Includes:
 - 200 bonus Runes
 - One-time value purchase; cannot be re-bought
 
-**Economy impact:** 200 Runes = ~2 days of casual play income. Meaningful but not game-breaking.
+**Economy impact:** 200 Runes = ~1.5 days of casual play income. Meaningful but not game-breaking.
 
 ### 2. Seasonal Pass — *The Rite of Seasons*
 
@@ -87,9 +87,10 @@ Includes:
 
 | Item | Paid Price | Rune Equivalent | Free Earn Time |
 |------|-----------|----------------|----------------|
-| Starter Bundle (200 Runes) | $2.99 | 200 Runes | ~2 days |
-| Basic theme (in-game) | — | 150–400 Runes | 1–3 days |
-| Card border (in-game) | — | 90–420 Runes | 1–4 days |
+| Starter Bundle (200 Runes) | $2.99 | 200 Runes | ~1.5 days |
+| Ember Court theme (in-game) | — | 120 Runes | <1 day |
+| Moonwell Glow theme (in-game) | — | 180 Runes | ~1.3 days |
+| Card border (in-game) | — | 90–420 Runes | <1 day to ~3 days |
 | Premium theme (paid-only) | $1.99 | Not purchasable with Runes | Exclusive |
 
 **Rule:** Paid-exclusive items are cosmetic-only. All gameplay-relevant content (cards, packs) is earnable through play.

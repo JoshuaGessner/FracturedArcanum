@@ -29,7 +29,7 @@ The game uses a single soft currency called **Runes** (referred to as "shards" i
 
 | Source | Amount | Frequency | Weekly Potential |
 |--------|--------|-----------|-----------------|
-| Match win | 30 runes | Per win | 210 (1 win/day) to 630+ (3 wins/day) |
+| Match win | 50 runes | Per win | 350 (1 win/day) to 1,050+ (3 wins/day) |
 | Match loss | 10 runes | Per loss | Variable |
 | Daily reward | 50 runes | Once per day | 350 |
 | Card breakdown (Common) | 5 runes | Per copy | Variable |
@@ -37,7 +37,7 @@ The game uses a single soft currency called **Runes** (referred to as "shards" i
 | Card breakdown (Epic) | 25 runes | Per copy | Variable |
 | Card breakdown (Legendary) | 100 runes | Per copy | Variable |
 
-**Source constants:** `server/db.js` — `WIN_RUNES = 30`, `LOSS_RUNES = 10`, `DAILY_RUNES = 50`
+**Source constants:** `server/db.js` — `WIN_RUNES = 50`, `LOSS_RUNES = 10`, `DAILY_RUNES = 50`
 **Breakdown values:** `server/db.js` — `RARITY_BREAKDOWN_VALUE` map
 
 ### Weekly Income Model
@@ -45,19 +45,19 @@ The game uses a single soft currency called **Runes** (referred to as "shards" i
 For a player who plays 3 matches per day (50% win rate):
 
 ```
-Daily match income:  (1.5 wins × 30) + (1.5 losses × 10) = 45 + 15 = 60 runes
+Daily match income:  (1.5 wins × 50) + (1.5 losses × 10) = 75 + 15 = 90 runes
 Daily reward:        50 runes
-Daily total:         110 runes
-Weekly total:        770 runes
+Daily total:         140 runes
+Weekly total:        980 runes
 ```
 
 For a dedicated player (5 matches/day, 60% win rate):
 
 ```
-Daily match income:  (3 wins × 30) + (2 losses × 10) = 90 + 20 = 110 runes
+Daily match income:  (3 wins × 50) + (2 losses × 10) = 150 + 20 = 170 runes
 Daily reward:        50 runes
-Daily total:         160 runes
-Weekly total:        1,120 runes
+Daily total:         220 runes
+Weekly total:        1,540 runes
 ```
 
 ---
@@ -89,13 +89,13 @@ Weekly total:        1,120 runes
 
 | Theme | Cost |
 |-------|------|
-| Crimson Sanctum | 150 runes |
-| Verdant Hollow | 200 runes |
-| Azure Depths | 250 runes |
-| Golden Spire | 300 runes |
-| Ember Forge | 300 runes |
-| Frost Tomb | 350 runes |
-| Void Eclipse | 400 runes |
+| Royal Arcane (default) | 0 runes |
+| Ember Court | 120 runes |
+| Moonwell Glow | 180 runes |
+
+**Source:** `server/db.js` — `THEME_COSTS`; `src/constants.ts` — `THEME_OFFERS`
+
+**Design note:** The theme catalog is intentionally small at launch. Additional themes (Crimson Sanctum, Verdant Hollow, Azure Depths, Golden Spire, Void Eclipse, Frost Tomb, Ember Forge at 150–400 runes) are planned for future seasonal releases. See the Seasonal Schedule in [`docs/CARD_BALANCE_FRAMEWORK.md` §10](CARD_BALANCE_FRAMEWORK.md#10-seasonal-expansion--rotation-system) for the cosmetic expansion roadmap.
 
 ### Card Borders
 
@@ -135,13 +135,13 @@ Weekly total:        1,120 runes
 
 ### Pack Purchase Frequency
 
-| Pack | Cost | Casual Player (770/week) | Dedicated Player (1,120/week) |
+| Pack | Cost | Casual Player (980/week) | Dedicated Player (1,540/week) |
 |------|------|--------------------------|-------------------------------|
-| Basic | 50 | ~15 per week | ~22 per week |
-| Premium | 150 | ~5 per week | ~7 per week |
-| Legendary | 400 | ~1.9 per week | ~2.8 per week |
+| Basic | 50 | ~19 per week | ~30 per week |
+| Premium | 150 | ~6 per week | ~10 per week |
+| Legendary | 400 | ~2.4 per week | ~3.8 per week |
 
-**Recommendation:** Players should be able to afford at least 1 Legendary pack per week through normal play. Current rates support this for both casual and dedicated players.
+**Recommendation:** Players should be able to afford at least 1 Legendary pack per week through normal play. Current rates comfortably support this for both casual and dedicated players. The increased win reward (50 runes) ensures generous progression.
 
 ---
 
@@ -168,11 +168,11 @@ New Total Copies = Current Total Copies + (Expansion Commons × 3) + (Expansion 
 **Example:** An expansion adding 10C / 7R / 4E / 2L = 30 + 21 + 12 + 2 = 65 additional copies needed.
 
 The collection completion target should scale proportionally:
-- **Core-only:** 4–6 months (current)
-- **Core + 1 expansion:** 5–8 months
-- **Core + 2 expansions:** 7–10 months
+- **Core-only:** 3–5 months (current)
+- **Core + 1 expansion:** 4–7 months
+- **Core + 2 expansions:** 6–9 months
 
-If the timeline exceeds 10 months for a dedicated player, increase earning rates or reduce expansion size.
+If the timeline exceeds 9 months for a dedicated player, increase earning rates or reduce expansion size.
 
 ### Rotation and Collection
 
@@ -187,20 +187,20 @@ New players receive a starter collection via `buildStarterCollection()` in `serv
 
 ### Collection Completion Timeline
 
-**Casual player model** (770 runes/week, buying Basic packs):
-- Basic packs per week: ~15
+**Casual player model** (980 runes/week, buying Basic packs):
+- Basic packs per week: ~19
 - Cards per pack: 4
-- Cards per week: ~60
+- Cards per week: ~76
 - Assuming ~30% new cards early, ~5% new cards late
-- Estimated time to collect all commons: ~4–6 weeks
-- Estimated time to collect all rares: ~8–12 weeks
-- Estimated time to collect all epics: ~16–24 weeks
-- Estimated full collection: ~24–36 weeks
+- Estimated time to collect all commons: ~3–5 weeks
+- Estimated time to collect all rares: ~6–10 weeks
+- Estimated time to collect all epics: ~12–20 weeks
+- Estimated full collection: ~20–30 weeks
 
-**Dedicated player model** (1,120 runes/week, mix of packs):
-- Estimated full collection: ~16–24 weeks
+**Dedicated player model** (1,540 runes/week, mix of packs):
+- Estimated full collection: ~12–20 weeks
 
-**Target:** A dedicated free player should be able to collect the full set within 4–6 months. This is competitive with similar F2P card games.
+**Target:** A dedicated free player should be able to collect the full set within 3–5 months. This is generous compared to similar F2P card games, which is intentional — the game monetizes through cosmetics, not card scarcity.
 
 ### Duplicate Protection
 
@@ -250,7 +250,7 @@ These are the knobs to turn when the economy needs adjustment. Each lever has se
 
 | Lever | Current Value | Increase Effect | Decrease Effect |
 |-------|--------------|-----------------|-----------------|
-| WIN_RUNES | 30 | Faster collection; less cosmetic spending | Slower collection; more frustration |
+| WIN_RUNES | 50 | Faster collection; less cosmetic spending | Slower collection; more frustration |
 | LOSS_RUNES | 10 | Reduced loss penalty; encourages play | Risk of grind-it-out mentality |
 | DAILY_RUNES | 50 | Rewards logging in; helps casual players | Less meaningful daily loop |
 
@@ -261,8 +261,8 @@ These are the knobs to turn when the economy needs adjustment. Each lever has se
 | Basic pack cost | 50 | Slower card collection | Faster devaluation of runes |
 | Premium pack cost | 150 | Premium feels more exclusive | Easier Epic access |
 | Legendary pack cost | 400 | Legendary feels more earned | Faster Legendary acquisition |
-| Theme costs | 150–400 | Cosmetics as long-term goals | Quick cosmetic completion |
-| Border costs | 90–420 | Borders feel exclusive | Quick border completion |
+| Theme costs | 0–180 | Cosmetics as short-term goals | Quick cosmetic completion |
+| Border costs | 0–420 | Borders feel exclusive | Quick border completion |
 
 ### Breakdown Levers
 
@@ -281,13 +281,13 @@ These are the knobs to turn when the economy needs adjustment. Each lever has se
 
 | Metric | Healthy Range | Warning Sign |
 |--------|--------------|--------------|
-| Runes earned per session | 50–150 | Below 30 = frustrating; above 200 = too generous |
-| Packs opened per week (casual) | 8–20 | Below 5 = insufficient income |
-| Days to first Epic | 3–7 | Above 14 = early frustration |
-| Days to first Legendary | 7–21 | Above 30 = collection feels stalled |
-| Collection % at 30 days | 40–60% | Below 30% = too slow; above 80% = nothing to chase |
+| Runes earned per session | 60–200 | Below 40 = frustrating; above 300 = too generous |
+| Packs opened per week (casual) | 12–25 | Below 8 = insufficient income |
+| Days to first Epic | 2–5 | Above 10 = early frustration |
+| Days to first Legendary | 5–14 | Above 21 = collection feels stalled |
+| Collection % at 30 days | 45–70% | Below 35% = too slow; above 85% = nothing to chase |
 | Duplicate rate at 50% collection | 20–40% | Above 60% = duplicate protection not working |
-| Cosmetic purchase rate | 1 theme per 2–4 weeks | If never buying = prices too high |
+| Cosmetic purchase rate | 1 theme per 1–3 weeks | If never buying = prices too high |
 
 ### Balance Red Flags
 
