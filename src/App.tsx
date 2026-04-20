@@ -1931,7 +1931,7 @@ function AppShell() {
         }
       })
       .catch(() => setToastMessage('Network error claiming daily reward.'))
-    void sendAnalytics('reward_claim', { amount: 50, currency: 'shards', screen: activeScreen, viewport: getScreenBucket() }, 'vault')
+    void sendAnalytics('reward_claim', { amount: 25, currency: 'shards', screen: activeScreen, viewport: getScreenBucket() }, 'vault')
   }
 
   function handleEquipTheme(themeId: CosmeticTheme, cost: number) {
