@@ -146,23 +146,24 @@
 
 | Tribe | Common | Rare | Epic | Legendary | Total |
 |-------|--------|------|------|-----------|-------|
-| Beast | 6 | 4 | 1 | 0 | 11 |
-| Elemental | 7 | 4 | 5 | 1 | 17 |
+| Elemental | 7 | 4 | 4 | 1 | 16 |
+| Beast | 6 | 3 | 1 | 0 | 10 |
+| Arcane | 2 | 4 | 2 | 1 | 9 |
 | Undead | 0 | 4 | 3 | 1 | 8 |
-| Dragon | 0 | 2 | 0 | 1 | 3 |
+| Nature | 4 | 1 | 1 | 1 | 7 |
+| Warrior | 4 | 3 | 0 | 0 | 7 |
 | Mech | 3 | 1 | 1 | 1 | 6 |
-| Arcane | 3 | 3 | 2 | 1 | 9 |
-| Warrior | 4 | 2 | 0 | 0 | 6 |
-| Nature | 3 | 1 | 1 | 1 | 6 |
 | Demon | 2 | 0 | 2 | 0 | 4 |
+| Dragon | 0 | 2 | 0 | 1 | 3 |
 
 ### Observations
 
-- **Elemental** is the most populated tribe (17 cards) — appropriate as a core versatile tribe
+- **Elemental** is the most populated tribe (16 cards) — appropriate as a core versatile tribe
 - **Dragon** is severely underrepresented (3 cards) — needs 2–3 more in the next expansion to support tribal synergy
 - **Demon** is light (4 cards) — needs 1–2 more to fill out the disruption archetype
 - **Warrior** has no Epics or Legendaries — consider adding a Warrior epic in the next expansion
 - **Undead** has no Commons — consider adding 1–2 common undead cards for budget undead decks
+- **Arcane** has only 2 Commons — consider 1–2 more for common-tier card advantage options
 
 ---
 

@@ -183,15 +183,15 @@ Each tribe should have at least 5 cards in the library to support tribal synergi
 
 | Tribe | Count | Status |
 |-------|-------|--------|
+| Elemental | 16 | ✅ Healthy |
 | Beast | 10 | ✅ Healthy |
-| Elemental | 13 | ✅ Healthy |
-| Undead | 7 | ✅ Healthy |
-| Dragon | 3 | ⚠️ Light — consider adding 2–3 more in next expansion |
-| Mech | 5 | ✅ Minimum viable |
-| Arcane | 8 | ✅ Healthy |
+| Arcane | 9 | ✅ Healthy |
+| Undead | 8 | ✅ Healthy |
+| Nature | 7 | ✅ Healthy |
 | Warrior | 7 | ✅ Healthy |
-| Nature | 6 | ✅ Healthy |
+| Mech | 6 | ✅ Healthy |
 | Demon | 4 | ⚠️ Light — consider adding 1–2 more |
+| Dragon | 3 | ⚠️ Light — consider adding 2–3 more in next expansion |
 | None | 0 | N/A — not a tribal identity |
 
 ---
