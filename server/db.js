@@ -932,7 +932,7 @@ export function purchaseCardBorder(accountId, borderId) {
   }
 
   if (entry.cost > 0 && profile.runes < entry.cost) {
-    return { ok: false, error: 'Not enough Shards for that card border.' }
+    return { ok: false, error: 'Not enough Runestones.' }
   }
 
   const tx = db.transaction(() => {

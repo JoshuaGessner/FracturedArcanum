@@ -27,11 +27,12 @@ The game uses a single soft currency called **Runes** (referred to as "shards" i
 
 ### Earning Rates
 
-| Source | Amount | Frequency | Weekly Potential |
-|--------|--------|-----------|-----------------|
-| Match win | 50 runes | Per win | 350 (1 win/day) to 1,050+ (3 wins/day) |
-| Match loss | 10 runes | Per loss | Variable |
-| Daily reward | 50 runes | Once per day | 350 |
+| Source | Amount | Frequency | Per-Session (3 games) |
+|--------|--------|-----------|----------------------|
+| Match win | 50 runes | Per win | 75–150 (at 50–100% WR) |
+| Match loss | 10 runes | Per loss | 10–15 (at 33–50% LR) |
+| Win streak bonus | +5 per streak past 2 (cap +20) | Per qualifying win | Variable |
+| Daily reward | 50 runes | Once per day | 50 |
 | Card breakdown (Common) | 5 runes | Per copy | Variable |
 | Card breakdown (Rare) | 10 runes | Per copy | Variable |
 | Card breakdown (Epic) | 25 runes | Per copy | Variable |
@@ -39,26 +40,44 @@ The game uses a single soft currency called **Runes** (referred to as "shards" i
 
 **Source constants:** `server/db.js` — `WIN_RUNES = 50`, `LOSS_RUNES = 10`, `DAILY_RUNES = 50`
 **Breakdown values:** `server/db.js` — `RARITY_BREAKDOWN_VALUE` map
+**Streak bonus:** +5 runes per streak past 2 wins (capped at +20 extra). Source: `resolveMatchResult()` in `server/db.js`
+**Match duration:** Matches typically last ~5 minutes, making rune income very fast per real-time minute of play.
 
 ### Weekly Income Model
 
-For a player who plays 3 matches per day (50% win rate):
+Games are fast-paced (typically ~5 minutes per match). Income should be calculated per match and per session, not per hour.
+
+**Per-match income (50% win rate across 2 games):**
+
+```
+1 win (50) + 1 loss (10) = 60 runes per 2 games (~10 minutes)
+Average per match: 30 runes
+```
+
+**Casual player** (3 matches/day, ~15 minutes, 50% win rate):
 
 ```
 Daily match income:  (1.5 wins × 50) + (1.5 losses × 10) = 75 + 15 = 90 runes
 Daily reward:        50 runes
 Daily total:         140 runes
 Weekly total:        980 runes
+
+That's ~7 Basic packs per day from matches alone, or ~2 per 15-minute session.
 ```
 
-For a dedicated player (5 matches/day, 60% win rate):
+**Dedicated player** (5 matches/day, ~25 minutes, 60% win rate):
 
 ```
 Daily match income:  (3 wins × 50) + (2 losses × 10) = 150 + 20 = 170 runes
+Streak bonus:        ~10 runes (from 3-streak)
 Daily reward:        50 runes
-Daily total:         220 runes
-Weekly total:        1,540 runes
+Daily total:         ~230 runes
+Weekly total:        ~1,610 runes
+
+That's ~4.5 Basic packs per day, or 1 Legendary pack every ~2 days.
 ```
+
+**Key insight:** A single win (50 runes) pays for a Basic pack (50 runes) in one ~5-minute game. Progression feels immediate and rewarding for quick casual sessions.
 
 ---
 
@@ -135,13 +154,21 @@ Weekly total:        1,540 runes
 
 ### Pack Purchase Frequency
 
-| Pack | Cost | Casual Player (980/week) | Dedicated Player (1,540/week) |
-|------|------|--------------------------|-------------------------------|
-| Basic | 50 | ~19 per week | ~30 per week |
-| Premium | 150 | ~6 per week | ~10 per week |
-| Legendary | 400 | ~2.4 per week | ~3.8 per week |
+| Pack | Cost | Wins to Earn | Matches (~50% WR) | Casual Player (~140/day) | Dedicated Player (~230/day) |
+|------|------|-------------|-------------------|--------------------------|-------------------------------|
+| Basic | 50 | 1 win | 1–2 games (~5–10 min) | ~2.8 per day | ~4.6 per day |
+| Premium | 150 | 3 wins | ~5 games (~25 min) | ~1 per day | ~1.5 per day |
+| Legendary | 400 | 8 wins | ~13 games (~65 min) | 1 every ~3 days | 1 every ~2 days |
 
-**Recommendation:** Players should be able to afford at least 1 Legendary pack per week through normal play. Current rates comfortably support this for both casual and dedicated players. The increased win reward (50 runes) ensures generous progression.
+**Key metric:** A Basic pack costs exactly 1 win. Players should open their first pack within minutes of playing. The increased win reward (50 runes) ensures immediate gratification for quick casual sessions — a single 5-minute match can yield a pack.
+
+**Weekly volume:**
+
+| Pack | Casual (980/week) | Dedicated (~1,610/week) |
+|------|-------------------|-------------------------|
+| Basic (if all spent on Basic) | ~19 per week | ~32 per week |
+| Premium (if all spent on Premium) | ~6 per week | ~10 per week |
+| Legendary (if all spent on Legendary) | ~2.4 per week | ~4 per week |
 
 ---
 
@@ -168,11 +195,11 @@ New Total Copies = Current Total Copies + (Expansion Commons × 3) + (Expansion 
 **Example:** An expansion adding 10C / 7R / 4E / 2L = 30 + 21 + 12 + 2 = 65 additional copies needed.
 
 The collection completion target should scale proportionally:
-- **Core-only:** 3–5 months (current)
-- **Core + 1 expansion:** 4–7 months
-- **Core + 2 expansions:** 6–9 months
+- **Core-only:** 2–4 months (dedicated), 4–6 months (casual)
+- **Core + 1 expansion:** 3–5 months (dedicated), 5–8 months (casual)
+- **Core + 2 expansions:** 4–7 months (dedicated), 7–10 months (casual)
 
-If the timeline exceeds 9 months for a dedicated player, increase earning rates or reduce expansion size.
+If the timeline exceeds 8 months for a dedicated player, increase earning rates or reduce expansion size.
 
 ### Rotation and Collection
 
@@ -187,20 +214,22 @@ New players receive a starter collection via `buildStarterCollection()` in `serv
 
 ### Collection Completion Timeline
 
-**Casual player model** (980 runes/week, buying Basic packs):
+**Casual player model** (3 games/day, ~15 min/day, 980 runes/week, buying Basic packs):
 - Basic packs per week: ~19
 - Cards per pack: 4
 - Cards per week: ~76
 - Assuming ~30% new cards early, ~5% new cards late
-- Estimated time to collect all commons: ~3–5 weeks
-- Estimated time to collect all rares: ~6–10 weeks
-- Estimated time to collect all epics: ~12–20 weeks
-- Estimated full collection: ~20–30 weeks
+- Estimated time to collect all commons: ~2–4 weeks
+- Estimated time to collect all rares: ~4–7 weeks
+- Estimated time to collect all epics: ~8–14 weeks
+- Estimated full collection: ~14–22 weeks (~3.5–5.5 months)
 
-**Dedicated player model** (1,540 runes/week, mix of packs):
-- Estimated full collection: ~12–20 weeks
+**Dedicated player model** (~5 games/day, ~25 min/day, ~1,610 runes/week, mix of packs):
+- Estimated full collection: ~8–14 weeks (~2–3.5 months)
 
-**Target:** A dedicated free player should be able to collect the full set within 3–5 months. This is generous compared to similar F2P card games, which is intentional — the game monetizes through cosmetics, not card scarcity.
+**Target:** A dedicated free player should be able to collect the full Core Set within 2–4 months. A casual player who plays 3 quick games a day reaches it in 4–6 months. This is generous compared to similar F2P card games, which is intentional — the game monetizes through cosmetics, not card scarcity.
+
+**First-session experience:** After 3 matches (~15 min), a new player earns 60–150 runes + 50 daily = 110–200 runes. That's 2–4 Basic packs on day one, delivering an immediate "collection growing" feeling.
 
 ### Duplicate Protection
 
@@ -281,13 +310,15 @@ These are the knobs to turn when the economy needs adjustment. Each lever has se
 
 | Metric | Healthy Range | Warning Sign |
 |--------|--------------|--------------|
-| Runes earned per session | 60–200 | Below 40 = frustrating; above 300 = too generous |
+| Runes earned per session (3 games) | 60–170 | Below 40 = frustrating; above 250 = too generous |
+| Runes earned per match (average) | 25–55 | Below 15 = not worth playing; above 70 = devalues currency |
 | Packs opened per week (casual) | 12–25 | Below 8 = insufficient income |
-| Days to first Epic | 2–5 | Above 10 = early frustration |
-| Days to first Legendary | 5–14 | Above 21 = collection feels stalled |
-| Collection % at 30 days | 45–70% | Below 35% = too slow; above 85% = nothing to chase |
+| Days to first Basic pack | 0 (first session) | If >0 = early frustration |
+| Days to first Epic | 1–3 | Above 7 = early frustration |
+| Days to first Legendary | 3–10 | Above 14 = collection feels stalled |
+| Collection % at 30 days (casual) | 40–65% | Below 30% = too slow; above 80% = nothing to chase |
 | Duplicate rate at 50% collection | 20–40% | Above 60% = duplicate protection not working |
-| Cosmetic purchase rate | 1 theme per 1–3 weeks | If never buying = prices too high |
+| Cosmetic purchase rate | 1 theme per 1–2 weeks | If never buying = prices too high |
 
 ### Balance Red Flags
 

@@ -268,11 +268,11 @@ Tracked in `CARD_BORDERS` in `server/db.js`.
 
 ### Card Packs
 
-| Pack | Cost (Shards) | Contents | Thematic Note |
-|------|--------------|----------|---------------|
-| Basic | 50 | 3 Common + 1 Rare (upgrade chance) | Acolyte's offering |
-| Premium | 150 | 3 Common + 1 Rare + 1 Epic guaranteed | Cultist's tithe |
-| Legendary | 400 | 1 Common + 2 Rare + 1 Epic + 1 Legendary guaranteed | Elder rite |
+| Pack | Cost (Runes) | Contents | Earn Time | Thematic Note |
+|------|-------------|----------|-----------|---------------|
+| Basic | 50 | 3 Common + 1 Rare (upgrade chance) | 1 win (~5 min) | Acolyte's offering |
+| Premium | 150 | 3 Common + 1 Rare + 1 Epic guaranteed | ~3 wins (~15 min) | Cultist's tithe |
+| Legendary | 400 | 1 Common + 2 Rare + 1 Epic + 1 Legendary guaranteed | ~8 wins (~40 min) | Elder rite |
 
 ### Ranked Tiers
 

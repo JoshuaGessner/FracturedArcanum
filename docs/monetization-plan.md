@@ -55,7 +55,7 @@ Includes:
 - 200 bonus Runes
 - One-time value purchase; cannot be re-bought
 
-**Economy impact:** 200 Runes = ~1.5 days of casual play income. Meaningful but not game-breaking.
+**Economy impact:** 200 Runes = 4 Basic packs = about 4 wins worth of matches (~20 min of play). Meaningful shortcut for a new player's first session, but not game-breaking — they'd earn the same amount in a short play session.
 
 ### 2. Seasonal Pass — *The Rite of Seasons*
 
@@ -89,13 +89,17 @@ Includes:
 
 | Item | Paid Price | Rune Equivalent | Free Earn Time |
 |------|-----------|----------------|----------------|
-| Starter Bundle (200 Runes) | $2.99 | 200 Runes | ~1.5 days |
-| Ember Court theme (in-game) | — | 120 Runes | <1 day |
-| Moonwell Glow theme (in-game) | — | 180 Runes | ~1.3 days |
-| Card border (in-game) | — | 90–420 Runes | <1 day to ~3 days |
+| Starter Bundle (200 Runes) | $2.99 | 200 Runes | ~4 wins (~20 min play) |
+| Ember Court theme (in-game) | — | 120 Runes | ~3 wins (~15 min) |
+| Moonwell Glow theme (in-game) | — | 180 Runes | ~4 wins (~20 min) |
+| Card border: Bronze (in-game) | — | 90 Runes | ~2 wins (~10 min) |
+| Card border: Void (in-game) | — | 420 Runes | ~9 wins (~45 min) |
+| Basic Pack | — | 50 Runes | 1 win (~5 min) |
+| Premium Pack | — | 150 Runes | ~3 wins (~15 min) |
+| Legendary Pack | — | 400 Runes | ~8 wins (~40 min) |
 | Premium theme (paid-only) | $1.99 | Not purchasable with Runes | Exclusive |
 
-**Rule:** Paid-exclusive items are cosmetic-only. All gameplay-relevant content (cards, packs) is earnable through play.
+**Rule:** Paid-exclusive items are cosmetic-only. All gameplay-relevant content (cards, packs) is earnable through play. Matches are quick (~5 min), so "Free Earn Time" reflects actual play time, not calendar days.
 
 ---
 

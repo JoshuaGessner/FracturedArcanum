@@ -500,14 +500,14 @@ The active pool stabilizes around **150–160 cards** after Year 2, keeping the 
 
 Theme costs escalate modestly over time to serve as long-term goals for veteran players:
 
-| Period | Cost Range | Rationale |
-|--------|-----------|-----------|
-| Launch (2026) | 0–180 runes | Accessible to new players; quick cosmetic reward loop |
-| Year 1 expansions | 200–250 runes | Modest increase; ~1.5–2 days of casual play |
-| Year 2 | 280–350 runes | ~2–2.5 days of casual play; milestone purchases |
-| Year 3 | 300–340 runes | Stable; variety rewards veterans |
-| Year 4 | 320–360 runes | Prestige tier; dedicated player goals |
-| Year 5 | 380–420 runes | Premium end-game cosmetics; 3 days of casual play |
+| Period | Cost Range | Matches to Earn (wins at 50% WR) | Rationale |
+|--------|-----------|----------------------------------|-----------|
+| Launch (2026) | 0–180 runes | 0–4 wins (~20 min) | Accessible to new players; quick cosmetic reward loop |
+| Year 1 expansions | 200–250 runes | 4–5 wins (~25 min) | Modest increase; earnable in a single session |
+| Year 2 | 280–350 runes | 6–7 wins (~35 min) | ~2 casual sessions; milestone purchases |
+| Year 3 | 300–340 runes | 6–7 wins (~35 min) | Stable; variety rewards veterans |
+| Year 4 | 320–360 runes | 7–8 wins (~40 min) | Prestige tier; dedicated player goals |
+| Year 5 | 380–420 runes | 8–9 wins (~45 min) | Premium end-game cosmetics; ~2–3 casual sessions |
 
 **Invariant:** No theme should cost more than 1 Legendary pack (400 runes) through Year 4. In Year 5, premium anniversary themes may exceed this cap by up to 5% (420 max) as prestige items for veteran players.
 
