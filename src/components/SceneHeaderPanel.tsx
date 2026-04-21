@@ -40,6 +40,17 @@ export function SceneHeaderPanel({
 }: SceneHeaderPanelProps) {
   return (
     <div className={`scene-header-panel ${className}`.trim()}>
+      {(onBack || viewLabel) && (
+        <div className="subview-topstrip">
+          {onBack ? (
+            <button className="ghost mini subview-back-btn" onClick={onBack} aria-label="Back">
+              ← Back
+            </button>
+          ) : <span />}
+          {viewLabel ? <span className="subview-label">{viewLabel}</span> : null}
+        </div>
+      )}
+
       <div className={`scene-header-top ${visual ? 'has-visual' : ''}`.trim()}>
         {visual ? <div className="scene-header-visual">{visual}</div> : null}
         <div className="scene-header-copy">
@@ -60,17 +71,6 @@ export function SceneHeaderPanel({
           </div>
         ))}
       </div>
-
-      {(viewLabel || onBack) && (
-        <div className="settings-subnav scene-header-subnav">
-          {viewLabel ? <span className="badge">{viewLabel}</span> : <span />}
-          {onBack ? (
-            <button className="ghost mini" onClick={onBack}>
-              Back
-            </button>
-          ) : null}
-        </div>
-      )}
 
       {shortcuts && shortcuts.length > 0 ? (
         <div className="settings-hub-grid scene-header-shortcuts">

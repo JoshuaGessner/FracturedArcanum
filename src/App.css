@@ -259,10 +259,15 @@ button:disabled {
 /* ── Scene Fill — single-column screens stretch to use full viewport ─
    The grid display from .home-screen / .collection-screen is overridden
    to flex-column so the primary content card can grow into surplus
-   height instead of leaving dead space below. Multi-column screens
+   height instead of leaving dead space below. Shop, social and settings
+   screens join this rule so they always fill the viewport and scroll
+   naturally at the screen-panel level. Multi-column screens
    (.vault-grid, .ops-grid) keep their native CSS Grid layout. */
 .app-shell:not(.battle-shell-active) .scene-stage > .home-screen.screen-panel.active,
-.app-shell:not(.battle-shell-active) .scene-stage > .collection-screen.screen-panel.active {
+.app-shell:not(.battle-shell-active) .scene-stage > .collection-screen.screen-panel.active,
+.app-shell:not(.battle-shell-active) .scene-stage > .vault-grid.shop-screen.screen-panel.active,
+.app-shell:not(.battle-shell-active) .scene-stage > .home-screen.social-screen.screen-panel.active,
+.app-shell:not(.battle-shell-active) .scene-stage > .ops-grid.settings-screen.screen-panel.active {
   display: flex;
   flex-direction: column;
   gap: var(--scene-gap);
@@ -272,15 +277,15 @@ button:disabled {
 .home-screen.screen-panel.active > .section-card,
 .home-screen.screen-panel.active > .home-cards,
 .collection-screen.screen-panel.active > .section-card {
-  flex: 1 1 auto;
+  flex: 1 0 auto;
   min-height: 0;
 }
 
-/* Multi-column screens keep align-content: start so cards don't stretch
-   into tall rows when content is short. */
-.vault-grid.screen-panel.active,
-.ops-grid.screen-panel.active {
-  align-content: start;
+/* Shop / social / settings: first article fills when content is sparse. */
+.vault-grid.shop-screen.screen-panel.active > article:first-child,
+.home-screen.social-screen.screen-panel.active > .home-cards,
+.ops-grid.settings-screen.screen-panel.active > article:first-child {
+  flex: 1 0 auto;
 }
 
 /* Battle: the active arena should own the remaining height while banners
@@ -1022,7 +1027,7 @@ button:disabled {
   background: linear-gradient(135deg, rgba(12, 18, 36, 0.94), rgba(23, 35, 71, 0.84));
 }
 
-.spotlight-card { overflow: hidden; }
+.spotlight-card { overflow: clip; }
 
 .scene-status-panel {
   margin-top: var(--panel-gap);
@@ -1035,6 +1040,41 @@ button:disabled {
 .scene-header-panel {
   display: grid;
   gap: var(--panel-gap);
+}
+
+/* ─── Subview Breadcrumb Strip ──────────────────────────────────────
+   Rendered as the FIRST child of SceneHeaderPanel when onBack is set.
+   Stays sticky at the top of the scrollable screen-panel so the back
+   action is always reachable without scrolling ("battery nav"). */
+.subview-topstrip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 2px;
+  border-bottom: 1px solid rgba(147, 197, 253, 0.1);
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: rgba(10, 14, 28, 0.88);
+  backdrop-filter: blur(10px);
+  border-radius: 0;
+  margin-bottom: 2px;
+}
+
+.subview-back-btn {
+  font-size: 0.82rem;
+  padding: 4px 8px;
+  min-height: 32px;
+}
+
+.subview-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: #d8e1ff;
+  text-align: right;
+  text-transform: uppercase;
 }
 
 .scene-header-top {
@@ -1329,8 +1369,8 @@ button:disabled {
 /* ─── Play Action Row & Live Strip ──────────────────────────────── */
 
 .play-entry-hint {
-  margin-top: 12px;
-  padding: 10px 12px;
+  margin-top: 8px;
+  padding: 8px 12px;
   border-radius: 12px;
   font-size: 0.88rem;
   background: rgba(37, 99, 235, 0.08);
@@ -1351,7 +1391,7 @@ button:disabled {
 .play-action-row {
   display: flex;
   gap: 8px;
-  margin-top: 12px;
+  margin-top: 8px;
 }
 
 .play-action-row .primary,
@@ -1364,8 +1404,8 @@ button:disabled {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-top: 10px;
-  padding: 6px 10px;
+  margin-top: 6px;
+  padding: 5px 10px;
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.04);
   font-size: 0.78rem;
@@ -1423,7 +1463,7 @@ button:disabled {
 
 .social-command-card {
   position: relative;
-  overflow: hidden;
+  overflow: clip;
 }
 
 .social-command-card::after {
@@ -2594,11 +2634,11 @@ button:disabled {
 
 .builder-card {
   position: relative;
-  min-height: 252px;
-  padding: 10px;
+  min-height: 200px;
+  padding: 8px;
   display: grid;
   grid-template-rows: minmax(0, 1fr) auto;
-  gap: 8px;
+  gap: 6px;
   overflow: hidden;
   background: linear-gradient(180deg, rgba(30, 35, 64, 0.98), rgba(18, 21, 41, 0.98));
   border-radius: 16px;
@@ -3112,7 +3152,7 @@ button:disabled {
 
 .settings-hero-card {
   position: relative;
-  overflow: hidden;
+  overflow: clip;
 }
 
 .settings-hero-card::after {
