@@ -62,6 +62,58 @@ describe('schema migration compatibility', () => {
       try { rmSync(legacyDir, { recursive: true, force: true }) } catch { /* ignore */ }
     }
   })
+
+  it('backfills missing player profile economy columns without dropping legacy rows', async () => {
+    const legacyDir = mkdtempSync(path.join(tmpdir(), 'fa-db-legacy-profile-'))
+    const previousDataDir = process.env.DATA_DIR
+
+    try {
+      const legacyDb = new Database(path.join(legacyDir, 'fractured-arcanum.db'))
+      legacyDb.exec(`
+        CREATE TABLE accounts (
+          id TEXT PRIMARY KEY,
+          username TEXT UNIQUE NOT NULL COLLATE NOCASE,
+          password_hash TEXT NOT NULL,
+          display_name TEXT NOT NULL,
+          created_at TEXT NOT NULL DEFAULT (datetime('now')),
+          last_login TEXT,
+          device_fp TEXT,
+          flags TEXT NOT NULL DEFAULT ''
+        );
+
+        CREATE TABLE player_profiles (
+          account_id TEXT PRIMARY KEY,
+          deck_config TEXT NOT NULL DEFAULT '{}'
+        );
+      `)
+      legacyDb.prepare(`
+        INSERT INTO accounts (id, username, password_hash, display_name)
+        VALUES (?, ?, ?, ?)
+      `).run('acct-legacy-profile', 'legacyprofile', 'legacy-hash', 'Legacy Profile')
+      legacyDb.prepare(`INSERT INTO player_profiles (account_id, deck_config) VALUES (?, ?)`)
+        .run('acct-legacy-profile', '{"spark-imp":2}')
+      legacyDb.close()
+
+      process.env.DATA_DIR = legacyDir
+      const migrated = await import('./db.js?legacy-profile-test')
+      const columns = migrated.default.prepare('PRAGMA table_info(player_profiles)').all()
+      const profile = migrated.getProfile('acct-legacy-profile')
+
+      expect(columns.some((column) => column.name === 'shards')).toBe(true)
+      expect(columns.some((column) => column.name === 'total_earned')).toBe(true)
+      expect(columns.some((column) => column.name === 'owned_cards')).toBe(true)
+      expect(profile).toBeTruthy()
+      expect(profile.deck_config).toEqual({ 'spark-imp': 2 })
+      expect(profile.shards).toBe(120)
+      expect(profile.total_earned).toBe(120)
+      expect(profile.owned_cards['spark-imp']).toBeGreaterThanOrEqual(2)
+
+      migrated.default.close()
+    } finally {
+      process.env.DATA_DIR = previousDataDir
+      try { rmSync(legacyDir, { recursive: true, force: true }) } catch { /* ignore */ }
+    }
+  })
 })
 
 describe('admin roles', () => {

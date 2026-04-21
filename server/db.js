@@ -135,12 +135,56 @@ function ensureColumn(tableName, columnName, definition) {
   db.exec(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${definition}`)
 }
 
-ensureColumn('accounts', 'created_ip_hash', 'TEXT')
-ensureColumn('accounts', 'created_ua_hash', 'TEXT')
-ensureColumn('accounts', 'role', "TEXT NOT NULL DEFAULT 'user'")
-ensureColumn('player_profiles', 'owned_cards', "TEXT NOT NULL DEFAULT '{}' ")
-ensureColumn('player_profiles', 'owned_card_borders', "TEXT NOT NULL DEFAULT '[\"default\"]'")
-ensureColumn('player_profiles', 'selected_card_border', "TEXT NOT NULL DEFAULT 'default'")
+function ensureColumns(tableName, columnDefinitions) {
+  for (const [columnName, definition] of columnDefinitions) {
+    ensureColumn(tableName, columnName, definition)
+  }
+}
+
+ensureColumns('accounts', [
+  ['created_ip_hash', 'TEXT'],
+  ['created_ua_hash', 'TEXT'],
+  ['role', "TEXT NOT NULL DEFAULT 'user'"],
+])
+
+ensureColumns('sessions', [
+  ['ip_hash', 'TEXT'],
+])
+
+ensureColumns('player_profiles', [
+  ['shards', 'INTEGER NOT NULL DEFAULT 120'],
+  ['season_rating', 'INTEGER NOT NULL DEFAULT 1200'],
+  ['wins', 'INTEGER NOT NULL DEFAULT 0'],
+  ['losses', 'INTEGER NOT NULL DEFAULT 0'],
+  ['streak', 'INTEGER NOT NULL DEFAULT 0'],
+  ['deck_config', "TEXT NOT NULL DEFAULT '{}'"],
+  ['owned_themes', "TEXT NOT NULL DEFAULT '[\"royal\"]'"],
+  ['selected_theme', "TEXT NOT NULL DEFAULT 'royal'"],
+  ['last_daily', "TEXT NOT NULL DEFAULT ''"],
+  ['total_earned', 'INTEGER NOT NULL DEFAULT 120'],
+  ['updated_at', "TEXT NOT NULL DEFAULT ''"],
+  ['owned_cards', "TEXT NOT NULL DEFAULT '{}'"],
+  ['owned_card_borders', "TEXT NOT NULL DEFAULT '[\"default\"]'"],
+  ['selected_card_border', "TEXT NOT NULL DEFAULT 'default'"],
+])
+
+ensureColumns('match_log', [
+  ['mode', "TEXT NOT NULL DEFAULT 'ai'"],
+  ['turns', 'INTEGER NOT NULL DEFAULT 0'],
+  ['shards_earned', 'INTEGER NOT NULL DEFAULT 0'],
+  ['rating_delta', 'INTEGER NOT NULL DEFAULT 0'],
+  ['played_at', "TEXT NOT NULL DEFAULT ''"],
+])
+
+db.exec(`
+  UPDATE player_profiles
+  SET updated_at = datetime('now')
+  WHERE TRIM(COALESCE(updated_at, '')) = '';
+
+  UPDATE match_log
+  SET played_at = datetime('now')
+  WHERE TRIM(COALESCE(played_at, '')) = '';
+`)
 
 // Backward-safe naming migration: older or manually edited rows may have a
 // blank display_name. Normalize those rows to the username so account labels
