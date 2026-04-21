@@ -10,7 +10,7 @@ const getCardIcon = (id: string): string => _getCardIcon(id, CARD_LIBRARY)
 
 export function SocialScreen() {
   const { activeScreen } = useAppShell()
-  const { serverProfile, rankLabel, totalGames, winRate, shards, collection } = useProfile()
+  const { serverProfile, collection } = useProfile()
   const { leaderboardEntries } = useQueue()
   const {
     friends, friendUsernameInput, setFriendUsernameInput, handleAddFriend, socialLoading,
@@ -85,17 +85,12 @@ export function SocialScreen() {
         <article className="section-card social-command-card">
           <SceneHeaderPanel
             className="social-scene-header"
-            visual={<RankBadge rank={rankLabel} />}
             title="Tavern Hall"
-            note="Friends, clan traffic, and trade activity without the extra slabs."
+            note="Friends · clan · trades"
             badges={(
               <>
                 <strong>{profileName}</strong>
-                <span className="badge">@{serverProfile?.username ?? 'guest'}</span>
                 <span className="badge">{onlineFriends} online</span>
-                <span className="badge">{pendingTrades} trades</span>
-                <span className="badge">{clan ? clan.tag : 'Solo'}</span>
-                <span className="badge">{totalGames}G · {winRate}%W · {shards}S</span>
               </>
             )}
             tiles={socialTiles}

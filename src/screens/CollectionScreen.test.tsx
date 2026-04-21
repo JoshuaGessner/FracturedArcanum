@@ -218,9 +218,8 @@ describe('CollectionScreen archive flow', () => {
 
     expect(screen.getByText(/archive forge/i)).toBeTruthy()
     expect(screen.queryByText(/archive status/i)).toBeNull()
-    expect(screen.getByText(/collection completion/i)).toBeTruthy()
-    expect(screen.getByText(/deck ready/i)).toBeTruthy()
-    expect(screen.getByText(/saved decks/i)).toBeTruthy()
-    expect(container.querySelectorAll('.scene-status-tile')).toHaveLength(3)
+    expect(container.querySelector('.scene-status-kicker')?.textContent).toMatch(/owned/i)
+    expect(Array.from(container.querySelectorAll('.scene-status-kicker')).some(el => /deck/i.test(el.textContent ?? ''))).toBe(true)
+    expect(container.querySelectorAll('.scene-status-tile')).toHaveLength(2)
   })
 })

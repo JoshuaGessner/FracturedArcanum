@@ -124,8 +124,7 @@ export function PlayScreen() {
         </div>
 
         <div className="play-action-row">
-          <button className="secondary" onClick={() => openScreen('collection')}>Deck Forge</button>
-          <button className="ghost" onClick={() => openScreen('home')}>Back Home</button>
+          <button className="secondary mini" onClick={() => openScreen('collection')}>Deck Forge</button>
         </div>
 
         {queueState === 'searching' && (

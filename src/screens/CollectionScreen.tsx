@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import {
   CARD_LIBRARY,
   MAX_COPIES,
@@ -31,26 +31,27 @@ export function CollectionScreen() {
   const rarityStats = getRarityCompletion(collection, CARD_LIBRARY)
   const activeDeckName = savedDecks.find((deck) => deck.id === activeDeckId)?.name ?? 'Choose a deck'
   const forgeStatusLabel = deckReady ? 'Forge stocked' : 'Needs tuning'
+  const rarityNoteSuffix = (() => {
+    const c = rarityStats.common?.owned ?? 0
+    const r = rarityStats.rare?.owned ?? 0
+    const e = rarityStats.epic?.owned ?? 0
+    const l = rarityStats.legendary?.owned ?? 0
+    return `${collectionCompletion}% · C${c} R${r} E${e} L${l}`
+  })()
   const archiveTiles: SceneHeaderTile[] = [
     {
-      kicker: 'Collection Completion',
+      kicker: 'Owned',
       value: `${ownedUniqueCards}/${CARD_LIBRARY.length}`,
-      note: 'Unique cards logged to the archive',
+      note: rarityNoteSuffix,
     },
     {
-      kicker: 'Deck Ready',
+      kicker: 'Deck',
       value: forgeStatusLabel,
-      note: `${selectedDeckSize} cards prepared for battle`,
+      note: `${selectedDeckSize} cards · ${activeDeckName}`,
       accent: deckReady,
-    },
-    {
-      kicker: 'Saved Decks',
-      value: `${savedDecks.length}`,
-      note: `Active build · ${activeDeckName}`,
     },
   ]
   const previousCompletionRef = useRef<Record<string, boolean> | null>(null)
-  const [celebratingRarity, setCelebratingRarity] = useState<string | null>(null)
 
   useEffect(() => {
     const completionState = Object.fromEntries(
@@ -74,16 +75,11 @@ export function CollectionScreen() {
 
     const [rarity] = newlyCompleted
     const startTimerId = window.setTimeout(() => {
-      setCelebratingRarity(rarity)
       feedback('claim', soundEnabled, hapticsEnabled)
       setToastMessage(`${rarity.charAt(0).toUpperCase() + rarity.slice(1)} collection set complete!`)
     }, 0)
-    const clearTimerId = window.setTimeout(() => {
-      setCelebratingRarity((current) => (current === rarity ? null : current))
-    }, 1600)
     return () => {
       window.clearTimeout(startTimerId)
-      window.clearTimeout(clearTimerId)
     }
   }, [hapticsEnabled, rarityStats, setToastMessage, soundEnabled])
 
@@ -110,32 +106,14 @@ export function CollectionScreen() {
             </div>
           )}
           title="Archive Forge"
-          note="Tune your library, refine the curve, and field the next lineup."
+          note="Your archive & active forge."
           badges={(
-            <>
-              <span className="badge">{ownedUniqueCards}/{CARD_LIBRARY.length} owned</span>
-              <span className={`deck-status ${deckReady ? 'ready' : 'warning'}`}>
-                {deckReady ? `Ready · ${selectedDeckSize}` : `${selectedDeckSize}/${MIN_DECK_SIZE}`}
-              </span>
-            </>
+            <span className={`deck-status ${deckReady ? 'ready' : 'warning'}`}>
+              {deckReady ? `Ready · ${selectedDeckSize}` : `${selectedDeckSize}/${MIN_DECK_SIZE}`}
+            </span>
           )}
           tiles={archiveTiles}
-        >
-          <div className="collection-rarity-chips">
-            {(['common', 'rare', 'epic', 'legendary'] as const).map((r) => {
-              const s = rarityStats[r]
-              if (!s) return null
-              return (
-                <span
-                  key={r}
-                  className={`rarity-chip rarity-${r} ${s.owned >= s.total ? 'rarity-complete' : ''} ${celebratingRarity === r ? 'rarity-celebrate' : ''}`}
-                >
-                  <RarityBadge rarity={r} /> {s.owned}/{s.total}
-                </span>
-              )
-            })}
-          </div>
-        </SceneHeaderPanel>
+        />
 
         {loggedIn && (
           <div className="deck-roster" aria-label="Saved decks">
@@ -313,8 +291,7 @@ export function CollectionScreen() {
                 </div>
                 <div className="card-meta-row">
                   <RarityBadge rarity={card.rarity} />
-                  <span className="tribe-badge">{card.tribe}</span>
-                  <span className="tribe-badge">Owned {ownedCount}</span>
+                  <span className="mini-text">{card.tribe} · Owned {ownedCount}</span>
                 </div>
                 <div className="card-stats">
                   <span><StatIcon kind="attack" /> {card.attack}</span>
@@ -322,7 +299,6 @@ export function CollectionScreen() {
                 </div>
                 <div className="builder-card-footnote">
                   {card.effect && <EffectBadge effect={card.effect} compact />}
-                  <span className="mini-text">Hold to inspect</span>
                 </div>
               </button>
 
