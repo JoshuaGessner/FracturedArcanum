@@ -8,6 +8,7 @@ import { ProfileProvider } from '../contexts/ProfileProvider'
 import { SocialProvider } from '../contexts/SocialProvider'
 import { GameProvider } from '../contexts/GameProvider'
 import { createGame } from '../game'
+import { createPwaInstallState } from '../pwa'
 import type { AppScreen, CardBorder, CosmeticTheme, SettingsSubview } from '../types'
 
 function buildShellValue(overrides: Partial<AppShellContextValue> = {}): AppShellContextValue {
@@ -97,6 +98,8 @@ function buildShellValue(overrides: Partial<AppShellContextValue> = {}): AppShel
     startOnboardingTour: noop,
     dismissOnboardingTour: noop,
     installPromptEvent: null,
+    installState: createPwaInstallState({ hasInstallPrompt: false, serviceWorkerStatus: 'ready' }),
+    pwaServiceWorkerStatus: 'ready',
     handleInstallApp: asyncNoop,
     swUpdateAvailable: false,
     handleAcceptUpdate: noop,
@@ -234,32 +237,38 @@ describe('SettingsScreen hub flow', () => {
   })
 
   it('shows manual iPhone install guidance when browser install prompts are unavailable', () => {
-    Object.defineProperty(window.navigator, 'userAgent', {
-      value: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X)',
-      configurable: true,
+    renderSettingsScreen({
+      settingsSubview: 'preferences',
+      installPromptEvent: null,
+      installState: createPwaInstallState({
+        hasInstallPrompt: false,
+        serviceWorkerStatus: 'ready',
+        platform: 'ios',
+        browser: 'safari',
+        secureContext: true,
+        standalone: false,
+      }),
     })
-    Object.defineProperty(window.navigator, 'standalone', {
-      value: false,
-      configurable: true,
-    })
-    Object.defineProperty(window, 'matchMedia', {
-      value: vi.fn().mockImplementation((query: string) => ({
-        matches: query.includes('display-mode: standalone') ? false : false,
-        media: query,
-        onchange: null,
-        addListener: vi.fn(),
-        removeListener: vi.fn(),
-        addEventListener: vi.fn(),
-        removeEventListener: vi.fn(),
-        dispatchEvent: vi.fn(),
-      })),
-      configurable: true,
-    })
-
-    renderSettingsScreen({ settingsSubview: 'preferences', installPromptEvent: null })
 
     expect(screen.getByText(/add to home screen/i)).toBeTruthy()
-    expect(screen.getByText(/share/i)).toBeTruthy()
+    expect(screen.getAllByText(/share/i).length).toBeGreaterThan(0)
+  })
+
+  it('shows Android browser menu guidance when Chrome has no native prompt', () => {
+    renderSettingsScreen({
+      settingsSubview: 'preferences',
+      installState: createPwaInstallState({
+        hasInstallPrompt: false,
+        serviceWorkerStatus: 'ready',
+        platform: 'android',
+        browser: 'chrome',
+        secureContext: true,
+        standalone: false,
+      }),
+    })
+
+    expect(screen.getByText(/open the chrome menu/i)).toBeTruthy()
+    expect(screen.getByText(/install status/i)).toBeTruthy()
   })
 
   it('routes to the support desk from the settings hub', () => {

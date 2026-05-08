@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { RankBadge } from '../components/AssetBadge'
+import { PwaInstallPanel } from '../components/PwaInstallPanel'
 import { SceneHeaderPanel, type SceneHeaderTile } from '../components/SceneHeaderPanel'
-import { formatTimestamp, getComplaintSeverityTone, getInstallAvailability } from '../utils'
+import { formatTimestamp, getComplaintSeverityTone } from '../utils'
 import { useAppShell, useProfile } from '../contexts'
 import { feedback } from '../feedback'
 
@@ -25,7 +26,7 @@ export function SettingsScreen() {
     gesturesEnabled, setGesturesEnabled,
     hapticsEnabled, setHapticsEnabled,
     settingsSubview, openSettingsSubview, resetSettingsSubview,
-    installPromptEvent, handleInstallApp, handleLogout,
+    installState, handleInstallApp, handleLogout,
   } = useAppShell()
   const { isAdminRole, isOwnerRole, accountRole, serverProfile } = useProfile()
 
@@ -35,14 +36,15 @@ export function SettingsScreen() {
   const visitorSuffix = (visitorId || 'guest').slice(-6).toUpperCase()
   const complaintTone = getComplaintSeverityTone(complaintForm.severity)
   const roleInsignia = isOwnerRole ? 'Diamond' : isAdminRole ? 'Gold' : 'Bronze'
-  const installAvailability = getInstallAvailability(Boolean(installPromptEvent))
-  const installPathLabel = installAvailability === 'prompt'
+  const installPathLabel = installState.status === 'native'
     ? 'Quick install'
-    : installAvailability === 'installed'
+    : installState.status === 'installed'
       ? 'Installed'
-      : installAvailability === 'ios-manual'
+      : installState.status === 'ios-manual'
         ? 'Manual setup'
-        : 'Browser limited'
+        : installState.status === 'insecure'
+          ? 'HTTPS needed'
+          : 'Manual setup'
   const networkLabel = backendOnline ? 'Stable' : 'Fallback'
   const settingsViewLabel = settingsSubview === 'preferences'
     ? 'Preferences'
@@ -65,8 +67,8 @@ export function SettingsScreen() {
     {
       kicker: 'Install Path',
       value: installPathLabel,
-      note: installAvailability === 'ios-manual' ? 'Safari install route for iPhone' : 'Check device readiness here',
-      accent: installAvailability === 'prompt' || installAvailability === 'installed',
+      note: installState.status === 'ios-manual' ? 'Safari install route for iPhone' : 'Check device readiness here',
+      accent: installState.status === 'native' || installState.status === 'installed',
     },
   ]
   const settingsShortcuts = [
@@ -200,18 +202,10 @@ export function SettingsScreen() {
 
             <div className="settings-toggle-row">
               <span>Install App</span>
-              {installAvailability === 'prompt' ? (
-                <button className="ghost mini" onClick={() => void handleInstallApp()}>
-                  Install
-                </button>
-              ) : installAvailability === 'installed' ? (
-                <span className="mini-text settings-install-hint">Already installed</span>
-              ) : installAvailability === 'ios-manual' ? (
-                <span className="mini-text settings-install-hint">Safari: tap Share, then Add to Home Screen</span>
-              ) : (
-                <span className="mini-text settings-install-hint">Unavailable in this browser</span>
-              )}
+              <span className="mini-text settings-install-hint">{installState.primaryLabel}</span>
             </div>
+
+            <PwaInstallPanel installState={installState} onInstall={handleInstallApp} showInstalled showDiagnostics />
 
             <div className="settings-toggle-row">
               <span>Log Out</span>

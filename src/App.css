@@ -256,6 +256,15 @@ button:disabled {
 }
 .app-shell:not(.battle-shell-active) .scene-stage > .screen-panel.active::-webkit-scrollbar-track { background: transparent; }
 
+.app-shell:not(.battle-shell-active) .scene-stage > .home-screen:not(.social-screen).screen-panel.active {
+  overflow: hidden;
+  scrollbar-width: none;
+}
+
+.app-shell:not(.battle-shell-active) .scene-stage > .home-screen:not(.social-screen).screen-panel.active::-webkit-scrollbar {
+  display: none;
+}
+
 /* ── Scene Fill — single-column screens stretch to use full viewport ─
    The grid display from .home-screen / .collection-screen is overridden
    to flex-column so the primary content card can grow into surplus
@@ -279,6 +288,10 @@ button:disabled {
 .collection-screen.screen-panel.active > .section-card {
   flex: 1 0 auto;
   min-height: 0;
+}
+
+.home-screen:not(.social-screen).screen-panel.active > .home-command-card {
+  flex: 1 1 auto;
 }
 
 /* Shop / social / settings: first article fills when content is sparse. */
@@ -414,6 +427,7 @@ button:disabled {
 }
 
 .home-screen.active::before { background-image: url('/generated/ui/bg-main-menu.svg'); }
+.home-screen:not(.social-screen).active::before { inset: 0; }
 .play-screen.active::before { background-image: url('/generated/ui/bg-play.svg'); }
 .collection-screen.active::before { background-image: url('/generated/ui/bg-collection.svg'); }
 .social-screen.active::before { background-image: url('/generated/ui/bg-social.svg'); }
@@ -811,6 +825,12 @@ button:disabled {
   background: linear-gradient(135deg, rgba(12, 17, 34, 0.94), rgba(25, 36, 74, 0.9));
 }
 
+.topbar-home.topbar-art {
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(10, 15, 30, 0.74), rgba(21, 31, 60, 0.62));
+  border: 1px solid rgba(147, 197, 253, 0.08);
+}
+
 .topbar-compact-shell {
   padding: 0 calc(2px + var(--safe-right)) 0 calc(2px + var(--safe-left));
   background: transparent;
@@ -840,6 +860,7 @@ button:disabled {
   padding: 2px 4px;
   padding-inline-start: calc(4px + var(--safe-left));
   padding-inline-end: calc(4px + var(--safe-right));
+  min-height: 52px;
 }
 
 .brand-copy {
@@ -852,6 +873,10 @@ button:disabled {
   font-size: clamp(1.05rem, 4.2vw, 1.35rem);
   line-height: 1.05;
   color: #f5f7ff;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .brand-logo {
@@ -864,7 +889,8 @@ button:disabled {
 }
 
 .brand-logo-home {
-  width: clamp(58px, 14vw, 78px);
+  width: clamp(40px, 10vw, 52px);
+  border-radius: 10px;
 }
 
 @keyframes logoPulse {
@@ -1160,6 +1186,118 @@ button:disabled {
   margin-bottom: 12px;
   border-radius: 14px;
   border: 1px solid rgba(96, 165, 250, 0.2);
+}
+
+/* ─── Home Command Panel ───────────────────────────────────────── */
+
+.home-command-card {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: var(--panel-gap);
+  min-height: 0;
+  align-content: stretch;
+}
+
+.home-scene-header {
+  min-height: 0;
+  align-content: start;
+}
+
+.home-scene-header .scene-header-top.has-visual {
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+}
+
+.home-scene-header .scene-header-visual .rank-badge-art {
+  padding: 5px 8px;
+}
+
+.home-scene-header .scene-header-visual .rank-badge-art img {
+  width: 24px;
+  height: 24px;
+}
+
+.home-scene-header .scene-header-visual .rank-badge-art span {
+  font-size: 0.78rem;
+}
+
+.home-scene-header .scene-status-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: clamp(5px, 0.8svh, 10px);
+  margin-top: 0;
+}
+
+.home-scene-header .scene-status-tile {
+  gap: 3px;
+  padding: clamp(6px, 0.9svh, 10px) 8px;
+  align-content: start;
+}
+
+.home-scene-header .scene-status-tile strong {
+  font-size: clamp(0.82rem, 2.3vw, 0.98rem);
+  line-height: 1.05;
+}
+
+.home-scene-header .scene-status-tile .mini-text {
+  display: -webkit-box;
+  overflow: hidden;
+  line-height: 1.18;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.home-rating-meter {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(94px, 0.62fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: clamp(7px, 0.9svh, 10px) 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(147, 197, 253, 0.14);
+  background: linear-gradient(135deg, rgba(11, 18, 36, 0.72), rgba(32, 38, 72, 0.5));
+}
+
+.home-rating-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.home-rating-copy strong {
+  color: #f6f8ff;
+  font-size: 0.96rem;
+  line-height: 1.05;
+}
+
+.home-rating-copy .mini-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.home-rating-track {
+  width: 100%;
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.home-rating-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(135deg, #38bdf8, #7c3aed, #fbbf24);
+  transition: width 0.6s ease;
+}
+
+.home-rating-percent {
+  min-width: 42px;
+  color: #f8fbff;
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-align: right;
 }
 
 /* ─── Eyebrow & Subtitle ───────────────────────────────────────── */
@@ -2860,7 +2998,7 @@ button:disabled {
 
 .quest-summary {
   display: grid;
-  grid-template-columns: auto auto minmax(0, 1fr);
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 8px;
   padding: var(--panel-gap) 10px;
@@ -2929,6 +3067,15 @@ button:disabled {
   flex: 1 1 auto;
   font-size: 0.82rem;
   color: #b9c2dd;
+  white-space: nowrap;
+}
+
+.quest-next {
+  min-width: 0;
+  color: #d7def7;
+  font-size: 0.78rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
@@ -3823,7 +3970,12 @@ button.danger:hover { filter: brightness(1.08); }
     display: none;
   }
   .subtitle { display: none; }
-  .brand-logo { width: min(156px, 44vw); }
+  .brand-block-home {
+    gap: 8px;
+    min-height: 44px;
+  }
+  .brand-logo:not(.brand-logo-home) { width: min(156px, 44vw); }
+  .brand-logo-home { width: 40px; }
   .section-card, .hero-card {
     border-radius: 14px;
     box-shadow: 0 10px 26px rgba(10, 14, 30, 0.22);
@@ -3917,6 +4069,35 @@ button.danger:hover { filter: brightness(1.08); }
     padding: 8px 10px;
   }
 
+  .home-command-card {
+    padding: clamp(8px, 1.2svh, 12px);
+  }
+
+  .home-scene-header .scene-status-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .home-scene-header .scene-status-tile {
+    padding: 6px 8px;
+  }
+
+  .home-rating-meter {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 6px 8px;
+    padding: 7px 8px;
+  }
+
+  .home-rating-track {
+    grid-column: 1 / -1;
+    height: 8px;
+  }
+
+  .home-rating-percent {
+    min-width: 36px;
+    font-size: 0.78rem;
+  }
+
   .nav-tile-row {
     grid-template-columns: repeat(3, 1fr);
     gap: 8px;
@@ -3935,7 +4116,17 @@ button.danger:hover { filter: brightness(1.08); }
     margin: 6px 0;
   }
 
-  .quest-summary { padding: 8px 10px; margin-top: 8px; }
+  .quest-summary {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 6px;
+    padding: 7px 8px;
+    margin-top: 6px;
+  }
+
+  .quest-next {
+    grid-column: 1 / -1;
+    font-size: 0.72rem;
+  }
 
   /* Play density — shorter mode cards, hide long notes */
   .mode-card {
@@ -4186,10 +4377,6 @@ button.danger:hover { filter: brightness(1.08); }
     text-align: left;
   }
 
-  .quest-summary {
-    grid-template-columns: 1fr;
-    align-items: start;
-  }
   .settings-hub-grid {
     gap: 8px;
   }
@@ -4236,6 +4423,12 @@ button.danger:hover { filter: brightness(1.08); }
   .scene-link { min-height: 44px; padding: 4px 2px; }
   .scene-link::before { width: 14px; height: 14px; }
   .scene-link-label { font-size: 0.64rem; }
+  .brand-logo-home { width: 36px; }
+  .brand-block-home { min-height: 40px; }
+  .home-scene-header .scene-status-tile strong { font-size: 0.8rem; }
+  .home-scene-header .scene-status-tile .mini-text { font-size: 0.68rem; }
+  .home-rating-copy strong { font-size: 0.84rem; }
+  .home-rating-copy .mini-text { font-size: 0.68rem; }
   .play-status-grid-compact {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
@@ -4257,6 +4450,94 @@ button.danger:hover { filter: brightness(1.08); }
   .auth-card { padding: 24px 16px; }
   .hero-avatar { width: 64px; height: 64px; }
   .profile-medal { width: 56px; height: 56px; }
+}
+
+@media (max-width: 720px) and (max-height: 760px) {
+  .app-shell {
+    gap: 6px;
+  }
+
+  .topbar-home.topbar-art {
+    border-color: rgba(147, 197, 253, 0.06);
+  }
+
+  .brand-block-home {
+    min-height: 40px;
+  }
+
+  .brand-logo-home {
+    width: 34px;
+  }
+
+  .home-command-card {
+    padding: 8px;
+  }
+
+  .home-scene-header {
+    gap: 5px;
+  }
+
+  .home-scene-header .scene-header-top.has-visual {
+    gap: 7px;
+  }
+
+  .home-scene-header .scene-header-badges {
+    gap: 5px;
+  }
+
+  .home-scene-header .scene-header-badges .badge {
+    padding: 4px 7px;
+    font-size: 0.72rem;
+  }
+
+  .home-scene-header .scene-status-grid {
+    gap: 5px;
+  }
+
+  .home-scene-header .scene-status-tile {
+    padding: 5px 7px;
+  }
+
+  .home-rating-meter {
+    padding: 6px 7px;
+  }
+
+  .quest-summary {
+    padding: 6px 7px;
+  }
+
+  .scene-rail {
+    padding-top: 5px;
+    padding-bottom: calc(5px + var(--safe-bottom));
+  }
+
+  .scene-link {
+    min-height: 42px;
+  }
+}
+
+@media (max-width: 720px) and (max-height: 680px) {
+  .home-scene-header .scene-status-tile .mini-text {
+    -webkit-line-clamp: 1;
+  }
+
+  .home-rating-copy .mini-text,
+  .quest-next {
+    display: none;
+  }
+
+  .home-rating-track {
+    height: 7px;
+  }
+
+  .quest-count,
+  .quest-reward-hint {
+    font-size: 0.7rem;
+  }
+
+  .scene-link {
+    min-height: 40px;
+  }
 }
 
 /* ─── Auth Gate ──────────────────────────────────────────────────── */
@@ -4715,23 +4996,110 @@ button.danger:hover { filter: brightness(1.08); }
   color: #ffd;
 }
 
-/* ─── PWA Install Button ─── */
-.pwa-install-btn {
+/* ─── PWA Install Prompt ─── */
+.pwa-install-panel {
+  width: 100%;
+  display: grid;
+  gap: 10px;
   margin-top: 12px;
-  padding: 10px 20px;
-  background: linear-gradient(135deg, #3a5ccc, #5a3cb8);
-  color: white;
-  border: none;
-  border-radius: 10px;
-  font-size: 0.9rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  padding: 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(147, 197, 253, 0.2);
+  background: linear-gradient(135deg, rgba(10, 16, 31, 0.94), rgba(33, 36, 70, 0.82));
+  box-shadow: inset 0 1px 0 rgba(251, 191, 36, 0.08), 0 12px 28px rgba(6, 10, 22, 0.18);
 }
 
-.pwa-install-btn:hover {
-  transform: scale(1.03);
-  box-shadow: 0 4px 16px rgba(90, 60, 184, 0.4);
+.pwa-install-panel.compact {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  margin: -4px 0 0;
+  padding: 8px 10px;
+}
+
+.pwa-install-panel.compact .pwa-install-manual {
+  grid-column: 1 / -1;
+}
+
+.pwa-install-copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.pwa-install-copy .eyebrow {
+  margin: 0;
+  font-size: 0.62rem;
+}
+
+.pwa-install-copy strong {
+  color: #f8fbff;
+}
+
+.pwa-install-action {
+  min-height: 38px;
+  white-space: nowrap;
+}
+
+.pwa-install-manual {
+  display: grid;
+  gap: 6px;
+}
+
+.pwa-install-step {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  color: #d9e3ff;
+  font-size: 0.82rem;
+}
+
+.pwa-install-step strong {
+  width: 24px;
+  height: 24px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(96, 165, 250, 0.16);
+  color: #eff6ff;
+  font-size: 0.74rem;
+}
+
+.pwa-install-diagnostics {
+  border-top: 1px solid rgba(147, 197, 253, 0.14);
+  padding-top: 8px;
+}
+
+.pwa-install-diagnostics summary {
+  cursor: pointer;
+  color: #dbe6ff;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.pwa-install-diagnostic-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.pwa-install-diagnostic-grid span {
+  display: grid;
+  gap: 2px;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.04);
+  color: #cbd5e1;
+  font-size: 0.74rem;
+}
+
+.pwa-install-diagnostic-grid span.ready {
+  border: 1px solid rgba(34, 197, 94, 0.18);
+}
+
+.pwa-install-diagnostic-grid span.warning {
+  border: 1px solid rgba(251, 191, 36, 0.2);
 }
 
 /* ─── App Update Banner ─── */

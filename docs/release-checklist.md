@@ -16,15 +16,18 @@
 
 ## Device validation
 
-- iPhone Safari: long-press inspect stays in-app and no browser context menu escapes
-- iPhone Home Screen install: icon, safe-area spacing, top chrome, and bottom nav all remain reachable
-- Android Chrome: install prompt appears, queue overlays behave, and battle drag remains reliable
-- Installed PWA on both platforms: reward cinema, pack reveal, and settings/shop subviews remain contained
-- Narrow phones at 375px: no clipped back actions, no horizontal spill, and no unreachable CTA rows
+- Current pass: Android Chrome browser mode validates install prompt flow, queue overlays, and battle drag reliability
+- Current pass: Android installed PWA validates splash-to-app launch, reward cinema containment, service-worker update handling, and settings/shop subview containment
+- Current pass: desktop narrow viewport simulation validates 375px, 390px, 430px, and short-height phone layouts
+- Current pass: repeated battle loops validate drag, attack targeting, inspect, Play Again, Leave to Lobby, and result-summary state resets
+- Current pass completion gate: no clipped back actions, no horizontal spill, and no unreachable CTA rows on the tested narrow viewports
+- Deferred until hardware is available: iPhone Safari long-press inspect stays in-app and no browser context menu escapes
+- Deferred until hardware is available: iPhone Home Screen install validates icon, safe-area spacing, top chrome, bottom nav reachability, standalone launch, and update prompts
 
 ## Before public launch
 
 - deploy production host
-- verify real mobile devices against the device validation checklist above
+- verify available real mobile devices against the current-pass device validation checklist above
+- complete deferred iPhone Safari and Home Screen Web.app validation before claiming full iOS readiness
 - add privacy policy and support email if accounts are introduced later
 - replace any remaining placeholder UI with approved final art where desired

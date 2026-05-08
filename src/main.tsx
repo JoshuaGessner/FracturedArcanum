@@ -20,6 +20,7 @@ if ('serviceWorker' in navigator) {
     let refreshing = false
 
     navigator.serviceWorker.addEventListener('controllerchange', () => {
+      window.dispatchEvent(new CustomEvent('sw-controller-change'))
       if (refreshing) {
         return
       }
@@ -31,6 +32,7 @@ if ('serviceWorker' in navigator) {
     void navigator.serviceWorker
       .register('/sw.js', { updateViaCache: 'none' })
       .then((registration) => {
+        window.dispatchEvent(new CustomEvent('sw-registration-success', { detail: { registration } }))
         const requestUpdate = () => void registration.update()
 
         registration.addEventListener('updatefound', () => {
@@ -57,5 +59,12 @@ if ('serviceWorker' in navigator) {
           }
         })
       })
+      .catch((error: unknown) => {
+        window.dispatchEvent(new CustomEvent('sw-registration-error', { detail: { error } }))
+      })
+
+    void navigator.serviceWorker.ready.then((registration) => {
+      window.dispatchEvent(new CustomEvent('sw-ready', { detail: { registration } }))
+    })
   })
 }

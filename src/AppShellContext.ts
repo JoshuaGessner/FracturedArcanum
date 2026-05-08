@@ -2,6 +2,7 @@ import { createContext, useContext, type FormEvent } from 'react'
 import type { GameMode, AIDifficulty, DeckConfig, GameState } from './game'
 import type { RewardBeat } from './components/RewardCinemaSequence'
 import type { RewardScope } from './utils'
+import type { PwaInstallState, PwaServiceWorkerStatus } from './pwa'
 import type {
   AdminAuditEntry,
   AdminOverview,
@@ -136,6 +137,8 @@ export type AppShellContextValue = {
   startOnboardingTour: () => void
   dismissOnboardingTour: (reason: 'completed' | 'skipped') => void
   installPromptEvent: InstallPromptEvent | null
+  installState: PwaInstallState
+  pwaServiceWorkerStatus: PwaServiceWorkerStatus
   handleInstallApp: () => Promise<void>
   swUpdateAvailable: boolean
   handleAcceptUpdate: () => void

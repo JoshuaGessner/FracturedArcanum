@@ -4,10 +4,15 @@ import { SceneHeaderPanel, type SceneHeaderTile } from '../components/SceneHeade
 import { useAppShell, useGame, useProfile } from '../contexts'
 import { getStreakTier } from '../utils'
 
+const HOME_DECK_GOAL = 14
+
 export function HomeScreen() {
   const { activeScreen, dailyQuest, justClaimedDaily, seasonName, seasonEnd } = useAppShell()
   const { gameInProgress, game, handleResumeBattle, handleAbandonBattle, isRankedBattle } = useGame()
-  const { record, winRate, selectedDeckSize, serverProfile, rankLabel, shards, canClaimDailyReward, nextRewardLabel } = useProfile()
+  const {
+    record, winRate, selectedDeckSize, serverProfile, rankLabel, shards,
+    canClaimDailyReward, nextRewardLabel, seasonRating, rankProgress, nextRankTarget,
+  } = useProfile()
 
   const streakTier = getStreakTier(record.streak)
   const [seasonCountdown, setSeasonCountdown] = useState<string | null>(null)
@@ -46,35 +51,51 @@ export function HomeScreen() {
   const questItems = [
     { complete: record.wins >= 1, label: dailyQuest },
     { complete: winRate >= 50, label: '50% win rate' },
-    { complete: selectedDeckSize >= 14, label: 'Full deck' },
+    { complete: selectedDeckSize >= HOME_DECK_GOAL, label: 'Full deck' },
     { complete: canClaimDailyReward, label: `Daily reward • ${nextRewardLabel}` },
   ]
   const questsDone = questItems.filter(q => q.complete).length
-  const deckReadyLabel = selectedDeckSize >= 14 ? 'Forge stocked' : 'Needs cards'
+  const nextQuestLabel = questItems.find(item => !item.complete)?.label ?? 'All quests complete'
+  const deckCardsNeeded = Math.max(0, HOME_DECK_GOAL - selectedDeckSize)
+  const deckSurplus = Math.max(0, selectedDeckSize - HOME_DECK_GOAL)
+  const deckReadyLabel = selectedDeckSize >= HOME_DECK_GOAL ? 'Ready' : 'Needs Cards'
+  const deckDetailLabel = selectedDeckSize >= HOME_DECK_GOAL
+    ? deckSurplus > 0 ? `${deckSurplus} over minimum` : 'Minimum met'
+    : `${deckCardsNeeded} ${deckCardsNeeded === 1 ? 'card' : 'cards'} needed`
   const rewardVaultLabel = canClaimDailyReward ? 'Ready to Claim' : nextRewardLabel
+  const ratingToNext = Math.max(0, nextRankTarget - seasonRating)
+  const clampedRankProgress = Math.max(0, Math.min(100, rankProgress))
+  const ratingProgressLabel = ratingToNext > 0 ? `${ratingToNext} rating to next league` : `${rankLabel} tier secured`
+  const questRewardLabel = canClaimDailyReward ? 'Reward Ready' : nextRewardLabel
   const profileName = serverProfile?.displayName ?? serverProfile?.username ?? 'Champion'
   const homeTiles: SceneHeaderTile[] = [
     {
       kicker: 'League',
-      value: rankLabel,
-      note: `${record.wins}W ${record.losses}L · ${winRate}%`,
+      value: `${rankLabel} League`,
+      note: `${record.wins}W ${record.losses}L · ${winRate}% wins`,
     },
     {
       kicker: 'Deck',
-      value: `${selectedDeckSize}/14`,
-      note: deckReadyLabel,
+      value: deckReadyLabel,
+      note: `${selectedDeckSize}/${HOME_DECK_GOAL} cards · ${deckDetailLabel}`,
     },
     {
       kicker: 'Vault',
       value: rewardVaultLabel,
-      note: dailyQuest,
+      note: canClaimDailyReward ? 'Daily reward available' : `Next: ${dailyQuest}`,
       accent: canClaimDailyReward,
+    },
+    {
+      kicker: 'Quests',
+      value: `${questsDone}/${questItems.length} Complete`,
+      note: nextQuestLabel,
+      accent: questsDone === questItems.length,
     },
   ]
 
   return (
     <section className={`home-screen screen-panel ${activeScreen === 'home' ? 'active' : 'hidden'}`}>
-      <article className="section-card utility-card spotlight-card">
+      <article className="section-card utility-card spotlight-card home-command-card">
         <SceneHeaderPanel
           className="home-scene-header"
           visual={<RankBadge rank={rankLabel} />}
@@ -88,6 +109,18 @@ export function HomeScreen() {
           )}
           tiles={homeTiles}
         >
+          <div className="home-rating-meter" role="progressbar" aria-label="Season rating progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={clampedRankProgress}>
+            <div className="home-rating-copy">
+              <span className="scene-status-kicker">Season Rating</span>
+              <strong>{seasonRating} / {nextRankTarget}</strong>
+              <span className="mini-text">{ratingProgressLabel}</span>
+            </div>
+            <div className="home-rating-track" aria-hidden="true">
+              <div className="home-rating-fill" style={{ width: `${clampedRankProgress}%` }} />
+            </div>
+            <span className="home-rating-percent">{clampedRankProgress}%</span>
+          </div>
+
           {gameInProgress && (
             <div className="game-resume-block">
               <p className="note">Battle in progress vs <strong>{game.enemy.name}</strong> · Turn {game.turnNumber}</p>
@@ -105,9 +138,10 @@ export function HomeScreen() {
               <span key={i} className={`quest-pip ${item.complete ? 'complete' : 'pending'}`} title={item.label} />
             ))}
           </div>
-          <span className="quest-count">{questsDone}/{questItems.length} Quests</span>
+          <span className="quest-count">{questsDone}/{questItems.length} Quests Complete</span>
+          <span className="quest-next">Next: {nextQuestLabel}</span>
           <span className={`quest-reward-hint ${canClaimDailyReward ? 'ready' : ''}`}>
-            {canClaimDailyReward ? 'Reward Ready' : nextRewardLabel}
+            {questRewardLabel}
           </span>
         </div>
       </article>

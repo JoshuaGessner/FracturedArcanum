@@ -8,6 +8,7 @@ import { ProfileProvider } from '../contexts/ProfileProvider'
 import { SocialProvider } from '../contexts/SocialProvider'
 import { GameProvider } from '../contexts/GameProvider'
 import { createGame } from '../game'
+import { createPwaInstallState } from '../pwa'
 import type { AppScreen, CosmeticTheme, CardBorder } from '../types'
 
 function buildShellValue(overrides: Partial<AppShellContextValue> = {}): AppShellContextValue {
@@ -97,6 +98,8 @@ function buildShellValue(overrides: Partial<AppShellContextValue> = {}): AppShel
     startOnboardingTour: noop,
     dismissOnboardingTour: noop,
     installPromptEvent: null,
+    installState: createPwaInstallState({ hasInstallPrompt: false, serviceWorkerStatus: 'ready' }),
+    pwaServiceWorkerStatus: 'ready',
     handleInstallApp: asyncNoop,
     swUpdateAvailable: false,
     handleAcceptUpdate: noop,
@@ -222,7 +225,8 @@ describe('HomeScreen navigation and footer', () => {
     expect(container.textContent).toMatch(/league/i)
     expect(container.textContent).toMatch(/deck/i)
     expect(container.textContent).toMatch(/vault/i)
-    expect(container.querySelectorAll('.scene-status-tile')).toHaveLength(3)
+    expect(container.textContent).toMatch(/quests/i)
+    expect(container.querySelectorAll('.scene-status-tile')).toHaveLength(4)
     expect(container.textContent).not.toMatch(/war table status/i)
   })
 
@@ -232,14 +236,21 @@ describe('HomeScreen navigation and footer', () => {
 
     expect(summary).not.toBeNull()
     expect(summary?.querySelector('button')).toBeNull()
+    expect(summary?.textContent).toMatch(/next:/i)
+    expect(summary?.textContent).toMatch(/silver cache/i)
   })
 
-  it('shows the core home progress tiles in the unified header', () => {
+  it('shows the core home progress details in the unified header', () => {
     const { container, getByText } = renderHomeScreen({ canClaimDailyReward: true, nextRewardLabel: 'Reward Ready' })
 
-    expect(getByText(/league/i)).toBeTruthy()
-    expect(getByText(/deck/i)).toBeTruthy()
-    expect(getByText(/vault/i)).toBeTruthy()
-    expect(container.querySelectorAll('.scene-status-tile')).toHaveLength(3)
+    expect(container.textContent).toMatch(/league/i)
+    expect(container.textContent).toMatch(/deck/i)
+    expect(container.textContent).toMatch(/vault/i)
+    expect(getByText(/season rating/i)).toBeTruthy()
+    expect(getByText(/1210 \/ 1300/i)).toBeTruthy()
+    expect(getByText(/90 rating to next league/i)).toBeTruthy()
+    expect(getByText(/20\/14 cards/i)).toBeTruthy()
+    expect(getByText(/ready to claim/i)).toBeTruthy()
+    expect(container.querySelectorAll('.scene-status-tile')).toHaveLength(4)
   })
 })

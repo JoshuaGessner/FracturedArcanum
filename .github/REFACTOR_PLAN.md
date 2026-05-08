@@ -52,17 +52,19 @@ We should stop patching isolated battle sections and instead refactor the app ar
 - pack-opening recap now uses pack-specific copy and iconography instead of battle-victory framing
 - overlay card-reveal experiences now opt out of scene routing so horizontal reveal browsing stays local to the active flow
 - shop and settings subviews now use mobile-safe containment rules so back controls and primary content remain reachable
-- inspectable card art now suppresses native drag/callout behavior more consistently so iPhone long press stays inside the in-app inspect flow
-- the app now exposes an iPhone-specific Add to Home Screen guidance path instead of treating install as permanently unavailable on Safari
+- inspectable card art now suppresses native drag/callout behavior more consistently; iPhone hardware confirmation is deferred
+- the app now exposes an iPhone-specific Add to Home Screen guidance path instead of treating install as permanently unavailable on Safari; real Web.app confirmation is deferred
 
 ### Current remaining focus
-- continue on-device validation for touch targets, drag reliability, and subview containment on narrow phones
-- verify the iPhone long-press suppression and Add to Home Screen flow on real Safari / Web.app hardware
-- confirm the latest narrow-phone fixes for shop overflow rails and the compact play gate on real hardware
+- continue on-device validation for touch targets, drag reliability, and subview containment on available narrow phones
+- prioritize Android Chrome browser mode, Android installed-PWA behavior, desktop narrow viewport simulation, and repeated battle-loop checks
+- defer real iPhone Safari and Web.app validation until hardware is available
+- confirm the latest narrow-phone fixes for shop overflow rails and the compact play gate on available hardware
 
-### Newly confirmed platform hardening issues
-- some inspectable card surfaces still trigger the iOS Safari image/context callout during long-press instead of staying inside the app’s own inspect flow
-- the current install affordance depends on the `beforeinstallprompt` browser event, which is not supported on iPhone Safari, so the app appears permanently unavailable for installation there even when the manifest and icons exist
+### Deferred platform validation risks
+- iPhone Safari long-press and native image/context-callout behavior still needs real-device confirmation later
+- iPhone Home Screen install and standalone Web.app behavior still needs real-device confirmation later
+- the app already includes iOS manual install guidance and touch-callout suppression, but this pass should not claim those paths fully verified without iPhone hardware
 
 ### Research findings and logged fixes
 
@@ -75,7 +77,8 @@ We should stop patching isolated battle sections and instead refactor the app ar
 - extend touch-callout suppression to every inspectable card surface and nested card image
 - ensure card art used in hand, board, collection, inspect, and reward views is `draggable={false}`
 - keep `onContextMenu={preventDefault}` at the interaction root and verify the press path does not escape through nested art elements
-- run device checks specifically on iPhone Safari for hand cards, battlefield units, collection cards, and pack reveals
+- run available-device checks now for hand cards, battlefield units, collection cards, and pack reveals
+- run iPhone Safari checks later when hardware is available
 
 #### iPhone PWA issue
 **Observed behavior:** the app can appear installable elsewhere but effectively never offers a working install flow on iPhone.
@@ -86,7 +89,7 @@ We should stop patching isolated battle sections and instead refactor the app ar
 - add iPhone/iPad detection plus a standalone-mode check so the app can show the right install state on Apple devices
 - replace the current `Unavailable` dead end with explicit in-app Add to Home Screen instructions for iOS
 - keep the existing manifest, icons, and service worker registration, but verify them through an iPhone-specific install checklist over HTTPS
-- confirm post-install standalone launch behavior, icon quality, safe-area handling, and service-worker update flow on real Safari/Web.app
+- defer post-install standalone launch behavior, icon quality, safe-area handling, and service-worker update flow confirmation until real Safari/Web.app hardware is available
 
 ---
 
@@ -365,6 +368,10 @@ Rules:
 - treat iPhone Safari and Web.app as a first-class platform with explicit checks
 - if a native browser affordance breaks immersion during long press, the app must suppress it at the surface level rather than hoping the wrapper handler is enough
 
+Current pass note:
+- implementation work stays in place, but real iPhone Safari and Web.app validation is deferred until hardware is available
+- available-device QA should still confirm the shared long-press, image drag suppression, and install affordance code paths do not regress elsewhere
+
 ---
 
 ## Phase C — Battle Scene Rebuild
@@ -495,15 +502,22 @@ We should only expand motion after the scene shell is stable and battle is relia
 
 ## Phase G — Device Validation and Final Edge Polish
 
-**Status:** [ ] Not started  [x] In progress
+**Status:** [ ] Not started  [x] In progress  [x] iPhone validation deferred
 
 **Goal:** confirm the scene-first shell behaves correctly on real phones, installed PWAs, and narrow viewport edge cases.
 
+### Current pass scope
+- validate Android Chrome browser mode and Android installed-PWA behavior first
+- validate narrow viewport behavior through desktop simulation at 375px, 390px, 430px, and short-height phone sizes
+- validate repeated battle loops on available devices and browsers
+- keep iPhone Safari and iPhone Home Screen Web.app checks as a deferred release-risk item until hardware is available
+
 ### Validation checklist
-- [ ] verify iPhone Safari browser mode for long-press inspect, swipe isolation, and install guidance
-- [ ] verify iPhone Home Screen launch for safe-area spacing, top chrome, bottom nav reachability, and update prompts
+- [ ] deferred: verify iPhone Safari browser mode for long-press inspect, swipe isolation, and install guidance when hardware is available
+- [ ] deferred: verify iPhone Home Screen launch for safe-area spacing, top chrome, bottom nav reachability, and update prompts when hardware is available
 - [ ] verify Android Chrome browser mode for install prompt flow, queue overlays, and battle drag reliability
 - [ ] verify Android installed PWA for splash-to-app launch, reward cinema containment, and service worker update handling
+- [ ] verify desktop narrow viewport simulation at 375px, 390px, 430px, and short-height phone sizes
 - [x] implement fit-safe mobile layouts so shop subviews no longer run off the right edge and the play gate keeps all battle types visible without needing scroll
 - [x] confirm no horizontal spill or clipped back actions at 375px width in shop, settings, and social subviews — trade-picker-row collapse fix at 640px, inline width removed
 - [x] defeat/draw SummaryPopup now waits for enemyTurnActive to clear before appearing
@@ -527,7 +541,7 @@ We should only expand motion after the scene shell is stable and battle is relia
 | Battle arena rebuild | Complete | Hero anchors, centered arena stage, tactile card-press, slam ring FX, attack arrow glow, and reduced-motion support |
 | Unified chrome cleanup | Complete | One-owner chrome rule enforced, dead frame-within-frame CSS removed, summary popup extended with reward tone |
 | App-wide scene migration | Complete | Core scene migration established across every primary screen |
-| Device validation & edge polish | Active | Edge-case hardening pass complete (state reset, sound guards, reduced-motion, particle safety, burst reliability). Real-phone QA remains. |
+| Device validation & edge polish | Active | Edge-case hardening pass complete (state reset, sound guards, reduced-motion, particle safety, burst reliability). Current pass should cover Android, available phones, desktop narrow simulation, and repeated battle loops; iPhone Safari/Web.app validation is deferred. |
 | PixiJS rendering spike | Complete | pixi.js v8 + @pixi/react v8, lazy-loaded BattleFxCanvas with ambient + victory + play + sweep particles, dual-color palette |
 | Motion and ambient polish | Complete | Scene FX, transitions, battle feedback, reward/pack presentation, turn/death/draw sounds |
 
@@ -598,7 +612,9 @@ This direction is only complete when all of the following are true:
 
 **Next implementation target:**
 
-1. run the real iPhone Safari and Web.app validation pass against the Phase G checklist above
-2. confirm Android browser and installed-PWA behavior for battle, rewards, and queue flows
-3. fix any remaining safe-area, overflow, or gesture edge cases discovered during device QA
-4. confirm battle drag, attack targeting, inspect, and result-summary flows across repeated matches on real devices
+1. run Android Chrome browser validation for install prompt flow, queue overlays, battle drag, attack targeting, inspect, rewards, and result-summary flows
+2. run Android installed-PWA validation for splash-to-app launch, service-worker update handling, reward cinema containment, pack reveal containment, and safe navigation chrome
+3. run desktop narrow viewport simulation at 375px, 390px, 430px, and short-height phone sizes for all primary screens and overlays
+4. confirm battle drag, attack targeting, inspect, Play Again, Leave to Lobby, and repeated-match state resets across several matches on available devices and browsers
+5. fix any remaining safe-area, overflow, gesture, or containment edge cases discovered during this available-device QA pass
+6. keep iPhone Safari and iPhone Home Screen Web.app validation open as deferred release-risk checks until hardware is available

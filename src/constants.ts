@@ -196,6 +196,7 @@ export const STORAGE_KEYS = {
   lastDailyClaim: 'fractured-arcanum.last-daily-claim',
   authToken: 'fractured-arcanum.auth-token',
   firstLaunch: 'fractured-arcanum.first-launch',
+  pwaInstalled: 'fractured-arcanum.pwa-installed',
 }
 
 export const DECK_MAX_TOTAL_DISPLAY = 16

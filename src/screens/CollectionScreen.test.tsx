@@ -8,6 +8,7 @@ import { ProfileProvider } from '../contexts/ProfileProvider'
 import { SocialProvider } from '../contexts/SocialProvider'
 import { GameProvider } from '../contexts/GameProvider'
 import { createGame } from '../game'
+import { createPwaInstallState } from '../pwa'
 import type { AppScreen, CardBorder, CosmeticTheme } from '../types'
 
 function buildShellValue(overrides: Partial<AppShellContextValue> = {}): AppShellContextValue {
@@ -100,6 +101,8 @@ function buildShellValue(overrides: Partial<AppShellContextValue> = {}): AppShel
     startOnboardingTour: noop,
     dismissOnboardingTour: noop,
     installPromptEvent: null,
+    installState: createPwaInstallState({ hasInstallPrompt: false, serviceWorkerStatus: 'ready' }),
+    pwaServiceWorkerStatus: 'ready',
     handleInstallApp: asyncNoop,
     swUpdateAvailable: false,
     handleAcceptUpdate: noop,

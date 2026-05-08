@@ -37,7 +37,6 @@ import {
   createAnonymousId,
   getDeviceFingerprint,
   getRankLabel,
-  getInstallAvailability,
   getScreenBucket,
   getScreenTransitionClass,
   getScreenTransitionSound,
@@ -46,6 +45,7 @@ import {
   shouldPresentScopedReward,
   type RewardScope,
 } from './utils'
+import { createPwaInstallState, getInitialServiceWorkerStatus, isPwaStandaloneMode, type PwaServiceWorkerStatus } from './pwa'
 import { ToastStack } from './components/ToastStack'
 import { ConfirmModal } from './components/ConfirmModal'
 import { TextPromptModal } from './components/TextPromptModal'
@@ -55,6 +55,7 @@ import { TopBar } from './components/TopBar'
 import { BattleIntroOverlay } from './components/BattleIntroOverlay'
 import { RewardCinemaOverlay } from './components/RewardCinemaOverlay'
 import { OnboardingTour } from './components/OnboardingTour'
+import { PwaInstallPanel } from './components/PwaInstallPanel'
 import { useSceneSwipe } from './hooks/useSceneSwipe'
 import { getNeighborScreen, NAV_ORDER } from './utils/sceneSwipe'
 import {
@@ -63,7 +64,6 @@ import {
   buildRankUpSequence,
   type RewardBeat,
 } from './components/RewardCinemaSequence'
-import { RankBadge } from './components/AssetBadge'
 import { SettingsScreen } from './screens/SettingsScreen'
 import { ShopScreen } from './screens/ShopScreen'
 import { CollectionScreen } from './screens/CollectionScreen'
@@ -285,6 +285,8 @@ function AppShell() {
   const [visitorId] = useState(() => readStoredValue(STORAGE_KEYS.visitor, createAnonymousId()))
   const [sessionId] = useState(() => `session-${Math.random().toString(36).slice(2, 10)}`)
   const [installPromptEvent, setInstallPromptEvent] = useState<InstallPromptEvent | null>(null)
+  const [pwaInstalledHint, setPwaInstalledHint] = useState(() => readStoredValue(STORAGE_KEYS.pwaInstalled, false) || isPwaStandaloneMode())
+  const [pwaServiceWorkerStatus, setPwaServiceWorkerStatus] = useState<PwaServiceWorkerStatus>(() => getInitialServiceWorkerStatus())
   const [toastMessage, setToastMessageRaw] = useState('Ready your deck and enter the arena.')
   const [toastSeverity, setToastSeverity] = useState<'info' | 'success' | 'warning' | 'error'>('info')
   type ToastEntry = { id: string; message: string; severity: 'info' | 'success' | 'warning' | 'error' }
@@ -1383,6 +1385,37 @@ function AppShell() {
   }
 
   useEffect(() => {
+    if (pwaInstalledHint) {
+      window.localStorage.setItem(STORAGE_KEYS.pwaInstalled, JSON.stringify(true))
+    }
+  }, [pwaInstalledHint])
+
+  useEffect(() => {
+    if (!('serviceWorker' in navigator)) {
+      return
+    }
+
+    const markRegistered = () => setPwaServiceWorkerStatus((current) => current === 'controlling' ? current : 'ready')
+    const markReady = () => setPwaServiceWorkerStatus(navigator.serviceWorker.controller ? 'controlling' : 'ready')
+    const markController = () => setPwaServiceWorkerStatus('controlling')
+    const markError = () => setPwaServiceWorkerStatus('error')
+
+    window.addEventListener('sw-registration-success', markRegistered)
+    window.addEventListener('sw-registration-error', markError)
+    window.addEventListener('sw-ready', markReady)
+    window.addEventListener('sw-controller-change', markController)
+
+    void navigator.serviceWorker.ready.then(markReady).catch(markError)
+
+    return () => {
+      window.removeEventListener('sw-registration-success', markRegistered)
+      window.removeEventListener('sw-registration-error', markError)
+      window.removeEventListener('sw-ready', markReady)
+      window.removeEventListener('sw-controller-change', markController)
+    }
+  }, [])
+
+  useEffect(() => {
     const handleBeforeInstall = (event: Event) => {
       event.preventDefault()
       setInstallPromptEvent(event as InstallPromptEvent)
@@ -1391,6 +1424,8 @@ function AppShell() {
 
     const handleInstalled = () => {
       setInstallPromptEvent(null)
+      setPwaInstalledHint(true)
+      window.localStorage.setItem(STORAGE_KEYS.pwaInstalled, JSON.stringify(true))
       setToastMessage('Fractured Arcanum is installed and ready to play.')
     }
 
@@ -1662,8 +1697,6 @@ function AppShell() {
     100,
     Math.round(((seasonRating - previousRankTarget) / (nextRankTarget - previousRankTarget)) * 100),
   )
-  const seasonProgressCircumference = 2 * Math.PI * 36
-  const seasonProgressOffset = seasonProgressCircumference * (1 - rankProgress / 100)
   const nextRewardLabel =
     seasonRating >= 1500 ? 'Champion Vault' : seasonRating >= 1300 ? 'Gold Chest' : seasonRating >= 1150 ? 'Silver Cache' : 'Bronze Bundle'
   const todayKey = new Date().toISOString().slice(0, 10)
@@ -1684,7 +1717,11 @@ function AppShell() {
                 ? 'Shop'
                 : 'Settings'
   const isBattleScreen = activeScreen === 'battle'
-  const installAvailability = getInstallAvailability(Boolean(installPromptEvent))
+  const installState = createPwaInstallState({
+    hasInstallPrompt: Boolean(installPromptEvent),
+    serviceWorkerStatus: pwaServiceWorkerStatus,
+    installedHint: pwaInstalledHint,
+  })
 
   function transitionToScreen(screen: AppScreen, withSound = false) {
     setScreenTransitionClass(getScreenTransitionClass(activeScreen, screen))
@@ -2669,6 +2706,7 @@ function AppShell() {
 
   async function handleInstallApp() {
     if (!installPromptEvent) {
+      setToastMessage(installState.note)
       return
     }
 
@@ -2681,6 +2719,8 @@ function AppShell() {
     )
 
     if (result.outcome === 'accepted') {
+      setPwaInstalledHint(true)
+      window.localStorage.setItem(STORAGE_KEYS.pwaInstalled, JSON.stringify(true))
       void sendAnalytics('install', { screen: activeScreen, viewport: getScreenBucket() }, 'install')
     }
 
@@ -2971,7 +3011,7 @@ function AppShell() {
     battleSummaryVisible, dismissBattleSummary,
     lastPackRefund, setLastPackRefund,
     tourVisible, startOnboardingTour, dismissOnboardingTour,
-    installPromptEvent, handleInstallApp,
+    installPromptEvent, installState, pwaServiceWorkerStatus, handleInstallApp,
     swUpdateAvailable, handleAcceptUpdate, handleDismissUpdate,
     soundEnabled, setSoundEnabled, ambientEnabled, setAmbientEnabled, analyticsConsent, setAnalyticsConsent, visitorId,
     gesturesEnabled, setGesturesEnabled,
@@ -3146,14 +3186,7 @@ function AppShell() {
                 </>
               )}
             </p>
-            {installAvailability === 'prompt' && (
-              <button className="pwa-install-btn" onClick={handleInstallApp}>
-                Install App
-              </button>
-            )}
-            {installAvailability === 'ios-manual' && (
-              <p className="note auth-install-hint">On iPhone, open this in Safari and use Share → Add to Home Screen.</p>
-            )}
+            <PwaInstallPanel installState={installState} onInstall={handleInstallApp} />
           </div>
         </div>
       )}
@@ -3165,40 +3198,8 @@ function AppShell() {
         />
       )}
 
-      {activeScreen === 'home' && loggedIn && (
-        <section className="nav-strip section-card">
-          <div className="season-progress-block">
-            <div>
-              <p className="eyebrow">{seasonName}</p>
-              <h2>{rankLabel} League</h2>
-              <p className="note">Climb the live ladder to reach the next vault reward.</p>
-            </div>
-            <div className="season-progress-visual">
-              <div className="season-progress-ring" aria-label={`Season progress ${rankProgress}%`}>
-                <svg className="season-progress-svg" viewBox="0 0 100 100" role="presentation" aria-hidden="true">
-                  <circle className="season-progress-track" cx="50" cy="50" r="36" />
-                  <circle
-                    className="season-progress-value"
-                    cx="50"
-                    cy="50"
-                    r="36"
-                    style={{ strokeDasharray: seasonProgressCircumference, strokeDashoffset: seasonProgressOffset }}
-                  />
-                </svg>
-                <div className="season-progress-core">
-                  <RankBadge rank={rankLabel} />
-                  <strong>{rankProgress}%</strong>
-                </div>
-              </div>
-              <div className="progress-column">
-                <div className="progress-shell">
-                  <div className="progress-fill" style={{ width: `${rankProgress}%` }}></div>
-                </div>
-                <p className="note">{seasonRating} / {nextRankTarget} rating</p>
-              </div>
-            </div>
-          </div>
-        </section>
+      {loggedIn && activeScreen !== 'battle' && activeScreen !== 'home' && !setupRequired && (
+        <PwaInstallPanel installState={installState} onInstall={handleInstallApp} compact />
       )}
 
       <BattleIntroOverlay visible={battleIntroVisible} game={game} playerRank={rankLabel} />
