@@ -440,15 +440,17 @@ export function BattleScreen() {
 
       <section className={`battlefield screen-panel ${isBattle ? 'active' : 'hidden'} ${game.winner ? 'has-winner' : ''}`}>
         <article className={`section-card battlefield-stage battle-arena-frame ${turnPulse ? `turn-pulse-${turnPulse}` : ''}`} ref={battlefieldRef}>
-          <Suspense fallback={null}>
-            <BattleFxCanvas
-              turn={game.turn}
-              damagedSlots={damagedSlots}
-              hasWinner={Boolean(game.winner)}
-              playCount={fxPlayCount}
-              containerRef={battlefieldRef}
-            />
-          </Suspense>
+          {isBattle && (
+            <Suspense fallback={null}>
+              <BattleFxCanvas
+                turn={game.turn}
+                damagedSlots={damagedSlots}
+                hasWinner={Boolean(game.winner)}
+                playCount={fxPlayCount}
+                containerRef={battlefieldRef}
+              />
+            </Suspense>
+          )}
           {enemyTurnActive && (
             <div className="battle-overlay-stack">
               <div className="enemy-turn-banner enemy-turn-banner-floating" role="status" aria-live="polite" aria-atomic="true">

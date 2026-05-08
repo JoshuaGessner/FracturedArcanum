@@ -262,6 +262,13 @@ describe('BattleScreen mobile layout', () => {
     expect(document.querySelectorAll('.battlefield.active, .hand-section.active')).toHaveLength(1)
   })
 
+  it('does not mount the Pixi FX layer while the battle screen is hidden', () => {
+    renderBattleScreen({ activeScreen: 'home' })
+
+    expect(document.querySelector('.battlefield.hidden')).toBeTruthy()
+    expect(document.querySelector('.battlefield.hidden .battle-fx-canvas')).toBeNull()
+  })
+
   it('shows visible effect markers in the live battle hand', () => {
     renderBattleScreen()
 

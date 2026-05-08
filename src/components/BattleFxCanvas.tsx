@@ -11,7 +11,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Application, extend, useApplication, useTick } from '@pixi/react'
-import { Container, Graphics } from 'pixi.js'
+import { Container, Graphics, type Application as PixiApplication } from 'pixi.js'
 
 extend({ Container, Graphics })
 
@@ -41,6 +41,11 @@ type Particle = {
   maxLife: number
 }
 
+type FxSize = {
+  width: number
+  height: number
+}
+
 // ── Constants ─────────────────────────────────────────────────────
 
 const AMBIENT_COUNT = 40
@@ -55,12 +60,28 @@ const WINNER_COLOR = 0xfbbf24  // amber-400
 const SWEEP_PLAYER_COLOR = 0x60a5fa // blue-400
 const SWEEP_ENEMY_COLOR = 0xf87171  // red-400
 const MAX_PARTICLES = 200
+const FALLBACK_FX_SIZE: FxSize = { width: 400, height: 600 }
 
 // ── Helpers ───────────────────────────────────────────────────────
 
 function detectReducedMotion(): boolean {
   if (typeof window === 'undefined' || !window.matchMedia) return false
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches
+}
+
+function readContainerSize(containerRef: React.RefObject<HTMLElement | null>): FxSize | null {
+  const rect = containerRef.current?.getBoundingClientRect()
+  if (!rect || rect.width <= 0 || rect.height <= 0) return null
+  return { width: rect.width, height: rect.height }
+}
+
+function readFxSize(app: PixiApplication, containerRef: React.RefObject<HTMLElement | null>): FxSize {
+  const rendererScreen = app.renderer?.screen
+  if (rendererScreen?.width > 0 && rendererScreen.height > 0) {
+    return { width: rendererScreen.width, height: rendererScreen.height }
+  }
+
+  return readContainerSize(containerRef) ?? FALLBACK_FX_SIZE
 }
 
 function createParticle(w: number, h: number, kind: 'ambient' | 'burst' | 'play' | 'victory' | 'sweep' = 'ambient'): Particle {
@@ -186,73 +207,70 @@ function tickParticles(
 
 // ── Inner scene rendered inside the PixiJS Application ────────────
 
-function BattleFxScene({ turn, damagedSlots, hasWinner, playCount }: Omit<BattleFxProps, 'containerRef'>) {
-  const app = useApplication()
+function BattleFxScene({ turn, damagedSlots, hasWinner, playCount, containerRef }: BattleFxProps) {
+  const { app, isInitialised } = useApplication()
   const particlesRef = useRef<Particle[]>([])
   const graphicsRef = useRef<Graphics | null>(null)
   const prevPlayCountRef = useRef<number>(playCount)
   const prevTurnRef = useRef(turn)
   const victoryBurstFiredRef = useRef(false)
+  const getFxSize = useCallback(() => readFxSize(app, containerRef), [app, containerRef])
 
   // Seed ambient particles on mount
   useEffect(() => {
-    const w = app.app.screen.width || 400
-    const h = app.app.screen.height || 600
+    if (!isInitialised) return
+    const { width: w, height: h } = getFxSize()
     particlesRef.current = Array.from({ length: AMBIENT_COUNT }, () => {
       const p = createParticle(w, h)
       p.y = Math.random() * h  // scatter across full height initially
       p.life = Math.random() * p.maxLife
       return p
     })
-  }, [app.app.screen.width, app.app.screen.height])
+  }, [getFxSize, isInitialised])
 
   // Burst on new damage events — triggers when damagedSlots ref changes with size > 0
   useEffect(() => {
-    if (damagedSlots.size > 0) {
-      const w = app.app.screen.width || 400
-      const h = app.app.screen.height || 600
+    if (isInitialised && damagedSlots.size > 0) {
+      const { width: w, height: h } = getFxSize()
       for (let i = 0; i < BURST_COUNT; i++) {
         particlesRef.current.push(createParticle(w, h, 'burst'))
       }
     }
-  }, [damagedSlots, app.app.screen.width, app.app.screen.height])
+  }, [damagedSlots, getFxSize, isInitialised])
 
   // Card-play burst — erupts upward from hand region
   useEffect(() => {
-    if (playCount > prevPlayCountRef.current) {
-      const w = app.app.screen.width || 400
-      const h = app.app.screen.height || 600
+    if (isInitialised && playCount > prevPlayCountRef.current) {
+      const { width: w, height: h } = getFxSize()
       for (let i = 0; i < PLAY_BURST_COUNT; i++) {
         particlesRef.current.push(createParticle(w, h, 'play'))
       }
     }
     prevPlayCountRef.current = playCount
-  }, [playCount, app.app.screen.width, app.app.screen.height])
+  }, [getFxSize, isInitialised, playCount])
 
   // Turn-change sweep — horizontal particle wave
   useEffect(() => {
-    if (turn !== prevTurnRef.current) {
-      const w = app.app.screen.width || 400
-      const h = app.app.screen.height || 600
+    if (isInitialised && turn !== prevTurnRef.current) {
+      const { width: w, height: h } = getFxSize()
       for (let i = 0; i < SWEEP_COUNT; i++) {
         particlesRef.current.push(createParticle(w, h, 'sweep'))
       }
     }
     prevTurnRef.current = turn
-  }, [turn, app.app.screen.width, app.app.screen.height])
+  }, [getFxSize, isInitialised, turn])
 
   // Victory celebration — one-shot particle shower
   useEffect(() => {
-    if (hasWinner && !victoryBurstFiredRef.current) {
+    if (isInitialised && hasWinner && !victoryBurstFiredRef.current) {
       victoryBurstFiredRef.current = true
-      const w = app.app.screen.width || 400
-      const h = app.app.screen.height || 600
+      const { width: w, height: h } = getFxSize()
       for (let i = 0; i < VICTORY_BURST_COUNT; i++) {
         particlesRef.current.push(createParticle(w, h, 'victory'))
       }
     }
     if (!hasWinner) victoryBurstFiredRef.current = false
-  }, [hasWinner, app.app.screen.width, app.app.screen.height])
+  }, [getFxSize, hasWinner, isInitialised])
 
   const mainColor = hasWinner ? WINNER_COLOR : turn === 'player' ? PLAYER_COLOR : ENEMY_COLOR
   const sweepColor = turn === 'player' ? SWEEP_PLAYER_COLOR : SWEEP_ENEMY_COLOR
@@ -263,9 +281,8 @@ function BattleFxScene({ turn, damagedSlots, hasWinner, playCount }: Omit<Battle
 
   useTick(() => {
     const g = graphicsRef.current
-    if (!g) return
-    const w = app.app.screen.width || 400
-    const h = app.app.screen.height || 600
+    if (!isInitialised || !g) return
+    const { width: w, height: h } = getFxSize()
 
     particlesRef.current = tickParticles(particlesRef.current, w, h, mainColor, sweepColor, g)
   })
@@ -304,7 +321,7 @@ export function BattleFxCanvas(props: BattleFxProps) {
         preference="webgpu"
         autoStart
       >
-        <BattleFxScene turn={props.turn} damagedSlots={props.damagedSlots} hasWinner={props.hasWinner} playCount={props.playCount} />
+        <BattleFxScene {...props} />
       </Application>
     </div>
   )
