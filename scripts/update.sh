@@ -13,6 +13,7 @@ FORCE=0
 DRY_RUN=0
 DID_RESTART=0
 NO_CACHE=1
+SYSTEMD_DOCKER=0
 COMPOSE_SERVICE="${COMPOSE_SERVICE:-fractured-arcanum}"
 SYSTEM_SERVICE_NAME="${SYSTEM_SERVICE_NAME:-fractured-arcanum}"
 DOCKER_VOLUME_NAME="${DOCKER_VOLUME_NAME:-fractured-arcanum-data}"
@@ -47,6 +48,12 @@ Environment overrides:
   UPDATE_MODE, UPDATE_BRANCH, COMPOSE_SERVICE, DOCKER_VOLUME_NAME,
   SYSTEM_SERVICE_NAME, BACKUP_ROOT, PORT, HEALTH_URL,
   HEALTH_WAIT_SECONDS, HEALTH_POLL_INTERVAL
+
+Docker + systemd:
+  When SYSTEM_SERVICE_NAME matches an active systemd unit the script will
+  rebuild the image via Docker Compose then restart the stack through
+  systemctl, preserving the systemd service lifecycle.
+  Auto-detected; override with SYSTEM_SERVICE_NAME=<unit> as needed.
 EOF
 }
 
@@ -157,14 +164,35 @@ detect_compose() {
   return 1
 }
 
+detect_docker_manager() {
+  # Auto-detect whether the Docker stack is managed by a systemd unit.
+  # Silently skips on systems without systemctl (macOS, containers, etc.).
+  if ! command_exists systemctl; then
+    return 0
+  fi
+
+  if systemctl list-unit-files --type=service 2>/dev/null \
+      | grep -q "^${SYSTEM_SERVICE_NAME}\.service"; then
+    SYSTEMD_DOCKER=1
+    log "Detected systemd service '${SYSTEM_SERVICE_NAME}' — will restart via systemctl."
+    return 0
+  fi
+
+  log "No systemd service '${SYSTEM_SERVICE_NAME}' found — will restart via Docker Compose directly."
+}
+
 detect_mode() {
   case "$MODE" in
     docker|node)
+      if [[ "$MODE" == "docker" ]]; then
+        detect_docker_manager
+      fi
       return 0
       ;;
     auto)
       if [[ -f "$REPO_ROOT/docker-compose.yml" ]] && detect_compose && docker info >/dev/null 2>&1; then
         MODE="docker"
+        detect_docker_manager
       else
         MODE="node"
       fi
@@ -359,12 +387,22 @@ run_docker_update() {
   cd "$REPO_ROOT"
 
   run "${COMPOSE_CMD[@]}" config -q
+
+  # Build phase — always via Docker Compose regardless of restart manager.
   if [[ "$NO_CACHE" -eq 1 ]]; then
     run "${COMPOSE_CMD[@]}" build --no-cache
-    run "${COMPOSE_CMD[@]}" up -d --remove-orphans
   else
-    run "${COMPOSE_CMD[@]}" up -d --build --remove-orphans
+    run "${COMPOSE_CMD[@]}" build
   fi
+
+  # Restart phase — honour systemd lifecycle when the unit is registered,
+  # otherwise bring the stack up directly through Compose.
+  if [[ "$SYSTEMD_DOCKER" -eq 1 ]]; then
+    run systemctl restart "$SYSTEM_SERVICE_NAME"
+  else
+    run "${COMPOSE_CMD[@]}" up -d --remove-orphans
+  fi
+
   DID_RESTART=1
 }
 
@@ -383,11 +421,18 @@ probe_health_once() {
 }
 
 dump_runtime_diagnostics() {
-  if [[ "$MODE" == "docker" ]] && detect_compose; then
-    warn "Docker service status:"
-    "${COMPOSE_CMD[@]}" ps || true
-    warn "Recent Docker logs (last 80 lines):"
-    "${COMPOSE_CMD[@]}" logs --tail=80 || true
+  if [[ "$MODE" == "docker" ]]; then
+    if [[ "$SYSTEMD_DOCKER" -eq 1 ]] && command_exists systemctl; then
+      warn "systemd service status:"
+      systemctl status "$SYSTEM_SERVICE_NAME" --no-pager --lines=40 || true
+    fi
+
+    if detect_compose 2>/dev/null; then
+      warn "Docker Compose service status:"
+      "${COMPOSE_CMD[@]}" ps || true
+      warn "Recent Docker logs (last 80 lines):"
+      "${COMPOSE_CMD[@]}" logs --tail=80 || true
+    fi
     return 0
   fi
 
