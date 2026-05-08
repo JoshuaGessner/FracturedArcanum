@@ -2891,10 +2891,12 @@ button:disabled {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 10px;
+  min-width: 0;
 }
 
 .builder-card {
   position: relative;
+  min-width: 0;
   min-height: 200px;
   padding: 8px;
   display: grid;
@@ -2910,15 +2912,24 @@ button:disabled {
 
 .builder-card-preview {
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
   padding: 0;
   display: grid;
   gap: 4px;
+  border: 0;
+  box-sizing: border-box;
   background: transparent;
   color: inherit;
   text-align: left;
+  overflow: hidden;
   -webkit-touch-callout: none;
   -webkit-user-select: none;
   user-select: none;
+}
+
+.builder-card-meta-compact {
+  display: none;
 }
 
 .builder-card-preview:focus-visible {
@@ -2958,6 +2969,9 @@ button:disabled {
   justify-content: center;
   flex-wrap: nowrap;
   gap: 4px;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .count-chip {
@@ -4473,7 +4487,109 @@ button.danger:hover { filter: brightness(1.08); }
   }
 
   .builder-grid {
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .collection-screen .builder-card {
+    min-height: 184px;
+    padding: 6px;
+    border-radius: 14px;
+  }
+
+  .collection-screen .builder-card-preview,
+  .collection-screen .builder-card-preview > *,
+  .collection-screen .builder-card .slot-head,
+  .collection-screen .builder-card .card-meta-row,
+  .collection-screen .builder-card .card-stats,
+  .collection-screen .builder-card .builder-card-footnote,
+  .collection-screen .builder-card .stepper {
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
+  }
+
+  .collection-screen .builder-card .card-art-shell {
+    height: 78px;
+    border-radius: 12px;
+  }
+
+  .collection-screen .builder-card .slot-head,
+  .collection-screen .builder-card .card-meta-row,
+  .collection-screen .builder-card .card-stats {
+    gap: 4px;
+  }
+
+  .collection-screen .builder-card .slot-head strong {
+    font-size: 0.78rem;
+    line-height: 1.15;
+  }
+
+  .collection-screen .builder-card .stats,
+  .collection-screen .builder-card .card-stats {
+    font-size: 0.8rem;
+  }
+
+  .collection-screen .builder-card .rarity-gem {
+    gap: 3px;
+    margin-bottom: 0;
+    flex: 0 1 auto;
+    min-width: 0;
+  }
+
+  .collection-screen .builder-card .rarity-gem span {
+    display: none;
+  }
+
+  .collection-screen .builder-card .rarity-gem-icon,
+  .collection-screen .builder-card .stat-icon,
+  .collection-screen .builder-card .effect-icon {
+    width: 12px;
+    height: 12px;
+  }
+
+  .collection-screen .builder-card-meta-full {
+    display: none;
+  }
+
+  .collection-screen .builder-card-meta-compact {
+    display: inline-block;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.72rem;
+  }
+
+  .collection-screen .builder-card .effect-badge {
+    display: inline-grid;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    border-radius: 999px;
+  }
+
+  .collection-screen .builder-card .effect-badge span {
+    display: none;
+  }
+
+  .collection-screen .builder-card .stepper {
+    justify-content: space-between;
+    gap: 3px;
+  }
+
+  .collection-screen .builder-card .stepper .ghost.mini {
+    width: 34px;
+    min-width: 34px;
+    height: 34px;
+    padding: 0;
+    border-radius: 10px;
+  }
+
+  .collection-screen .builder-card .count-chip {
+    min-width: 24px;
+    font-size: 0.86rem;
   }
 
   /* Collection density — compact roster, tighter hero */

@@ -55,7 +55,6 @@ import { TopBar } from './components/TopBar'
 import { BattleIntroOverlay } from './components/BattleIntroOverlay'
 import { RewardCinemaOverlay } from './components/RewardCinemaOverlay'
 import { OnboardingTour } from './components/OnboardingTour'
-import { PwaInstallPanel } from './components/PwaInstallPanel'
 import { useSceneSwipe } from './hooks/useSceneSwipe'
 import { getNeighborScreen, NAV_ORDER } from './utils/sceneSwipe'
 import {
@@ -3186,7 +3185,6 @@ function AppShell() {
                 </>
               )}
             </p>
-            <PwaInstallPanel installState={installState} onInstall={handleInstallApp} />
           </div>
         </div>
       )}
@@ -3196,10 +3194,6 @@ function AppShell() {
           screenTitle={screenTitle}
           serverProfile={serverProfile}
         />
-      )}
-
-      {loggedIn && activeScreen !== 'battle' && activeScreen !== 'home' && !setupRequired && (
-        <PwaInstallPanel installState={installState} onInstall={handleInstallApp} compact />
       )}
 
       <BattleIntroOverlay visible={battleIntroVisible} game={game} playerRank={rankLabel} />

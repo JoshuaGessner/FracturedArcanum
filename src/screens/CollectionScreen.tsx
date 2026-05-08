@@ -259,6 +259,7 @@ export function CollectionScreen() {
             const ownedCount = loggedIn ? (collection[card.id] ?? 0) : maxCopies
             const count = deckConfig[card.id] ?? 0
             const addDisabled = count >= Math.min(maxCopies, ownedCount)
+            const tribeShortLabel = card.tribe.slice(0, 3)
             const inspectCard = { name: card.name, icon: card.icon, id: card.id, cost: card.cost, attack: card.attack, health: card.health, rarity: card.rarity, tribe: card.tribe, text: card.text, effect: card.effect ?? null }
             return (
             <div
@@ -291,7 +292,10 @@ export function CollectionScreen() {
                 </div>
                 <div className="card-meta-row">
                   <RarityBadge rarity={card.rarity} />
-                  <span className="mini-text">{card.tribe} · Owned {ownedCount}</span>
+                  <span className="mini-text builder-card-meta-full">{card.tribe} · Owned {ownedCount}</span>
+                  <span className="mini-text builder-card-meta-compact" aria-label={`${card.tribe} owned ${ownedCount}`}>
+                    {tribeShortLabel} · x{ownedCount}
+                  </span>
                 </div>
                 <div className="card-stats">
                   <span><StatIcon kind="attack" /> {card.attack}</span>
