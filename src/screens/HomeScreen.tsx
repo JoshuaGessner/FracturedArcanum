@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import { RankBadge } from '../components/AssetBadge'
-import { SceneHeaderPanel, type SceneHeaderTile } from '../components/SceneHeaderPanel'
 import { useAppShell, useGame, useProfile } from '../contexts'
 import { getStreakTier } from '../utils'
 
@@ -58,7 +57,6 @@ export function HomeScreen() {
   const nextQuestLabel = questItems.find(item => !item.complete)?.label ?? 'All quests complete'
   const deckCardsNeeded = Math.max(0, HOME_DECK_GOAL - selectedDeckSize)
   const deckSurplus = Math.max(0, selectedDeckSize - HOME_DECK_GOAL)
-  const deckReadyLabel = selectedDeckSize >= HOME_DECK_GOAL ? 'Ready' : 'Needs Cards'
   const deckDetailLabel = selectedDeckSize >= HOME_DECK_GOAL
     ? deckSurplus > 0 ? `${deckSurplus} over minimum` : 'Minimum met'
     : `${deckCardsNeeded} ${deckCardsNeeded === 1 ? 'card' : 'cards'} needed`
@@ -68,57 +66,59 @@ export function HomeScreen() {
   const ratingProgressLabel = ratingToNext > 0 ? `${ratingToNext} rating to next league` : `${rankLabel} tier secured`
   const questRewardLabel = canClaimDailyReward ? 'Reward Ready' : nextRewardLabel
   const profileName = serverProfile?.displayName ?? serverProfile?.username ?? 'Champion'
-  const homeTiles: SceneHeaderTile[] = [
+  const homeStatusCards = [
     {
       kicker: 'League',
-      value: `${rankLabel} League`,
-      note: `${record.wins}W ${record.losses}L · ${winRate}% wins`,
+      value: rankLabel,
+      note: `${record.wins}W ${record.losses}L · ${winRate}%`,
     },
     {
       kicker: 'Deck',
-      value: deckReadyLabel,
-      note: `${selectedDeckSize}/${HOME_DECK_GOAL} cards · ${deckDetailLabel}`,
+      value: `${selectedDeckSize}/${HOME_DECK_GOAL}`,
+      note: selectedDeckSize >= HOME_DECK_GOAL ? 'Forge stocked' : deckDetailLabel,
     },
     {
       kicker: 'Vault',
       value: rewardVaultLabel,
-      note: canClaimDailyReward ? 'Daily reward available' : `Next: ${dailyQuest}`,
+      note: canClaimDailyReward ? 'Daily reward available' : dailyQuest,
       accent: canClaimDailyReward,
-    },
-    {
-      kicker: 'Quests',
-      value: `${questsDone}/${questItems.length} Complete`,
-      note: nextQuestLabel,
-      accent: questsDone === questItems.length,
     },
   ]
 
   return (
     <section className={`home-screen screen-panel ${activeScreen === 'home' ? 'active' : 'hidden'}`}>
-      <article className="section-card utility-card spotlight-card home-command-card">
-        <SceneHeaderPanel
-          className="home-scene-header"
-          visual={<RankBadge rank={rankLabel} />}
-          title={`Welcome, ${profileName}`}
-          note={`${seasonName}${seasonCountdown ? ` · ${seasonCountdown}` : ''}`}
-          badges={(
-            <>
-              <span className="badge">{shards} Shards</span>
-              <span className={`badge streak-badge streak-${streakTier}`}>{record.streak} Streak</span>
-            </>
-          )}
-          tiles={homeTiles}
-        >
-          <div className="home-rating-meter" role="progressbar" aria-label="Season rating progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={clampedRankProgress}>
-            <div className="home-rating-copy">
-              <span className="scene-status-kicker">Season Rating</span>
-              <strong>{seasonRating} / {nextRankTarget}</strong>
+      <article className="section-card utility-card spotlight-card home-command-card home-final-card">
+        <div className="home-final-main">
+          <div className="home-final-topline">
+            <RankBadge rank={rankLabel} className="home-rank-badge" />
+
+            <div className="home-rating-meter" role="progressbar" aria-label="Season rating progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={clampedRankProgress}>
+              <div className="home-rating-track" aria-hidden="true">
+                <div className="home-rating-fill" style={{ width: `${clampedRankProgress}%` }} />
+              </div>
+              <strong>{seasonRating} / {nextRankTarget} rating</strong>
               <span className="mini-text">{ratingProgressLabel}</span>
             </div>
-            <div className="home-rating-track" aria-hidden="true">
-              <div className="home-rating-fill" style={{ width: `${clampedRankProgress}%` }} />
-            </div>
-            <span className="home-rating-percent">{clampedRankProgress}%</span>
+          </div>
+
+          <div className="home-final-intro">
+            <strong>Welcome, {profileName}</strong>
+            <span>{seasonName}{seasonCountdown ? ` · ${seasonCountdown}` : ''}</span>
+          </div>
+
+          <div className="badges home-final-badges">
+            <span className="badge">{shards} Shards</span>
+            <span className={`badge streak-badge streak-${streakTier}`}>{record.streak} Streak</span>
+          </div>
+
+          <div className="home-status-list">
+            {homeStatusCards.map((tile) => (
+              <div className={`home-status-card scene-status-tile ${tile.accent ? 'is-accent' : ''}`.trim()} key={tile.kicker}>
+                <span className="scene-status-kicker">{tile.kicker}</span>
+                <strong>{tile.value}</strong>
+                <span className="mini-text">{tile.note}</span>
+              </div>
+            ))}
           </div>
 
           {gameInProgress && (
@@ -130,7 +130,7 @@ export function HomeScreen() {
               </div>
             </div>
           )}
-        </SceneHeaderPanel>
+        </div>
 
         <div className={`quest-summary ${canClaimDailyReward ? 'claim-ready' : ''} ${justClaimedDaily ? 'just-claimed' : ''}`}>
           <div className="quest-pips" role="img" aria-label={`${questsDone} of ${questItems.length} quests complete`}>
@@ -138,7 +138,7 @@ export function HomeScreen() {
               <span key={i} className={`quest-pip ${item.complete ? 'complete' : 'pending'}`} title={item.label} />
             ))}
           </div>
-          <span className="quest-count">{questsDone}/{questItems.length} Quests Complete</span>
+          <span className="quest-count">{questsDone}/{questItems.length} Quests</span>
           <span className="quest-next">Next: {nextQuestLabel}</span>
           <span className={`quest-reward-hint ${canClaimDailyReward ? 'ready' : ''}`}>
             {questRewardLabel}

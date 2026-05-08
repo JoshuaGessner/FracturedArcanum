@@ -219,14 +219,14 @@ describe('HomeScreen navigation and footer', () => {
     expect(container.querySelectorAll('.nav-tile')).toHaveLength(0)
   })
 
-  it('uses one unified war-table header instead of a separate status slab', () => {
+  it('uses a reference-style command panel instead of a separate status slab', () => {
     const { container } = renderHomeScreen()
 
     expect(container.textContent).toMatch(/league/i)
     expect(container.textContent).toMatch(/deck/i)
     expect(container.textContent).toMatch(/vault/i)
     expect(container.textContent).toMatch(/quests/i)
-    expect(container.querySelectorAll('.scene-status-tile')).toHaveLength(4)
+    expect(container.querySelectorAll('.home-status-card')).toHaveLength(3)
     expect(container.textContent).not.toMatch(/war table status/i)
   })
 
@@ -246,11 +246,11 @@ describe('HomeScreen navigation and footer', () => {
     expect(container.textContent).toMatch(/league/i)
     expect(container.textContent).toMatch(/deck/i)
     expect(container.textContent).toMatch(/vault/i)
-    expect(getByText(/season rating/i)).toBeTruthy()
-    expect(getByText(/1210 \/ 1300/i)).toBeTruthy()
-    expect(getByText(/90 rating to next league/i)).toBeTruthy()
-    expect(getByText(/20\/14 cards/i)).toBeTruthy()
+    expect(container.querySelector('[role="progressbar"][aria-label="Season rating progress"]')).not.toBeNull()
+    expect(getByText(/1210 \/ 1300 rating/i)).toBeTruthy()
+    expect(getByText(/20\/14/i)).toBeTruthy()
+    expect(getByText(/forge stocked/i)).toBeTruthy()
     expect(getByText(/ready to claim/i)).toBeTruthy()
-    expect(container.querySelectorAll('.scene-status-tile')).toHaveLength(4)
+    expect(container.querySelectorAll('.home-status-card')).toHaveLength(3)
   })
 })
