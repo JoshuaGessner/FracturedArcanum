@@ -1,7 +1,7 @@
 FROM node:20-alpine AS build
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci
+RUN npm ci --omit=optional
 COPY . .
 RUN node scripts/generate-brand-assets.mjs && npm run build
 
@@ -10,7 +10,7 @@ WORKDIR /app
 ENV NODE_ENV=production
 RUN apk add --no-cache su-exec
 COPY package*.json ./
-RUN npm ci --omit=dev && npm cache clean --force
+RUN npm ci --omit=dev --omit=optional && npm cache clean --force
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/server ./server
 COPY --from=build /app/public ./public
