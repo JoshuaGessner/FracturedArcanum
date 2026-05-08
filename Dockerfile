@@ -1,7 +1,7 @@
 FROM node:20-alpine AS build
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci --omit=optional
+RUN npm ci
 COPY . .
 RUN node scripts/generate-brand-assets.mjs && npm run build
 
