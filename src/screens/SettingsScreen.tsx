@@ -1,10 +1,26 @@
-import { useState } from 'react'
-import { RankBadge } from '../components/AssetBadge'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { PwaInstallPanel } from '../components/PwaInstallPanel'
-import { SceneHeaderPanel, type SceneHeaderTile } from '../components/SceneHeaderPanel'
 import { formatTimestamp, getComplaintSeverityTone } from '../utils'
 import { useAppShell, useProfile } from '../contexts'
 import { feedback } from '../feedback'
+
+type AdminSubview = 'overview' | 'traffic' | 'complaints' | 'roles' | 'audit'
+
+type SettingsToggleRowProps = {
+  label: string
+  action: ReactNode
+  note?: string
+}
+
+function SettingsToggleRow({ label, action, note }: SettingsToggleRowProps) {
+  return (
+    <div className="settings-toggle-row">
+      <span>{label}</span>
+      {note && <span className="mini-text settings-install-hint">{note}</span>}
+      {action}
+    </div>
+  )
+}
 
 export function SettingsScreen() {
   const {
@@ -30,12 +46,12 @@ export function SettingsScreen() {
   } = useAppShell()
   const { isAdminRole, isOwnerRole, accountRole, serverProfile } = useProfile()
 
-  const [adminSubview, setAdminSubview] = useState<'overview' | 'traffic' | 'complaints' | 'roles' | 'audit'>('overview')
+  const [adminSubview, setAdminSubview] = useState<AdminSubview>('overview')
+  const adminAutoLoadRef = useRef(false)
 
   const playerDisplayName = serverProfile?.displayName ?? serverProfile?.username ?? 'Guest'
   const visitorSuffix = (visitorId || 'guest').slice(-6).toUpperCase()
   const complaintTone = getComplaintSeverityTone(complaintForm.severity)
-  const roleInsignia = isOwnerRole ? 'Diamond' : isAdminRole ? 'Gold' : 'Bronze'
   const installPathLabel = installState.status === 'native'
     ? 'Quick install'
     : installState.status === 'installed'
@@ -46,6 +62,7 @@ export function SettingsScreen() {
           ? 'HTTPS needed'
           : 'Manual setup'
   const networkLabel = backendOnline ? 'Stable' : 'Fallback'
+  const roleLabel = accountRole === 'owner' ? 'Owner' : accountRole === 'admin' ? 'Admin' : 'Player'
   const settingsViewLabel = settingsSubview === 'preferences'
     ? 'Preferences'
     : settingsSubview === 'support'
@@ -53,304 +70,305 @@ export function SettingsScreen() {
       : settingsSubview === 'admin'
         ? 'Admin Console'
         : 'Settings'
-  const settingsTiles: SceneHeaderTile[] = [
-    {
-      kicker: 'Profile Seal',
-      value: accountRole === 'owner' ? 'Owner' : accountRole === 'admin' ? 'Admin' : 'Player',
-      note: `Visitor mark · ${visitorSuffix}`,
-    },
-    {
-      kicker: 'Network Link',
-      value: networkLabel,
-      note: backendOnline ? 'Arena services responding' : 'Offline-safe mode active',
-    },
-    {
-      kicker: 'Install Path',
-      value: installPathLabel,
-      note: installState.status === 'ios-manual' ? 'Safari install route for iPhone' : 'Check device readiness here',
-      accent: installState.status === 'native' || installState.status === 'installed',
-    },
-  ]
-  const settingsShortcuts = [
-    {
-      label: 'Preferences',
-      description: 'Audio, gestures, haptics, and onboarding.',
-      onClick: () => openSettingsSubview('preferences'),
-    },
-    {
-      label: 'Support Desk',
-      description: 'Report gameplay, balance, performance, or moderation issues.',
-      onClick: () => openSettingsSubview('support'),
-    },
-    ...(isAdminRole
-      ? [{
-          label: isOwnerRole ? 'Admin & Owner Tools' : 'Admin Console',
-          description: 'Live ops, complaint review, roles, and audit history.',
-          onClick: () => openSettingsSubview('admin'),
-        }]
-      : []),
-  ]
+
+  useEffect(() => {
+    if (settingsSubview !== 'admin') {
+      adminAutoLoadRef.current = false
+      return
+    }
+    if (!isAdminRole || adminOverview || adminLoading || adminAutoLoadRef.current) return
+
+    adminAutoLoadRef.current = true
+    void refreshAdminOverview()
+  }, [adminLoading, adminOverview, isAdminRole, refreshAdminOverview, settingsSubview])
+
+  const handleOpenSettingsSubview = (view: 'preferences' | 'support' | 'admin') => {
+    feedback('tap', soundEnabled, hapticsEnabled)
+    openSettingsSubview(view)
+  }
+
+  const renderToolbar = (right?: ReactNode) => (
+    <div className="settings-section-toolbar">
+      {settingsSubview === 'hub' ? (
+        <span className="badge">{settingsViewLabel}</span>
+      ) : (
+        <button className="ghost mini" onClick={resetSettingsSubview}>Back</button>
+      )}
+      <div>
+        <strong>{settingsViewLabel}</strong>
+        <span>{settingsSubview === 'hub' ? 'Command center' : 'Settings panel'}</span>
+      </div>
+      {right ?? <span className="badge">{roleLabel}</span>}
+    </div>
+  )
+
+  const renderHub = () => (
+    <div className="settings-hub-surface">
+      <button className="settings-hub-tile settings-hub-tile-preferences" onClick={() => handleOpenSettingsSubview('preferences')}>
+        <span className="settings-hub-tile-kicker">Comfort</span>
+        <strong>Preferences</strong>
+        <span>{soundEnabled ? 'Sound on' : 'Sound off'} · {gesturesEnabled ? 'Swipe on' : 'Swipe off'} · {hapticsEnabled ? 'Haptics on' : 'Haptics off'}</span>
+      </button>
+      <button className="settings-hub-tile settings-hub-tile-support" onClick={() => handleOpenSettingsSubview('support')}>
+        <span className="settings-hub-tile-kicker">Help</span>
+        <strong>Support Desk</strong>
+        <span>{complaintStatus || `Priority set to ${complaintForm.severity}`}</span>
+      </button>
+      <div className="settings-hub-tile settings-hub-tile-install">
+        <span className="settings-hub-tile-kicker">Device</span>
+        <strong>{installPathLabel}</strong>
+        <span>{installState.primaryLabel}</span>
+        <button className="ghost mini" onClick={() => handleOpenSettingsSubview('preferences')}>Manage</button>
+      </div>
+      {isAdminRole && (
+        <button className="settings-hub-tile settings-hub-tile-admin" onClick={() => handleOpenSettingsSubview('admin')}>
+          <span className="settings-hub-tile-kicker">Operations</span>
+          <strong>{isOwnerRole ? 'Owner Console' : 'Admin Console'}</strong>
+          <span>{adminOverview ? `${adminOverview.totals.complaintsOpen} open tickets` : 'Live ops, roles, audit, and reports'}</span>
+        </button>
+      )}
+    </div>
+  )
+
+  const renderPreferences = () => (
+    <div className="settings-section-panel settings-preferences-panel" data-scene-swipe-opt-out="true">
+      {renderToolbar(<span className="badge">{installPathLabel}</span>)}
+      <div className="settings-toggle-list">
+        <SettingsToggleRow
+          label="Arena Audio"
+          action={(
+            <button
+              className={`ghost mini ${soundEnabled ? '' : 'muted'}`}
+              onClick={() => {
+                const nextValue = !soundEnabled
+                setSoundEnabled(nextValue)
+                setToastMessage(nextValue ? 'Arena sound enabled.' : 'Arena sound muted.')
+              }}
+            >
+              {soundEnabled ? 'On' : 'Off'}
+            </button>
+          )}
+        />
+        <SettingsToggleRow
+          label="Ambient Loops"
+          action={(
+            <button
+              className={`ghost mini ${ambientEnabled && soundEnabled ? '' : 'muted'}`}
+              disabled={!soundEnabled}
+              onClick={() => {
+                const nextValue = !ambientEnabled
+                setAmbientEnabled(nextValue)
+                setToastMessage(nextValue ? 'Ambient loops enabled.' : 'Ambient loops disabled.')
+              }}
+            >
+              {!soundEnabled ? 'Audio off' : ambientEnabled ? 'On' : 'Off'}
+            </button>
+          )}
+        />
+        <SettingsToggleRow
+          label="Analytics"
+          action={(
+            <button
+              className={`ghost mini ${analyticsConsent ? '' : 'muted'}`}
+              onClick={() => {
+                const nextValue = !analyticsConsent
+                setAnalyticsConsent(nextValue)
+                setToastMessage(nextValue ? 'Anonymous tracking enabled.' : 'Anonymous tracking paused.')
+              }}
+            >
+              {analyticsConsent ? 'On' : 'Off'}
+            </button>
+          )}
+        />
+        <SettingsToggleRow
+          label="Scene Swipe"
+          action={(
+            <button
+              className={`ghost mini ${gesturesEnabled ? '' : 'muted'}`}
+              onClick={() => {
+                const nextValue = !gesturesEnabled
+                feedback('tap', soundEnabled, hapticsEnabled)
+                setGesturesEnabled(nextValue)
+                setToastMessage(nextValue ? 'Scene swipe enabled.' : 'Scene swipe disabled.')
+              }}
+            >
+              {gesturesEnabled ? 'On' : 'Off'}
+            </button>
+          )}
+        />
+        <SettingsToggleRow
+          label="Haptics"
+          action={(
+            <button
+              className={`ghost mini ${hapticsEnabled ? '' : 'muted'}`}
+              onClick={() => {
+                const nextValue = !hapticsEnabled
+                feedback('tap', soundEnabled, nextValue)
+                setHapticsEnabled(nextValue)
+                setToastMessage(nextValue ? 'Haptics enabled.' : 'Haptics disabled.')
+              }}
+            >
+              {hapticsEnabled ? 'On' : 'Off'}
+            </button>
+          )}
+        />
+        <SettingsToggleRow
+          label="Onboarding Tour"
+          action={(
+            <button
+              className="ghost mini"
+              onClick={() => {
+                feedback('tap', soundEnabled, hapticsEnabled)
+                startOnboardingTour()
+              }}
+            >
+              Replay
+            </button>
+          )}
+        />
+        <SettingsToggleRow label="Install App" note={installState.primaryLabel} action={<span className="badge">{installPathLabel}</span>} />
+      </div>
+      <PwaInstallPanel installState={installState} onInstall={handleInstallApp} showInstalled showDiagnostics />
+      <SettingsToggleRow label="Log Out" action={<button className="ghost mini" onClick={handleLogout}>Sign Out</button>} />
+    </div>
+  )
+
+  const renderSupport = () => (
+    <div className="settings-section-panel settings-support-panel" data-scene-swipe-opt-out="true">
+      {renderToolbar(<span className={`support-seal ${complaintTone}`}>{complaintForm.severity}</span>)}
+      {complaintStatus && <p className="note toast-line">{complaintStatus}</p>}
+      <form className="complaint-form" onSubmit={(event) => void handleSubmitComplaint(event)}>
+        <div className="form-row split-fields">
+          <label className="form-field">
+            <span>Category</span>
+            <select
+              className="text-input"
+              value={complaintForm.category}
+              onChange={(event) =>
+                setComplaintForm((current) => ({ ...current, category: event.target.value }))
+              }
+            >
+              <option value="gameplay">Gameplay</option>
+              <option value="matchmaking">Matchmaking</option>
+              <option value="balance">Balance</option>
+              <option value="performance">Performance</option>
+              <option value="moderation">Moderation</option>
+            </select>
+          </label>
+          <label className="form-field">
+            <span>Priority</span>
+            <select
+              className="text-input"
+              value={complaintForm.severity}
+              onChange={(event) =>
+                setComplaintForm((current) => ({ ...current, severity: event.target.value }))
+              }
+            >
+              <option value="low">Low</option>
+              <option value="normal">Normal</option>
+              <option value="high">High</option>
+              <option value="urgent">Urgent</option>
+            </select>
+          </label>
+        </div>
+        <label className="form-field">
+          <span>Summary</span>
+          <input
+            className="text-input"
+            value={complaintForm.summary}
+            maxLength={120}
+            placeholder="Short description of the issue"
+            onChange={(event) =>
+              setComplaintForm((current) => ({ ...current, summary: event.target.value }))
+            }
+          />
+        </label>
+        <label className="form-field">
+          <span>Details</span>
+          <textarea
+            className="text-input text-area"
+            value={complaintForm.details}
+            rows={4}
+            placeholder="What happened, and how can it be reproduced?"
+            onChange={(event) =>
+              setComplaintForm((current) => ({ ...current, details: event.target.value }))
+            }
+          />
+        </label>
+        <div className="controls">
+          <button className="primary" type="submit">Send Report</button>
+        </div>
+      </form>
+    </div>
+  )
+
+  const renderAdminNav = () => (
+    <div className="settings-admin-nav" role="tablist" aria-label="Admin sections">
+      {(['overview', 'traffic', 'complaints', 'roles', 'audit'] as AdminSubview[]).map((view) => (
+        <button
+          key={view}
+          className={adminSubview === view ? 'active' : ''}
+          onClick={() => setAdminSubview(view)}
+          role="tab"
+          aria-selected={adminSubview === view}
+        >
+          {view === 'roles' ? 'Roles' : view.charAt(0).toUpperCase() + view.slice(1)}
+        </button>
+      ))}
+    </div>
+  )
 
   return (
-    <section className={`ops-grid settings-screen screen-panel ${activeScreen === 'settings' ? 'active' : 'hidden'}`}>
-      <article className="section-card settings-hero-card">
-        <SceneHeaderPanel
-          className="settings-scene-header"
-          visual={<RankBadge rank={roleInsignia} />}
-          title="Command Desk"
-          note="Tune comfort settings, install flow, and support access from one command desk."
-          badges={(
-            <>
-              <strong>{playerDisplayName}</strong>
-              <span className="badge">{accountRole === 'owner' ? 'Owner' : accountRole === 'admin' ? 'Admin' : 'Player'}</span>
-              <span className="badge">{backendOnline ? 'Online' : 'Fallback'}</span>
-              <span className="badge">{visitorSuffix}</span>
-            </>
+    <section className={`settings-screen screen-panel ${activeScreen === 'settings' ? 'active' : 'hidden'}`}>
+      <article className={`section-card settings-command-card settings-view-${settingsSubview}`}>
+        <div className="settings-command-ledger">
+          <div className="settings-command-title">
+            <span className="settings-command-kicker">Command Desk</span>
+            <strong>{playerDisplayName}</strong>
+          </div>
+          <div className="settings-status-strip" aria-label="Settings status">
+            <span className={`settings-status-chip role-badge role-${accountRole}`}>{roleLabel}</span>
+            <span className="settings-status-chip">{networkLabel}</span>
+            <span className="settings-status-chip">{installPathLabel}</span>
+            <span className="settings-status-chip">{visitorSuffix}</span>
+          </div>
+        </div>
+
+        <nav className="settings-nav-strip" aria-label="Settings sections">
+          <button className={settingsSubview === 'hub' ? 'active' : ''} onClick={resetSettingsSubview}>Overview</button>
+          <button className={settingsSubview === 'preferences' ? 'active' : ''} onClick={() => handleOpenSettingsSubview('preferences')}>Preferences</button>
+          <button className={settingsSubview === 'support' ? 'active' : ''} onClick={() => handleOpenSettingsSubview('support')}>Support</button>
+          {isAdminRole && (
+            <button className={settingsSubview === 'admin' ? 'active' : ''} onClick={() => handleOpenSettingsSubview('admin')}>Admin</button>
           )}
-          tiles={settingsTiles}
-          viewLabel={settingsViewLabel}
-          onBack={settingsSubview !== 'hub' ? resetSettingsSubview : undefined}
-          shortcuts={settingsSubview === 'hub' ? settingsShortcuts : undefined}
-        >
-          {settingsSubview === 'preferences' ? (
-          <div className="settings-toggle-list" data-scene-swipe-opt-out="true">
-            <div className="settings-toggle-row">
-              <span>Arena Audio</span>
-              <button
-                className={`ghost mini ${soundEnabled ? '' : 'muted'}`}
-                onClick={() => {
-                  const nextValue = !soundEnabled
-                  setSoundEnabled(nextValue)
-                  setToastMessage(nextValue ? 'Arena sound enabled.' : 'Arena sound muted.')
-                }}
-              >
-                {soundEnabled ? 'On' : 'Off'}
-              </button>
-            </div>
+        </nav>
 
-            <div className="settings-toggle-row">
-              <span>Ambient Loops</span>
-              <button
-                className={`ghost mini ${ambientEnabled && soundEnabled ? '' : 'muted'}`}
-                disabled={!soundEnabled}
-                onClick={() => {
-                  const nextValue = !ambientEnabled
-                  setAmbientEnabled(nextValue)
-                  setToastMessage(nextValue ? 'Ambient loops enabled.' : 'Ambient loops disabled.')
-                }}
-              >
-                {!soundEnabled ? 'Audio off' : ambientEnabled ? 'On' : 'Off'}
-              </button>
-            </div>
-
-            <div className="settings-toggle-row">
-              <span>Analytics</span>
-              <button
-                className={`ghost mini ${analyticsConsent ? '' : 'muted'}`}
-                onClick={() => {
-                  const nextValue = !analyticsConsent
-                  setAnalyticsConsent(nextValue)
-                  setToastMessage(nextValue ? 'Anonymous tracking enabled.' : 'Anonymous tracking paused.')
-                }}
-              >
-                {analyticsConsent ? 'On' : 'Off'}
-              </button>
-            </div>
-
-            <div className="settings-toggle-row">
-              <span>Scene Swipe</span>
-              <button
-                className={`ghost mini ${gesturesEnabled ? '' : 'muted'}`}
-                onClick={() => {
-                  const nextValue = !gesturesEnabled
-                  feedback('tap', soundEnabled, hapticsEnabled)
-                  setGesturesEnabled(nextValue)
-                  setToastMessage(nextValue ? 'Scene swipe enabled.' : 'Scene swipe disabled.')
-                }}
-              >
-                {gesturesEnabled ? 'On' : 'Off'}
-              </button>
-            </div>
-
-            <div className="settings-toggle-row">
-              <span>Haptics</span>
-              <button
-                className={`ghost mini ${hapticsEnabled ? '' : 'muted'}`}
-                onClick={() => {
-                  const nextValue = !hapticsEnabled
-                  feedback('tap', soundEnabled, nextValue)
-                  setHapticsEnabled(nextValue)
-                  setToastMessage(nextValue ? 'Haptics enabled.' : 'Haptics disabled.')
-                }}
-              >
-                {hapticsEnabled ? 'On' : 'Off'}
-              </button>
-            </div>
-
-            <div className="settings-toggle-row">
-              <span>Onboarding Tour</span>
-              <button
-                className="ghost mini"
-                onClick={() => {
-                  feedback('tap', soundEnabled, hapticsEnabled)
-                  startOnboardingTour()
-                }}
-              >
-                Replay
-              </button>
-            </div>
-
-            <div className="settings-toggle-row">
-              <span>Install App</span>
-              <span className="mini-text settings-install-hint">{installState.primaryLabel}</span>
-            </div>
-
-            <PwaInstallPanel installState={installState} onInstall={handleInstallApp} showInstalled showDiagnostics />
-
-            <div className="settings-toggle-row">
-              <span>Log Out</span>
-              <button className="ghost mini" onClick={handleLogout}>
-                Sign Out
-              </button>
-            </div>
+        {settingsSubview === 'hub' && (
+          <div className="settings-section-panel">
+            {renderToolbar(<span className="badge">{backendOnline ? 'Online' : 'Fallback'}</span>)}
+            {renderHub()}
           </div>
-        ) : settingsSubview === 'hub' ? null : (
-          <p className="note settings-view-note">
-            {settingsSubview === 'support'
-              ? 'Use the support desk below to send a clear report to the arena team.'
-              : 'Advanced live-ops and moderation tools are shown below.'}
-          </p>
         )}
+        {settingsSubview === 'preferences' && renderPreferences()}
+        {settingsSubview === 'support' && renderSupport()}
+        {settingsSubview === 'admin' && (
+          <div className="settings-section-panel admin-console scribe-console" data-scene-swipe-opt-out="true">
+            {renderToolbar(
+              <button className="secondary mini" onClick={() => void refreshAdminOverview()}>
+                {adminLoading ? 'Loading' : adminOverview ? 'Refresh' : 'Load'}
+              </button>,
+            )}
+            {!isAdminRole && (
+              <p className="note toast-line">
+                Your account does not have admin privileges. Sign out and back in if this owner account was just promoted.
+              </p>
+            )}
+            {adminError && <p className="note toast-line">{adminError}</p>}
+            {isAdminRole && adminLoading && !adminOverview && <p className="note toast-line">Loading admin console</p>}
 
-        {complaintStatus && <p className="note toast-line">{complaintStatus}</p>}
-        </SceneHeaderPanel>
-      </article>
-
-      {settingsSubview === 'support' && (
-      <article className="section-card utility-card complaint-desk-card">
-        <div className="section-head compact settings-subview-head">
-          <h3>Complaint Desk</h3>
-          <span className={`support-seal ${complaintTone}`}>{complaintForm.severity}</span>
-        </div>
-
-        <form className="complaint-form" onSubmit={(event) => void handleSubmitComplaint(event)}>
-          <div className="form-row split-fields">
-            <label className="form-field">
-              <span>Category</span>
-              <select
-                className="text-input"
-                value={complaintForm.category}
-                onChange={(event) =>
-                  setComplaintForm((current) => ({ ...current, category: event.target.value }))
-                }
-              >
-                <option value="gameplay">Gameplay</option>
-                <option value="matchmaking">Matchmaking</option>
-                <option value="balance">Balance</option>
-                <option value="performance">Performance</option>
-                <option value="moderation">Moderation</option>
-              </select>
-            </label>
-
-            <label className="form-field">
-              <span>Priority</span>
-              <select
-                className="text-input"
-                value={complaintForm.severity}
-                onChange={(event) =>
-                  setComplaintForm((current) => ({ ...current, severity: event.target.value }))
-                }
-              >
-                <option value="low">Low</option>
-                <option value="normal">Normal</option>
-                <option value="high">High</option>
-                <option value="urgent">Urgent</option>
-              </select>
-            </label>
-          </div>
-
-          <label className="form-field">
-            <span>Summary</span>
-            <input
-              className="text-input"
-              value={complaintForm.summary}
-              maxLength={120}
-              placeholder="Short description of the issue"
-              onChange={(event) =>
-                setComplaintForm((current) => ({ ...current, summary: event.target.value }))
-              }
-            />
-          </label>
-
-          <label className="form-field">
-            <span>Details</span>
-            <textarea
-              className="text-input text-area"
-              value={complaintForm.details}
-              rows={4}
-              placeholder="What happened, and how can it be reproduced?"
-              onChange={(event) =>
-                setComplaintForm((current) => ({ ...current, details: event.target.value }))
-              }
-            />
-          </label>
-
-          <div className="controls">
-            <button className="primary" type="submit">
-              Send Report
-            </button>
-          </div>
-        </form>
-      </article>
-      )}
-
-      {settingsSubview === 'admin' && isAdminRole && (
-      <article className="section-card admin-console scribe-console">
-        <div className="section-head compact">
-          <h3>Admin Console</h3>
-          <span className={`badge role-badge role-${accountRole}`}>
-            {accountRole === 'owner' ? 'Owner' : accountRole === 'admin' ? 'Admin' : 'Player'}
-          </span>
-        </div>
-
-        {isAdminRole ? (
-          <div className="admin-auth-row">
-            <button className="secondary" onClick={() => void refreshAdminOverview()}>
-              {adminLoading ? 'Loading…' : adminOverview ? 'Refresh Console' : 'Open Console'}
-            </button>
-          </div>
-        ) : (
-          <p className="note toast-line">
-            Your account does not have admin privileges. Contact the server owner if you believe this is a mistake.
-          </p>
-        )}
-
-        {adminError && <p className="note toast-line">{adminError}</p>}
-
-        {adminOverview && (
+            {adminOverview && (
           <>
-            <div className="settings-hub-grid admin-hub-grid">
-              <button className="settings-hub-tile" onClick={() => setAdminSubview('overview')}>
-                <strong>Overview</strong>
-                <span>Live ops settings and key health counts.</span>
-              </button>
-              <button className="settings-hub-tile" onClick={() => setAdminSubview('traffic')}>
-                <strong>Traffic</strong>
-                <span>Route activity, viewport mix, and daily visits.</span>
-              </button>
-              <button className="settings-hub-tile" onClick={() => setAdminSubview('complaints')}>
-                <strong>Complaints</strong>
-                <span>Review incoming player issues in one place.</span>
-              </button>
-              <button className="settings-hub-tile" onClick={() => setAdminSubview('roles')}>
-                <strong>Roles</strong>
-                <span>Permission and ownership management.</span>
-              </button>
-              <button className="settings-hub-tile" onClick={() => setAdminSubview('audit')}>
-                <strong>Audit</strong>
-                <span>Recent admin actions and metadata.</span>
-              </button>
-            </div>
+            {renderAdminNav()}
 
             {adminSubview === 'overview' && (
               <>
@@ -649,8 +667,9 @@ export function SettingsScreen() {
             )}
           </>
         )}
+          </div>
+        )}
       </article>
-      )}
     </section>
   )
 }

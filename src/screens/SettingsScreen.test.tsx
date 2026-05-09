@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { SettingsScreen } from './SettingsScreen'
 import { AppShellContext, type AppShellContextValue } from '../AppShellContext'
 import { QueueProvider } from '../contexts/QueueProvider'
@@ -216,18 +216,19 @@ describe('SettingsScreen hub flow', () => {
   it('starts on a thin hub instead of opening the complaint desk immediately', () => {
     renderSettingsScreen()
 
-    expect(screen.getByRole('button', { name: /preferences/i })).toBeTruthy()
+    expect(screen.getAllByRole('button', { name: /preferences/i }).length).toBeGreaterThan(0)
     expect(screen.getByRole('button', { name: /support desk/i })).toBeTruthy()
     expect(screen.queryByText(/complaint desk/i)).toBeNull()
   })
 
-  it('uses a unified settings header instead of a separate command ledger slab', () => {
+  it('uses a compact command surface without repeated status tiles', () => {
     const { container } = renderSettingsScreen()
 
-    expect(screen.queryByText(/command ledger/i)).toBeNull()
-    expect(container.textContent).toMatch(/profile seal/i)
-    expect(container.textContent).toMatch(/network link/i)
-    expect(container.textContent).toMatch(/install path/i)
+    expect(screen.getByText(/command desk/i)).toBeTruthy()
+    expect(container.textContent).not.toMatch(/profile seal/i)
+    expect(container.textContent).not.toMatch(/network link/i)
+    expect(container.querySelectorAll('.scene-status-tile')).toHaveLength(0)
+    expect(container.querySelectorAll('.settings-status-chip').length).toBeGreaterThan(0)
   })
 
   it('keeps the back action visible in support mode', () => {
@@ -280,13 +281,70 @@ describe('SettingsScreen hub flow', () => {
     expect(openSettingsSubview).toHaveBeenCalledWith('support')
   })
 
-  it('shows the compact settings status tiles in the unified header', () => {
+  it('keeps admin hidden for regular player accounts', () => {
     const { container } = renderSettingsScreen()
 
-    expect(screen.queryByText(/command ledger/i)).toBeNull()
-    expect(container.textContent).toMatch(/profile seal/i)
-    expect(container.textContent).toMatch(/network link/i)
-    expect(container.textContent).toMatch(/install path/i)
-    expect(container.querySelectorAll('.scene-status-tile')).toHaveLength(3)
+    expect(screen.queryByRole('button', { name: /^admin$/i })).toBeNull()
+    expect(container.querySelectorAll('.settings-status-chip')).toHaveLength(4)
+  })
+
+  it('shows admin navigation for the owner account', () => {
+    renderSettingsScreen({
+      accountRole: 'owner',
+      isAdminRole: true,
+      isOwnerRole: true,
+      serverProfile: {
+        accountId: 'acct-owner',
+        username: 'josh',
+        displayName: 'Josh',
+        role: 'owner',
+        shards: 180,
+        seasonRating: 1210,
+        wins: 3,
+        losses: 2,
+        streak: 1,
+        deckConfig: {},
+        ownedThemes: ['royal'],
+        selectedTheme: 'royal',
+        ownedCardBorders: ['default'],
+        selectedCardBorder: 'default',
+        lastDaily: '',
+        totalEarned: 0,
+      },
+    })
+
+    expect(screen.getByRole('button', { name: /^admin$/i })).toBeTruthy()
+    expect(screen.getByText(/owner console/i)).toBeTruthy()
+  })
+
+  it('auto-loads the admin console when an owner opens it', async () => {
+    const refreshAdminOverview = vi.fn(async () => {})
+    renderSettingsScreen({
+      settingsSubview: 'admin',
+      accountRole: 'owner',
+      isAdminRole: true,
+      isOwnerRole: true,
+      refreshAdminOverview,
+      serverProfile: {
+        accountId: 'acct-owner',
+        username: 'josh',
+        displayName: 'Josh',
+        role: 'owner',
+        shards: 180,
+        seasonRating: 1210,
+        wins: 3,
+        losses: 2,
+        streak: 1,
+        deckConfig: {},
+        ownedThemes: ['royal'],
+        selectedTheme: 'royal',
+        ownedCardBorders: ['default'],
+        selectedCardBorder: 'default',
+        lastDaily: '',
+        totalEarned: 0,
+      },
+    })
+
+    await waitFor(() => expect(refreshAdminOverview).toHaveBeenCalledTimes(1))
   })
 })

@@ -562,6 +562,29 @@ function AppShell() {
       .catch(() => setSetupRequired(false))
   }, [])
 
+  useEffect(() => {
+    if (activeScreen !== 'settings' || !authToken) return
+
+    let cancelled = false
+    void authFetch('/api/me', authToken)
+      .then((response) => {
+        if (!response.ok) throw new Error('profile refresh failed')
+        return response.json()
+      })
+      .then((data: { ok: boolean; profile?: ServerProfile }) => {
+        if (cancelled || !data.ok || !data.profile) return
+        setServerProfile(data.profile)
+        if (data.profile.deckConfig && Object.keys(data.profile.deckConfig).length > 0) {
+          setDeckConfig(data.profile.deckConfig)
+        }
+      })
+      .catch(() => {})
+
+    return () => {
+      cancelled = true
+    }
+  }, [activeScreen, authToken, setDeckConfig])
+
   async function handleSetup(event: FormEvent) {
     event.preventDefault()
     setSetupError('')

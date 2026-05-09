@@ -277,7 +277,8 @@ button:disabled {
 .app-shell:not(.battle-shell-active) .scene-stage > .vault-grid.shop-screen.screen-panel.active,
 .app-shell:not(.battle-shell-active) .scene-stage > .shop-market.shop-screen.screen-panel.active,
 .app-shell:not(.battle-shell-active) .scene-stage > .home-screen.social-screen.screen-panel.active,
-.app-shell:not(.battle-shell-active) .scene-stage > .ops-grid.settings-screen.screen-panel.active {
+.app-shell:not(.battle-shell-active) .scene-stage > .ops-grid.settings-screen.screen-panel.active,
+.app-shell:not(.battle-shell-active) .scene-stage > .settings-screen.screen-panel.active {
   display: flex;
   flex-direction: column;
   gap: var(--scene-gap);
@@ -299,7 +300,8 @@ button:disabled {
 .vault-grid.shop-screen.screen-panel.active > article:first-child,
 .shop-market.shop-screen.screen-panel.active > article:first-child,
 .home-screen.social-screen.screen-panel.active > .home-cards,
-.ops-grid.settings-screen.screen-panel.active > article:first-child {
+.ops-grid.settings-screen.screen-panel.active > article:first-child,
+.settings-screen.screen-panel.active > article:first-child {
   flex: 1 0 auto;
 }
 
@@ -3102,8 +3104,7 @@ button:disabled {
   font-size: var(--font-md);
 }
 
-.shop-hero .note,
-.settings-hero .note {
+.shop-hero .note {
   flex: 1 1 100%;
   margin: 0;
   color: #cfd8ff;
@@ -3770,65 +3771,202 @@ button:disabled {
   background: rgba(7, 12, 26, 0.6);
 }
 
-.settings-hero-card {
-  position: relative;
-  overflow: clip;
+.settings-screen.screen-panel.active {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0;
 }
 
-.settings-hero-card::after {
+.settings-command-card {
+  position: relative;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 12px;
+  width: min(100%, 980px);
+  min-height: 0;
+  overflow: hidden;
+  background:
+    linear-gradient(135deg, rgba(8, 14, 30, 0.94), rgba(28, 24, 48, 0.9)),
+    var(--panel-bg);
+}
+
+.settings-command-card::after {
   content: '';
   position: absolute;
-  right: 12px;
-  bottom: 12px;
-  width: 88px;
-  height: 88px;
-  opacity: 0.14;
+  right: 14px;
+  bottom: 14px;
+  width: 96px;
+  height: 96px;
+  opacity: 0.12;
   pointer-events: none;
   background: url('/generated/ui/particle-rune.svg') center / contain no-repeat;
 }
 
-.settings-hero-card > * {
+.settings-command-card > * {
   position: relative;
   z-index: 1;
 }
 
-.settings-hero {
-  display: flex;
+.settings-command-ledger {
+  display: grid;
+  grid-template-columns: minmax(160px, 0.85fr) minmax(0, 1.7fr);
+  gap: 12px;
   align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  padding: 8px 10px;
+  padding: 10px 12px;
   border-radius: var(--radius-md);
-  background: linear-gradient(160deg, rgba(10, 18, 36, 0.9), rgba(32, 24, 58, 0.8));
-  border: 1px solid var(--border);
+  border: 1px solid rgba(147, 197, 253, 0.16);
+  background: linear-gradient(135deg, rgba(7, 12, 26, 0.62), rgba(31, 38, 68, 0.48));
 }
 
-.settings-hero strong {
-  font-size: var(--font-md);
+.settings-command-title {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.settings-command-title strong {
+  overflow: hidden;
+  color: #f8fbff;
+  font-size: 1rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-command-kicker,
+.settings-hub-tile-kicker {
+  color: #9fb1d5;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.settings-status-strip {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+  min-width: 0;
+}
+
+.settings-status-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  max-width: 150px;
+  padding: 5px 9px;
+  border-radius: 999px;
+  border: 1px solid rgba(147, 197, 253, 0.18);
+  overflow: hidden;
+  background: rgba(7, 12, 26, 0.48);
+  color: #d9e5ff;
+  font-size: 0.78rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-nav-strip,
+.settings-admin-nav {
+  display: grid;
+  gap: 8px;
+}
+
+.settings-nav-strip {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 120px), 1fr));
+}
+
+.settings-nav-strip button,
+.settings-admin-nav button {
+  min-width: 0;
+  min-height: 34px;
+  padding: 7px 10px;
+  border: 1px solid rgba(147, 197, 253, 0.16);
+  border-radius: var(--radius-sm);
+  background: linear-gradient(135deg, rgba(8, 14, 30, 0.68), rgba(23, 31, 57, 0.54));
+  color: #cbd8f4;
+  font-size: var(--font-xs);
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.settings-nav-strip button.active,
+.settings-admin-nav button.active {
+  border-color: rgba(251, 191, 36, 0.48);
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.16), rgba(96, 165, 250, 0.14));
+  color: #fff7d6;
+}
+
+.settings-section-panel {
+  display: grid;
+  gap: 10px;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 2px;
+}
+
+.settings-section-toolbar {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  min-height: 42px;
+  padding: 8px 10px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(147, 197, 253, 0.16);
+  background: rgba(7, 12, 26, 0.48);
+}
+
+.settings-section-toolbar > div {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+
+.settings-section-toolbar strong {
+  color: #f8fbff;
+  font-size: 0.96rem;
+}
+
+.settings-section-toolbar span:not(.badge):not(.support-seal) {
+  color: #a8b7d8;
+  font-size: 0.78rem;
+}
+
+.settings-hub-surface {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
 }
 
 .settings-toggle-list {
   display: grid;
-  gap: 4px;
-  margin: 6px 0;
+  gap: 8px;
+  margin: 0;
 }
 
 .settings-toggle-row {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) minmax(0, 1.2fr) auto;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 6px 10px;
-  padding: 6px 10px;
+  gap: 8px;
+  min-height: 40px;
+  padding: 8px 10px;
   border-radius: var(--radius-sm);
   background: rgba(0, 0, 0, 0.12);
   border: 1px solid var(--border);
   font-size: var(--font-sm);
 }
 
+.settings-toggle-row > span:first-child {
+  color: #f5f8ff;
+  font-weight: 700;
+}
+
 .settings-install-hint {
-  flex: 1 1 180px;
-  text-align: right;
+  min-width: 0;
+  text-align: left;
 }
 
 .auth-install-hint {
@@ -3863,20 +4001,40 @@ button:disabled {
   margin-left: auto;
 }
 
-.settings-hub-grid {
-  display: grid;
-  gap: 10px;
-}
-
 .settings-hub-tile {
+  position: relative;
   display: grid;
-  gap: 4px;
+  gap: 6px;
+  align-content: start;
+  min-height: 118px;
   text-align: left;
   padding: 12px;
-  border-radius: 14px;
+  border-radius: var(--radius-md);
   border: 1px solid rgba(147, 197, 253, 0.18);
+  overflow: hidden;
   background: linear-gradient(135deg, rgba(10, 16, 31, 0.9), rgba(33, 36, 70, 0.76));
   color: #f5f8ff;
+}
+
+.settings-hub-tile::before {
+  content: '';
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  width: 44px;
+  height: 44px;
+  opacity: 0.16;
+  pointer-events: none;
+  background: url('/generated/ui/divider-rune.svg') center / contain no-repeat;
+}
+
+.settings-hub-tile-admin {
+  border-color: rgba(251, 191, 36, 0.32);
+  background: linear-gradient(135deg, rgba(30, 22, 10, 0.9), rgba(48, 34, 68, 0.74));
+}
+
+.settings-hub-tile-install button {
+  justify-self: start;
 }
 
 .settings-hub-tile span {
@@ -3905,18 +4063,14 @@ button:disabled {
   box-shadow: inset 0 1px 0 rgba(251, 191, 36, 0.06);
 }
 
-.complaint-desk-card {
-  background: linear-gradient(135deg, rgba(24, 18, 10, 0.96), rgba(68, 46, 18, 0.82));
-}
-
-.complaint-desk-card .complaint-form {
+.settings-support-panel .complaint-form {
   padding: 12px;
-  border-radius: 14px;
+  border-radius: var(--radius-md);
   border: 1px solid rgba(251, 191, 36, 0.14);
   background: rgba(22, 18, 10, 0.34);
 }
 
-.complaint-desk-card .text-input {
+.settings-support-panel .text-input {
   background: linear-gradient(135deg, rgba(33, 24, 14, 0.82), rgba(60, 42, 18, 0.6));
   border-color: rgba(251, 191, 36, 0.22);
 }
@@ -3962,9 +4116,17 @@ button:disabled {
   background: linear-gradient(135deg, rgba(12, 18, 36, 0.96), rgba(29, 24, 48, 0.92));
 }
 
+.settings-command-card .scribe-console {
+  background: transparent;
+}
+
 .scribe-console .admin-panel-block {
   background: linear-gradient(135deg, rgba(8, 14, 30, 0.82), rgba(28, 28, 52, 0.74));
   box-shadow: inset 0 1px 0 rgba(251, 191, 36, 0.06);
+}
+
+.settings-admin-nav {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 
 .maintenance-toggle {
@@ -4959,8 +5121,7 @@ button.danger:hover { filter: brightness(1.08); }
     overflow-y: auto;
     padding-right: 2px;
   }
-  .social-screen .utility-card,
-  .settings-screen .utility-card {
+  .social-screen .utility-card {
     max-height: min(58dvh, 440px);
     overflow-y: auto;
     overscroll-behavior: contain;
@@ -5126,34 +5287,60 @@ button.danger:hover { filter: brightness(1.08); }
     flex: initial;
   }
 
-  /* Settings density — compact hero, tighter toggles */
-  .settings-hero { padding: 6px 8px; gap: 6px; }
-  .settings-hero strong { font-size: var(--font-sm); }
-  .scene-header-top.has-visual {
+  /* Settings density — compact command surface, no hidden subview content */
+  .settings-command-card {
+    height: auto;
+    min-height: 100%;
+    gap: 8px;
+    overflow: visible;
+  }
+
+  .settings-command-ledger {
     grid-template-columns: 1fr;
-    justify-items: start;
+    gap: 8px;
+    padding: 8px 10px;
   }
 
-  .settings-subnav {
-    margin: 8px 0;
-    align-items: center;
+  .settings-status-strip {
+    justify-content: flex-start;
   }
 
-  .settings-subnav .badge {
-    flex: 1 1 150px;
+  .settings-status-chip {
+    min-height: 27px;
+    padding: 4px 8px;
+    font-size: 0.72rem;
   }
 
-  .settings-subnav button {
-    flex: 0 0 auto;
-    width: auto;
-    margin-left: auto;
+  .settings-nav-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
   }
 
-  .settings-install-hint {
-    text-align: left;
+  .settings-nav-strip button,
+  .settings-admin-nav button {
+    min-height: 31px;
+    padding: 6px 7px;
+    font-size: 0.72rem;
   }
 
-  .settings-hub-grid {
+  .settings-section-panel {
+    overflow: visible;
+    gap: 8px;
+  }
+
+  .settings-section-toolbar {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 6px;
+    min-height: 36px;
+    padding: 6px 8px;
+  }
+
+  .settings-section-toolbar strong {
+    font-size: var(--font-sm);
+  }
+
+  .settings-hub-surface {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
   }
 
@@ -5161,19 +5348,51 @@ button.danger:hover { filter: brightness(1.08); }
   .social-hub-grid {
     margin-top: 6px;
   }
+
   .settings-hub-tile {
-    padding: 10px;
+    min-height: 100px;
+    padding: 9px 10px;
+    gap: 5px;
   }
-  .settings-toggle-list { gap: 2px; margin: 4px 0; }
-  .settings-toggle-row { padding: 4px 8px; font-size: var(--font-xs); }
-  .complaint-desk-card .complaint-form { padding: 8px; }
+
+  .settings-hub-tile::before {
+    width: 34px;
+    height: 34px;
+  }
+
+  .settings-hub-tile span {
+    font-size: 0.76rem;
+  }
+
+  .settings-toggle-list {
+    gap: 6px;
+    margin: 0;
+  }
+
+  .settings-toggle-row {
+    grid-template-columns: minmax(94px, 1fr) minmax(0, 1fr) auto;
+    min-height: 34px;
+    padding: 6px 8px;
+    font-size: var(--font-xs);
+  }
+
+  .settings-support-panel .complaint-form {
+    padding: 8px;
+  }
+
+  .settings-admin-nav {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
   .admin-panel-block {
     padding: 8px;
     gap: 8px;
-    max-height: 240px;
-    overflow-y: auto;
   }
-  .role-list { max-height: 180px; overflow-y: auto; }
+
+  .role-list {
+    max-height: none;
+    overflow: visible;
+  }
 
   .social-inline-form {
     grid-template-columns: 1fr;
