@@ -235,26 +235,31 @@ describe('ShopScreen hub flow', () => {
   it('starts on a compact shop hub instead of rendering the breakdown panel immediately', () => {
     renderShopScreen()
 
-    expect(screen.getByRole('button', { name: /reward vault/i })).toBeTruthy()
-    expect(screen.getByRole('button', { name: /card packs/i })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /^overview$/i })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /^vault$/i })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /^packs$/i })).toBeTruthy()
+    expect(screen.getByText(/daily vault/i)).toBeTruthy()
+    expect(screen.getAllByRole('button', { name: /packs/i }).length).toBeGreaterThan(0)
+    expect(screen.queryByText(/affordable/i)).toBeNull()
     expect(screen.queryByRole('button', { name: /break 1/i })).toBeNull()
   })
 
-  it('uses one unified bazaar header instead of separate bazaar signals chrome', () => {
+  it('uses one compact bazaar ledger instead of separate bazaar signals chrome', () => {
     const { container } = renderShopScreen({ canClaimDailyReward: true })
 
     expect(screen.getByText(/merchant's bazaar/i)).toBeTruthy()
     expect(screen.queryByText(/bazaar signals/i)).toBeNull()
-    expect(container.textContent).toMatch(/shard cache/i)
-    expect(container.textContent).toMatch(/daily vault/i)
-    expect(container.textContent).toMatch(/pack stash/i)
-    expect(container.querySelectorAll('.scene-status-tile')).toHaveLength(3)
+    expect(container.textContent).toMatch(/shards/i)
+    expect(container.textContent).toMatch(/vault/i)
+    expect(container.textContent).toMatch(/packs/i)
+    expect(container.querySelectorAll('.shop-resource-chip')).toHaveLength(3)
+    expect(container.querySelectorAll('.scene-status-tile')).toHaveLength(0)
   })
 
   it('keeps the card packs view in a fit-safe in-screen grid', () => {
     const { container } = renderShopScreen()
 
-    fireEvent.click(screen.getByRole('button', { name: /card packs/i }))
+    fireEvent.click(screen.getByRole('button', { name: /^packs$/i }))
 
     expect(container.textContent).toMatch(/card packs/i)
     expect(container.querySelector('.theme-grid-shop-fit')).toBeTruthy()

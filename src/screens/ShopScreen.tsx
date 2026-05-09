@@ -3,12 +3,12 @@ import { CARD_LIBRARY, RARITY_COLORS } from '../game'
 import { CARD_BORDER_OFFERS, THEME_OFFERS } from '../constants'
 import { PackArt, RarityBadge } from '../components/AssetBadge'
 import { PackCeremonyOverlay } from '../components/PackCeremonyOverlay'
-import { SceneHeaderPanel, type SceneHeaderTile } from '../components/SceneHeaderPanel'
 import { buildPackSummarySequence } from '../components/RewardCinemaSequence'
 import { cardArtPath, handleCardArtError } from '../utils'
 import { useAppShell, useGame, useProfile } from '../contexts'
 
 const RARITY_REFUND = { common: 5, rare: 10, epic: 25, legendary: 100 } as const
+type ShopSubview = 'hub' | 'vault' | 'packs' | 'themes' | 'borders' | 'breakdown'
 
 export function ShopScreen() {
   const { activeScreen, loggedIn, soundEnabled, hapticsEnabled, presentRewardCinema, lastPackRefund, setLastPackRefund } = useAppShell()
@@ -22,7 +22,7 @@ export function ShopScreen() {
   } = useProfile()
   const { startMatch } = useGame()
   const [activeCeremonyPackId, setActiveCeremonyPackId] = useState<string | null>(null)
-  const [shopSubview, setShopSubview] = useState<'hub' | 'vault' | 'packs' | 'themes' | 'borders' | 'breakdown'>('hub')
+  const [shopSubview, setShopSubview] = useState<ShopSubview>('hub')
 
   const ceremonyPack = activeCeremonyPackId
     ? packOffers.find((offer) => offer.id === activeCeremonyPackId) ?? null
@@ -41,52 +41,20 @@ export function ShopScreen() {
             ? 'Breakdown'
             : 'Shop'
   const vaultSignalLabel = canClaimDailyReward ? 'Ready to claim' : 'Charging'
-  const packStashLabel = `${packOffers.length} seals`
-  const bazaarTiles: SceneHeaderTile[] = [
-    {
-      kicker: 'Shard Cache',
-      value: `${shards}`,
-      note: 'Spend on packs, themes, and borders',
-    },
-    {
-      kicker: 'Daily Vault',
-      value: vaultSignalLabel,
-      note: `Next payout · ${nextRewardLabel}`,
-      accent: canClaimDailyReward,
-    },
-    {
-      kicker: 'Pack Stash',
-      value: packStashLabel,
-      note: `${totalOwnedCards} cards currently logged`,
-    },
-  ]
-  const shopShortcuts = [
-    {
-      label: 'Reward Vault',
-      description: 'Daily reward progress, shard balance, and quick earn options.',
-      onClick: () => setShopSubview('vault'),
-    },
-    {
-      label: 'Card Packs',
-      description: 'Open standard and premium packs without crowding the screen.',
-      onClick: () => setShopSubview('packs'),
-    },
-    {
-      label: 'Themes',
-      description: 'Change your arena mood and visual style.',
-      onClick: () => setShopSubview('themes'),
-    },
-    {
-      label: 'Borders',
-      description: 'Equip and unlock card frame styles.',
-      onClick: () => setShopSubview('borders'),
-    },
-    {
-      label: 'Card Breakdown',
-      description: 'Convert extra cards into shards in a dedicated view.',
-      onClick: () => setShopSubview('breakdown'),
-    },
-  ]
+  const openablePackCount = packOffers.filter((pack) => shards >= pack.cost).length
+  const packAccessLabel = packOffers.length > 0 ? `${openablePackCount}/${packOffers.length} ready` : 'No packs listed'
+  const packDetailLabel = openablePackCount > 0 ? 'Open a seal now' : 'Earn shards to open seals'
+  const cheapestLockedTheme = THEME_OFFERS.find((theme) => !ownedThemes.includes(theme.id))
+  const cheapestLockedBorder = CARD_BORDER_OFFERS.find((border) => !ownedCardBorders.includes(border.id))
+  const selectedThemeName = THEME_OFFERS.find((theme) => theme.id === selectedTheme)?.name ?? selectedTheme
+  const selectedBorderName = CARD_BORDER_OFFERS.find((border) => border.id === selectedCardBorder)?.name ?? selectedCardBorder
+  const nextCosmeticCost = Math.min(
+    cheapestLockedTheme?.cost ?? Number.POSITIVE_INFINITY,
+    cheapestLockedBorder?.cost ?? Number.POSITIVE_INFINITY,
+  )
+  const nextCosmeticLabel = Number.isFinite(nextCosmeticCost) ? `${nextCosmeticCost} Shards` : 'All owned'
+  const themeUnlockLabel = cheapestLockedTheme ? `${cheapestLockedTheme.name} · ${cheapestLockedTheme.cost} Shards` : 'Theme archive complete'
+  const borderUnlockLabel = cheapestLockedBorder ? `${cheapestLockedBorder.name} · ${cheapestLockedBorder.cost} Shards` : 'Border vault complete'
 
   const breakable = useMemo(() => Object.entries(collection)
     .map(([cardId, owned]) => {
@@ -144,36 +112,104 @@ export function ShopScreen() {
     void handleOpenPack(ceremonyPack.id)
   }
 
+  const shopNav: { id: ShopSubview; label: string }[] = [
+    { id: 'vault', label: 'Vault' },
+    { id: 'packs', label: 'Packs' },
+    { id: 'themes', label: 'Themes' },
+    { id: 'borders', label: 'Borders' },
+    { id: 'breakdown', label: 'Breakdown' },
+  ]
+
+  const renderShopToolbar = (label: string, meta: string) => (
+    <div className="shop-section-toolbar">
+      <button className="ghost mini subview-back-btn" onClick={() => setShopSubview('hub')} aria-label="Back to shop">
+        Back
+      </button>
+      <strong>{label}</strong>
+      <span className="badge">{meta}</span>
+    </div>
+  )
+
   return (
     <>
-      <section className={`vault-grid shop-screen screen-panel ${activeScreen === 'shop' ? 'active' : 'hidden'}`}>
-        <article className={`section-card utility-card reward-vault-card ${canClaimDailyReward ? 'claim-ready' : ''}`}>
-          <SceneHeaderPanel
-            className="shop-scene-header"
-            title="Merchant's Bazaar"
-            note="Featured stock, shard pressure, and faster routes into the vault."
-            badges={(
-              <>
-                <span className="badge">{shards} Shards</span>
-                <span className="badge">Next: {nextRewardLabel}</span>
-                <button className="ghost mini" onClick={() => startMatch('ai')}>
-                  Earn in Battle
+      <section className={`shop-screen shop-market screen-panel ${activeScreen === 'shop' ? 'active' : 'hidden'}`}>
+        <article className={`section-card utility-card shop-market-card shop-view-${shopSubview} ${canClaimDailyReward ? 'claim-ready' : ''}`}>
+          <div className="shop-market-ledger">
+            <div className="shop-market-title">
+              <span className="subview-label">{viewLabel}</span>
+              <strong>Merchant's Bazaar</strong>
+            </div>
+            <div className="shop-resource-strip" aria-label="Shop resources">
+              <span className="shop-resource-chip"><strong>{shards}</strong> Shards</span>
+              <span className={`shop-resource-chip ${canClaimDailyReward ? 'is-accent' : ''}`.trim()}><strong>{vaultSignalLabel}</strong> Vault</span>
+              <span className="shop-resource-chip"><strong>{packOffers.length}</strong> Packs</span>
+            </div>
+          </div>
+
+          <div className="shop-nav-strip" aria-label="Shop sections" data-scene-swipe-opt-out="true">
+            <button className={shopSubview === 'hub' ? 'active' : ''} onClick={() => setShopSubview('hub')}>Overview</button>
+            {shopNav.map((item) => (
+              <button className={shopSubview === item.id ? 'active' : ''} key={item.id} onClick={() => setShopSubview(item.id)}>
+                {item.label}
+              </button>
+            ))}
+          </div>
+
+          {shopSubview === 'hub' && (
+            <div className="shop-hub-surface">
+              <div className="shop-feature-panel">
+                <div>
+                  <span className="subview-label">Daily Vault</span>
+                  <strong>{canClaimDailyReward ? `${nextRewardLabel} waiting` : 'Vault charging'}</strong>
+                  <p className="note">Claim the daily payout here, then refill the vault through battle rewards.</p>
+                  <div className="shop-vault-stat-strip">
+                    <span><strong>+50</strong> Shards</span>
+                    <span><strong>{nextRewardLabel}</strong> Reward</span>
+                    <span><strong>{canClaimDailyReward ? 'Ready' : 'Earn'}</strong> Status</span>
+                  </div>
+                </div>
+                <div className="controls">
+                  <button className="primary mini" onClick={handleClaimDailyReward} disabled={!canClaimDailyReward}>
+                    Claim +50
+                  </button>
+                  <button className="ghost mini" onClick={() => startMatch('ai')}>
+                    Earn
+                  </button>
+                </div>
+              </div>
+
+              <div className="shop-hub-panels">
+                <button className="shop-hub-panel shop-hub-panel-packs" onClick={() => setShopSubview('packs')}>
+                  <span className="shop-hub-panel-kicker">Packs</span>
+                  <strong>{packAccessLabel}</strong>
+                  <span>{packDetailLabel}</span>
+                  <span className="shop-hub-panel-stat">{totalOwnedCards} cards logged</span>
                 </button>
-              </>
-            )}
-            tiles={bazaarTiles}
-            viewLabel={viewLabel}
-            onBack={shopSubview !== 'hub' ? () => setShopSubview('hub') : undefined}
-            shortcuts={shopSubview === 'hub' ? shopShortcuts : undefined}
-          />
-        </article>
+                <button className="shop-hub-panel shop-hub-panel-themes" onClick={() => setShopSubview('themes')}>
+                  <span className="shop-hub-panel-kicker">Themes</span>
+                  <strong>{ownedThemes.length}/{THEME_OFFERS.length} owned</strong>
+                  <span>{themeUnlockLabel}</span>
+                  <span className="shop-hub-panel-stat">Equipped · {selectedThemeName}</span>
+                </button>
+                <button className="shop-hub-panel shop-hub-panel-borders" onClick={() => setShopSubview('borders')}>
+                  <span className="shop-hub-panel-kicker">Borders</span>
+                  <strong>{ownedCardBorders.length}/{CARD_BORDER_OFFERS.length} owned</strong>
+                  <span>{borderUnlockLabel}</span>
+                  <span className="shop-hub-panel-stat">Equipped · {selectedBorderName}</span>
+                </button>
+                <button className="shop-hub-panel shop-hub-panel-breakdown" onClick={() => setShopSubview('breakdown')}>
+                  <span className="shop-hub-panel-kicker">Breakdown</span>
+                  <strong>{breakable.length} excess cards</strong>
+                  <span>Convert duplicates into shards</span>
+                  <span className="shop-hub-panel-stat">Next cosmetic · {nextCosmeticLabel}</span>
+                </button>
+              </div>
+            </div>
+          )}
 
         {shopSubview === 'vault' && (
-          <article className={`section-card utility-card reward-vault-card ${canClaimDailyReward ? 'claim-ready' : ''}`}>
-            <div className="section-head compact">
-              <h3>Reward Vault</h3>
-              <span className="badge">{shards} Shards</span>
-            </div>
+          <div className="shop-section-panel reward-vault-card">
+            {renderShopToolbar('Reward Vault', `${shards} Shards`)}
             <p className="note">Claim your daily payout here and jump back into battle to refill the vault.</p>
             <div className="controls">
               <button className="primary mini" onClick={handleClaimDailyReward} disabled={!canClaimDailyReward}>
@@ -183,15 +219,12 @@ export function ShopScreen() {
                 Earn in Battle
               </button>
             </div>
-          </article>
+          </div>
         )}
 
         {shopSubview === 'themes' && (
-          <article className="section-card utility-card">
-            <div className="section-head compact">
-              <h3>Cosmetic Themes</h3>
-              <span className="badge">Cosmetics</span>
-            </div>
+          <div className="shop-section-panel">
+            {renderShopToolbar('Cosmetic Themes', `${ownedThemes.length}/${THEME_OFFERS.length} owned`)}
             <div className="theme-grid theme-grid-shop-fit">
               {THEME_OFFERS.map((theme) => {
                 const owned = ownedThemes.includes(theme.id)
@@ -212,15 +245,12 @@ export function ShopScreen() {
                 )
               })}
             </div>
-          </article>
+          </div>
         )}
 
         {shopSubview === 'borders' && (
-          <article className="section-card utility-card">
-            <div className="section-head compact">
-              <h3>Card Borders</h3>
-              <span className="badge">Cosmetics</span>
-            </div>
+          <div className="shop-section-panel">
+            {renderShopToolbar('Card Borders', `${ownedCardBorders.length}/${CARD_BORDER_OFFERS.length} owned`)}
             <div className="theme-grid theme-grid-shop-fit" data-scene-swipe-opt-out="true">
               {CARD_BORDER_OFFERS.map((border) => {
                 const owned = ownedCardBorders.includes(border.id)
@@ -248,15 +278,12 @@ export function ShopScreen() {
                 )
               })}
             </div>
-          </article>
+          </div>
         )}
 
         {shopSubview === 'packs' && (
-          <article className="section-card utility-card">
-            <div className="section-head compact">
-              <h3>Card Packs</h3>
-              <span className="badge">Owned {totalOwnedCards}</span>
-            </div>
+          <div className="shop-section-panel">
+            {renderShopToolbar('Card Packs', `Owned ${totalOwnedCards}`)}
             <div className="theme-grid theme-grid-shop-fit" data-scene-swipe-opt-out="true">
               {packOffers.map((pack) => (
                 <div className={`theme-offer-card pack-offer-card pack-offer-${pack.id}`} key={pack.id}>
@@ -314,20 +341,17 @@ export function ShopScreen() {
                 </div>
               </div>
             )}
-          </article>
+          </div>
         )}
 
         {shopSubview === 'breakdown' && (
-          <article className="section-card utility-card">
-            <div className="section-head compact">
-              <h3>Break Down Cards</h3>
-              <span className="badge">{totalOwnedCards} owned</span>
-            </div>
+          <div className="shop-section-panel">
+            {renderShopToolbar('Break Down Cards', `${totalOwnedCards} owned`)}
 
             {breakable.length === 0 ? (
               <p className="note">No excess cards to break down.</p>
             ) : (
-              <div className="leaderboard-list">
+              <div className="leaderboard-list shop-breakdown-list">
                 {breakable.map((entry) => {
                   const refundPer = RARITY_REFUND[entry.meta.rarity]
                   return (
@@ -378,8 +402,9 @@ export function ShopScreen() {
                 </div>
               )
             })()}
-          </article>
+          </div>
         )}
+        </article>
       </section>
       {ceremonyVisible && ceremonyPack && (
         <PackCeremonyOverlay
