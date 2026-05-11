@@ -112,6 +112,7 @@ A design documentation suite lives in `docs/`. **Consult it before adding, modif
 - Use semantic HTML elements where possible.
 - New styles go in `App.css` in the appropriate section (see `06-styles.md`).
 - Support `prefers-reduced-motion` for all new animations.
+- **Section nav strips** (Shop, Social, Settings, and any future screen nav): buttons must use `border-radius: var(--radius-sm)` (6 px — never `999px` pill), `background: linear-gradient(135deg, rgba(8,14,30,0.68), rgba(23,31,57,0.54))`, `font-weight: 800`, `text-transform: uppercase`. Active state uses the amber/blue gradient with `color: #fff7d6`. CSS selectors live in the shared rule block covering `.settings-nav-strip button`, `.social-nav-strip button`, `.shop-nav-strip button`, and `.settings-admin-nav button`.
 - Dense multi-purpose mobile screens must use a unified hub-plus-subpage pattern instead of one long vertical stack. Keep the root view focused, and move secondary tools into dedicated subviews.
 - Frequent player actions stay on the first view; admin, clan, leaderboard, vault, breakdown, and similar secondary tools should live one tap deeper with clear Back navigation.
 - Do not use browser `prompt` or `confirm` flows for production UX when an in-app modal pattern exists. Reuse the app’s confirm and inspect surfaces.

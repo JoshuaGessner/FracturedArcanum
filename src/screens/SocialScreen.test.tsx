@@ -216,27 +216,33 @@ describe('SocialScreen hub flow', () => {
   it('keeps friends primary and hides leaderboard details by default', () => {
     renderSocialScreen()
 
-    expect(screen.getByRole('button', { name: /friends/i })).toBeTruthy()
+    expect(screen.getAllByRole('button', { name: /friends/i }).length).toBeGreaterThan(0)
     expect(screen.queryByText(/leaderboard/i)).toBeNull()
     expect(screen.queryByText(/card trades/i)).toBeNull()
   })
 
-  it('uses a unified tavern header instead of separate tavern signals and social hub slabs', () => {
+  it('uses a minimalist info bar instead of a full scene header panel', () => {
     const { container } = renderSocialScreen()
 
     expect(screen.queryByText(/social hub/i)).toBeNull()
     expect(screen.queryByText(/tavern signals/i)).toBeNull()
-    expect(screen.getByText(/friends online/i)).toBeTruthy()
-    expect(container.textContent).toMatch(/clan hall/i)
-    expect(container.textContent).toMatch(/trade post/i)
-    expect(container.querySelectorAll('.scene-status-tile')).toHaveLength(3)
+    expect(container.querySelector('.social-info-bar')).toBeTruthy()
+    expect(container.querySelector('.social-info-bar')?.textContent).toMatch(/tavern hall/i)
+    expect(container.querySelector('.social-info-bar')?.textContent).toMatch(/online/i)
+    expect(container.querySelectorAll('.scene-status-tile')).toHaveLength(0)
   })
 
-  it('keeps the back action visible when opening a social subview', () => {
+  it('shows clan subview content when Clan nav button is clicked', () => {
     renderSocialScreen()
 
-    fireEvent.click(screen.getByRole('button', { name: /clan hall/i }))
+    fireEvent.click(screen.getByRole('button', { name: /^clan$/i }))
 
-    expect(screen.getByRole('button', { name: /back/i })).toBeTruthy()
+    expect(screen.getByText(/clan hall/i)).toBeTruthy()
+  })
+
+  it('shows add-friend form in the hub overview', () => {
+    renderSocialScreen()
+
+    expect(screen.getByPlaceholderText(/add friend by username/i)).toBeTruthy()
   })
 })

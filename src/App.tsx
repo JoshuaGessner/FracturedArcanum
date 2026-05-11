@@ -2412,7 +2412,7 @@ function AppShell() {
 
     const username = friendUsernameInput.trim()
     if (!username) {
-      setSocialStatus('Enter a username to add a friend.')
+      setToastMessage('Enter a username to add a friend.')
       return
     }
 
@@ -2421,14 +2421,14 @@ function AppShell() {
       const response = await authFetch('/api/social/friends', authToken, { method: 'POST', body: { username } })
       const data = (await response.json()) as { ok?: boolean; error?: string }
       if (!response.ok || !data.ok) {
-        setSocialStatus(data.error ?? 'Could not add friend right now.')
+        setToastMessage(data.error ?? 'Could not add friend right now.')
         return
       }
       setFriendUsernameInput('')
-      setSocialStatus(`Friend added: @${username}.`)
+      setToastMessage(`Friend added: @${username}.`)
       await refreshSocialHub()
     } catch {
-      setSocialStatus('Could not add friend right now.')
+      setToastMessage('Could not add friend right now.')
     } finally {
       setSocialLoading(false)
     }
@@ -2444,13 +2444,13 @@ function AppShell() {
       const response = await authFetch(`/api/social/friends/${friendAccountId}`, authToken, { method: 'DELETE' })
       const data = (await response.json()) as { ok?: boolean; error?: string }
       if (!response.ok || !data.ok) {
-        setSocialStatus(data.error ?? 'Could not remove friend right now.')
+        setToastMessage(data.error ?? 'Could not remove friend right now.')
         return
       }
-      setSocialStatus(`${displayName} removed from your friends list.`)
+      setToastMessage(`${displayName} removed from your friends list.`)
       await refreshSocialHub()
     } catch {
-      setSocialStatus('Could not remove friend right now.')
+      setToastMessage('Could not remove friend right now.')
     } finally {
       setSocialLoading(false)
     }
