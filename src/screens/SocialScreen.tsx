@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { CARD_LIBRARY } from '../game'
 import { RankBadge } from '../components/AssetBadge'
-import { SceneHeaderPanel, type SceneHeaderTile } from '../components/SceneHeaderPanel'
 import { useAppShell, useProfile, useQueue, useSocial } from '../contexts'
 import { getCardIcon as _getCardIcon, getCardName as _getCardName, inferToastSeverity } from '../utils'
 
@@ -27,119 +26,48 @@ export function SocialScreen() {
   const profileName = serverProfile?.displayName ?? serverProfile?.username ?? 'Player'
   const onlineFriends = friends.filter((friend) => onlineFriendIds.has(friend.accountId)).length
   const pendingTrades = trades.filter((trade) => trade.status === 'pending').length
-  const clanHallLabel = clan ? `[${clan.tag}] ${clan.members.length} allies` : 'Solo banner'
-  const tradeDeskLabel = pendingTrades > 0 ? `${pendingTrades} pending` : 'Open for barter'
-  const socialViewLabel = socialSubview === 'friends'
-    ? 'Friends'
-    : socialSubview === 'clan'
-      ? 'Clan Hall'
-      : socialSubview === 'trades'
-        ? 'Trade Post'
-        : socialSubview === 'rankings'
-          ? 'Rankings'
-          : 'Social'
-  const socialTiles: SceneHeaderTile[] = [
-    {
-      kicker: 'Friends Online',
-      value: `${onlineFriends}/${friends.length || 0}`,
-      note: 'Active challengers in your circle',
-    },
-    {
-      kicker: 'Clan Hall',
-      value: clan ? clan.tag : 'Solo',
-      note: clanHallLabel,
-    },
-    {
-      kicker: 'Trade Post',
-      value: tradeDeskLabel,
-      note: 'Swap cards and review offers',
-      accent: pendingTrades > 0,
-    },
-  ]
-  const socialShortcuts = [
-    {
-      label: 'Friends',
-      description: 'Current friends, online presence, and challenge flow.',
-      onClick: () => setSocialSubview('friends'),
-    },
-    {
-      label: 'Rankings',
-      description: 'Season ladder standings and top competitors.',
-      onClick: () => setSocialSubview('rankings'),
-    },
-    {
-      label: 'Clan Hall',
-      description: 'Create, join, and manage your alliance in one place.',
-      onClick: () => setSocialSubview('clan'),
-    },
-    {
-      label: 'Trade Post',
-      description: 'Send and review offers without crowding the hub.',
-      onClick: () => setSocialSubview('trades'),
-    },
-  ]
+
+  // Sort friends: online first, then alphabetically by display name
+  const sortedFriends = [...friends].sort((a, b) => {
+    const aOnline = onlineFriendIds.has(a.accountId) ? 0 : 1
+    const bOnline = onlineFriendIds.has(b.accountId) ? 0 : 1
+    if (aOnline !== bOnline) return aOnline - bOnline
+    return a.displayName.localeCompare(b.displayName)
+  })
 
   return (
     <section className={`home-screen social-screen screen-panel ${activeScreen === 'social' ? 'active' : 'hidden'}`}>
       <div className="home-cards">
         <article className="section-card social-command-card">
-          <SceneHeaderPanel
-            className="social-scene-header"
-            title="Tavern Hall"
-            note="Friends · clan · trades"
-            badges={(
-              <>
-                <strong>{profileName}</strong>
-                <span className="badge">{onlineFriends} online</span>
-              </>
-            )}
-            tiles={socialTiles}
-            viewLabel={socialViewLabel}
-            onBack={socialSubview !== 'hub' ? () => setSocialSubview('hub') : undefined}
-            shortcuts={socialSubview === 'hub' ? socialShortcuts : undefined}
-          >
-            {socialSubview === 'hub' && (
-              <div className="social-list social-primary-list">
-                {friends.slice(0, 6).map((friend) => {
-                  const online = onlineFriendIds.has(friend.accountId)
-                  const canChallenge = online && !outgoingChallenge && !incomingChallenge
-                  return (
-                    <div className="social-row" key={friend.accountId}>
-                      <div className="leaderboard-meta">
-                        <strong>
-                          <span
-                            className={`presence-dot ${online ? 'online' : 'offline'}`}
-                            role="img"
-                            aria-label={online ? 'online' : 'offline'}
-                            title={online ? 'Online' : 'Offline'}
-                          />
-                          {friend.displayName}
-                        </strong>
-                        <span className="note">@{friend.username}</span>
-                      </div>
-                      <div className="controls">
-                        <button
-                          className="primary mini"
-                          disabled={!canChallenge}
-                          title={online ? 'Challenge to an unranked duel' : 'Friend is offline'}
-                          onClick={() => handleChallengeFriend(friend)}
-                        >
-                          Challenge
-                        </button>
-                      </div>
-                    </div>
-                  )
-                })}
-                {!friends.length && <p className="note">No friends yet. Add players by username to build your roster.</p>}
-                {challengeStatus && <p className="note toast-line">{challengeStatus}</p>}
-                {outgoingChallenge && (
-                  <div className="challenge-banner outgoing">
-                    <span>
-                      Waiting for <strong>{outgoingChallenge.toName}</strong>…
-                    </span>
-                    <button className="ghost mini" onClick={handleCancelOutgoingChallenge}>Cancel</button>
-                  </div>
-                )}
+          <nav className="social-nav-strip" aria-label="Social sections" data-scene-swipe-opt-out="true">
+            <button className={socialSubview === 'hub' ? 'active' : ''} onClick={() => setSocialSubview('hub')}>Overview</button>
+            <button className={socialSubview === 'friends' ? 'active' : ''} onClick={() => setSocialSubview('friends')}>Friends</button>
+            <button className={socialSubview === 'rankings' ? 'active' : ''} onClick={() => setSocialSubview('rankings')}>Rankings</button>
+            <button className={socialSubview === 'clan' ? 'active' : ''} onClick={() => setSocialSubview('clan')}>Clan</button>
+            <button className={socialSubview === 'trades' ? 'active' : ''} onClick={() => setSocialSubview('trades')}>Trades</button>
+          </nav>
+          <div className="social-info-bar">
+            <span className="social-info-bar-label">Tavern Hall</span>
+            <div className="badges">
+              <span className="badge">{profileName}</span>
+              <span className="badge">{onlineFriends} online</span>
+              {pendingTrades > 0 && <span className="badge is-accent">{pendingTrades} trade{pendingTrades !== 1 ? 's' : ''} pending</span>}
+            </div>
+          </div>
+
+          {socialSubview === 'hub' && (
+            <div className="social-hub-panel">
+                <form className="social-inline-form" onSubmit={(event) => void handleAddFriend(event)}>
+                  <input
+                    className="text-input"
+                    value={friendUsernameInput}
+                    maxLength={20}
+                    placeholder="Add friend by username"
+                    onChange={(event) => setFriendUsernameInput(event.target.value)}
+                  />
+                  <button className="secondary" disabled={socialLoading}>Add</button>
+                </form>
+
                 {incomingChallenge && (
                   <div className="challenge-banner incoming">
                     <span>
@@ -151,9 +79,51 @@ export function SocialScreen() {
                     </div>
                   </div>
                 )}
-              </div>
-            )}
-          </SceneHeaderPanel>
+
+                {outgoingChallenge && (
+                  <div className="challenge-banner outgoing">
+                    <span>Waiting for <strong>{outgoingChallenge.toName}</strong>…</span>
+                    <button className="ghost mini" onClick={handleCancelOutgoingChallenge}>Cancel</button>
+                  </div>
+                )}
+
+                {challengeStatus && <p className="note toast-line">{challengeStatus}</p>}
+
+                <div className="social-list">
+                  {sortedFriends.map((friend) => {
+                    const online = onlineFriendIds.has(friend.accountId)
+                    const canChallenge = online && !outgoingChallenge && !incomingChallenge
+                    return (
+                      <div className="social-row" key={friend.accountId}>
+                        <div className="leaderboard-meta">
+                          <strong>
+                            <span
+                              className={`presence-dot ${online ? 'online' : 'offline'}`}
+                              role="img"
+                              aria-label={online ? 'online' : 'offline'}
+                              title={online ? 'Online' : 'Offline'}
+                            />
+                            {friend.displayName}
+                          </strong>
+                          <span className="note">@{friend.username}</span>
+                        </div>
+                        <div className="controls">
+                          <button
+                            className="primary mini"
+                            disabled={!canChallenge}
+                            title={online ? 'Challenge to an unranked duel' : 'Friend is offline'}
+                            onClick={() => handleChallengeFriend(friend)}
+                          >
+                            Challenge
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  })}
+                  {!friends.length && <p className="note">No friends yet. Enter a username above to add your first friend.</p>}
+                </div>
+            </div>
+          )}
         </article>
 
         {socialSubview === 'friends' && (

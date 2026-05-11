@@ -29,6 +29,15 @@
 
 ## Key visual systems
 
+### Section nav strips
+Shop, Settings, and Social each have a persistent section nav strip at the top of their command card. All three use the same canonical button style:
+- `border-radius: var(--radius-sm)` (6 px) — never pill (`999px`)
+- `background: linear-gradient(135deg, rgba(8,14,30,0.68), rgba(23,31,57,0.54))`
+- `font-weight: 800`, `text-transform: uppercase`, `font-size: var(--font-xs)`
+- Active state: amber gradient border + amber/blue background tint, `color: #fff7d6`
+
+CSS classes: `.shop-nav-strip button`, `.settings-nav-strip button`, `.social-nav-strip button` — all covered by the same rule block alongside `.settings-admin-nav button`.
+
 ### Scene shell
 Every primary screen now renders inside a fixed-height shell:
 

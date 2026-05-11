@@ -1755,6 +1755,44 @@ button:disabled {
   z-index: 1;
 }
 
+/* ─── Social Info Bar ──────────────────────────────────────────────
+   Minimalist single-row header replacing the full SceneHeaderPanel.
+   Shows screen label on the left and status badges on the right. */
+.social-info-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 2px;
+  border-bottom: 1px solid rgba(147, 197, 253, 0.1);
+}
+
+.social-info-bar-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #7a8ab8;
+}
+
+.social-info-bar .badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-content: flex-end;
+}
+
+.social-info-bar .badge {
+  padding: 3px 8px;
+  font-size: 0.72rem;
+}
+
+.social-info-bar .badge.is-accent {
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.22), rgba(96, 165, 250, 0.16));
+  border: 1px solid rgba(251, 191, 36, 0.36);
+  color: #fff7d6;
+}
+
 .social-hero {
   display: flex;
   align-items: center;
@@ -2842,16 +2880,18 @@ button:disabled {
   flex: 0 0 auto;
   min-height: 34px;
   padding: 7px 11px;
-  border-radius: 999px;
+  border-radius: var(--radius-sm);
   border: 1px solid rgba(147, 197, 253, 0.16);
-  background: rgba(12, 18, 36, 0.74);
-  color: #dbe6ff;
+  background: linear-gradient(135deg, rgba(8, 14, 30, 0.68), rgba(23, 31, 57, 0.54));
+  color: #cbd8f4;
   font-size: 0.82rem;
+  font-weight: 800;
+  text-transform: uppercase;
 }
 
 .shop-nav-strip button.active {
-  border-color: rgba(251, 191, 36, 0.38);
-  background: linear-gradient(135deg, rgba(251, 191, 36, 0.22), rgba(91, 118, 255, 0.18));
+  border-color: rgba(251, 191, 36, 0.48);
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.16), rgba(96, 165, 250, 0.14));
   color: #fff7d6;
 }
 
@@ -3871,6 +3911,7 @@ button:disabled {
 }
 
 .settings-nav-strip,
+.social-nav-strip,
 .settings-admin-nav {
   display: grid;
   gap: 8px;
@@ -3880,7 +3921,12 @@ button:disabled {
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 120px), 1fr));
 }
 
+.social-nav-strip {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 80px), 1fr));
+}
+
 .settings-nav-strip button,
+.social-nav-strip button,
 .settings-admin-nav button {
   min-width: 0;
   min-height: 34px;
@@ -3895,6 +3941,7 @@ button:disabled {
 }
 
 .settings-nav-strip button.active,
+.social-nav-strip button.active,
 .settings-admin-nav button.active {
   border-color: rgba(251, 191, 36, 0.48);
   background: linear-gradient(135deg, rgba(251, 191, 36, 0.16), rgba(96, 165, 250, 0.14));
@@ -5198,6 +5245,21 @@ button.danger:hover { filter: brightness(1.08); }
     font-size: var(--font-xs);
   }
 
+  .social-nav-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .social-nav-strip button {
+    flex: 1 1 calc(33.33% - 6px);
+    min-width: calc(33.33% - 6px);
+    min-height: 31px;
+    padding: 6px 4px;
+    font-size: 0.68rem;
+    text-align: center;
+  }
+
   .shop-feature-panel {
     grid-template-columns: 1fr;
     padding: 9px 10px;
@@ -5321,6 +5383,7 @@ button.danger:hover { filter: brightness(1.08); }
   }
 
   .settings-nav-strip button,
+  .social-nav-strip button,
   .settings-admin-nav button {
     min-height: 31px;
     padding: 6px 7px;
