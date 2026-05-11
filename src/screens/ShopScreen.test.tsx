@@ -256,6 +256,23 @@ describe('ShopScreen hub flow', () => {
     expect(container.querySelectorAll('.scene-status-tile')).toHaveLength(0)
   })
 
+  it('reflects current shard reward rules in the hub and vault claim surfaces', () => {
+    const { container } = renderShopScreen({ canClaimDailyReward: true })
+
+    expect(screen.getByRole('button', { name: /claim \+25/i })).toBeTruthy()
+    expect(container.textContent).toMatch(/\+25/)
+    expect(container.textContent).toMatch(/\+30/)
+    expect(container.textContent).toMatch(/\+10/)
+    expect(container.textContent).not.toMatch(/\+50/)
+
+    fireEvent.click(screen.getByRole('button', { name: /^vault$/i }))
+
+    expect(screen.getByRole('button', { name: /claim \+25/i })).toBeTruthy()
+    expect(screen.getByLabelText(/shard reward rules/i)).toBeTruthy()
+    expect(container.querySelector('.reward-vault-console')).toBeTruthy()
+    expect(container.textContent).not.toMatch(/\+50/)
+  })
+
   it('keeps the card packs view in a fit-safe in-screen grid', () => {
     const { container } = renderShopScreen()
 

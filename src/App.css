@@ -257,12 +257,13 @@ button:disabled {
 .app-shell:not(.battle-shell-active) .scene-stage > .screen-panel.active::-webkit-scrollbar-track { background: transparent; }
 
 .app-shell:not(.battle-shell-active) .scene-stage > .home-screen:not(.social-screen).screen-panel.active {
-  overflow: hidden;
-  scrollbar-width: none;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
 }
 
 .app-shell:not(.battle-shell-active) .scene-stage > .home-screen:not(.social-screen).screen-panel.active::-webkit-scrollbar {
-  display: none;
+  width: 6px;
 }
 
 /* ── Scene Fill — single-column screens stretch to use full viewport ─
@@ -288,12 +289,17 @@ button:disabled {
 .home-screen.screen-panel.active > .section-card,
 .home-screen.screen-panel.active > .home-cards,
 .collection-screen.screen-panel.active > .section-card {
-  flex: 1 0 auto;
+  flex: 1 1 auto;
   min-height: 0;
 }
 
 .home-screen:not(.social-screen).screen-panel.active > .home-command-card {
   flex: 0 1 auto;
+}
+
+.home-screen.play-screen.screen-panel.active > .spotlight-card {
+  flex: 0 0 auto;
+  overflow: visible;
 }
 
 /* Shop / social / settings: first article fills when content is sparse. */
@@ -302,7 +308,8 @@ button:disabled {
 .home-screen.social-screen.screen-panel.active > .home-cards,
 .ops-grid.settings-screen.screen-panel.active > article:first-child,
 .settings-screen.screen-panel.active > article:first-child {
-  flex: 1 0 auto;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 /* Battle: the active arena should own the remaining height while banners
@@ -432,6 +439,18 @@ button:disabled {
   filter: saturate(1.05) blur(0.5px);
   border-radius: 24px;
   pointer-events: none;
+}
+
+@media (max-width: 640px) {
+  .home-screen.active::before,
+  .play-screen.active::before,
+  .social-screen.active::before,
+  .collection-screen.active::before,
+  .shop-screen.active::before,
+  .settings-screen.active::before,
+  .battlefield.active::before {
+    inset: 0;
+  }
 }
 
 .home-screen.active::before { background-image: url('/generated/ui/bg-main-menu.svg'); }
@@ -1045,6 +1064,14 @@ button:disabled {
   white-space: nowrap;
 }
 
+.collection-screen .builder-card .slot-head strong {
+  display: -webkit-box;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
 /* ─── Section Cards ─────────────────────────────────────────────── */
 /* Single-owner chrome rule: the card owns the border + radius +
    gradient. Surfaces own either SVG chrome or CSS edge treatment,
@@ -1606,6 +1633,7 @@ button:disabled {
 }
 
 .difficulty-chip {
+  min-height: 32px;
   padding: 8px 12px;
   border-radius: var(--radius-pill);
   background: rgba(99, 102, 241, 0.14);
@@ -2940,6 +2968,20 @@ button:disabled {
   background: linear-gradient(135deg, rgba(66, 45, 12, 0.44), rgba(18, 24, 44, 0.8));
 }
 
+.shop-feature-vault {
+  align-items: center;
+}
+
+.shop-vault-actions,
+.reward-vault-action-center {
+  justify-content: center;
+  margin-top: 0;
+}
+
+.shop-vault-actions button {
+  min-width: 124px;
+}
+
 @media (min-width: 820px) {
   .shop-feature-panel {
     grid-template-columns: 1fr;
@@ -2951,7 +2993,7 @@ button:disabled {
 
 .shop-vault-stat-strip {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
   margin-top: 12px;
 }
@@ -2987,6 +3029,166 @@ button:disabled {
 
 .shop-feature-panel .note {
   margin: 4px 0 0;
+}
+
+.reward-vault-card {
+  align-items: stretch;
+  align-content: start;
+  grid-template-columns: minmax(0, 1fr);
+  justify-content: stretch;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.reward-vault-card .shop-section-toolbar {
+  grid-template-columns: minmax(72px, auto) minmax(0, 1fr) minmax(72px, auto);
+}
+
+.reward-vault-card .shop-section-toolbar strong {
+  justify-self: center;
+  text-align: center;
+}
+
+.reward-vault-card .shop-section-toolbar .badge {
+  justify-self: end;
+}
+
+.reward-vault-console {
+  position: relative;
+  box-sizing: border-box;
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: 14px;
+  width: 100%;
+  min-height: 0;
+  padding: clamp(12px, 2.4vw, 22px);
+  border: 1px solid rgba(251, 191, 36, 0.22);
+  border-radius: 14px;
+  background:
+    linear-gradient(150deg, rgba(71, 48, 14, 0.58), rgba(8, 14, 29, 0.88) 46%, rgba(22, 33, 65, 0.72)),
+    linear-gradient(90deg, rgba(251, 191, 36, 0.08), transparent 35%, rgba(96, 165, 250, 0.08));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 18px 42px rgba(0, 0, 0, 0.2);
+}
+
+.reward-vault-stage {
+  display: grid;
+  grid-template-columns: minmax(140px, 0.72fr) minmax(0, 1fr);
+  align-items: center;
+  gap: clamp(12px, 2.4vw, 24px);
+  width: min(100%, 720px);
+}
+
+.reward-vault-medallion {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  justify-self: center;
+  width: min(184px, 42vw);
+  aspect-ratio: 1;
+  padding: 14px;
+  overflow: hidden;
+  border: 1px solid rgba(251, 191, 36, 0.38);
+  border-radius: 18px;
+  background: linear-gradient(145deg, rgba(19, 28, 54, 0.96), rgba(82, 58, 17, 0.76));
+  box-shadow: inset 0 0 28px rgba(251, 191, 36, 0.1), 0 16px 34px rgba(0, 0, 0, 0.28);
+  text-align: center;
+}
+
+.reward-vault-medallion::before {
+  content: '';
+  position: absolute;
+  inset: 14px;
+  z-index: -1;
+  opacity: 0.2;
+  background: url('/generated/ui/tile-shop.svg') center / contain no-repeat;
+}
+
+.reward-vault-medallion span {
+  color: #dbe5ff;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.reward-vault-medallion strong {
+  color: #fff6cc;
+  font-size: clamp(2.55rem, 7vw, 4.4rem);
+  line-height: 0.95;
+  text-shadow: 0 0 24px rgba(251, 191, 36, 0.18);
+}
+
+.reward-vault-copy {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.reward-vault-state {
+  justify-self: start;
+  padding: 5px 9px;
+  border: 1px solid rgba(251, 191, 36, 0.24);
+  border-radius: var(--radius-sm);
+  background: rgba(251, 191, 36, 0.1);
+  color: #fff0b6;
+  font-size: 0.68rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.reward-vault-copy strong {
+  color: #f8fbff;
+  font-size: clamp(1.32rem, 3.8vw, 2.05rem);
+  line-height: 1.05;
+}
+
+.reward-vault-copy .note {
+  max-width: 48ch;
+  margin: 0;
+}
+
+.reward-vault-action-center {
+  width: min(100%, 560px);
+  gap: 10px;
+}
+
+.reward-vault-action-center button {
+  flex: 1 1 180px;
+  min-height: 42px;
+}
+
+.reward-vault-card.is-charging .reward-vault-primary,
+.reward-vault-primary:disabled {
+  opacity: 0.68;
+}
+
+.reward-vault-rule-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  width: min(100%, 720px);
+}
+
+.reward-vault-rule {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid rgba(147, 197, 253, 0.14);
+  border-radius: var(--radius-sm);
+  background: rgba(8, 14, 30, 0.48);
+  color: #cfd8ff;
+  font-size: 0.74rem;
+  font-weight: 800;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.reward-vault-rule strong {
+  color: #fff6cc;
+  font-size: 1rem;
 }
 
 .shop-hub-panels {
@@ -5014,10 +5216,11 @@ button.danger:hover { filter: brightness(1.08); }
     gap: 3px;
   }
   .hand-card .card-name {
-    min-height: 1.2em;
+    min-height: 2.2em;
     margin-bottom: 0;
-    font-size: 0.78rem;
-    -webkit-line-clamp: 1;
+    font-size: 0.68rem;
+    line-height: 1.08;
+    -webkit-line-clamp: 2;
   }
   .hand-card .card-art-shell.thumb {
     height: 40px;
@@ -5151,8 +5354,8 @@ button.danger:hover { filter: brightness(1.08); }
   .collection-rarity-chips { gap: 4px; }
   .deck-roster {
     padding: 6px 8px;
-    max-height: 176px;
-    overflow-y: auto;
+    max-height: none;
+    overflow-y: visible;
   }
   .deck-roster-list { grid-template-columns: 1fr; gap: 4px; }
   .builder-toolbar { padding: 4px 8px; gap: 6px; }
@@ -5168,19 +5371,19 @@ button.danger:hover { filter: brightness(1.08); }
   .social-list {
     margin-top: 6px;
     gap: 4px;
-    max-height: 180px;
-    overflow-y: auto;
+    max-height: none;
+    overflow-y: visible;
     padding-right: 2px;
   }
   .social-screen .utility-card {
-    max-height: min(58dvh, 440px);
-    overflow-y: auto;
+    max-height: none;
+    overflow-y: visible;
     overscroll-behavior: contain;
   }
 
   .shop-market-card {
     max-height: none;
-    overflow: hidden;
+    overflow: visible;
   }
 
   .shop-market-card.shop-view-hub {
@@ -5204,14 +5407,14 @@ button.danger:hover { filter: brightness(1.08); }
   .social-clan-block {
     padding: 8px;
     margin-top: 6px;
-    max-height: 220px;
-    overflow-y: auto;
+    max-height: none;
+    overflow-y: visible;
   }
   .social-trade-block {
     padding: 8px;
     margin-top: 6px;
-    max-height: 220px;
-    overflow-y: auto;
+    max-height: none;
+    overflow-y: visible;
   }
   .social-row { padding: 6px 8px; gap: 6px; }
 
@@ -5254,7 +5457,7 @@ button.danger:hover { filter: brightness(1.08); }
   .social-nav-strip button {
     flex: 1 1 calc(33.33% - 6px);
     min-width: calc(33.33% - 6px);
-    min-height: 31px;
+    min-height: 32px;
     padding: 6px 4px;
     font-size: 0.68rem;
     text-align: center;
@@ -5270,7 +5473,15 @@ button.danger:hover { filter: brightness(1.08); }
   }
 
   .shop-feature-panel .controls {
-    justify-content: flex-start;
+    justify-content: center;
+  }
+
+  .shop-vault-actions {
+    width: 100%;
+  }
+
+  .shop-vault-actions button {
+    flex: 1 1 130px;
   }
 
   .shop-feature-panel .note {
@@ -5310,6 +5521,117 @@ button.danger:hover { filter: brightness(1.08); }
 
   .shop-section-panel {
     gap: 8px;
+  }
+
+  .reward-vault-console {
+    gap: 10px;
+    width: 100%;
+    padding: 10px;
+  }
+
+  .reward-vault-stage {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    text-align: center;
+  }
+
+  .reward-vault-medallion {
+    width: min(132px, 44vw);
+    padding: 10px;
+  }
+
+  .reward-vault-copy {
+    justify-items: center;
+  }
+
+  .reward-vault-state {
+    justify-self: center;
+  }
+
+  .reward-vault-copy .note {
+    max-width: 34ch;
+  }
+
+  .reward-vault-action-center {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .reward-vault-action-center button {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .reward-vault-rule-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  @media (max-height: 720px) {
+    .reward-vault-card .shop-section-toolbar {
+      padding: 4px 0 5px;
+    }
+
+    .reward-vault-console {
+      gap: 8px;
+      padding: 8px;
+    }
+
+    .reward-vault-stage {
+      grid-template-columns: 1fr;
+      gap: 8px;
+      text-align: center;
+    }
+
+    .reward-vault-medallion {
+      width: min(108px, 31vw);
+      border-radius: 14px;
+    }
+
+    .reward-vault-medallion span {
+      font-size: 0.62rem;
+    }
+
+    .reward-vault-medallion strong {
+      font-size: 2.1rem;
+    }
+
+    .reward-vault-copy {
+      justify-items: center;
+      gap: 4px;
+    }
+
+    .reward-vault-copy strong {
+      font-size: 1.05rem;
+    }
+
+    .reward-vault-copy .note {
+      display: none;
+    }
+
+    .reward-vault-action-center {
+      gap: 6px;
+    }
+
+    .reward-vault-action-center button {
+      min-height: 36px;
+      padding: 6px 8px;
+      font-size: 0.74rem;
+    }
+
+    .reward-vault-rule-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 4px;
+    }
+
+    .reward-vault-rule {
+      padding: 6px 4px;
+      font-size: 0.62rem;
+    }
+
+    .reward-vault-rule strong {
+      font-size: 0.88rem;
+    }
   }
 
   .shop-section-toolbar {
@@ -5385,7 +5707,7 @@ button.danger:hover { filter: brightness(1.08); }
   .settings-nav-strip button,
   .social-nav-strip button,
   .settings-admin-nav button {
-    min-height: 31px;
+    min-height: 32px;
     padding: 6px 7px;
     font-size: 0.72rem;
   }
@@ -5467,144 +5789,6 @@ button.danger:hover { filter: brightness(1.08); }
 
   .social-row {
     grid-template-columns: 1fr;
-  }
-
-  .trade-picker-row {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 720px) {
-  .home-screen:not(.social-screen).screen-panel.active > .home-command-card {
-    flex: 1 1 auto;
-  }
-
-  .topbar-home.topbar-art {
-    background: transparent;
-    border-color: transparent;
-    box-shadow: none;
-  }
-
-  .brand-block-home {
-    gap: 9px;
-    min-height: 62px;
-    padding: 0;
-  }
-
-  .brand-logo-home {
-    width: clamp(48px, 12vw, 62px);
-  }
-
-  .brand-wordmark {
-    font-size: clamp(1.35rem, 5.8vw, 1.82rem);
-    line-height: 1;
-  }
-
-  .home-command-card {
-    gap: 8px;
-    padding: clamp(9px, 1.3svh, 12px);
-    align-content: space-between;
-  }
-
-  .home-final-main {
-    gap: clamp(7px, 1.1svh, 10px);
-  }
-
-  .home-final-topline {
-    grid-template-columns: auto minmax(126px, 36vw);
-    gap: 10px;
-  }
-
-  .home-final-intro strong {
-    font-size: clamp(1.08rem, 4.8vw, 1.34rem);
-  }
-
-  .home-final-intro span {
-    font-size: clamp(0.94rem, 4.2vw, 1.16rem);
-  }
-
-  .home-final-badges {
-    gap: 8px;
-  }
-
-  .home-final-badges .badge {
-    padding: 7px 13px;
-    border-radius: 999px;
-    font-size: clamp(0.84rem, 3.4vw, 1rem);
-  }
-
-  .home-status-list {
-    gap: clamp(7px, 1.1svh, 10px);
-  }
-
-  .home-status-card.scene-status-tile {
-    gap: 4px;
-    padding: clamp(9px, 1.3svh, 11px) clamp(11px, 2.3vw, 14px);
-    border-radius: 12px;
-  }
-
-  .home-status-card .scene-status-kicker {
-    font-size: clamp(0.62rem, 2.4vw, 0.76rem);
-    letter-spacing: 0.14em;
-  }
-
-  .home-status-card strong {
-    font-size: clamp(0.96rem, 3.8vw, 1.14rem);
-  }
-
-  .home-status-card .mini-text {
-    color: #dce3f7;
-    font-size: clamp(0.82rem, 3.4vw, 0.98rem);
-    line-height: 1.18;
-  }
-
-  .home-rating-meter {
-    width: min(246px, 100%);
-  }
-
-  .home-rating-track {
-    height: 8px;
-  }
-
-  .home-rating-meter strong {
-    padding: 0;
-    font-size: clamp(0.82rem, 3.1vw, 1rem);
-    white-space: nowrap;
-  }
-
-  .quest-summary {
-    grid-template-columns: 1fr;
-    align-items: start;
-    gap: 7px;
-    padding: 9px 12px 10px;
-    margin-top: 4px;
-    border-radius: 12px;
-  }
-
-  .quest-pips {
-    gap: 6px;
-  }
-
-  .quest-pip {
-    width: 11px;
-    height: 11px;
-  }
-
-  .quest-count {
-    font-size: clamp(0.9rem, 3.4vw, 1.04rem);
-  }
-
-  .quest-next {
-    display: none;
-  }
-
-  .quest-reward-hint {
-    justify-self: stretch;
-    width: 100%;
-    padding: 7px 12px;
-    border-radius: 999px;
-    font-size: clamp(0.84rem, 3.3vw, 1rem);
-    text-align: left;
   }
 }
 
@@ -7491,6 +7675,11 @@ button.icon-only {
 }
 
 .chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  min-height: 32px;
   padding: 4px 10px;
   font-size: var(--font-xs);
   background: rgba(255, 255, 255, 0.04);

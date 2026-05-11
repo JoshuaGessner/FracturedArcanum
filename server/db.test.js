@@ -255,6 +255,18 @@ describe('friend gating', () => {
 })
 
 describe('resolveMatchResult mode gating', () => {
+  it('daily reward returns the granted amount and refreshed shard totals', () => {
+    const accountId = makeAccount('dailyrewardshape')
+    const before = db.getProfile(accountId)
+    const result = db.claimDailyReward(accountId)
+
+    expect(result.ok).toBe(true)
+    expect(result.amount).toBe(25)
+    expect(result.shards).toBe(before.shards + 25)
+    expect(result.newBalance).toBe(result.shards)
+    expect(result.totalEarned).toBe(before.total_earned + 25)
+  })
+
   it('unranked mode grants shards but does not change season rating', () => {
     const a = makeAccount('unrankedplayer')
     const before = db.getProfile(a)

@@ -29,6 +29,7 @@ import {
 import {
   ARENA_URL,
   CARD_BORDER_OFFERS,
+  ECONOMY_REWARDS,
   STORAGE_KEYS,
   THEME_OFFERS,
 } from './constants'
@@ -1660,7 +1661,7 @@ function AppShell() {
             isRanked,
             battleKind: battleKindForBeats,
             mode: game.mode,
-            shards: data.shardsEarned ?? 30,
+            shards: data.shardsEarned ?? ECONOMY_REWARDS.winShards,
             ratingDelta: isRanked ? ratingDelta : undefined,
           })
           if (rankCrossed) {
@@ -1975,14 +1976,16 @@ function AppShell() {
     feedback('claim', soundEnabled, hapticsEnabled)
     void authFetch('/api/me/daily', authToken, { method: 'POST' })
       .then((r) => r.json())
-      .then((data: { ok: boolean; error?: string; shards?: number; totalEarned?: number }) => {
+      .then((data: { ok: boolean; error?: string; amount?: number; newBalance?: number; shards?: number; totalEarned?: number }) => {
         if (data.ok) {
-          setServerProfile((prev) => prev ? { ...prev, shards: data.shards ?? prev.shards, lastDaily: todayKey, totalEarned: data.totalEarned ?? prev.totalEarned } : prev)
-          setToastMessage('Daily reward claimed: +25 Shards.')
+          const grantedShards = data.amount ?? ECONOMY_REWARDS.dailyShards
+          const updatedShards = data.shards ?? data.newBalance
+          setServerProfile((prev) => prev ? { ...prev, shards: updatedShards ?? prev.shards, lastDaily: todayKey, totalEarned: data.totalEarned ?? prev.totalEarned } : prev)
+          setToastMessage(`Daily reward claimed: +${grantedShards} Shards.`)
           setJustClaimedDaily(true)
           window.setTimeout(() => setJustClaimedDaily(false), 2000)
           presentRewardCinema(
-            buildDailyClaimSequence({ shards: 25, totalEarned: data.totalEarned }),
+            buildDailyClaimSequence({ shards: grantedShards, totalEarned: data.totalEarned }),
             'daily',
           )
         } else {
@@ -1990,7 +1993,7 @@ function AppShell() {
         }
       })
       .catch(() => setToastMessage('Network error claiming daily reward.'))
-    void sendAnalytics('reward_claim', { amount: 25, currency: 'shards', screen: activeScreen, viewport: getScreenBucket() }, 'vault')
+    void sendAnalytics('reward_claim', { amount: ECONOMY_REWARDS.dailyShards, currency: 'shards', screen: activeScreen, viewport: getScreenBucket() }, 'vault')
   }
 
   function handleEquipTheme(themeId: CosmeticTheme, cost: number) {

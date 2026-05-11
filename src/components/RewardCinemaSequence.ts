@@ -8,7 +8,7 @@
  */
 import type { GameMode } from '../game'
 import type { BattleKind, OpenedPackCard } from '../types'
-import { UI_ASSETS } from '../constants'
+import { ECONOMY_REWARDS, UI_ASSETS } from '../constants'
 import { getPackArtPath, getRankAssetPath, getStreakTier } from '../utils'
 import type { SoundName } from '../audio'
 
@@ -44,7 +44,7 @@ export type BattleVictoryInput = {
 }
 
 export function buildBattleVictorySequence(input: BattleVictoryInput): RewardBeat[] {
-  const shards = input.shards ?? (input.battleKind === 'local' ? 0 : 30)
+  const shards = input.shards ?? (input.battleKind === 'local' ? 0 : ECONOMY_REWARDS.winShards)
   const streakTier = getStreakTier(input.streak)
   const beats: RewardBeat[] = [
     {

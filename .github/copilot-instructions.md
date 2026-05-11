@@ -117,6 +117,7 @@ A design documentation suite lives in `docs/`. **Consult it before adding, modif
 - Frequent player actions stay on the first view; admin, clan, leaderboard, vault, breakdown, and similar secondary tools should live one tap deeper with clear Back navigation.
 - Do not use browser `prompt` or `confirm` flows for production UX when an in-app modal pattern exists. Reuse the app’s confirm and inspect surfaces.
 - Battle layouts must preserve clear separation between HUD, board, and hand at phone sizes so no critical game element overlaps or becomes unreachable.
+- Responsive layout changes must preserve one reachable scroll owner per non-battle screen. Avoid adding inner `max-height` + `overflow` scroll traps unless the element is a deliberate contained rail or list, and verify with `npm run qa:viewport` after UI/layout changes.
 - Scene-first hierarchy is mandatory: every screen has one dominant focal plane, and in battle the board must remain that focal point.
 - Temporary battle notices such as enemy-turn messaging must float above the arena and must not push the document layout down.
 - Live cards in hand and on the battlefield must expose effect seals/icons without requiring inspect-first play.
@@ -179,6 +180,7 @@ A design documentation suite lives in `docs/`. **Consult it before adding, modif
 | `npm run build` | Full production build (engine + TS check + Vite) |
 | `npm run lint` | ESLint check |
 | `npm test` | Run Vitest test suite |
+| `npm run qa:viewport` | Run responsive layout audit across phone, tablet, desktop, subview, and battle states |
 | `npm run release:check` | Test + lint + build (pre-deploy validation) |
 
 ---
@@ -204,4 +206,5 @@ Before declaring any task complete, verify all of the following:
 - [ ] If `src/game.ts` was modified: `npm run build:engine` was run
 - [ ] If new server routes were added: rate limiting and auth middleware are present
 - [ ] If new UI was added: works at 375px mobile width
+- [ ] If UI/layout CSS changed: `npm run qa:viewport` passes or any browser availability limitation is explicitly noted
 - [ ] If new animations were added: respects `prefers-reduced-motion`

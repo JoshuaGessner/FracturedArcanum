@@ -45,6 +45,13 @@ Every primary screen now renders inside a fixed-height shell:
 - only the active content surface may scroll vertically
 - battle keeps vertical scroll minimized while preserving horizontal hand movement
 - secondary rails such as decks, themes, borders, and reveals stay horizontal
+- non-battle screens should not create nested scroll traps; prefer active `screen-panel` scrolling unless a rail/list is intentionally contained
+- mobile scene background pseudo-elements must not expand the scrollable width beyond the viewport
+
+### Viewport QA
+Responsive layout work is validated by `npm run qa:viewport`, implemented in `scripts/verify-responsive-layout.mjs`.
+
+The audit starts a temporary Vite server, sweeps phone/tablet/desktop viewport sizes, visits every primary screen plus Social/Shop/Settings subviews, captures screenshots in `.layout-qa/`, and writes `.layout-qa/responsive-layout-report.json`. It fails on document horizontal overflow, clipped visible content, or offscreen interactive controls, and reports touch-target warnings separately.
 
 ### Chrome strategy
 - panels use a single intentional chrome owner instead of nested frames
@@ -86,7 +93,7 @@ The stylesheet includes:
 ## Responsive and motion policy
 
 - `@media (max-width: 900px)` stacks multi-column layouts into single-column reading order
-- `@media (max-width: 640px)` tightens screen chrome, converts secondary stacks to rails, and caps long admin/social lists as internal scroll surfaces
+- `@media (max-width: 640px)` tightens screen chrome, wraps dense nav strips, and avoids inner scroll caps that can hide mobile content
 - `@media (max-width: 400px)` further compresses dense card and header surfaces
 - `@media (prefers-reduced-motion: reduce)` disables decorative animations and pulse effects while preserving state clarity
 

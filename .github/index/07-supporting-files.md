@@ -90,7 +90,18 @@ Key scripts include:
 - `npm run build`
 - `npm run lint`
 - `npm test`
+- `npm run qa:viewport`
 - `npm run release:check`
+
+## Layout QA
+
+### `scripts/verify-responsive-layout.mjs`
+- starts a temporary Vite server unless `QA_URL` points at an existing app instance
+- uses `playwright-core` with a local Chromium/Chrome executable
+- checks Home, Play, Collection, Social, Shop, Settings, Social/Shop/Settings subviews, and AI battle when available
+- sweeps phone, tablet, narrow desktop, short desktop, and wide desktop viewport sizes
+- writes screenshots and `responsive-layout-report.json` to `.layout-qa/`
+- fails on horizontal document overflow, clipped visible content, or offscreen interactive controls; touch-target issues are reported as warnings
 
 ## Deployment
 

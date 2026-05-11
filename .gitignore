@@ -39,6 +39,7 @@ data/*.json
 # Backups
 *.bak
 backups/
+.layout-qa/
 
 # Compiled game engine (generated from src/game.ts)
 server/game.js
