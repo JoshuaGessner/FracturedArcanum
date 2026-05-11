@@ -321,13 +321,24 @@ export function BattleScreen() {
     const dx = event.clientX - current.originX
     const dy = event.clientY - current.originY
     const distance = Math.hypot(dx, dy)
-    const verticalIntent = Math.abs(dy) > Math.abs(dx) && dy < 0
+    const absX = Math.abs(dx)
+    const absY = Math.abs(dy)
+    const verticalIntent = absY > absX && dy < 0
+    const horizontalIntent = absX > absY
 
     if (current.canPlay && verticalIntent && distance >= DRAG_ACTIVATE_PX) {
       event.preventDefault()
     }
 
     if (!current.active && distance >= DRAG_ACTIVATE_PX) {
+      // Horizontal swipe — release the tracked drag immediately so the
+      // hand-fan-grid scroll container can handle the gesture natively.
+      // This is the primary fix for iOS horizontal hand-scroll being stolen
+      // by pointer capture before the browser's pan-x scroll can engage.
+      if (horizontalIntent) {
+        cancelDrag()
+        return
+      }
       playSound('cardLift', soundEnabled)
       pulseFeedback(8, hapticsEnabled)
       try {
@@ -344,7 +355,7 @@ export function BattleScreen() {
       dragRef.current = nextDrag
       setDrag(nextDrag)
     }
-  }, [soundEnabled, hapticsEnabled])
+  }, [soundEnabled, hapticsEnabled, cancelDrag])
 
   const handleHandPointerUp = useCallback((event: React.PointerEvent<HTMLButtonElement>, index: number) => {
     const current = dragRef.current

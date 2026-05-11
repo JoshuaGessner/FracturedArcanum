@@ -46,6 +46,22 @@ describe('createPwaInstallState', () => {
     expect(state.steps).toEqual(['Open this page in Safari.', 'Tap Share.', 'Choose Add to Home Screen, then Add.'])
   })
 
+  it('prepends a Safari redirect step when the iOS browser is not Safari', () => {
+    const state = createPwaInstallState({
+      hasInstallPrompt: false,
+      serviceWorkerStatus: 'ready',
+      platform: 'ios',
+      browser: 'chrome',
+      secureContext: true,
+      standalone: false,
+    })
+
+    expect(state.status).toBe('ios-manual')
+    expect(state.steps[0]).toContain('Safari')
+    expect(state.steps[0]).toContain('only Safari on iPhone and iPad')
+    expect(state.steps).toHaveLength(3)
+  })
+
   it('suppresses install guidance when the app is already installed', () => {
     const state = createPwaInstallState({
       hasInstallPrompt: false,
