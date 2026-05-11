@@ -330,25 +330,28 @@ export function BattleScreen() {
       event.preventDefault()
     }
 
-    if (!current.active && distance >= DRAG_ACTIVATE_PX) {
-      // Horizontal swipe — release the tracked drag immediately so the
-      // hand-fan-grid scroll container can handle the gesture natively.
-      // This is the primary fix for iOS horizontal hand-scroll being stolen
-      // by pointer capture before the browser's pan-x scroll can engage.
+    if (!current.active) {
+      // Horizontal swipe detected — release drag tracking immediately so the
+      // hand-fan-grid scroll container can handle the gesture natively on iOS.
+      // We check direction before the distance threshold so the release fires
+      // as soon as intent is clear, without waiting for setPointerCapture to
+      // have a chance to lock the pointer.
       if (horizontalIntent) {
         cancelDrag()
         return
       }
-      playSound('cardLift', soundEnabled)
-      pulseFeedback(8, hapticsEnabled)
-      try {
-        event.currentTarget.setPointerCapture?.(event.pointerId)
-      } catch {
-        /* setPointerCapture not supported / already captured */
+      if (distance >= DRAG_ACTIVATE_PX) {
+        playSound('cardLift', soundEnabled)
+        pulseFeedback(8, hapticsEnabled)
+        try {
+          event.currentTarget.setPointerCapture?.(event.pointerId)
+        } catch {
+          /* setPointerCapture not supported / already captured */
+        }
+        const nextDrag = { ...current, pointerX: event.clientX, pointerY: event.clientY, active: true }
+        dragRef.current = nextDrag
+        setDrag(nextDrag)
       }
-      const nextDrag = { ...current, pointerX: event.clientX, pointerY: event.clientY, active: true }
-      dragRef.current = nextDrag
-      setDrag(nextDrag)
     } else if (current.active) {
       event.preventDefault()
       const nextDrag = { ...current, pointerX: event.clientX, pointerY: event.clientY }
