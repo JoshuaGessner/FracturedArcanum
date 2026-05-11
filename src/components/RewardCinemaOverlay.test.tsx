@@ -2,8 +2,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { RewardCinemaOverlay } from './RewardCinemaOverlay'
-import { buildPackSummarySequence, type RewardBeat } from './RewardCinemaSequence'
-import { UI_ASSETS } from '../constants'
+import { buildBattleVictorySequence, buildDailyClaimSequence, buildPackSummarySequence, type RewardBeat } from './RewardCinemaSequence'
+import { ECONOMY_REWARDS, UI_ASSETS } from '../constants'
 
 const playSoundMock = vi.fn()
 const feedbackMock = vi.fn()
@@ -162,6 +162,20 @@ describe('RewardCinemaOverlay', () => {
     expect(sequence[0]?.label).not.toMatch(/victory|won|secured/i)
     expect(sequence[0]?.iconAsset).not.toBe(UI_ASSETS.overlays.victory)
     expect(sequence.some((beat) => beat.label === 'New Cards Added')).toBe(true)
+  })
+
+  it('uses current economy rewards for battle and daily claim sequences', () => {
+    const battleSequence = buildBattleVictorySequence({
+      rankLabel: 'Silver',
+      streak: 1,
+      isRanked: false,
+      battleKind: 'ai',
+      mode: 'ai',
+    })
+    const dailySequence = buildDailyClaimSequence({ shards: ECONOMY_REWARDS.dailyShards })
+
+    expect(battleSequence.find((beat) => beat.id === 'battle-shards')?.value).toBe(ECONOMY_REWARDS.winShards)
+    expect(dailySequence.find((beat) => beat.id === 'daily-shards')?.value).toBe(ECONOMY_REWARDS.dailyShards)
   })
 
   it('marks the reward overlay as swipe-isolated', () => {

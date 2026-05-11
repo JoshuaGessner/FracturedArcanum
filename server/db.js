@@ -903,7 +903,9 @@ export function claimDailyReward(accountId) {
   }
 
   _setDailyClaim.run(todayKey, DAILY_SHARDS, DAILY_SHARDS, accountId)
-  return { ok: true, amount: DAILY_SHARDS, newBalance: profile.shards + DAILY_SHARDS }
+  const newBalance = profile.shards + DAILY_SHARDS
+  const totalEarned = (profile.total_earned ?? 0) + DAILY_SHARDS
+  return { ok: true, amount: DAILY_SHARDS, newBalance, shards: newBalance, totalEarned }
 }
 
 export function purchaseTheme(accountId, themeId) {

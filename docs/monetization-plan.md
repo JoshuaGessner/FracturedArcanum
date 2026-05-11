@@ -34,8 +34,8 @@ This is a **covenant**, not a guideline. Breaking it breaks the game.
 Ship with:
 
 - Free core gameplay (AI Skirmish + Ranked Duels)
-- Daily Reward Vault (50 Shards per day — see [Economy Balance](ECONOMY_BALANCE.md))
-- Earnable Shards from matches (50 win / 10 loss)
+- Daily Reward Vault (25 Shards per day — see [Economy Balance](ECONOMY_BALANCE.md))
+- Earnable Shards from matches (30 win / 10 loss, with streak bonuses)
 - 3 cosmetic themes (0–180 Shards each, with more planned for seasonal releases)
 - 5 card borders (0–420 Shards each)
 - No gameplay power sold for money

@@ -4,7 +4,7 @@ import {
   type CardInstance,
 } from '../game'
 import { cardArtPath, getHandFanTilt, handleCardArtError, pulseFeedback } from '../utils'
-import { UI_ASSETS } from '../constants'
+import { ECONOMY_REWARDS, UI_ASSETS } from '../constants'
 import { playSound, startLoopingSound } from '../audio'
 import { EffectBadge, StatIcon } from '../components/AssetBadge'
 import { SummaryPopup } from '../components/SummaryPopup'
@@ -48,6 +48,7 @@ export function BattleScreen() {
     activeScreen,
     openScreen,
     backendOnline,
+    loggedIn,
     soundEnabled,
     hapticsEnabled,
     cinemaSequence,
@@ -82,12 +83,14 @@ export function BattleScreen() {
       ? 'Regroup, adjust your line, and jump straight back into the arena.'
       : 'A close duel. Refine the list and queue again.'
   const battleSummaryBadge = isRankedBattle
-    ? (game.winner === 'player' ? '+25 Rating' : game.winner === 'enemy' ? '-15 Rating' : 'Even Match')
+    ? (game.winner === 'player' ? `+${ECONOMY_REWARDS.winRating} Rating` : game.winner === 'enemy' ? `-${ECONOMY_REWARDS.lossRating} Rating` : 'Even Match')
     : battleKind === 'local'
       ? 'Casual Duel'
       : game.winner === 'player'
-        ? '+30 Shards'
-        : 'Practice Match'
+        ? `+${ECONOMY_REWARDS.winShards} Base Shards`
+        : game.winner === 'enemy' && loggedIn
+          ? `+${ECONOMY_REWARDS.lossShards} Shards`
+          : 'Practice Match'
   const battleCenterLabel = selectedAttacker === null
     ? (isMyTurn ? 'Deploy or strike' : 'Hold formation')
     : defenderHasGuard

@@ -69,6 +69,17 @@ export const CARD_BORDER_OFFERS: CardBorderOffer[] = [
   { id: 'void',    name: 'Voidweave',       cost: 420, description: 'Animated dark-matter weave with a violet halo.' },
 ]
 
+export const ECONOMY_REWARDS = {
+  winShards: 30,
+  lossShards: 10,
+  dailyShards: 25,
+  streakBonusStep: 5,
+  streakBonusStartsAfter: 2,
+  maxStreakBonus: 20,
+  winRating: 25,
+  lossRating: 15,
+} as const
+
 const toUiAsset = (fileName: string): string => `/generated/ui/${fileName}`
 
 export const UI_ASSETS = {

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { CARD_LIBRARY, RARITY_COLORS } from '../game'
-import { CARD_BORDER_OFFERS, THEME_OFFERS } from '../constants'
+import { CARD_BORDER_OFFERS, ECONOMY_REWARDS, THEME_OFFERS } from '../constants'
 import { PackArt, RarityBadge } from '../components/AssetBadge'
 import { PackCeremonyOverlay } from '../components/PackCeremonyOverlay'
 import { buildPackSummarySequence } from '../components/RewardCinemaSequence'
@@ -41,6 +41,10 @@ export function ShopScreen() {
             ? 'Breakdown'
             : 'Shop'
   const vaultSignalLabel = canClaimDailyReward ? 'Ready to claim' : 'Charging'
+  const dailyShardReward = ECONOMY_REWARDS.dailyShards
+  const claimButtonLabel = canClaimDailyReward ? `Claim +${dailyShardReward}` : 'Claimed Today'
+  const vaultPrimaryLabel = canClaimDailyReward ? `${nextRewardLabel} waiting` : 'Vault charging'
+  const vaultStatusLabel = canClaimDailyReward ? 'Ready' : 'Charging'
   const openablePackCount = packOffers.filter((pack) => shards >= pack.cost).length
   const packAccessLabel = packOffers.length > 0 ? `${openablePackCount}/${packOffers.length} ready` : 'No packs listed'
   const packDetailLabel = openablePackCount > 0 ? 'Open a seal now' : 'Earn shards to open seals'
@@ -157,23 +161,24 @@ export function ShopScreen() {
 
           {shopSubview === 'hub' && (
             <div className="shop-hub-surface">
-              <div className="shop-feature-panel">
+              <div className="shop-feature-panel shop-feature-vault">
                 <div>
                   <span className="subview-label">Daily Vault</span>
-                  <strong>{canClaimDailyReward ? `${nextRewardLabel} waiting` : 'Vault charging'}</strong>
+                  <strong>{vaultPrimaryLabel}</strong>
                   <p className="note">Claim the daily payout here, then refill the vault through battle rewards.</p>
                   <div className="shop-vault-stat-strip">
-                    <span><strong>+50</strong> Shards</span>
+                    <span><strong>+{dailyShardReward}</strong> Daily</span>
+                    <span><strong>+{ECONOMY_REWARDS.winShards}</strong> Win</span>
+                    <span><strong>+{ECONOMY_REWARDS.lossShards}</strong> Loss</span>
                     <span><strong>{nextRewardLabel}</strong> Reward</span>
-                    <span><strong>{canClaimDailyReward ? 'Ready' : 'Earn'}</strong> Status</span>
                   </div>
                 </div>
-                <div className="controls">
+                <div className="controls shop-vault-actions">
                   <button className="primary mini" onClick={handleClaimDailyReward} disabled={!canClaimDailyReward}>
-                    Claim +50
+                    {claimButtonLabel}
                   </button>
                   <button className="ghost mini" onClick={() => startMatch('ai')}>
-                    Earn
+                    Earn in Battle
                   </button>
                 </div>
               </div>
@@ -208,16 +213,37 @@ export function ShopScreen() {
           )}
 
         {shopSubview === 'vault' && (
-          <div className="shop-section-panel reward-vault-card">
+          <div className={`shop-section-panel reward-vault-card ${canClaimDailyReward ? 'is-ready' : 'is-charging'}`}>
             {renderShopToolbar('Reward Vault', `${shards} Shards`)}
-            <p className="note">Claim your daily payout here and jump back into battle to refill the vault.</p>
-            <div className="controls">
-              <button className="primary mini" onClick={handleClaimDailyReward} disabled={!canClaimDailyReward}>
-                Claim +50
-              </button>
-              <button className="ghost mini" onClick={() => startMatch('ai')}>
-                Earn in Battle
-              </button>
+            <div className="reward-vault-console">
+              <div className="reward-vault-stage">
+                <div className="reward-vault-medallion" aria-label={`Daily vault reward ${dailyShardReward} Shards`}>
+                  <span>Daily Vault</span>
+                  <strong>+{dailyShardReward}</strong>
+                  <span>Shards</span>
+                </div>
+                <div className="reward-vault-copy">
+                  <span className="reward-vault-state">{vaultStatusLabel}</span>
+                  <strong>{vaultPrimaryLabel}</strong>
+                  <p className="note">Claim the daily payout, then push the streak to charge faster pack and cosmetic unlocks.</p>
+                </div>
+              </div>
+
+              <div className="controls reward-vault-action-center">
+                <button className="primary reward-vault-primary" onClick={handleClaimDailyReward} disabled={!canClaimDailyReward}>
+                  {claimButtonLabel}
+                </button>
+                <button className="ghost reward-vault-secondary" onClick={() => startMatch('ai')}>
+                  Earn in Battle
+                </button>
+              </div>
+
+              <div className="reward-vault-rule-grid" aria-label="Shard reward rules">
+                <span className="reward-vault-rule"><strong>+{ECONOMY_REWARDS.dailyShards}</strong> Daily</span>
+                <span className="reward-vault-rule"><strong>+{ECONOMY_REWARDS.winShards}</strong> Victory</span>
+                <span className="reward-vault-rule"><strong>+{ECONOMY_REWARDS.lossShards}</strong> Defeat</span>
+                <span className="reward-vault-rule"><strong>+{ECONOMY_REWARDS.streakBonusStep}</strong> Streak</span>
+              </div>
             </div>
           </div>
         )}

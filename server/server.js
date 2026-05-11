@@ -80,9 +80,20 @@ const DATA_DIR = path.resolve(__dirname, '../data')
 const ADMIN_STORE_PATH = path.join(DATA_DIR, 'arena-admin-store.json')
 const SERVER_CONFIG_PATH = path.join(DATA_DIR, 'server-config.json')
 const CLIENT_ORIGINS = process.env.CLIENT_ORIGIN?.split(',').map((value) => value.trim()).filter(Boolean) ?? []
+const VIEWPORT_QA = process.env.VIEWPORT_QA === '1'
 
 const DEFAULT_PORT = 43173
 const PORT = Number(process.env.PORT ?? DEFAULT_PORT)
+
+function isLocalRequest(request) {
+  const ip = request.ip ?? request.socket?.remoteAddress ?? ''
+  const normalized = ip.startsWith('::ffff:') ? ip.slice(7) : ip
+  return normalized === '127.0.0.1' || normalized === '::1' || normalized === 'localhost'
+}
+
+function skipViewportQaRateLimit(request) {
+  return VIEWPORT_QA && isLocalRequest(request)
+}
 
 // ─── Server config: auto-generate admin key on first launch ──────────────
 
@@ -790,6 +801,7 @@ app.use(
     max: 120,
     standardHeaders: true,
     legacyHeaders: false,
+    skip: skipViewportQaRateLimit,
   }),
 )
 app.use(
@@ -875,10 +887,12 @@ app.post('/api/auth/signup', (request, response) => {
 
 app.post('/api/auth/login', (request, response) => {
   const ip = clientIp(request)
-  const rl = checkRateLimit(`login:${hashIp(ip)}`, 10)
-  if (!rl.allowed) {
-    response.status(429).json({ ok: false, error: 'Too many login attempts. Try again later.' })
-    return
+  if (!skipViewportQaRateLimit(request)) {
+    const rl = checkRateLimit(`login:${hashIp(ip)}`, 10)
+    if (!rl.allowed) {
+      response.status(429).json({ ok: false, error: 'Too many login attempts. Try again later.' })
+      return
+    }
   }
 
   const { username, password } = request.body ?? {}
