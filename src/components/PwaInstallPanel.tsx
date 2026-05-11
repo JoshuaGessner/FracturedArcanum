@@ -45,6 +45,11 @@ export function PwaInstallPanel({
               {step}
             </span>
           ))}
+          {installState.status === 'ios-manual' && (
+            <span className="mini-text pwa-install-ios-session-note">
+              After adding to your home screen, you will need to sign in again — the installed app and Safari keep separate sessions.
+            </span>
+          )}
         </div>
       )}
 

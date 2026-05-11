@@ -125,7 +125,13 @@ function statusCopy(status: PwaInstallStatus, browser: PwaBrowser): Pick<PwaInst
         headline: 'Add from Safari',
         primaryLabel: 'Use Share menu',
         note: 'iPhone and iPad do not expose the browser install prompt. Safari installs PWAs through Share.',
-        steps: ['Open this page in Safari.', 'Tap Share.', 'Choose Add to Home Screen, then Add.'],
+        steps: browser !== 'safari'
+          ? [
+              'This page must be opened in Safari — only Safari on iPhone and iPad can install web apps.',
+              'Tap Share.',
+              'Choose Add to Home Screen, then Add.',
+            ]
+          : ['Open this page in Safari.', 'Tap Share.', 'Choose Add to Home Screen, then Add.'],
       }
     case 'insecure':
       return {

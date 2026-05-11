@@ -56,4 +56,20 @@ describe('PwaInstallPanel', () => {
 
     expect(container.textContent).toBe('')
   })
+
+  it('shows a session re-login note for iOS manual install', () => {
+    const installState = createPwaInstallState({
+      hasInstallPrompt: false,
+      serviceWorkerStatus: 'ready',
+      platform: 'ios',
+      browser: 'safari',
+      secureContext: true,
+      standalone: false,
+    })
+
+    render(<PwaInstallPanel installState={installState} onInstall={vi.fn()} />)
+
+    expect(screen.getByText(/sign in again/i)).toBeTruthy()
+    expect(screen.getByText(/separate sessions/i)).toBeTruthy()
+  })
 })

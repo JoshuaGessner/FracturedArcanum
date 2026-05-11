@@ -321,30 +321,44 @@ export function BattleScreen() {
     const dx = event.clientX - current.originX
     const dy = event.clientY - current.originY
     const distance = Math.hypot(dx, dy)
-    const verticalIntent = Math.abs(dy) > Math.abs(dx) && dy < 0
+    const absX = Math.abs(dx)
+    const absY = Math.abs(dy)
+    const verticalIntent = absY > absX && dy < 0
+    const horizontalIntent = absX > absY
 
     if (current.canPlay && verticalIntent && distance >= DRAG_ACTIVATE_PX) {
       event.preventDefault()
     }
 
-    if (!current.active && distance >= DRAG_ACTIVATE_PX) {
-      playSound('cardLift', soundEnabled)
-      pulseFeedback(8, hapticsEnabled)
-      try {
-        event.currentTarget.setPointerCapture?.(event.pointerId)
-      } catch {
-        /* setPointerCapture not supported / already captured */
+    if (!current.active) {
+      // Horizontal swipe detected — release drag tracking immediately so the
+      // hand-fan-grid scroll container can handle the gesture natively on iOS.
+      // We check direction before the distance threshold so the release fires
+      // as soon as intent is clear, without waiting for setPointerCapture to
+      // have a chance to lock the pointer.
+      if (horizontalIntent) {
+        cancelDrag()
+        return
       }
-      const nextDrag = { ...current, pointerX: event.clientX, pointerY: event.clientY, active: true }
-      dragRef.current = nextDrag
-      setDrag(nextDrag)
+      if (distance >= DRAG_ACTIVATE_PX) {
+        playSound('cardLift', soundEnabled)
+        pulseFeedback(8, hapticsEnabled)
+        try {
+          event.currentTarget.setPointerCapture?.(event.pointerId)
+        } catch {
+          /* setPointerCapture not supported / already captured */
+        }
+        const nextDrag = { ...current, pointerX: event.clientX, pointerY: event.clientY, active: true }
+        dragRef.current = nextDrag
+        setDrag(nextDrag)
+      }
     } else if (current.active) {
       event.preventDefault()
       const nextDrag = { ...current, pointerX: event.clientX, pointerY: event.clientY }
       dragRef.current = nextDrag
       setDrag(nextDrag)
     }
-  }, [soundEnabled, hapticsEnabled])
+  }, [soundEnabled, hapticsEnabled, cancelDrag])
 
   const handleHandPointerUp = useCallback((event: React.PointerEvent<HTMLButtonElement>, index: number) => {
     const current = dragRef.current

@@ -313,6 +313,10 @@ button:disabled {
   gap: 8px;
   overflow: hidden;
   min-height: 0;
+  /* Lift the pan-y-only constraint set on .scene-stage for the scene-swipe
+     hook. During battle that hook is disabled, so the restriction only
+     prevents the hand-fan-grid's touch-action: pan-x from working on iOS. */
+  touch-action: pan-x pan-y;
 }
 
 .app-shell.battle-shell-active .scene-stage > .screen-panel.active {
