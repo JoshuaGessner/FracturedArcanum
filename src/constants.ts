@@ -220,6 +220,29 @@ export const AI_DIFFICULTY_OPTIONS: Array<{ id: 'auto' | AIDifficulty; label: st
   { id: 'legend', label: 'Legend' },
 ]
 
+export const AI_DIFFICULTY_DETAILS: Record<AIDifficulty, { title: string; stance: string; traits: string[] }> = {
+  novice: {
+    title: 'Training Shade',
+    stance: 'Low-cost plays and obvious trades.',
+    traits: ['Starter deck', 'Late burst', 'Simple targets'],
+  },
+  adept: {
+    title: 'Arena Adept',
+    stance: 'Balanced pressure with practical board choices.',
+    traits: ['Mixed curve', 'Board trades', 'Burst pressure'],
+  },
+  veteran: {
+    title: 'Veteran Warlord',
+    stance: 'Controls lanes, protects health, and values tempo.',
+    traits: ['Guard priority', 'Removal focus', 'Tempo swings'],
+  },
+  legend: {
+    title: 'Legendary Nemesis',
+    stance: 'Punishes threats and lines up lethal damage.',
+    traits: ['Elite deck', 'Threat hunting', 'Proactive burst'],
+  },
+}
+
 export const CARD_ART_ALIASES: Record<string, string> = {
   'cave-bat': 'plague-rat',
   'copper-automaton': 'clay-soldier',

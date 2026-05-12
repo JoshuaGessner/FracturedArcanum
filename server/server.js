@@ -29,6 +29,8 @@ import {
   selectActiveDeck,
   selectTheme,
   claimDailyReward,
+  claimQuestReward,
+  getQuestOverview,
   purchaseTheme,
   resolveMatchResult,
   getRecentMatches,
@@ -1162,6 +1164,29 @@ app.post('/api/me/daily', requireAuth, (request, response) => {
   response.json(result)
 })
 
+app.get('/api/me/quests', requireAuth, (request, response) => {
+  const result = getQuestOverview(request.accountId)
+  if (!result.ok) {
+    response.status(400).json(result)
+    return
+  }
+  response.json(result)
+})
+
+app.post('/api/me/quests/:questId/claim', requireAuth, (request, response) => {
+  const rl = checkRateLimit(`quest:claim:${request.accountId}`, 30)
+  if (!rl.allowed) {
+    response.status(429).json({ ok: false, error: 'Too many quest claim requests. Slow down.' })
+    return
+  }
+  const result = claimQuestReward(request.accountId, String(request.params.questId ?? ''))
+  if (!result.ok) {
+    response.status(400).json(result)
+    return
+  }
+  response.json(result)
+})
+
 app.post('/api/shop/theme', requireAuth, (request, response) => {
   const { themeId } = request.body ?? {}
   const result = purchaseTheme(request.accountId, String(themeId ?? ''))
@@ -1179,7 +1204,7 @@ app.post('/api/match/complete', requireAuth, (request, response) => {
     return
   }
 
-  const { opponent, mode, result, turns } = request.body ?? {}
+  const { opponent, mode, result, turns, aiDifficulty } = request.body ?? {}
   if (!['win', 'loss', 'draw'].includes(result)) {
     response.status(400).json({ ok: false, error: 'Invalid match result.' })
     return
@@ -1200,6 +1225,7 @@ app.post('/api/match/complete', requireAuth, (request, response) => {
     safeMode,
     String(result),
     safeTurns,
+    { aiDifficulty: ['novice', 'adept', 'veteran', 'legend'].includes(String(aiDifficulty)) ? String(aiDifficulty) : 'adept' },
   )
   if (!outcome.ok) {
     response.status(400).json(outcome)

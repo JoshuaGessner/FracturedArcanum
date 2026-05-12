@@ -1,5 +1,32 @@
 export type GameMode = 'ai' | 'duel'
 export type AIDifficulty = 'novice' | 'adept' | 'veteran' | 'legend'
+export type AIDifficultyProfile = {
+  id: AIDifficulty
+  selectionMode: 'cheapest' | 'scored'
+  costWeight: number
+  attackWeight: number
+  healthWeight: number
+  lowCostBias: number
+  guardNeedWeight: number
+  baseGuardWeight: number
+  chargeWeight: number
+  drawWeight: number
+  lowHandDrawBonus: number
+  removalWeight: number
+  boardEngineWeight: number
+  legendaryWeight: number
+  heroBias: number
+  lethalPressureBonus: number
+  tradeKillWeight: number
+  survivalTradeWeight: number
+  dangerousKeywordWeight: number
+  highAttackThreatWeight: number
+  riskyTradePenalty: number
+  comebackHeroBonus: number
+  burstHeroThreshold: number
+  burstOnEmptyHand: boolean
+  burstOnBoardDeficit: boolean
+}
 export type BattleSide = 'player' | 'enemy'
 export type CardEffect = 'charge' | 'guard' | 'rally' | 'blast' | 'heal' | 'draw' | 'fury' | 'drain' | 'empower' | 'poison' | 'shield' | 'siphon' | 'bolster' | 'cleave' | 'lifesteal' | 'summon' | 'silence' | 'frostbite' | 'enrage' | 'deathrattle' | 'overwhelm'
 export type CardRarity = 'common' | 'rare' | 'epic' | 'legendary'
@@ -256,6 +283,117 @@ export const AI_DIFFICULTY_DECKS: Record<AIDifficulty, DeckConfig> = {
     'void-empress': 1,
     'storm-titan': 1,
     'arcane-golem': 1,
+  },
+}
+
+export const AI_DIFFICULTY_PROFILES: Record<AIDifficulty, AIDifficultyProfile> = {
+  novice: {
+    id: 'novice',
+    selectionMode: 'cheapest',
+    costWeight: 0.7,
+    attackWeight: 1.4,
+    healthWeight: 0.7,
+    lowCostBias: 1.2,
+    guardNeedWeight: 3,
+    baseGuardWeight: 1,
+    chargeWeight: 1,
+    drawWeight: 1,
+    lowHandDrawBonus: 1,
+    removalWeight: 1.5,
+    boardEngineWeight: 1,
+    legendaryWeight: 1,
+    heroBias: 3,
+    lethalPressureBonus: 3,
+    tradeKillWeight: 4,
+    survivalTradeWeight: 1,
+    dangerousKeywordWeight: 1,
+    highAttackThreatWeight: 0,
+    riskyTradePenalty: 4,
+    comebackHeroBonus: 0,
+    burstHeroThreshold: 6,
+    burstOnEmptyHand: false,
+    burstOnBoardDeficit: false,
+  },
+  adept: {
+    id: 'adept',
+    selectionMode: 'scored',
+    costWeight: 1.25,
+    attackWeight: 2,
+    healthWeight: 1,
+    lowCostBias: 0,
+    guardNeedWeight: 7,
+    baseGuardWeight: 2,
+    chargeWeight: 3,
+    drawWeight: 2,
+    lowHandDrawBonus: 5,
+    removalWeight: 4,
+    boardEngineWeight: 3,
+    legendaryWeight: 2,
+    heroBias: 0,
+    lethalPressureBonus: 6,
+    tradeKillWeight: 8,
+    survivalTradeWeight: 5,
+    dangerousKeywordWeight: 4,
+    highAttackThreatWeight: 0,
+    riskyTradePenalty: 3,
+    comebackHeroBonus: 0,
+    burstHeroThreshold: 12,
+    burstOnEmptyHand: true,
+    burstOnBoardDeficit: false,
+  },
+  veteran: {
+    id: 'veteran',
+    selectionMode: 'scored',
+    costWeight: 1.35,
+    attackWeight: 2.15,
+    healthWeight: 1.1,
+    lowCostBias: 0,
+    guardNeedWeight: 8,
+    baseGuardWeight: 3,
+    chargeWeight: 4,
+    drawWeight: 3,
+    lowHandDrawBonus: 6,
+    removalWeight: 5,
+    boardEngineWeight: 4,
+    legendaryWeight: 3,
+    heroBias: 1,
+    lethalPressureBonus: 7,
+    tradeKillWeight: 9,
+    survivalTradeWeight: 6,
+    dangerousKeywordWeight: 5,
+    highAttackThreatWeight: 3,
+    riskyTradePenalty: 2,
+    comebackHeroBonus: 1,
+    burstHeroThreshold: 10,
+    burstOnEmptyHand: true,
+    burstOnBoardDeficit: true,
+  },
+  legend: {
+    id: 'legend',
+    selectionMode: 'scored',
+    costWeight: 1.45,
+    attackWeight: 2.3,
+    healthWeight: 1.15,
+    lowCostBias: 0,
+    guardNeedWeight: 9,
+    baseGuardWeight: 3,
+    chargeWeight: 5,
+    drawWeight: 3,
+    lowHandDrawBonus: 7,
+    removalWeight: 6,
+    boardEngineWeight: 5,
+    legendaryWeight: 5,
+    heroBias: 2,
+    lethalPressureBonus: 8,
+    tradeKillWeight: 10,
+    survivalTradeWeight: 7,
+    dangerousKeywordWeight: 6,
+    highAttackThreatWeight: 5,
+    riskyTradePenalty: 1,
+    comebackHeroBonus: 3,
+    burstHeroThreshold: 10,
+    burstOnEmptyHand: true,
+    burstOnBoardDeficit: true,
   },
 }
 
@@ -1181,16 +1319,20 @@ export function attack(
   return applySides(base, side, nextActor, nextRival, nextLog)
 }
 
-function scorePlayableCard(card: CardInstance, difficulty: AIDifficulty, needsGuard: boolean, lowOnCards: boolean): number {
-  let score = card.cost * 1.25 + card.attack * 2 + card.health
+function getAIProfile(difficulty: AIDifficulty): AIDifficultyProfile {
+  return AI_DIFFICULTY_PROFILES[difficulty] ?? AI_DIFFICULTY_PROFILES.adept
+}
 
-  if (card.effect === 'guard') score += needsGuard ? 7 : 2
-  if (card.effect === 'charge') score += difficulty === 'legend' ? 5 : 3
-  if (card.effect === 'draw') score += lowOnCards ? 5 : 2
-  if (card.effect === 'blast' || card.effect === 'poison' || card.effect === 'siphon') score += 4
-  if (card.effect === 'summon' || card.effect === 'empower' || card.effect === 'rally') score += 3
-  if (card.rarity === 'legendary') score += difficulty === 'legend' ? 4 : 2
-  if (difficulty === 'novice') score -= card.cost * 0.35
+function scorePlayableCard(card: CardInstance, profile: AIDifficultyProfile, needsGuard: boolean, lowOnCards: boolean): number {
+  let score = card.cost * profile.costWeight + card.attack * profile.attackWeight + card.health * profile.healthWeight
+  score += (10 - card.cost) * profile.lowCostBias
+
+  if (card.effect === 'guard') score += needsGuard ? profile.guardNeedWeight : profile.baseGuardWeight
+  if (card.effect === 'charge') score += profile.chargeWeight
+  if (card.effect === 'draw') score += lowOnCards ? profile.lowHandDrawBonus : profile.drawWeight
+  if (card.effect === 'blast' || card.effect === 'poison' || card.effect === 'siphon') score += profile.removalWeight
+  if (card.effect === 'summon' || card.effect === 'empower' || card.effect === 'rally') score += profile.boardEngineWeight
+  if (card.rarity === 'legendary') score += profile.legendaryWeight
 
   return score
 }
@@ -1210,7 +1352,9 @@ export function highestPlayableIndex(
     return -1
   }
 
-  if (difficulty === 'novice') {
+  const profile = getAIProfile(difficulty)
+
+  if (profile.selectionMode === 'cheapest') {
     affordable.sort((left, right) => left.card.cost - right.card.cost)
     return affordable[0].index
   }
@@ -1223,14 +1367,14 @@ export function highestPlayableIndex(
   let bestScore = -Infinity
 
   affordable.forEach(({ card, index }) => {
-    let score = scorePlayableCard(card, difficulty, needsGuard, lowOnCards)
+    let score = scorePlayableCard(card, profile, needsGuard, lowOnCards)
 
     if (game) {
       if ((game.player.health <= 8 || game.player.board.filter(Boolean).length >= 2) && (card.effect === 'blast' || card.effect === 'poison')) {
-        score += 4
+        score += profile.removalWeight
       }
       if (game.enemy.board.filter(Boolean).length === 0 && card.effect === 'guard') {
-        score += 2
+        score += profile.baseGuardWeight
       }
     }
 
@@ -1257,12 +1401,13 @@ export function chooseEnemyTarget(
     return 'hero'
   }
 
+  const profile = getAIProfile(difficulty)
   const heroPressure = game.enemy.board.reduce((total, unit) => total + (unit && !unit.exhausted ? unit.attack : 0), 0)
-  let heroScore = attacker.attack + (game.player.health <= heroPressure ? 6 : 0)
+  let heroScore = attacker.attack + profile.heroBias + (game.player.health <= heroPressure ? profile.lethalPressureBonus : 0)
 
-  if (difficulty === 'novice') {
+  if (profile.selectionMode === 'cheapest') {
     const easyTrade = game.player.board.findIndex((unit) => unit !== null && unit.currentHealth <= attacker.attack)
-    return easyTrade !== -1 && Math.random() < 0.7 ? easyTrade : 'hero'
+    return easyTrade !== -1 ? easyTrade : 'hero'
   }
 
   let bestLane = -1
@@ -1275,12 +1420,12 @@ export function chooseEnemyTarget(
 
     let score = unit.attack * 2 + unit.currentHealth
 
-    if (unit.currentHealth <= attacker.attack) score += 8
-    if (attacker.currentHealth > unit.attack) score += 5
-    if (unit.attack >= attacker.currentHealth) score -= difficulty === 'legend' ? 1 : 3
-    if (hasKeyword(unit, 'guard')) score += 6
-    if (hasKeyword(unit, 'poison') || hasKeyword(unit, 'lifesteal') || hasKeyword(unit, 'cleave')) score += 4
-    if (difficulty === 'legend' && unit.attack >= 4) score += 4
+    if (unit.currentHealth <= attacker.attack) score += profile.tradeKillWeight
+    if (attacker.currentHealth > unit.attack) score += profile.survivalTradeWeight
+    if (unit.attack >= attacker.currentHealth) score -= profile.riskyTradePenalty
+    if (hasKeyword(unit, 'guard')) score += profile.guardNeedWeight
+    if (hasKeyword(unit, 'poison') || hasKeyword(unit, 'lifesteal') || hasKeyword(unit, 'cleave')) score += profile.dangerousKeywordWeight
+    if (unit.attack >= 4) score += profile.highAttackThreatWeight
 
     if (score > bestScore) {
       bestLane = index
@@ -1288,8 +1433,8 @@ export function chooseEnemyTarget(
     }
   })
 
-  if (difficulty === 'legend' && game.enemy.health < game.player.health) {
-    heroScore += 3
+  if (game.enemy.health < game.player.health) {
+    heroScore += profile.comebackHeroBonus
   }
 
   return bestLane !== -1 && bestScore >= heroScore ? bestLane : 'hero'
@@ -1331,17 +1476,15 @@ function shouldEnemyUseBurst(game: GameState, difficulty: AIDifficulty): boolean
     return true
   }
 
-  if (difficulty === 'novice') {
-    return game.player.health <= 6
-  }
-
-  if (difficulty === 'adept') {
-    return game.player.health <= 12 || game.enemy.hand.length === 0
+  const profile = getAIProfile(difficulty)
+  if (game.player.health <= profile.burstHeroThreshold) {
+    return true
   }
 
   const enemyBoardCount = game.enemy.board.filter(Boolean).length
   const playerBoardCount = game.player.board.filter(Boolean).length
-  return game.player.health <= 10 || game.enemy.hand.length === 0 || enemyBoardCount < playerBoardCount
+  return (profile.burstOnEmptyHand && game.enemy.hand.length === 0)
+    || (profile.burstOnBoardDeficit && enemyBoardCount < playerBoardCount)
 }
 
 export function runEnemyTurn(base: GameState): GameState {

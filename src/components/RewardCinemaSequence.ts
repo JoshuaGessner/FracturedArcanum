@@ -144,6 +144,33 @@ export function buildDailyClaimSequence(input: DailyClaimInput): RewardBeat[] {
   return beats
 }
 
+export type QuestClaimInput = {
+  title: string
+  shards: number
+}
+
+export function buildQuestClaimSequence(input: QuestClaimInput): RewardBeat[] {
+  return [
+    {
+      id: 'quest-banner',
+      kind: 'banner',
+      iconAsset: UI_ASSETS.overlays.ribbonNew,
+      label: 'Quest Reward Claimed',
+      caption: input.title,
+      sound: 'questComplete',
+    },
+    {
+      id: 'quest-shards',
+      kind: 'count',
+      iconAsset: UI_ASSETS.tiles.shop,
+      label: 'Ledger Payout',
+      value: Math.max(0, input.shards),
+      valueLabel: 'Shards',
+      sound: 'win',
+    },
+  ]
+}
+
 export type PackSummaryInput = {
   packId: string
   cards: OpenedPackCard[]

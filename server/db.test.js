@@ -283,6 +283,29 @@ describe('resolveMatchResult mode gating', () => {
     expect(result.ok).toBe(true)
     expect(result.ratingDelta).toBeGreaterThan(0)
   })
+
+  it('tracks AI mastery quest progress and claims rewards once', () => {
+    const accountId = makeAccount('questmastery')
+    const before = db.getProfile(accountId)
+    const initial = db.getQuestOverview(accountId)
+    expect(initial.ok).toBe(true)
+    expect(initial.quests.find((quest) => quest.id === 'skirmish-legend')?.completed).toBe(false)
+
+    db.resolveMatchResult(accountId, 'Legend AI', 'ai', 'win', 7, { aiDifficulty: 'legend' })
+
+    const progressed = db.getQuestOverview(accountId)
+    const legendQuest = progressed.quests.find((quest) => quest.id === 'skirmish-legend')
+    expect(legendQuest?.completed).toBe(true)
+    expect(legendQuest?.claimed).toBe(false)
+
+    const claimed = db.claimQuestReward(accountId, 'skirmish-legend')
+    expect(claimed.ok).toBe(true)
+    expect(claimed.reward.shards).toBe(75)
+    expect(claimed.shards).toBe(before.shards + 30 + 75)
+
+    const duplicate = db.claimQuestReward(accountId, 'skirmish-legend')
+    expect(duplicate.ok).toBe(false)
+  })
 })
 
 describe('card trading', () => {

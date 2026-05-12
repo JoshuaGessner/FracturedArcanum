@@ -1,4 +1,4 @@
-import type { GameState, DeckConfig } from './game'
+import type { AIDifficulty, GameState, DeckConfig } from './game'
 
 export type QueueState = 'idle' | 'searching' | 'found'
 export type AppScreen = 'home' | 'play' | 'collection' | 'battle' | 'social' | 'shop' | 'settings'
@@ -8,6 +8,48 @@ export type AuthScreen = 'login' | 'signup'
 export type CardBorder = 'default' | 'bronze' | 'frost' | 'solar' | 'void'
 export type BattleKind = 'ai' | 'local' | 'ranked' | 'friend'
 export type ToastSeverity = 'info' | 'success' | 'warning' | 'error'
+export type QuestCadence = 'daily' | 'weekly' | 'milestone' | 'skirmish'
+export type QuestObjectiveType = 'win_any_match' | 'win_ai' | 'win_ai_difficulty' | 'play_matches' | 'open_packs' | 'breakdown_cards' | 'claim_daily' | 'build_deck'
+
+export type QuestDefinition = {
+  id: string
+  cadence: QuestCadence
+  title: string
+  description: string
+  category: string
+  objective: {
+    type: QuestObjectiveType
+    target: number
+    difficulty?: AIDifficulty
+  }
+  reward: {
+    shards: number
+  }
+  icon: 'battle' | 'skirmish' | 'momentum' | 'pack' | 'shards' | 'deck'
+}
+
+export type QuestProgress = QuestDefinition & {
+  progress: number
+  target: number
+  completed: boolean
+  claimed: boolean
+  periodKey: string
+  expiresAt: string | null
+}
+
+export type QuestOverview = {
+  quests: QuestProgress[]
+  summary: {
+    total: number
+    completed: number
+    claimable: number
+    claimed: number
+    dailyClaimable: number
+    weeklyClaimable: number
+    milestoneClaimable: number
+    skirmishClaimable: number
+  }
+}
 
 export type OpponentProfile = {
   name: string

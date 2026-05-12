@@ -12,6 +12,7 @@ import type {
   CardCollection,
   OpenedPackCard,
   PackOffer,
+  QuestOverview,
   SavedDeck,
 } from '../types'
 import { STORAGE_KEYS } from '../constants'
@@ -66,6 +67,8 @@ export type ProfileStateValue = {
   setPackOpening: Dispatch<SetStateAction<string | null>>
   prevCollectionSnapshot: CardCollection | null
   setPrevCollectionSnapshot: Dispatch<SetStateAction<CardCollection | null>>
+  questOverview: QuestOverview | null
+  setQuestOverview: Dispatch<SetStateAction<QuestOverview | null>>
 }
 
 const ProfileContext = createContext<ProfileStateValue | null>(null)
@@ -89,6 +92,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   const [openedPackCards, setOpenedPackCards] = useState<OpenedPackCard[]>([])
   const [packOpening, setPackOpening] = useState<string | null>(null)
   const [prevCollectionSnapshot, setPrevCollectionSnapshot] = useState<CardCollection | null>(null)
+  const [questOverview, setQuestOverview] = useState<QuestOverview | null>(null)
 
   const value = useMemo<ProfileStateValue>(
     () => ({
@@ -112,6 +116,8 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
       setPackOpening,
       prevCollectionSnapshot,
       setPrevCollectionSnapshot,
+      questOverview,
+      setQuestOverview,
     }),
     [
       savedDecks,
@@ -124,6 +130,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
       openedPackCards,
       packOpening,
       prevCollectionSnapshot,
+      questOverview,
     ],
   )
 

@@ -104,6 +104,7 @@ export type AppShellContextValue = {
   handleSelectBorder: (borderId: CardBorder) => void
   handleEquipTheme: (themeId: CosmeticTheme, cost: number) => void
   handleClaimDailyReward: () => void
+  handleClaimQuestReward: (questId: string) => void
 
   // ─── Navigation / UI shell ────────────────────────────────────────────
   activeScreen: AppScreen

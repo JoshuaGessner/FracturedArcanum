@@ -1,20 +1,24 @@
 import { useEffect, useState } from 'react'
-import { RankBadge } from '../components/AssetBadge'
+import { HomeQuestBoard } from '../components/HomeQuestBoard'
+import { HomeStatusRibbon } from '../components/HomeStatusRibbon'
+import { QuestLedgerPanel } from '../components/QuestLedgerPanel'
 import { useAppShell, useGame, useProfile } from '../contexts'
 import { getStreakTier } from '../utils'
 
 const HOME_DECK_GOAL = 14
 
 export function HomeScreen() {
-  const { activeScreen, dailyQuest, justClaimedDaily, seasonName, seasonEnd } = useAppShell()
+  const { activeScreen, dailyQuest, seasonName, seasonEnd } = useAppShell()
   const { gameInProgress, game, handleResumeBattle, handleAbandonBattle, isRankedBattle } = useGame()
   const {
     record, winRate, selectedDeckSize, serverProfile, rankLabel, shards,
     canClaimDailyReward, nextRewardLabel, seasonRating, rankProgress, nextRankTarget,
+    questOverview, handleClaimQuestReward,
   } = useProfile()
 
   const streakTier = getStreakTier(record.streak)
   const [seasonCountdown, setSeasonCountdown] = useState<string | null>(null)
+  const [homeSubview, setHomeSubview] = useState<'command' | 'quests'>('command')
 
   useEffect(() => {
     const updateCountdown = () => {
@@ -47,14 +51,18 @@ export function HomeScreen() {
     }
   }, [seasonEnd])
 
-  const questItems = [
-    { complete: record.wins >= 1, label: dailyQuest },
-    { complete: winRate >= 50, label: '50% win rate' },
-    { complete: selectedDeckSize >= HOME_DECK_GOAL, label: 'Full deck' },
-    { complete: canClaimDailyReward, label: `Daily reward • ${nextRewardLabel}` },
-  ]
-  const questsDone = questItems.filter(q => q.complete).length
-  const nextQuestLabel = questItems.find(item => !item.complete)?.label ?? 'All quests complete'
+  const quests = questOverview?.quests ?? []
+  const questItems = quests.length > 0
+    ? quests.slice(0, 4).map((quest) => ({ complete: quest.completed, label: quest.title }))
+    : [
+        { complete: record.wins >= 1, label: dailyQuest },
+        { complete: winRate >= 50, label: '50% win rate' },
+        { complete: selectedDeckSize >= HOME_DECK_GOAL, label: 'Full deck' },
+        { complete: canClaimDailyReward, label: `Daily reward • ${nextRewardLabel}` },
+      ]
+  const questsDone = questOverview?.summary.completed ?? questItems.filter(q => q.complete).length
+  const questTotal = questOverview?.summary.total ?? questItems.length
+  const readyQuestRewards = questOverview?.summary.claimable ?? 0
   const deckCardsNeeded = Math.max(0, HOME_DECK_GOAL - selectedDeckSize)
   const deckSurplus = Math.max(0, selectedDeckSize - HOME_DECK_GOAL)
   const deckDetailLabel = selectedDeckSize >= HOME_DECK_GOAL
@@ -64,21 +72,24 @@ export function HomeScreen() {
   const ratingToNext = Math.max(0, nextRankTarget - seasonRating)
   const clampedRankProgress = Math.max(0, Math.min(100, rankProgress))
   const ratingProgressLabel = ratingToNext > 0 ? `${ratingToNext} rating to next league` : `${rankLabel} tier secured`
-  const questRewardLabel = canClaimDailyReward ? 'Reward Ready' : nextRewardLabel
+  const questRewardLabel = readyQuestRewards > 0
+    ? `${readyQuestRewards} Quest ${readyQuestRewards === 1 ? 'Reward' : 'Rewards'} Ready`
+    : canClaimDailyReward ? 'Daily Reward Ready' : nextRewardLabel
   const profileName = serverProfile?.displayName ?? serverProfile?.username ?? 'Champion'
+  const seasonLabel = `${seasonName}${seasonCountdown ? ` · ${seasonCountdown}` : ''}`
   const homeStatusCards = [
     {
-      kicker: 'League',
+      label: 'League',
       value: rankLabel,
       note: `${record.wins}W ${record.losses}L · ${winRate}%`,
     },
     {
-      kicker: 'Deck',
+      label: 'Deck',
       value: `${selectedDeckSize}/${HOME_DECK_GOAL}`,
       note: selectedDeckSize >= HOME_DECK_GOAL ? 'Forge stocked' : deckDetailLabel,
     },
     {
-      kicker: 'Vault',
+      label: 'Vault',
       value: rewardVaultLabel,
       note: canClaimDailyReward ? 'Daily reward available' : dailyQuest,
       accent: canClaimDailyReward,
@@ -87,39 +98,32 @@ export function HomeScreen() {
 
   return (
     <section className={`home-screen screen-panel ${activeScreen === 'home' ? 'active' : 'hidden'}`}>
-      <article className="section-card utility-card spotlight-card home-command-card home-final-card">
-        <div className="home-final-main">
-          <div className="home-final-topline">
-            <RankBadge rank={rankLabel} className="home-rank-badge" />
+      <article className={`section-card utility-card spotlight-card home-command-card home-final-card home-view-${homeSubview}`}>
+        {homeSubview === 'command' ? <>
+        <div className="home-command-layout">
+          <HomeStatusRibbon
+            profileName={profileName}
+            rankLabel={rankLabel}
+            seasonLabel={seasonLabel}
+            shards={shards}
+            streak={record.streak}
+            streakTier={streakTier}
+            seasonRating={seasonRating}
+            nextRankTarget={nextRankTarget}
+            rankProgress={clampedRankProgress}
+            ratingProgressLabel={ratingProgressLabel}
+            tiles={homeStatusCards}
+          />
 
-            <div className="home-rating-meter" role="progressbar" aria-label="Season rating progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={clampedRankProgress}>
-              <div className="home-rating-track" aria-hidden="true">
-                <div className="home-rating-fill" style={{ width: `${clampedRankProgress}%` }} />
-              </div>
-              <strong>{seasonRating} / {nextRankTarget} rating</strong>
-              <span className="mini-text">{ratingProgressLabel}</span>
-            </div>
-          </div>
-
-          <div className="home-final-intro">
-            <strong>Welcome, {profileName}</strong>
-            <span>{seasonName}{seasonCountdown ? ` · ${seasonCountdown}` : ''}</span>
-          </div>
-
-          <div className="badges home-final-badges">
-            <span className="badge">{shards} Shards</span>
-            <span className={`badge streak-badge streak-${streakTier}`}>{record.streak} Streak</span>
-          </div>
-
-          <div className="home-status-list">
-            {homeStatusCards.map((tile) => (
-              <div className={`home-status-card scene-status-tile ${tile.accent ? 'is-accent' : ''}`.trim()} key={tile.kicker}>
-                <span className="scene-status-kicker">{tile.kicker}</span>
-                <strong>{tile.value}</strong>
-                <span className="mini-text">{tile.note}</span>
-              </div>
-            ))}
-          </div>
+          <HomeQuestBoard
+            overview={questOverview}
+            fallbackItems={questItems}
+            questsDone={questsDone}
+            questTotal={questTotal}
+            readyQuestRewards={readyQuestRewards}
+            questRewardLabel={questRewardLabel}
+            onOpenLedger={() => setHomeSubview('quests')}
+          />
 
           {gameInProgress && (
             <div className="game-resume-block">
@@ -131,19 +135,13 @@ export function HomeScreen() {
             </div>
           )}
         </div>
-
-        <div className={`quest-summary ${canClaimDailyReward ? 'claim-ready' : ''} ${justClaimedDaily ? 'just-claimed' : ''}`}>
-          <div className="quest-pips" role="img" aria-label={`${questsDone} of ${questItems.length} quests complete`}>
-            {questItems.map((item, i) => (
-              <span key={i} className={`quest-pip ${item.complete ? 'complete' : 'pending'}`} title={item.label} />
-            ))}
-          </div>
-          <span className="quest-count">{questsDone}/{questItems.length} Quests</span>
-          <span className="quest-next">Next: {nextQuestLabel}</span>
-          <span className={`quest-reward-hint ${canClaimDailyReward ? 'ready' : ''}`}>
-            {questRewardLabel}
-          </span>
-        </div>
+        </> : (
+          <QuestLedgerPanel
+            overview={questOverview}
+            onBack={() => setHomeSubview('command')}
+            onClaimQuest={handleClaimQuestReward}
+          />
+        )}
       </article>
     </section>
   )

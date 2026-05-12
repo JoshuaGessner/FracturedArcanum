@@ -71,6 +71,7 @@ function buildShellValue(overrides: Partial<AppShellContextValue> = {}): AppShel
     handleSelectBorder: noop,
     handleEquipTheme: noop,
     handleClaimDailyReward: noop,
+    handleClaimQuestReward: noop,
     activeScreen: 'social' as AppScreen,
     openScreen: noop,
     settingsSubview: 'preferences',

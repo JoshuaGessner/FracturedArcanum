@@ -4,6 +4,7 @@ import { existsSync, mkdirSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { CARD_LIBRARY, DEFAULT_DECK_CONFIG, MAX_COPIES as GAME_MAX_COPIES, MAX_LEGENDARY_COPIES } from './game.js'
+import { QUEST_DEFINITIONS, difficultyMeets } from './quest-definitions.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const DATA_DIR = path.resolve(process.env.DATA_DIR ?? path.resolve(__dirname, '../data'))
@@ -114,6 +115,18 @@ db.exec(`
     updated_at   TEXT NOT NULL DEFAULT (datetime('now'))
   );
 
+  CREATE TABLE IF NOT EXISTS player_quests (
+    account_id   TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    quest_id     TEXT NOT NULL,
+    cadence      TEXT NOT NULL,
+    period_key   TEXT NOT NULL,
+    progress     INTEGER NOT NULL DEFAULT 0,
+    claimed      INTEGER NOT NULL DEFAULT 0,
+    completed_at TEXT,
+    updated_at   TEXT NOT NULL DEFAULT (datetime('now')),
+    PRIMARY KEY (account_id, quest_id, period_key)
+  );
+
   CREATE INDEX IF NOT EXISTS idx_sessions_account ON sessions(account_id);
   CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires_at);
   CREATE INDEX IF NOT EXISTS idx_match_log_account ON match_log(account_id);
@@ -122,6 +135,7 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_rate_limits_window ON rate_limits(window_start);
   CREATE INDEX IF NOT EXISTS idx_accounts_device_fp ON accounts(device_fp);
   CREATE INDEX IF NOT EXISTS idx_player_decks_account ON player_decks(account_id);
+  CREATE INDEX IF NOT EXISTS idx_player_quests_account ON player_quests(account_id);
   CREATE UNIQUE INDEX IF NOT EXISTS idx_player_decks_active
     ON player_decks(account_id) WHERE is_active = 1;
 `)
@@ -893,6 +907,206 @@ const _insertMatch = db.prepare(`
   VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 `)
 
+const _insertQuest = db.prepare(`
+  INSERT OR IGNORE INTO player_quests (account_id, quest_id, cadence, period_key)
+  VALUES (?, ?, ?, ?)
+`)
+
+const _listQuestRows = db.prepare(`
+  SELECT * FROM player_quests WHERE account_id = ?
+`)
+
+const _getQuestRow = db.prepare(`
+  SELECT * FROM player_quests WHERE account_id = ? AND quest_id = ? AND period_key = ?
+`)
+
+const _setQuestProgress = db.prepare(`
+  UPDATE player_quests
+  SET progress = ?, completed_at = COALESCE(completed_at, ?), updated_at = datetime('now')
+  WHERE account_id = ? AND quest_id = ? AND period_key = ?
+`)
+
+const _claimQuest = db.prepare(`
+  UPDATE player_quests
+  SET claimed = 1, updated_at = datetime('now')
+  WHERE account_id = ? AND quest_id = ? AND period_key = ? AND claimed = 0
+`)
+
+function dayKey(date = new Date()) {
+  return date.toISOString().slice(0, 10)
+}
+
+function weekKey(date = new Date()) {
+  const start = new Date(Date.UTC(date.getUTCFullYear(), 0, 1))
+  const dayIndex = Math.floor((Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()) - start.getTime()) / 86_400_000)
+  const week = Math.floor(dayIndex / 7) + 1
+  return `${date.getUTCFullYear()}-W${String(week).padStart(2, '0')}`
+}
+
+function questPeriodKey(cadence, date = new Date()) {
+  if (cadence === 'daily') return dayKey(date)
+  if (cadence === 'weekly') return weekKey(date)
+  return 'ever'
+}
+
+function questExpiresAt(cadence, date = new Date()) {
+  if (cadence === 'daily') {
+    return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate() + 1)).toISOString()
+  }
+  if (cadence === 'weekly') {
+    return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate() + 7)).toISOString()
+  }
+  return null
+}
+
+function stableQuestSample(accountId, periodKey, cadence, pool, count) {
+  return [...pool]
+    .sort((left, right) => {
+      const leftHash = createHash('sha256').update(`${accountId}:${periodKey}:${cadence}:${left.id}`).digest('hex')
+      const rightHash = createHash('sha256').update(`${accountId}:${periodKey}:${cadence}:${right.id}`).digest('hex')
+      return leftHash.localeCompare(rightHash)
+    })
+    .slice(0, count)
+}
+
+function getAssignedQuestDefinitions(accountId, date = new Date()) {
+  const daily = stableQuestSample(
+    accountId,
+    questPeriodKey('daily', date),
+    'daily',
+    QUEST_DEFINITIONS.filter((quest) => quest.cadence === 'daily'),
+    3,
+  )
+  const weekly = stableQuestSample(
+    accountId,
+    questPeriodKey('weekly', date),
+    'weekly',
+    QUEST_DEFINITIONS.filter((quest) => quest.cadence === 'weekly'),
+    3,
+  )
+  const permanent = QUEST_DEFINITIONS.filter((quest) => quest.cadence === 'milestone' || quest.cadence === 'skirmish')
+  return [...daily, ...weekly, ...permanent]
+}
+
+function deckSize(deckConfig) {
+  return Object.values(deckConfig ?? {}).reduce((sum, count) => sum + Number(count ?? 0), 0)
+}
+
+function ensureQuestRows(accountId, date = new Date()) {
+  for (const quest of getAssignedQuestDefinitions(accountId, date)) {
+    _insertQuest.run(accountId, quest.id, quest.cadence, questPeriodKey(quest.cadence, date))
+  }
+}
+
+function completeIfReady(accountId, quest, row, nextProgress) {
+  const target = quest.objective.target
+  const progress = Math.max(0, Math.min(target, nextProgress))
+  const completedAt = progress >= target ? new Date().toISOString() : null
+  if (progress !== row.progress || (completedAt && !row.completed_at)) {
+    _setQuestProgress.run(progress, completedAt, accountId, quest.id, row.period_key)
+  }
+}
+
+function questMatchesEvent(quest, eventType, payload) {
+  const objective = quest.objective
+  if (objective.type !== eventType) return false
+  if (objective.type === 'win_ai_difficulty') {
+    return difficultyMeets(payload.aiDifficulty, objective.difficulty)
+  }
+  return true
+}
+
+export function recordQuestEvent(accountId, eventType, payload = {}) {
+  if (!accountId) return { ok: false, error: 'Missing account.' }
+  ensureQuestRows(accountId)
+  const assigned = getAssignedQuestDefinitions(accountId)
+  const rows = _listQuestRows.all(accountId)
+  const completed = []
+  for (const quest of assigned) {
+    if (!questMatchesEvent(quest, eventType, payload)) continue
+    const periodKey = questPeriodKey(quest.cadence)
+    const row = rows.find((entry) => entry.quest_id === quest.id && entry.period_key === periodKey)
+    if (!row || row.claimed) continue
+    const amount = Math.max(1, Number(payload.amount ?? 1))
+    const before = Math.min(quest.objective.target, row.progress)
+    completeIfReady(accountId, quest, row, before + amount)
+    if (before < quest.objective.target && before + amount >= quest.objective.target) {
+      completed.push(quest.id)
+    }
+  }
+  return { ok: true, completed }
+}
+
+function buildQuestSummary(quests) {
+  return {
+    total: quests.length,
+    completed: quests.filter((quest) => quest.completed).length,
+    claimable: quests.filter((quest) => quest.completed && !quest.claimed).length,
+    claimed: quests.filter((quest) => quest.claimed).length,
+    dailyClaimable: quests.filter((quest) => quest.cadence === 'daily' && quest.completed && !quest.claimed).length,
+    weeklyClaimable: quests.filter((quest) => quest.cadence === 'weekly' && quest.completed && !quest.claimed).length,
+    milestoneClaimable: quests.filter((quest) => quest.cadence === 'milestone' && quest.completed && !quest.claimed).length,
+    skirmishClaimable: quests.filter((quest) => quest.cadence === 'skirmish' && quest.completed && !quest.claimed).length,
+  }
+}
+
+export function getQuestOverview(accountId) {
+  const profile = getProfile(accountId)
+  if (!profile) return { ok: false, error: 'Profile not found.' }
+  ensureQuestRows(accountId)
+
+  const assigned = getAssignedQuestDefinitions(accountId)
+  const rows = _listQuestRows.all(accountId)
+  const quests = assigned.map((quest) => {
+    const periodKey = questPeriodKey(quest.cadence)
+    const row = rows.find((entry) => entry.quest_id === quest.id && entry.period_key === periodKey)
+      ?? _getQuestRow.get(accountId, quest.id, periodKey)
+    const dynamicProgress = quest.objective.type === 'build_deck'
+      ? Math.max(row?.progress ?? 0, deckSize(profile.deck_config))
+      : row?.progress ?? 0
+    if (row && dynamicProgress !== row.progress) {
+      completeIfReady(accountId, quest, row, dynamicProgress)
+    }
+    const progress = Math.min(quest.objective.target, dynamicProgress)
+    return {
+      ...quest,
+      progress,
+      target: quest.objective.target,
+      completed: progress >= quest.objective.target,
+      claimed: Boolean(row?.claimed),
+      periodKey,
+      expiresAt: questExpiresAt(quest.cadence),
+    }
+  })
+
+  return { ok: true, quests, summary: buildQuestSummary(quests) }
+}
+
+export function claimQuestReward(accountId, questId) {
+  const overview = getQuestOverview(accountId)
+  if (!overview.ok) return overview
+  const quest = overview.quests.find((entry) => entry.id === questId)
+  if (!quest) return { ok: false, error: 'Quest is not active.' }
+  if (!quest.completed) return { ok: false, error: 'Quest is not complete yet.' }
+  if (quest.claimed) return { ok: false, error: 'Quest reward already claimed.' }
+
+  const tx = db.transaction(() => {
+    _claimQuest.run(accountId, quest.id, quest.periodKey)
+    _grantShards.run(quest.reward.shards, quest.reward.shards, accountId)
+  })
+  tx()
+
+  const refreshed = getProfile(accountId)
+  return {
+    ok: true,
+    quest: { ...quest, claimed: true },
+    reward: quest.reward,
+    shards: refreshed.shards,
+    totalEarned: refreshed.total_earned,
+    overview: getQuestOverview(accountId),
+  }
+}
+
 export function claimDailyReward(accountId) {
   const profile = getProfile(accountId)
   if (!profile) return { ok: false, error: 'Profile not found.' }
@@ -903,6 +1117,7 @@ export function claimDailyReward(accountId) {
   }
 
   _setDailyClaim.run(todayKey, DAILY_SHARDS, DAILY_SHARDS, accountId)
+  recordQuestEvent(accountId, 'claim_daily')
   const newBalance = profile.shards + DAILY_SHARDS
   const totalEarned = (profile.total_earned ?? 0) + DAILY_SHARDS
   return { ok: true, amount: DAILY_SHARDS, newBalance, shards: newBalance, totalEarned }
@@ -1074,6 +1289,7 @@ export function breakdownCard(accountId, cardId, qty) {
     _grantShards.run(totalRefund, totalRefund, accountId)
   })
   tx()
+  recordQuestEvent(accountId, 'breakdown_cards', { amount: requested })
 
   const refreshed = getProfile(accountId)
   return {
@@ -1087,7 +1303,7 @@ export function breakdownCard(accountId, cardId, qty) {
   }
 }
 
-export function resolveMatchResult(accountId, opponent, mode, result, turns) {
+export function resolveMatchResult(accountId, opponent, mode, result, turns, metadata = {}) {
   const profile = getProfile(accountId)
   if (!profile) return { ok: false, error: 'Profile not found.' }
 
@@ -1127,6 +1343,14 @@ export function resolveMatchResult(accountId, opponent, mode, result, turns) {
   })
 
   tx()
+  recordQuestEvent(accountId, 'play_matches')
+  if (result === 'win') {
+    recordQuestEvent(accountId, 'win_any_match')
+    if (mode === 'ai') {
+      recordQuestEvent(accountId, 'win_ai')
+      recordQuestEvent(accountId, 'win_ai_difficulty', { aiDifficulty: metadata.aiDifficulty ?? 'adept' })
+    }
+  }
   const refreshed = getProfile(accountId)
   return {
     ok: true,
@@ -1531,6 +1755,7 @@ export function openPack(accountId, packType) {
     _setOwnedCards.run(JSON.stringify(owned), accountId)
   })
   tx()
+  recordQuestEvent(accountId, 'open_packs')
 
   const refreshed = getProfile(accountId)
   return {

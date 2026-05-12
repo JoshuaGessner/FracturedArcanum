@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   CARD_LIBRARY,
+  AI_DIFFICULTY_PROFILES,
   DEFAULT_DECK_CONFIG,
   MIN_DECK_SIZE,
   STARTING_HEALTH,
@@ -11,6 +12,8 @@ import {
   getDeckSize,
   getRecommendedAIDifficulty,
   hasKeyword,
+  highestPlayableIndex,
+  chooseEnemyTarget,
   playCard,
   summonUnit,
   surrenderGame,
@@ -138,6 +141,32 @@ describe('Fractured Arcanum core rules', () => {
 
     expect(game.aiDifficulty).toBe('veteran')
     expect(game.enemy.name).toBe('Nemesis AI')
+  })
+
+  it('defines tactical profiles for every AI difficulty', () => {
+    expect(Object.keys(AI_DIFFICULTY_PROFILES)).toEqual(['novice', 'adept', 'veteran', 'legend'])
+    expect(AI_DIFFICULTY_PROFILES.novice.selectionMode).toBe('cheapest')
+    expect(AI_DIFFICULTY_PROFILES.legend.legendaryWeight).toBeGreaterThan(AI_DIFFICULTY_PROFILES.adept.legendaryWeight)
+  })
+
+  it('uses profile scoring so stronger AI tiers prefer higher-impact cards', () => {
+    const cheap = findCard('spark-imp')
+    const impact = findCard('clockwork-knight')
+    const hand = [impact, cheap]
+
+    expect(highestPlayableIndex(hand, 4, 'novice')).toBe(1)
+    expect(highestPlayableIndex(hand, 4, 'legend')).toBe(0)
+  })
+
+  it('legend target selection prioritizes dangerous units over hero pressure', () => {
+    const base = craftGame([])
+    base.player.health = 20
+    base.enemy.board = [summonUnit(findCard('sky-raider')), null, null]
+    base.player.board = [summonUnit(findCard('spark-imp')), summonUnit(findCard('ancient-hydra')), null]
+    const attacker = base.enemy.board[0]
+    if (!attacker) throw new Error('Missing attacker')
+
+    expect(chooseEnemyTarget(base, attacker, 'legend')).toBe(1)
   })
 })
 

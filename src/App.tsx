@@ -61,6 +61,7 @@ import { getNeighborScreen, NAV_ORDER } from './utils/sceneSwipe'
 import {
   buildBattleVictorySequence,
   buildDailyClaimSequence,
+  buildQuestClaimSequence,
   buildRankUpSequence,
   type RewardBeat,
 } from './components/RewardCinemaSequence'
@@ -89,6 +90,7 @@ import type {
   OpenedPackCard,
   OpponentProfile,
   PackOffer,
+  QuestOverview,
   QueuePresence,
   QueueSearchStatus,
   SettingsSubview,
@@ -168,6 +170,7 @@ function AppShell() {
     setOpenedPackCards,
     setPackOpening,
     setPrevCollectionSnapshot,
+    setQuestOverview,
   } = useProfileState()
 
   // ─── Local screen-shell state ─────────────────────────────────────────
@@ -318,6 +321,22 @@ function AppShell() {
     },
     [inferToastSeverity],
   )
+
+  const refreshQuestOverview = useCallback(async (): Promise<QuestOverview | null> => {
+    if (!authToken) return null
+    try {
+      const response = await authFetch('/api/me/quests', authToken)
+      const data = (await response.json()) as { ok?: boolean; error?: string } & Partial<QuestOverview>
+      if (data.ok && data.quests && data.summary) {
+        const overview = { quests: data.quests, summary: data.summary }
+        setQuestOverview(overview)
+        return overview
+      }
+    } catch {
+      return null
+    }
+    return null
+  }, [authToken, setQuestOverview])
   type ConfirmOptions = {
     title: string
     body: React.ReactNode
@@ -699,6 +718,7 @@ function AppShell() {
     setServerBattleActive(false)
     setCollection({})
     setPackOffers([])
+    setQuestOverview(null)
     setFriends([])
     setClan(null)
     setFriendUsernameInput('')
@@ -1077,17 +1097,22 @@ function AppShell() {
       authFetch('/api/me/collection', authToken).then((r) => r.json()),
       authFetch('/api/shop/packs', authToken).then((r) => r.json()),
       authFetch('/api/social', authToken).then((r) => r.json()),
+      authFetch('/api/me/quests', authToken).then((r) => r.json()),
     ])
-      .then(([collectionData, packData, socialData]: [
+      .then(([collectionData, packData, socialData, questData]: [
         { ok?: boolean; collection?: CardCollection },
         { ok?: boolean; packs?: PackOffer[] },
         { ok?: boolean; friends?: SocialFriend[]; clan?: SocialClan | null; error?: string },
+        { ok?: boolean } & Partial<QuestOverview>,
       ]) => {
         const nextCollection = collectionData.collection ?? {}
         setCollection(nextCollection)
         setPackOffers(packData.packs ?? [])
         setFriends(socialData.friends ?? [])
         setClan(socialData.clan ?? null)
+        if (questData.ok && questData.quests && questData.summary) {
+          setQuestOverview({ quests: questData.quests, summary: questData.summary })
+        }
         if (!socialData.ok && socialData.error) {
           setSocialStatus(socialData.error)
         }
@@ -1351,6 +1376,7 @@ function AppShell() {
         setCollection(data.owned ?? {})
         setToastMessage(`Refunded ${data.refunded ?? 0} Shards.`)
         feedback('claim', soundEnabled, hapticsEnabled)
+        void refreshQuestOverview()
       })
       .catch(() => setToastMessage('Could not break down card.'))
       .finally(() => setPendingBreakdown(null))
@@ -1648,7 +1674,7 @@ function AppShell() {
       const capturedKey = matchKey
       void authFetch('/api/match/complete', authToken, {
         method: 'POST',
-        body: { opponent: game.enemy.name, mode: game.mode, result, turns: game.turnNumber },
+        body: { opponent: game.enemy.name, mode: game.mode, result, turns: game.turnNumber, aiDifficulty: game.aiDifficulty },
       })
         .then((r) => r.json())
         .then((data: { ok: boolean; shards?: number; seasonRating?: number; wins?: number; losses?: number; streak?: number; shardsEarned?: number }) => {
@@ -1667,6 +1693,7 @@ function AppShell() {
                 }
               : prev,
           )
+              void refreshQuestOverview()
 
           if (game.winner !== 'player') return
 
@@ -1713,7 +1740,7 @@ function AppShell() {
         })
         .catch(() => {})
     }
-  }, [game, sendAnalytics, authToken, presentRewardCinema, serverProfile, setServerProfile])
+  }, [game, sendAnalytics, authToken, presentRewardCinema, serverProfile, setServerProfile, refreshQuestOverview])
 
   const isRankedBattle = battleKind === 'ranked'
   const isLocalPassBattle = battleKind === 'local'
@@ -2007,6 +2034,7 @@ function AppShell() {
           setToastMessage(`Daily reward claimed: +${grantedShards} Shards.`)
           setJustClaimedDaily(true)
           window.setTimeout(() => setJustClaimedDaily(false), 2000)
+          void refreshQuestOverview()
           presentRewardCinema(
             buildDailyClaimSequence({ shards: grantedShards, totalEarned: data.totalEarned }),
             'daily',
@@ -2017,6 +2045,42 @@ function AppShell() {
       })
       .catch(() => setToastMessage('Network error claiming daily reward.'))
     void sendAnalytics('reward_claim', { amount: ECONOMY_REWARDS.dailyShards, currency: 'shards', screen: activeScreen, viewport: getScreenBucket() }, 'vault')
+  }
+
+  function handleClaimQuestReward(questId: string) {
+    if (!authToken) {
+      setToastMessage('Log in to claim quest rewards.')
+      return
+    }
+
+    void authFetch(`/api/me/quests/${questId}/claim`, authToken, { method: 'POST' })
+      .then((r) => r.json())
+      .then((data: {
+        ok?: boolean
+        error?: string
+        shards?: number
+        totalEarned?: number
+        quest?: { id: string; title: string; reward: { shards: number } }
+        reward?: { shards: number }
+        overview?: ({ ok?: boolean } & QuestOverview)
+      }) => {
+        if (!data.ok || !data.quest) {
+          setToastMessage(data.error ?? 'Could not claim quest reward.')
+          return
+        }
+        setServerProfile((prev) => prev ? { ...prev, shards: data.shards ?? prev.shards, totalEarned: data.totalEarned ?? prev.totalEarned } : prev)
+        if (data.overview?.ok === true) {
+          setQuestOverview({ quests: data.overview.quests, summary: data.overview.summary })
+        } else {
+          void refreshQuestOverview()
+        }
+        setToastMessage(`${data.quest.title} claimed: +${data.reward?.shards ?? data.quest.reward.shards} Shards.`)
+        presentRewardCinema(
+          buildQuestClaimSequence({ title: data.quest.title, shards: data.reward?.shards ?? data.quest.reward.shards }),
+          'daily',
+        )
+      })
+      .catch(() => setToastMessage('Network error claiming quest reward.'))
   }
 
   function handleEquipTheme(themeId: CosmeticTheme, cost: number) {
@@ -2423,6 +2487,7 @@ function AppShell() {
       const collectionResponse = await authFetch('/api/me/collection', authToken)
       const collectionData = (await collectionResponse.json()) as { ok?: boolean; collection?: CardCollection }
       setCollection(collectionData.collection ?? {})
+      void refreshQuestOverview()
       setToastMessage(`Pack opened.${data.refund ? ` Duplicate refund: +${data.refund} Shards.` : ''}`)
     } catch (error) {
       setToastMessage(error instanceof Error ? error.message : 'Pack opening failed.')
@@ -3063,7 +3128,7 @@ function AppShell() {
     handleCreateDeck, handleRenameDeck, handleDeleteDeck, handleSelectDeck,
     handleBreakdownCard, handleDeckCount,
     // Cosmetics / shop handlers (state lives in ProfileProvider)
-    handleOpenPack, handlePurchaseBorder, handleSelectBorder, handleEquipTheme, handleClaimDailyReward,
+    handleOpenPack, handlePurchaseBorder, handleSelectBorder, handleEquipTheme, handleClaimDailyReward, handleClaimQuestReward,
     // Navigation / UI shell
     activeScreen, openScreen, settingsSubview, openSettingsSubview, resetSettingsSubview, screenTitle,
     toastMessage, toastSeverity, toastStack, setToastMessage, inferToastSeverity,

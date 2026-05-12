@@ -47,6 +47,7 @@ export type ProfileContextValue = ProfileStateValue &
     | 'handleSelectBorder'
     | 'handleEquipTheme'
     | 'handleClaimDailyReward'
+    | 'handleClaimQuestReward'
   >
 
 export function useProfile(): ProfileContextValue {
@@ -91,5 +92,6 @@ export function useProfile(): ProfileContextValue {
     handleSelectBorder: shell.handleSelectBorder,
     handleEquipTheme: shell.handleEquipTheme,
     handleClaimDailyReward: shell.handleClaimDailyReward,
+    handleClaimQuestReward: shell.handleClaimQuestReward,
   }
 }

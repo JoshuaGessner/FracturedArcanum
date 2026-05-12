@@ -1,4 +1,4 @@
-import { AI_DIFFICULTY_OPTIONS } from '../constants'
+import { AI_DIFFICULTY_DETAILS, AI_DIFFICULTY_OPTIONS } from '../constants'
 import { RankBadge } from '../components/AssetBadge'
 import { SceneHeaderPanel, type SceneHeaderTile } from '../components/SceneHeaderPanel'
 import { useAppShell, useGame, useProfile, useQueue } from '../contexts'
@@ -42,6 +42,7 @@ export function PlayScreen() {
       note: `${queuePresence.connectedPlayers} online · ${queuePresence.queueSize} queued`,
     },
   ]
+  const activeAIDetail = AI_DIFFICULTY_DETAILS[resolvedAIDifficulty]
 
   return (
     <section className={`home-screen play-screen screen-panel ${activeScreen === 'play' ? 'active' : 'hidden'}`}>
@@ -104,7 +105,16 @@ export function PlayScreen() {
 
         {preferredMode === 'ai' && (
           <div className="difficulty-panel">
-            <p className="note">AI difficulty: <strong>{resolvedAIDifficulty.charAt(0).toUpperCase() + resolvedAIDifficulty.slice(1)}</strong>{aiDifficultySetting === 'auto' ? ` (auto from ${seasonRating} rating)` : ''}</p>
+            <div className="difficulty-codex-card">
+              <div>
+                <span className="subview-label">Rival Codex</span>
+                <strong>{activeAIDetail.title}</strong>
+                <p className="note">{activeAIDetail.stance}{aiDifficultySetting === 'auto' ? ` Auto selected from ${seasonRating} rating.` : ''}</p>
+              </div>
+              <div className="difficulty-trait-row" aria-label="AI tactical traits">
+                {activeAIDetail.traits.map((trait) => <span key={trait}>{trait}</span>)}
+              </div>
+            </div>
             <div className="difficulty-chip-row">
               {AI_DIFFICULTY_OPTIONS.map((option) => (
                 <button

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from 'vitest'
-import { cleanup, render } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { HomeScreen } from './HomeScreen'
 import { AppShellContext, type AppShellContextValue } from '../AppShellContext'
 import { QueueProvider } from '../contexts/QueueProvider'
@@ -71,6 +71,7 @@ function buildShellValue(overrides: Partial<AppShellContextValue> = {}): AppShel
     handleSelectBorder: noop,
     handleEquipTheme: noop,
     handleClaimDailyReward: noop,
+    handleClaimQuestReward: noop,
     activeScreen: 'home' as AppScreen,
     openScreen: noop,
     settingsSubview: 'preferences',
@@ -220,25 +221,32 @@ describe('HomeScreen navigation and footer', () => {
     expect(container.querySelectorAll('.nav-tile')).toHaveLength(0)
   })
 
-  it('uses a reference-style command panel instead of a separate status slab', () => {
+  it('uses a compact status ribbon with the quest board as the focal panel', () => {
     const { container } = renderHomeScreen()
 
     expect(container.textContent).toMatch(/league/i)
     expect(container.textContent).toMatch(/deck/i)
     expect(container.textContent).toMatch(/vault/i)
-    expect(container.textContent).toMatch(/quests/i)
-    expect(container.querySelectorAll('.home-status-card')).toHaveLength(3)
+    expect(container.textContent).toMatch(/quest board/i)
+    expect(container.querySelector('.home-status-ribbon')).not.toBeNull()
+    expect(container.querySelector('.home-quest-board')).not.toBeNull()
+    expect(container.querySelectorAll('.home-status-chip')).toHaveLength(3)
+    expect(container.querySelectorAll('.home-status-card')).toHaveLength(0)
     expect(container.textContent).not.toMatch(/war table status/i)
   })
 
-  it('keeps the quest summary informational instead of showing a shop button', () => {
+  it('opens the quest ledger from the explicit ledger CTA', () => {
     const { container } = renderHomeScreen()
-    const summary = container.querySelector('.quest-summary')
+    const ledgerButton = screen.getByRole('button', { name: /open quest ledger/i })
 
-    expect(summary).not.toBeNull()
-    expect(summary?.querySelector('button')).toBeNull()
-    expect(summary?.textContent).toMatch(/next:/i)
-    expect(summary?.textContent).toMatch(/silver cache/i)
+    expect(container.querySelector('.quest-summary')).toBeNull()
+    expect(container.textContent).toMatch(/quest board/i)
+    expect(container.textContent).toMatch(/silver cache/i)
+
+    fireEvent.click(ledgerButton)
+
+    expect(screen.getByText(/quest ledger/i)).toBeTruthy()
+    expect(screen.getByText(/arena contracts/i)).toBeTruthy()
   })
 
   it('shows the core home progress details in the unified header', () => {
@@ -248,10 +256,10 @@ describe('HomeScreen navigation and footer', () => {
     expect(container.textContent).toMatch(/deck/i)
     expect(container.textContent).toMatch(/vault/i)
     expect(container.querySelector('[role="progressbar"][aria-label="Season rating progress"]')).not.toBeNull()
-    expect(getByText(/1210 \/ 1300 rating/i)).toBeTruthy()
+    expect(getByText(/1210 \/ 1300/i)).toBeTruthy()
     expect(getByText(/20\/14/i)).toBeTruthy()
     expect(getByText(/forge stocked/i)).toBeTruthy()
     expect(getByText(/ready to claim/i)).toBeTruthy()
-    expect(container.querySelectorAll('.home-status-card')).toHaveLength(3)
+    expect(container.querySelectorAll('.home-status-chip')).toHaveLength(3)
   })
 })
