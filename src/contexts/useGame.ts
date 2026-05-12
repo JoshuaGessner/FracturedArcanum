@@ -31,6 +31,7 @@ export type GameContextValue = GameStateValue &
     | 'handleAIDifficultyChange'
     | 'handlePlayCard'
     | 'handleSelectAttacker'
+    | 'handleAttackFrom'
     | 'handleAttackTarget'
     | 'handleBurst'
     | 'handleEndTurn'
@@ -65,6 +66,7 @@ export function useGame(): GameContextValue {
     handleAIDifficultyChange: shell.handleAIDifficultyChange,
     handlePlayCard: shell.handlePlayCard,
     handleSelectAttacker: shell.handleSelectAttacker,
+    handleAttackFrom: shell.handleAttackFrom,
     handleAttackTarget: shell.handleAttackTarget,
     handleBurst: shell.handleBurst,
     handleEndTurn: shell.handleEndTurn,

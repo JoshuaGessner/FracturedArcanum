@@ -143,6 +143,7 @@ function buildShellValue(overrides: Partial<AppShellContextValue> = {}): AppShel
     handleAIDifficultyChange: noop,
     handlePlayCard: noop,
     handleSelectAttacker: noop,
+    handleAttackFrom: noop,
     handleAttackTarget: noop,
     handleBurst: noop,
     handleEndTurn: noop,

@@ -62,7 +62,7 @@ export function SummaryPopup({
           </div>
         )}
 
-        <div className="controls summary-popup-actions">
+        <div className={`controls summary-popup-actions ${actions.length === 1 ? 'is-single-action' : ''}`}>
           {actions.map((action) => (
             <button
               key={action.label}
