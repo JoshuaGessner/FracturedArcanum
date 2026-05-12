@@ -78,6 +78,7 @@ import type {
   AdminUser,
   AppScreen,
   AuthScreen,
+  BattleKind,
   CardBorder,
   CardCollection,
   ComplaintFormState,
@@ -265,6 +266,7 @@ function AppShell() {
   // (registered once per auth session) sees the current value rather
   // than the stale closure from when the socket effect ran.
   const serverBattleActiveRef = useRef(false)
+  const pendingServerBattleKindRef = useRef<Extract<BattleKind, 'ranked' | 'friend'> | null>(null)
   useEffect(() => {
     serverBattleActiveRef.current = serverBattleActive
   }, [serverBattleActive])
@@ -825,7 +827,8 @@ function AppShell() {
       setQueuedOpponent(payload.opponent)
       setQueueState('found')
       setLobbyCode(payload.roomId.toUpperCase())
-      setBattleKind('ranked') // reuse ranked-style server-authoritative flow
+      pendingServerBattleKindRef.current = 'friend'
+      setBattleKind('friend')
       setToastMessage(`Unranked duel ready against ${payload.opponent.name}.`)
     })
 
@@ -862,14 +865,17 @@ function AppShell() {
         setQueuedOpponent(payload.opponent)
         setQueueState('found')
         setLobbyCode(payload.roomId.toUpperCase())
+        pendingServerBattleKindRef.current = 'ranked'
         setToastMessage(`Match found against ${payload.opponent.name}.`)
       },
     )
 
-    socket.on('game:start', (payload: { yourSide: BattleSide; state: GameState }) => {
+    socket.on('game:start', (payload: { yourSide: BattleSide; serverMode?: 'duel' | 'unranked'; state: GameState }) => {
       rejoinInFlightRef.current = false
       setGame(payload.state)
-      setBattleKind('ranked')
+      const nextBattleKind = pendingServerBattleKindRef.current ?? (payload.serverMode === 'unranked' ? 'friend' : 'ranked')
+      pendingServerBattleKindRef.current = null
+      setBattleKind(nextBattleKind)
       setBattleSessionActive(true)
       setServerBattleActive(true)
       transitionToScreen('battle')
@@ -909,10 +915,10 @@ function AppShell() {
     })
 
     // ─── Reconnect / disconnect events ──────────────────────────────
-    socket.on('game:rejoin', (payload: { yourSide: BattleSide; state: GameState; roomId: string; opponentDisconnected: boolean }) => {
+    socket.on('game:rejoin', (payload: { yourSide: BattleSide; serverMode?: 'duel' | 'unranked'; state: GameState; roomId: string; opponentDisconnected: boolean }) => {
       rejoinInFlightRef.current = false
       setGame(payload.state)
-      setBattleKind('ranked')
+      setBattleKind(payload.serverMode === 'unranked' ? 'friend' : 'ranked')
       setBattleSessionActive(true)
       setServerBattleActive(true)
       transitionToScreen('battle')
@@ -1881,6 +1887,7 @@ function AppShell() {
   function resetBattleState(mode: GameMode = preferredMode, toast = 'Battle reset. Ready when you are.', nextScreen: AppScreen = 'home') {
     const nextDifficulty = mode === 'ai' ? resolvedAIDifficulty : 'legend'
     setBattleKind(mode === 'duel' ? 'local' : 'ai')
+    pendingServerBattleKindRef.current = null
     clearEnemyTurnTimers()
     battleStartedRef.current = false
     if (battleIntroTimerRef.current) {
@@ -2329,6 +2336,7 @@ function AppShell() {
 
     setPreferredMode(mode)
     setBattleKind(mode === 'duel' ? 'local' : 'ai')
+    pendingServerBattleKindRef.current = null
     setBattleSessionActive(true)
     setServerBattleActive(false)
     setBattleSummaryVisible(false)
@@ -2872,7 +2880,7 @@ function AppShell() {
   }
 
   function emitAction(action: Record<string, unknown>) {
-    if (isRankedBattle && socketClientRef.current?.connected) {
+    if (serverBattleActive && socketClientRef.current?.connected) {
       socketClientRef.current.emit('game:action', { action })
     }
   }
@@ -2886,7 +2894,7 @@ function AppShell() {
     playSound('cardSlam', soundEnabled)
     pulseFeedback(12, hapticsEnabled)
 
-    if (isRankedBattle) {
+    if (serverBattleActive) {
       emitAction({ type: 'playCard', handIndex: index })
       return
     }
@@ -2905,22 +2913,31 @@ function AppShell() {
     setSelectedAttacker((current) => (current === index ? null : index))
   }
 
-  function handleAttackTarget(target: number | 'hero') {
-    if (selectedAttacker === null || game.winner || !isMyTurn) {
+  function handleAttackFrom(attackerIndex: number, target: number | 'hero') {
+    const attacker = activePlayer.board[attackerIndex]
+    if (game.winner || !isMyTurn || !attacker || attacker.exhausted) {
       return
     }
 
     playSound('attackLunge', soundEnabled)
     pulseFeedback(16, hapticsEnabled)
 
-    if (isRankedBattle) {
-      emitAction({ type: 'attack', attackerIndex: selectedAttacker, target })
+    if (serverBattleActive) {
+      emitAction({ type: 'attack', attackerIndex, target })
       setSelectedAttacker(null)
       return
     }
 
-    setGame((current) => attack(current, current.turn, selectedAttacker, target))
+    setGame((current) => attack(current, current.turn, attackerIndex, target))
     setSelectedAttacker(null)
+  }
+
+  function handleAttackTarget(target: number | 'hero') {
+    if (selectedAttacker === null) {
+      return
+    }
+
+    handleAttackFrom(selectedAttacker, target)
   }
 
   function handleBurst() {
@@ -2931,7 +2948,7 @@ function AppShell() {
     playSound('burst', soundEnabled)
     pulseFeedback(22, hapticsEnabled)
 
-    if (isRankedBattle) {
+    if (serverBattleActive) {
       emitAction({ type: 'burst' })
       return
     }
@@ -2952,7 +2969,7 @@ function AppShell() {
     feedback('tap', soundEnabled, hapticsEnabled)
     setSelectedAttacker(null)
 
-    if (isRankedBattle) {
+    if (serverBattleActive) {
       emitAction({ type: 'endTurn' })
       return
     }
@@ -3052,6 +3069,7 @@ function AppShell() {
     startMatch, handleQuickBattle, handleResumeBattle, handleAbandonBattle, handleLeaveBattle,
     handleModeChange, handleAIDifficultyChange,
     handlePlayCard, handleSelectAttacker, handleAttackTarget,
+    handleAttackFrom,
     handleBurst, handleEndTurn,
     // Social handlers (state lives in SocialProvider)
     handleAddFriend, handleRemoveFriend, handleChallengeFriend,

@@ -30,6 +30,14 @@ type DragState = {
   canPlay: boolean
 }
 
+type AttackDragState = {
+  attackerIndex: number
+  pointerId: number
+  originX: number
+  originY: number
+  active: boolean
+}
+
 type ArrowState = {
   fromX: number
   fromY: number
@@ -46,7 +54,6 @@ const SLAM_DURATION_MS = 380
 export function BattleScreen() {
   const {
     activeScreen,
-    openScreen,
     backendOnline,
     loggedIn,
     soundEnabled,
@@ -59,18 +66,24 @@ export function BattleScreen() {
     game, activePlayer, isMyTurn, isRankedBattle, battleKind,
     enemyTurnActive, enemyTurnLabel, opponentDisconnected, disconnectGraceMs,
     handleBurst, handleEndTurn, handleLeaveBattle,
-    handleAttackTarget, handleSelectAttacker, selectedAttacker,
+    handleAttackFrom, handleAttackTarget, handleSelectAttacker, selectedAttacker, setSelectedAttacker,
     defenderHasGuard, damagedSlots,
     consumeLongPressAction, getLongPressProps,
     handlePlayCard, activeBoardHasOpenLane,
-    startMatch, setPreferredMode,
+    startMatch,
   } = useGame()
   const { selectedCardBorder, rankLabel, seasonRating, winRate } = useProfile()
 
   const isBattle = activeScreen === 'battle'
-  const battleModeLabel = isRankedBattle ? 'Ranked duel' : battleKind === 'local' ? 'Pass and play' : 'AI skirmish'
+  const battleModeLabel = isRankedBattle
+    ? 'Ranked duel'
+    : battleKind === 'friend'
+      ? 'Friend duel'
+      : battleKind === 'local'
+        ? 'Pass and play'
+        : 'AI skirmish'
   const resultTone = game.winner === 'player' ? 'victory' : game.winner === 'enemy' ? 'defeat' : 'draw'
-  const showBattleSummary = Boolean(game.winner) && !enemyTurnActive
+  const showBattleSummary = isBattle && Boolean(game.winner) && !enemyTurnActive
     && ((battleSummaryVisible ?? false) || (game.winner !== 'player' && !cinemaSequence))
   const battleSummaryTitle = game.winner === 'player'
     ? 'Victory secured'
@@ -96,6 +109,8 @@ export function BattleScreen() {
     : defenderHasGuard
       ? 'Guard blocks the hero'
       : 'Choose target'
+  const canStrikeHero = selectedAttacker !== null && !defenderHasGuard && isMyTurn && !game.winner
+  const canPlayAgain = battleKind === 'ai' || battleKind === 'local'
 
   // ─── Drag-to-play state ─────────────────────────────────────────────
   const [drag, setDrag] = useState<DragState | null>(null)
@@ -148,6 +163,13 @@ export function BattleScreen() {
   const playerSlotRefs = useRef<Array<HTMLButtonElement | null>>([])
   const enemySlotRefs = useRef<Array<HTMLDivElement | HTMLButtonElement | null>>([])
   const [arrow, setArrow] = useState<ArrowState>(null)
+  const [attackDrag, setAttackDrag] = useState<AttackDragState | null>(null)
+  const attackDragRef = useRef<AttackDragState | null>(null)
+  const attackDragHandledRef = useRef(false)
+
+  useEffect(() => {
+    attackDragRef.current = attackDrag
+  }, [attackDrag])
 
   const computeArrowFrom = useCallback((): { x: number; y: number } | null => {
     if (selectedAttacker === null) return null
@@ -193,6 +215,78 @@ export function BattleScreen() {
       setArrow(null)
     }
   }, [selectedAttacker, computeArrowFrom])
+
+  const findHeroStrikeTarget = useCallback((clientX: number, clientY: number): boolean => {
+    if (typeof document === 'undefined' || typeof document.elementFromPoint !== 'function') return false
+    const element = document.elementFromPoint(clientX, clientY)
+    return Boolean(element?.closest('[data-hero-target="enemy"]'))
+  }, [])
+
+  const cancelAttackDrag = useCallback(() => {
+    attackDragRef.current = null
+    setAttackDrag(null)
+  }, [])
+
+  const handleUnitAttackPointerDown = useCallback((event: React.PointerEvent<HTMLButtonElement>, attackerIndex: number, canAttack: boolean) => {
+    if (!canAttack) return
+    if (event.pointerType === 'mouse' && event.button !== 0) return
+    const nextDrag = {
+      attackerIndex,
+      pointerId: event.pointerId,
+      originX: event.clientX,
+      originY: event.clientY,
+      active: false,
+    }
+    attackDragRef.current = nextDrag
+    setAttackDrag(nextDrag)
+    attackDragHandledRef.current = false
+  }, [])
+
+  const handleUnitAttackPointerMove = useCallback((event: React.PointerEvent<HTMLButtonElement>) => {
+    const current = attackDragRef.current
+    if (!current || current.pointerId !== event.pointerId) return
+    const distance = Math.hypot(event.clientX - current.originX, event.clientY - current.originY)
+    if (!current.active && distance >= DRAG_ACTIVATE_PX) {
+      try {
+        event.currentTarget.setPointerCapture?.(event.pointerId)
+      } catch {
+        /* pointer capture is best-effort across browsers */
+      }
+      const nextDrag = { ...current, active: true }
+      attackDragRef.current = nextDrag
+      setAttackDrag(nextDrag)
+      setSelectedAttacker(current.attackerIndex)
+      playSound('cardLift', soundEnabled)
+      pulseFeedback(8, hapticsEnabled)
+    }
+    if (attackDragRef.current?.active) {
+      event.preventDefault()
+    }
+  }, [hapticsEnabled, setSelectedAttacker, soundEnabled])
+
+  const handleUnitAttackPointerUp = useCallback((event: React.PointerEvent<HTMLButtonElement>) => {
+    const current = attackDragRef.current
+    if (!current || current.pointerId !== event.pointerId) {
+      cancelAttackDrag()
+      return
+    }
+    if (current.active) {
+      const committed = !defenderHasGuard && findHeroStrikeTarget(event.clientX, event.clientY)
+      attackDragHandledRef.current = true
+      if (committed) {
+        handleAttackFrom(current.attackerIndex, 'hero')
+      }
+      event.preventDefault()
+    }
+    cancelAttackDrag()
+  }, [cancelAttackDrag, defenderHasGuard, findHeroStrikeTarget, handleAttackFrom])
+
+  const handleUnitAttackPointerCancel = useCallback((event: React.PointerEvent<HTMLButtonElement>) => {
+    const current = attackDragRef.current
+    if (current && current.pointerId === event.pointerId) {
+      cancelAttackDrag()
+    }
+  }, [cancelAttackDrag])
 
   // ─── Hero portrait reactions ────────────────────────────────────────
   const prevHeroRef = useRef({ player: game.player.health, enemy: game.enemy.health })
@@ -441,6 +535,35 @@ export function BattleScreen() {
     return false
   }
 
+  const consumeAttackDragHandled = (): boolean => {
+    if (attackDragHandledRef.current) {
+      attackDragHandledRef.current = false
+      return true
+    }
+    return false
+  }
+
+  const summaryActions = [
+    ...(canPlayAgain
+      ? [{
+          label: 'Play Again',
+          variant: 'primary' as const,
+          onClick: () => {
+            dismissBattleSummary?.()
+            startMatch(game.mode)
+          },
+        }]
+      : []),
+    {
+      label: 'Leave to Lobby',
+      variant: canPlayAgain ? 'ghost' as const : 'primary' as const,
+      onClick: () => {
+        dismissBattleSummary?.()
+        handleLeaveBattle()
+      },
+    },
+  ]
+
   return (
     <>
       {isBattle && !backendOnline && isRankedBattle && (
@@ -510,7 +633,7 @@ export function BattleScreen() {
                 if (!unit) {
                   return (
                     <div className="slot empty" key={`enemy-empty-${index}`} ref={(el) => { enemySlotRefs.current[index] = el }}>
-                      Empty lane
+                      Empty Lane
                     </div>
                   )
                 }
@@ -569,6 +692,15 @@ export function BattleScreen() {
             <span className="battle-center-turn">T{game.turnNumber}</span>
             <strong className="battle-center-note">{battleCenterLabel}</strong>
             <span className={`battle-center-phase ${isMyTurn ? 'is-player-turn' : 'is-enemy-turn'}`}>{isMyTurn ? 'Your turn' : 'Enemy turn'}</span>
+            <span className="battle-center-hero-slot" data-hero-target="enemy">
+              {canStrikeHero ? (
+                <button className="battle-center-hero-button" onClick={() => handleAttackTarget('hero')}>
+                  Strike Hero
+                </button>
+              ) : (
+                <span className="battle-center-hero-hint">{selectedAttacker === null ? 'Select Unit' : 'Hero Guarded'}</span>
+              )}
+            </span>
           </div>
 
           <div className="battlefield-side player-side">
@@ -588,13 +720,23 @@ export function BattleScreen() {
                       data-drop-lane={index}
                       ref={(el) => { playerSlotRefs.current[index] = null; void el }}
                     >
-                      Open lane
+                      Empty Lane
                     </div>
                   )
                 }
 
                 const isSelectable = game.turn === 'player'
                 const isSelected = isSelectable && selectedAttacker === index
+                const canAttack = isSelectable && !unit.exhausted && isMyTurn && !game.winner
+                const unitInspectPayload = { name: unit.name, icon: unit.icon, id: unit.id, cost: unit.cost, attack: unit.attack, health: unit.health, currentHealth: unit.currentHealth, rarity: unit.rarity, tribe: unit.tribe, text: unit.text, effect: unit.effect ?? null }
+                const longPress = (getLongPressProps(unitInspectPayload) ?? {}) as Partial<{
+                  onPointerDown: (event: React.PointerEvent<HTMLElement>) => void
+                  onPointerMove: (event: React.PointerEvent<HTMLElement>) => void
+                  onPointerUp: (event: React.PointerEvent<HTMLElement>) => void
+                  onPointerLeave: (event: React.PointerEvent<HTMLElement>) => void
+                  onPointerCancel: (event: React.PointerEvent<HTMLElement>) => void
+                  onContextMenu: (event: React.MouseEvent<HTMLElement>) => void
+                }>
 
                 return (
                   <button
@@ -604,6 +746,7 @@ export function BattleScreen() {
                       unit.effect === 'guard' ? 'guard' : '',
                       unit.exhausted ? 'exhausted' : '',
                       isSelected ? 'selected' : '',
+                      attackDrag?.active && attackDrag.attackerIndex === index ? 'is-attack-dragging' : '',
                       damagedSlots.has(unit.uid) ? 'damage-flash' : '',
                       dragActive ? 'drop-target-active' : '',
                       dragActive ? 'drop-target-invalid' : '',
@@ -617,10 +760,32 @@ export function BattleScreen() {
                     onClick={() => {
                       if (consumeLongPressAction()) return
                       if (consumeDragHandled()) return
+                      if (consumeAttackDragHandled()) return
                       if (isSelectable) handleSelectAttacker(index)
                       else handleAttackTarget(index)
                     }}
-                    {...getLongPressProps({ name: unit.name, icon: unit.icon, id: unit.id, cost: unit.cost, attack: unit.attack, health: unit.health, currentHealth: unit.currentHealth, rarity: unit.rarity, tribe: unit.tribe, text: unit.text, effect: unit.effect ?? null })}
+                    onPointerDown={(event) => {
+                      longPress.onPointerDown?.(event)
+                      handleUnitAttackPointerDown(event, index, canAttack)
+                    }}
+                    onPointerMove={(event) => {
+                      longPress.onPointerMove?.(event)
+                      handleUnitAttackPointerMove(event)
+                    }}
+                    onPointerUp={(event) => {
+                      longPress.onPointerUp?.(event)
+                      handleUnitAttackPointerUp(event)
+                    }}
+                    onPointerLeave={(event) => {
+                      longPress.onPointerLeave?.(event)
+                    }}
+                    onPointerCancel={(event) => {
+                      longPress.onPointerCancel?.(event)
+                      handleUnitAttackPointerCancel(event)
+                    }}
+                    onContextMenu={(event) => {
+                      longPress.onContextMenu?.(event)
+                    }}
                     aria-disabled={Boolean(game.winner) || (isSelectable ? unit.exhausted : selectedAttacker === null)}
                     title="Long press to inspect"
                   >
@@ -655,13 +820,13 @@ export function BattleScreen() {
           >
             <span className="battle-hero-side">You</span>
             <strong className="battle-hero-name">{game.player.name}</strong>
-            <span className="battle-hero-hp"><StatIcon kind="health" /> {game.player.health}</span>
-            <span className="battle-hero-resource" aria-label={`Mana ${activePlayer.mana} of ${activePlayer.maxMana}`}>
-              <StatIcon kind="mana" /> {activePlayer.mana}/{activePlayer.maxMana}
-            </span>
             <span className="battle-hero-resource momentum" aria-label={`Momentum ${activePlayer.momentum} of 10`}>
               M {activePlayer.momentum}/10
             </span>
+            <span className="battle-hero-resource" aria-label={`Mana ${activePlayer.mana} of ${activePlayer.maxMana}`}>
+              <StatIcon kind="mana" /> {activePlayer.mana}/{activePlayer.maxMana}
+            </span>
+            <span className="battle-hero-hp" aria-label={`Health ${game.player.health}`}><StatIcon kind="health" /> {game.player.health}</span>
             {playerHeroFx === 'damaged' && (
               <img className="hero-fx-overlay hero-fx-cracks" src={UI_ASSETS.overlays.heroCracks} alt="" aria-hidden="true" />
             )}
@@ -686,15 +851,6 @@ export function BattleScreen() {
                 'End Turn'
               )}
             </button>
-            {selectedAttacker !== null && !defenderHasGuard && (
-              <button
-                className="ghost"
-                onClick={() => handleAttackTarget('hero')}
-                disabled={Boolean(game.winner)}
-              >
-                Strike Hero
-              </button>
-            )}
             <button className="ghost" onClick={handleLeaveBattle}>
               Leave
             </button>
@@ -832,25 +988,7 @@ export function BattleScreen() {
           `Win Rate ${winRate}%`,
           battleModeLabel,
         ]}
-        actions={[
-          {
-            label: 'Play Again',
-            variant: 'primary',
-            onClick: () => {
-              dismissBattleSummary?.()
-              startMatch(game.mode)
-            },
-          },
-          {
-            label: 'Leave to Lobby',
-            variant: 'ghost',
-            onClick: () => {
-              dismissBattleSummary?.()
-              setPreferredMode('ai')
-              openScreen('home')
-            },
-          },
-        ]}
+        actions={summaryActions}
       />
 
     </>

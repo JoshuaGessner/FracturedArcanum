@@ -56,7 +56,9 @@ export function buildBattleVictorySequence(input: BattleVictoryInput): RewardBea
           ? 'Ranked Victory Secured'
           : input.battleKind === 'local'
             ? 'Casual Duel Won'
-            : 'Skirmish Conquered',
+            : input.battleKind === 'friend'
+              ? 'Friend Duel Won'
+              : 'Skirmish Conquered',
       caption: 'Season of Whispers · momentum is yours',
       sound: 'win',
     },

@@ -189,6 +189,7 @@ export type AppShellContextValue = {
   handleAIDifficultyChange: (level: 'auto' | AIDifficulty) => void
   handlePlayCard: (index: number) => void
   handleSelectAttacker: (index: number) => void
+  handleAttackFrom: (attackerIndex: number, target: number | 'hero') => void
   handleAttackTarget: (target: number | 'hero') => void
   handleBurst: () => void
   handleEndTurn: () => void

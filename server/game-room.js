@@ -228,6 +228,7 @@ class GameRoom {
     if (!side || !this.state) return null
     return {
       yourSide: side,
+      serverMode: this.mode,
       state: redactGameState(this.state, side),
     }
   }
@@ -242,6 +243,7 @@ class GameRoom {
     if (!side || !this.state) return null
     return {
       yourSide: side,
+      serverMode: this.mode,
       state: redactGameState(this.state, side),
     }
   }

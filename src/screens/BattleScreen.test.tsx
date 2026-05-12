@@ -10,7 +10,7 @@ import { SocialProvider } from '../contexts/SocialProvider'
 import { GameProvider, useGameState } from '../contexts/GameProvider'
 import { createGame } from '../game'
 import { createPwaInstallState } from '../pwa'
-import type { AppScreen, CardBorder, CosmeticTheme } from '../types'
+import type { AppScreen, BattleKind, CardBorder, CosmeticTheme } from '../types'
 
 function buildShellValue(overrides: Partial<AppShellContextValue> = {}): AppShellContextValue {
   const noop = () => {}
@@ -145,6 +145,7 @@ function buildShellValue(overrides: Partial<AppShellContextValue> = {}): AppShel
     handleAIDifficultyChange: noop,
     handlePlayCard: noop,
     handleSelectAttacker: noop,
+    handleAttackFrom: noop,
     handleAttackTarget: noop,
     handleBurst: noop,
     handleEndTurn: noop,
@@ -199,20 +200,23 @@ function BattleStateSeeder({
   enemyTurnActive = false,
   enemyTurnLabel = '',
   selectedAttacker = null,
+  battleKind,
 }: {
   game?: ReturnType<typeof createGame>
   enemyTurnActive?: boolean
   enemyTurnLabel?: string
   selectedAttacker?: number | null
+  battleKind?: BattleKind
 }) {
-  const { setGame, setEnemyTurnActive, setEnemyTurnLabel, setSelectedAttacker } = useGameState()
+  const { setGame, setEnemyTurnActive, setEnemyTurnLabel, setSelectedAttacker, setBattleKind } = useGameState()
 
   useEffect(() => {
     if (game) setGame(game)
     setEnemyTurnActive(enemyTurnActive)
     setEnemyTurnLabel(enemyTurnLabel)
     setSelectedAttacker(selectedAttacker)
-  }, [enemyTurnActive, enemyTurnLabel, game, selectedAttacker, setEnemyTurnActive, setEnemyTurnLabel, setGame, setSelectedAttacker])
+    if (battleKind) setBattleKind(battleKind)
+  }, [battleKind, enemyTurnActive, enemyTurnLabel, game, selectedAttacker, setBattleKind, setEnemyTurnActive, setEnemyTurnLabel, setGame, setSelectedAttacker])
 
   return null
 }
@@ -224,6 +228,7 @@ function renderBattleScreen(
     enemyTurnActive?: boolean
     enemyTurnLabel?: string
     selectedAttacker?: number | null
+    battleKind?: BattleKind
   } = {},
 ) {
   const value = buildShellValue(valueOverrides)
@@ -314,6 +319,129 @@ describe('BattleScreen mobile layout', () => {
     expect(screen.getByRole('button', { name: /play again/i })).toBeTruthy()
     expect(screen.getByRole('button', { name: /leave to lobby/i })).toBeTruthy()
     expect(screen.queryByText(/victory screen/i)).toBeNull()
+  })
+
+  it('does not keep the battle summary overlay mounted after leaving battle', () => {
+    const finishedGame = createGame('ai', {})
+    finishedGame.winner = 'enemy'
+
+    renderBattleScreen({ activeScreen: 'home' }, { game: finishedGame })
+
+    expect(screen.queryByRole('dialog', { name: /battle summary/i })).toBeNull()
+  })
+
+  it('hides play again for ranked results and routes leave through the battle handler', () => {
+    const handleLeaveBattle = vi.fn()
+    const finishedGame = createGame('duel', {})
+    finishedGame.winner = 'enemy'
+
+    renderBattleScreen({
+      battleSummaryVisible: true,
+      isRankedBattle: true,
+      handleLeaveBattle,
+    }, {
+      game: finishedGame,
+      battleKind: 'ranked',
+    })
+
+    expect(screen.queryByRole('button', { name: /play again/i })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: /leave to lobby/i }))
+    expect(handleLeaveBattle).toHaveBeenCalledTimes(1)
+  })
+
+  it('moves strike hero into the centerline target control', () => {
+    const activeGame = createGame('ai', {})
+    activeGame.player.board[0] = {
+      instanceId: 'ally-instance-1',
+      uid: 'ally-1',
+      id: 'spark-imp',
+      name: 'Crawling Spark',
+      icon: '⚡',
+      cost: 1,
+      attack: 2,
+      health: 1,
+      currentHealth: 1,
+      exhausted: false,
+      rarity: 'common',
+      tribe: 'elemental',
+      text: 'Test ally',
+    }
+
+    renderBattleScreen({
+      activePlayer: activeGame.player,
+      defendingPlayer: activeGame.enemy,
+    }, {
+      game: activeGame,
+      selectedAttacker: 0,
+    })
+
+    const strikeButton = screen.getByRole('button', { name: /strike hero/i })
+    expect(strikeButton.closest('.battle-centerline')).toBeTruthy()
+    expect(strikeButton.closest('.battle-action-dock')).toBeNull()
+  })
+
+  it('orders player resources as momentum, mana, then health', () => {
+    renderBattleScreen()
+
+    const playerAnchor = document.querySelector('.battle-hero-anchor.player') as HTMLElement
+    const momentum = within(playerAnchor).getByLabelText(/momentum/i)
+    const mana = within(playerAnchor).getByLabelText(/mana/i)
+    const health = within(playerAnchor).getByLabelText(/health/i)
+    const children = Array.from(playerAnchor.children)
+
+    expect(children.indexOf(momentum)).toBeLessThan(children.indexOf(mana))
+    expect(children.indexOf(mana)).toBeLessThan(children.indexOf(health))
+  })
+
+  it('uses a consistent Empty Lane label for both sides', () => {
+    renderBattleScreen()
+
+    expect(screen.getAllByText('Empty Lane').length).toBeGreaterThanOrEqual(3)
+    expect(screen.queryByText(/open lane/i)).toBeNull()
+  })
+
+  it('lets players drag a ready board unit to the center hero target', () => {
+    const handleAttackFrom = vi.fn()
+    const activeGame = createGame('ai', {})
+    activeGame.player.board[0] = {
+      instanceId: 'ally-instance-1',
+      uid: 'ally-1',
+      id: 'spark-imp',
+      name: 'Crawling Spark',
+      icon: '⚡',
+      cost: 1,
+      attack: 2,
+      health: 1,
+      currentHealth: 1,
+      exhausted: false,
+      rarity: 'common',
+      tribe: 'elemental',
+      text: 'Test ally',
+    }
+
+    renderBattleScreen({
+      activePlayer: activeGame.player,
+      defendingPlayer: activeGame.enemy,
+      handleAttackFrom,
+    }, {
+      game: activeGame,
+    })
+
+    const heroTarget = document.querySelector('[data-hero-target="enemy"]') as Element
+    const elementFromPoint = vi.fn(() => heroTarget)
+    Object.defineProperty(document, 'elementFromPoint', {
+      configurable: true,
+      value: elementFromPoint,
+    })
+    const playerSide = document.querySelector('.player-side') as HTMLElement
+    const unitButton = within(playerSide).getByRole('button', { name: /crawling spark artwork/i })
+
+    fireEvent.pointerDown(unitButton, { pointerId: 1, pointerType: 'mouse', button: 0, clientX: 120, clientY: 320 })
+    fireEvent.pointerMove(unitButton, { pointerId: 1, pointerType: 'mouse', clientX: 120, clientY: 280 })
+    fireEvent.pointerUp(unitButton, { pointerId: 1, pointerType: 'mouse', clientX: 160, clientY: 240 })
+
+    expect(handleAttackFrom).toHaveBeenCalledWith(0, 'hero')
+    expect(elementFromPoint).toHaveBeenCalled()
   })
 
   it('hides the strike-hero control when guard still blocks the lane', () => {

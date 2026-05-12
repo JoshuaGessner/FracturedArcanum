@@ -6,7 +6,7 @@ export type SettingsSubview = 'hub' | 'preferences' | 'support' | 'admin'
 export type CosmeticTheme = 'royal' | 'ember' | 'moon'
 export type AuthScreen = 'login' | 'signup'
 export type CardBorder = 'default' | 'bronze' | 'frost' | 'solar' | 'void'
-export type BattleKind = 'ai' | 'local' | 'ranked'
+export type BattleKind = 'ai' | 'local' | 'ranked' | 'friend'
 export type ToastSeverity = 'info' | 'success' | 'warning' | 'error'
 
 export type OpponentProfile = {

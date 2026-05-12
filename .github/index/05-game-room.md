@@ -33,8 +33,8 @@
 | `reconnect(accountId, newSocketId)` | 112 | Reconnect with new socket |
 | `isDisconnected(side)` | 132 | Check if side is offline |
 | `handleAction(socketId, action)` | 142 | Validate & execute game action |
-| `getViewForSocket(socketId)` | 206 | Redacted state for socket |
-| `getViewForAccount(accountId)` | 218 | Redacted state for account |
+| `getViewForSocket(socketId)` | 206 | Redacted state for socket plus `serverMode` (`duel` or `unranked`) |
+| `getViewForAccount(accountId)` | 218 | Redacted state for account plus `serverMode` (`duel` or `unranked`) |
 | `getWinnerResult()` | 230 | Get match result |
 | `isExpired()` | 238 | Check 30-min expiry |
 | `cleanup()` | 242 | Clear forfeit timers |
