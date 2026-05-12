@@ -72,7 +72,7 @@ function buildShellValue(overrides: Partial<AppShellContextValue> = {}): AppShel
     handleClaimDailyReward: noop,
     activeScreen: 'play' as AppScreen,
     openScreen: noop,
-    settingsSubview: 'hub',
+    settingsSubview: 'preferences',
     openSettingsSubview: noop,
     resetSettingsSubview: noop,
     screenTitle: 'Play',

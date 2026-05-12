@@ -104,7 +104,7 @@
 ### Card Playing & Combat
 | Function | Line | Purpose |
 |----------|------|---------|
-| `playCard(base, side, handIndex)` | 1033 | Play card, resolve all effects |
+| `playCard(base, side, handIndex, laneIndex?)` | 1033 | Play card into first open lane or requested empty lane, resolve all effects |
 | `attack(base, side, attackerIndex, target)` | 1322 | Resolve combat (unit or hero) |
 | `castMomentumBurst(base, side)` | 1313 | Spend 3 momentum: 2 damage + draw |
 

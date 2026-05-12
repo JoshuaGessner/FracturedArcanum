@@ -123,7 +123,7 @@ export type AppShellContextValue = {
   askConfirm: (options: ConfirmOptions) => Promise<boolean>
   closeConfirm: (ok: boolean) => void
   consumeLongPressAction: () => boolean
-  getLongPressProps: (card: InspectedCard) => Record<string, unknown>
+  getLongPressProps: (card: InspectedCard, options?: LongPressOptions) => Record<string, unknown>
   // ─── Phase 3W — Reward cinematics ─────────────────────────────────────
   cinemaSequence: RewardBeat[] | null
   presentRewardCinema: (beats: RewardBeat[], scope?: RewardScope) => void
@@ -187,7 +187,7 @@ export type AppShellContextValue = {
   handleLeaveBattle: () => void
   handleModeChange: (mode: GameMode) => void
   handleAIDifficultyChange: (level: 'auto' | AIDifficulty) => void
-  handlePlayCard: (index: number) => void
+  handlePlayCard: (index: number, laneIndex?: number) => void
   handleSelectAttacker: (index: number) => void
   handleAttackFrom: (attackerIndex: number, target: number | 'hero') => void
   handleAttackTarget: (target: number | 'hero') => void
@@ -241,6 +241,12 @@ export type AppShellContextValue = {
   handleTransferOwnership: (event: FormEvent<HTMLFormElement>) => Promise<void>
   handleSaveAdminSettings: () => Promise<void>
   handleUpdateComplaintStatus: (id: string, status: string) => Promise<void>
+}
+
+export type LongPressOptions = {
+  delayMs?: number
+  moveTolerancePx?: number
+  axisCancel?: 'any' | 'horizontal' | 'vertical'
 }
 
 export const AppShellContext = createContext<AppShellContextValue | null>(null)

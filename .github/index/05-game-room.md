@@ -43,7 +43,7 @@
 
 | Action Type | Validation | Game Function |
 |-------------|-----------|---------------|
-| `playCard` | Turn ownership, hand bounds | `playCard(state, side, handIndex)` |
+| `playCard` | Turn ownership, hand bounds, optional empty lane target | `playCard(state, side, handIndex, laneIndex?)` |
 | `attack` | Turn ownership, attacker bounds | `attack(state, side, attacker, target)` |
 | `burst` | Turn ownership | `castMomentumBurst(state, side)` |
 | `endTurn` | Turn ownership | `passTurn(state)` |

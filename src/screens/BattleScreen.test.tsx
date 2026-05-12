@@ -74,7 +74,7 @@ function buildShellValue(overrides: Partial<AppShellContextValue> = {}): AppShel
     handleClaimDailyReward: noop,
     activeScreen: 'battle' as AppScreen,
     openScreen: noop,
-    settingsSubview: 'hub',
+    settingsSubview: 'preferences',
     openSettingsSubview: noop,
     resetSettingsSubview: noop,
     screenTitle: 'Battle',
@@ -506,6 +506,8 @@ describe('BattleScreen mobile layout', () => {
       defendingPlayer: game.enemy,
       handlePlayCard,
       activeBoardHasOpenLane: true,
+    }, {
+      game,
     })
 
     const card = screen.getByRole('button', { name: /test wisp/i })
@@ -514,6 +516,192 @@ describe('BattleScreen mobile layout', () => {
     fireEvent.pointerMove(card, { pointerId: 1, clientX: 122, clientY: 470, pointerType: 'touch' })
     fireEvent.pointerUp(card, { pointerId: 1, clientX: 122, clientY: 430, pointerType: 'touch' })
 
-    expect(handlePlayCard).toHaveBeenCalledWith(0)
+    expect(handlePlayCard).toHaveBeenCalledWith(0, 0)
+  })
+
+  it('uses stricter long-press settings for battle hand cards', () => {
+    const getLongPressProps = vi.fn(() => ({}))
+
+    renderBattleScreen({ getLongPressProps })
+
+    expect(getLongPressProps).toHaveBeenCalledWith(expect.objectContaining({ name: expect.any(String) }), {
+      delayMs: 540,
+      moveTolerancePx: 5,
+      axisCancel: 'any',
+    })
+  })
+
+  it('lets horizontal hand swipes browse cards without creating a drag ghost', () => {
+    const handlePlayCard = vi.fn()
+    const getLongPressProps = vi.fn(() => ({ onPointerMove: vi.fn() }))
+    const game = createGame('ai', {})
+    game.player.hand = [
+      {
+        ...game.player.hand[0],
+        instanceId: 'playable-card',
+        name: 'Swipe Wisp',
+        cost: 1,
+      },
+      ...game.player.hand.slice(1),
+    ]
+    game.player.mana = 1
+    game.player.maxMana = 1
+
+    renderBattleScreen({
+      activePlayer: game.player,
+      defendingPlayer: game.enemy,
+      activeBoardHasOpenLane: true,
+      handlePlayCard,
+      getLongPressProps,
+    }, {
+      game,
+    })
+
+    const card = screen.getByRole('button', { name: /swipe wisp/i })
+
+    fireEvent.pointerDown(card, { pointerId: 1, clientX: 120, clientY: 520, button: 0, pointerType: 'touch' })
+    fireEvent.pointerMove(card, { pointerId: 1, clientX: 148, clientY: 522, pointerType: 'touch' })
+    fireEvent.pointerUp(card, { pointerId: 1, clientX: 148, clientY: 522, pointerType: 'touch' })
+    fireEvent.click(card)
+
+    expect(document.querySelector('.battle-drag-ghost')).toBeNull()
+    expect(document.querySelector('.hand-fan-grid.is-drag-active')).toBeNull()
+    expect(handlePlayCard).not.toHaveBeenCalled()
+  })
+
+  it('renders a fixed drag ghost while a hand card is dragged out of the rail', () => {
+    const game = createGame('ai', {})
+    game.player.hand = [
+      {
+        ...game.player.hand[0],
+        instanceId: 'playable-card',
+        name: 'Test Wisp',
+        cost: 1,
+        effect: 'charge',
+      },
+      ...game.player.hand.slice(1),
+    ]
+    game.player.mana = 1
+    game.player.maxMana = 1
+    game.player.board = [null, null, null]
+
+    renderBattleScreen({
+      activePlayer: game.player,
+      defendingPlayer: game.enemy,
+      activeBoardHasOpenLane: true,
+    })
+
+    const card = screen.getByRole('button', { name: /test wisp/i })
+    Object.defineProperty(card, 'getBoundingClientRect', {
+      configurable: true,
+      value: () => ({ left: 100, top: 500, width: 118, height: 142, right: 218, bottom: 642, x: 100, y: 500, toJSON: () => ({}) }),
+    })
+
+    fireEvent.pointerDown(card, { pointerId: 1, clientX: 120, clientY: 520, button: 0, pointerType: 'touch' })
+    fireEvent.pointerMove(card, { pointerId: 1, clientX: 120, clientY: 470, pointerType: 'touch' })
+
+    const ghost = document.querySelector('.battle-drag-ghost') as HTMLElement | null
+    expect(ghost).toBeTruthy()
+    expect(ghost?.closest('.battle-drag-layer')).toBeTruthy()
+    expect(ghost?.closest('.battle-hand-rail')).toBeNull()
+    expect(within(ghost as HTMLElement).getByText('Test Wisp')).toBeTruthy()
+  })
+
+  it('plays a dragged hand card into the hovered empty lane', () => {
+    const handlePlayCard = vi.fn()
+    const game = createGame('ai', {})
+
+    game.player.hand = [
+      {
+        ...game.player.hand[0],
+        instanceId: 'playable-card',
+        name: 'Lane Wisp',
+        cost: 1,
+      },
+      ...game.player.hand.slice(1),
+    ]
+    game.player.mana = 1
+    game.player.maxMana = 1
+    game.player.board = [null, null, null]
+
+    renderBattleScreen({
+      activePlayer: game.player,
+      defendingPlayer: game.enemy,
+      handlePlayCard,
+      activeBoardHasOpenLane: true,
+    }, {
+      game,
+    })
+
+    const dropLane = document.querySelector('[data-drop-lane="1"]') as Element
+    Object.defineProperty(document, 'elementFromPoint', {
+      configurable: true,
+      value: vi.fn(() => dropLane),
+    })
+    const card = screen.getByRole('button', { name: /lane wisp/i })
+
+    fireEvent.pointerDown(card, { pointerId: 1, clientX: 120, clientY: 520, button: 0, pointerType: 'touch' })
+    fireEvent.pointerMove(card, { pointerId: 1, clientX: 122, clientY: 470, pointerType: 'touch' })
+    fireEvent.pointerUp(card, { pointerId: 1, clientX: 122, clientY: 430, pointerType: 'touch' })
+
+    expect(handlePlayCard).toHaveBeenCalledWith(0, 1)
+  })
+
+  it('does not play a dragged hand card into an occupied hovered lane', () => {
+    const handlePlayCard = vi.fn()
+    const game = createGame('ai', {})
+
+    game.player.hand = [
+      {
+        ...game.player.hand[0],
+        instanceId: 'playable-card',
+        name: 'Blocked Wisp',
+        cost: 1,
+      },
+      ...game.player.hand.slice(1),
+    ]
+    game.player.mana = 1
+    game.player.maxMana = 1
+    game.player.board = [
+      {
+        instanceId: 'ally-instance-1',
+        uid: 'ally-1',
+        id: 'spark-imp',
+        name: 'Crawling Spark',
+        icon: '⚡',
+        cost: 1,
+        attack: 2,
+        health: 1,
+        currentHealth: 1,
+        exhausted: false,
+        rarity: 'common',
+        tribe: 'elemental',
+        text: 'Test ally',
+      },
+      null,
+      null,
+    ]
+
+    renderBattleScreen({
+      activePlayer: game.player,
+      defendingPlayer: game.enemy,
+      handlePlayCard,
+      activeBoardHasOpenLane: true,
+    }, {
+      game,
+    })
+
+    const occupiedLane = document.querySelector('.player-side .slot:not(.empty)') as Element
+    Object.defineProperty(document, 'elementFromPoint', {
+      configurable: true,
+      value: vi.fn(() => occupiedLane),
+    })
+    const card = screen.getByRole('button', { name: /blocked wisp/i })
+
+    fireEvent.pointerDown(card, { pointerId: 1, clientX: 120, clientY: 520, button: 0, pointerType: 'touch' })
+    fireEvent.pointerMove(card, { pointerId: 1, clientX: 122, clientY: 470, pointerType: 'touch' })
+    fireEvent.pointerUp(card, { pointerId: 1, clientX: 122, clientY: 430, pointerType: 'touch' })
+
+    expect(handlePlayCard).not.toHaveBeenCalled()
   })
 })

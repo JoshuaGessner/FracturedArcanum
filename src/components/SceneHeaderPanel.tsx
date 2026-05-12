@@ -73,9 +73,9 @@ export function SceneHeaderPanel({
       </div>
 
       {shortcuts && shortcuts.length > 0 ? (
-        <div className="settings-hub-grid scene-header-shortcuts">
+        <div className="scene-header-shortcut-grid scene-header-shortcuts">
           {shortcuts.map((shortcut) => (
-            <button className="settings-hub-tile" key={shortcut.label} onClick={shortcut.onClick}>
+            <button className="scene-header-shortcut" key={shortcut.label} onClick={shortcut.onClick}>
               <strong>{shortcut.label}</strong>
               <span>{shortcut.description}</span>
             </button>

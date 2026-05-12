@@ -1190,6 +1190,31 @@ button:disabled {
   margin-top: 4px;
 }
 
+.scene-header-shortcut-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr));
+  gap: 10px;
+}
+
+.scene-header-shortcut {
+  display: grid;
+  gap: 4px;
+  min-height: 74px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(147, 197, 253, 0.18);
+  overflow: hidden;
+  background: linear-gradient(135deg, rgba(10, 16, 31, 0.9), rgba(33, 36, 70, 0.76));
+  color: #f5f8ff;
+  text-align: left;
+}
+
+.scene-header-shortcut span {
+  color: #c9d5f3;
+  font-size: 0.82rem;
+  line-height: 1.25;
+}
+
 .scene-status-tile {
   display: grid;
   gap: 2px;
@@ -4090,6 +4115,7 @@ button:disabled {
 .settings-command-card {
   position: relative;
   display: grid;
+  /* ledger + toolbar/nav-strip + scrollable content panel */
   grid-template-rows: auto auto minmax(0, 1fr);
   gap: 12px;
   width: min(100%, 980px);
@@ -4142,8 +4168,7 @@ button:disabled {
   white-space: nowrap;
 }
 
-.settings-command-kicker,
-.settings-hub-tile-kicker {
+.settings-command-kicker {
   color: #9fb1d5;
   font-size: 0.72rem;
   font-weight: 800;
@@ -4198,11 +4223,15 @@ button:disabled {
   padding: 7px 10px;
   border: 1px solid rgba(147, 197, 253, 0.16);
   border-radius: var(--radius-sm);
+  overflow: hidden;
   background: linear-gradient(135deg, rgba(8, 14, 30, 0.68), rgba(23, 31, 57, 0.54));
   color: #cbd8f4;
   font-size: var(--font-xs);
   font-weight: 800;
+  line-height: 1.08;
+  text-overflow: ellipsis;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .settings-nav-strip button.active,
@@ -4248,12 +4277,6 @@ button:disabled {
 .settings-section-toolbar span:not(.badge):not(.support-seal) {
   color: #a8b7d8;
   font-size: 0.78rem;
-}
-
-.settings-hub-surface {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
 }
 
 .settings-toggle-list {
@@ -4315,47 +4338,6 @@ button:disabled {
 .settings-subnav button {
   flex: 0 0 auto;
   margin-left: auto;
-}
-
-.settings-hub-tile {
-  position: relative;
-  display: grid;
-  gap: 6px;
-  align-content: start;
-  min-height: 118px;
-  text-align: left;
-  padding: 12px;
-  border-radius: var(--radius-md);
-  border: 1px solid rgba(147, 197, 253, 0.18);
-  overflow: hidden;
-  background: linear-gradient(135deg, rgba(10, 16, 31, 0.9), rgba(33, 36, 70, 0.76));
-  color: #f5f8ff;
-}
-
-.settings-hub-tile::before {
-  content: '';
-  position: absolute;
-  right: 10px;
-  bottom: 10px;
-  width: 44px;
-  height: 44px;
-  opacity: 0.16;
-  pointer-events: none;
-  background: url('/generated/ui/divider-rune.svg') center / contain no-repeat;
-}
-
-.settings-hub-tile-admin {
-  border-color: rgba(251, 191, 36, 0.32);
-  background: linear-gradient(135deg, rgba(30, 22, 10, 0.9), rgba(48, 34, 68, 0.74));
-}
-
-.settings-hub-tile-install button {
-  justify-self: start;
-}
-
-.settings-hub-tile span {
-  color: #c9d5f3;
-  font-size: 0.86rem;
 }
 
 .settings-view-note {
@@ -4443,6 +4425,23 @@ button:disabled {
 
 .settings-admin-nav {
   grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.admin-console-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.admin-console-head .mini {
+  min-height: 34px;
+  min-width: 72px;
+  padding: 7px 10px;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-xs);
+  font-weight: 800;
+  text-transform: uppercase;
 }
 
 .maintenance-toggle {
@@ -5776,7 +5775,7 @@ button.danger:hover { filter: brightness(1.08); }
   }
 
   .settings-nav-strip {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 96px), 1fr));
     gap: 6px;
   }
 
@@ -5804,29 +5803,9 @@ button.danger:hover { filter: brightness(1.08); }
     font-size: var(--font-sm);
   }
 
-  .settings-hub-surface {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
-  }
-
   .shop-hub-grid,
   .social-hub-grid {
     margin-top: 6px;
-  }
-
-  .settings-hub-tile {
-    min-height: 100px;
-    padding: 9px 10px;
-    gap: 5px;
-  }
-
-  .settings-hub-tile::before {
-    width: 34px;
-    height: 34px;
-  }
-
-  .settings-hub-tile span {
-    font-size: 0.76rem;
   }
 
   .settings-toggle-list {
@@ -7008,9 +6987,28 @@ button.danger:disabled { opacity: 0.55; transform: none; box-shadow: none; }
 
 /* Drag-to-play — lifted card follows the pointer with a subtle glow ring. */
 .hand-card.is-dragging {
-  transform: translate3d(var(--drag-dx, 0), var(--drag-dy, 0), 0)
-    rotate(var(--fan-tilt, 0deg)) scale(1.12);
-  z-index: 60;
+  opacity: 0.42;
+  filter: saturate(0.72) brightness(0.82);
+  outline: 2px solid rgba(253, 230, 138, 0.55);
+  outline-offset: -3px;
+  cursor: grabbing;
+  touch-action: none;
+}
+
+.battle-drag-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  pointer-events: none;
+}
+
+.battle-drag-ghost {
+  position: fixed;
+  margin: 0;
+  transform: rotate(0deg) scale(1.08);
+  transform-origin: center;
+  z-index: 1000;
+  opacity: 0.98;
   box-shadow:
     0 18px 36px rgba(0, 0, 0, 0.55),
     0 0 0 2px rgba(253, 230, 138, 0.85),
@@ -7018,7 +7016,6 @@ button.danger:disabled { opacity: 0.55; transform: none; box-shadow: none; }
   filter: brightness(1.06);
   transition: box-shadow 120ms ease-out, filter 120ms ease-out;
   cursor: grabbing;
-  touch-action: none;
 }
 
 .hand-card.is-drag-sibling {
@@ -7039,6 +7036,19 @@ button.danger:disabled { opacity: 0.55; transform: none; box-shadow: none; }
 
 .slot.drop-target-active.drop-target-invalid {
   filter: saturate(0.55) brightness(0.78);
+}
+
+.slot.drop-target-hover.drop-target-valid {
+  box-shadow:
+    0 0 0 3px rgba(253, 230, 138, 0.92),
+    0 0 30px rgba(253, 230, 138, 0.58) inset,
+    0 10px 26px rgba(0, 0, 0, 0.28);
+  transform: translateY(-2px) scale(1.02);
+}
+
+.slot.drop-target-hover.drop-target-invalid {
+  box-shadow: 0 0 0 3px rgba(248, 113, 113, 0.72);
+  border-color: rgba(248, 113, 113, 0.72);
 }
 
 @keyframes dropTargetPulse {
@@ -7266,6 +7276,7 @@ button.danger:disabled { opacity: 0.55; transform: none; box-shadow: none; }
 /* Reduced motion — collapse every animation in this section to a no-op. */
 @media (prefers-reduced-motion: reduce) {
   .hand-card.is-dragging,
+  .battle-drag-ghost,
   .hand-card.is-drag-sibling,
   .slot.drop-target-active.drop-target-valid,
   .slot.drop-target-active.drop-target-invalid,
@@ -7292,7 +7303,7 @@ button.danger:disabled { opacity: 0.55; transform: none; box-shadow: none; }
   .battle-hero-anchor.is-low-hp::after { background: rgba(220, 38, 38, 0.18); }
   .slot.is-slamming::after { display: none; }
   .slot.damage-flash::after { display: none; }
-  .hand-card.is-dragging { transform: rotate(var(--fan-tilt, 0deg)) scale(1.05); }
+  .battle-drag-ghost { transform: rotate(0deg) scale(1.04); }
 }
 
 /* ─── Reduced motion ─────────────────────────────────────────────── */

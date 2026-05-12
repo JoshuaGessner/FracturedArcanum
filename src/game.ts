@@ -712,7 +712,7 @@ export function surrenderGame(base: GameState, side: BattleSide): GameState {
   }
 }
 
-export function playCard(base: GameState, side: BattleSide, handIndex: number): GameState {
+export function playCard(base: GameState, side: BattleSide, handIndex: number, laneIndex?: number): GameState {
   if (base.winner) {
     return base
   }
@@ -720,16 +720,21 @@ export function playCard(base: GameState, side: BattleSide, handIndex: number): 
   const actor = base[side]
   const rival = base[otherSide(side)]
   const firstOpenLane = actor.board.findIndex((slot) => slot === null)
+  const targetLane = laneIndex ?? firstOpenLane
   const card = actor.hand[handIndex]
 
   if (!card || card.cost > actor.mana || firstOpenLane === -1) {
     return base
   }
 
+  if (!Number.isInteger(targetLane) || targetLane < 0 || targetLane >= BOARD_SIZE || actor.board[targetLane] !== null) {
+    return base
+  }
+
   const params = getCardParams(card.id)
 
   const nextBoard = [...actor.board]
-  nextBoard[firstOpenLane] = summonUnit(card)
+  nextBoard[targetLane] = summonUnit(card)
 
   let nextActor: PlayerState = {
     ...actor,

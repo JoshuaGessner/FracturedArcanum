@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { PwaInstallPanel } from '../components/PwaInstallPanel'
-import { formatTimestamp, getComplaintSeverityTone } from '../utils'
+import { formatTimestamp } from '../utils'
 import { useAppShell, useProfile } from '../contexts'
 import { feedback } from '../feedback'
 
-type AdminSubview = 'overview' | 'traffic' | 'complaints' | 'roles' | 'audit'
+type AdminSubview = 'liveOps' | 'traffic' | 'complaints' | 'roles' | 'audit'
 
 type SettingsToggleRowProps = {
   label: string
@@ -41,17 +41,16 @@ export function SettingsScreen() {
     startOnboardingTour,
     gesturesEnabled, setGesturesEnabled,
     hapticsEnabled, setHapticsEnabled,
-    settingsSubview, openSettingsSubview, resetSettingsSubview,
+    settingsSubview, openSettingsSubview,
     installState, handleInstallApp, handleLogout,
   } = useAppShell()
   const { isAdminRole, isOwnerRole, accountRole, serverProfile } = useProfile()
 
-  const [adminSubview, setAdminSubview] = useState<AdminSubview>('overview')
+  const [adminSubview, setAdminSubview] = useState<AdminSubview>('liveOps')
   const adminAutoLoadRef = useRef(false)
 
   const playerDisplayName = serverProfile?.displayName ?? serverProfile?.username ?? 'Guest'
   const visitorSuffix = (visitorId || 'guest').slice(-6).toUpperCase()
-  const complaintTone = getComplaintSeverityTone(complaintForm.severity)
   const installPathLabel = installState.status === 'native'
     ? 'Quick install'
     : installState.status === 'installed'
@@ -63,13 +62,6 @@ export function SettingsScreen() {
           : 'Manual setup'
   const networkLabel = backendOnline ? 'Stable' : 'Fallback'
   const roleLabel = accountRole === 'owner' ? 'Owner' : accountRole === 'admin' ? 'Admin' : 'Player'
-  const settingsViewLabel = settingsSubview === 'preferences'
-    ? 'Preferences'
-    : settingsSubview === 'support'
-      ? 'Support Desk'
-      : settingsSubview === 'admin'
-        ? 'Admin Console'
-        : 'Settings'
 
   useEffect(() => {
     if (settingsSubview !== 'admin') {
@@ -87,52 +79,8 @@ export function SettingsScreen() {
     openSettingsSubview(view)
   }
 
-  const renderToolbar = (right?: ReactNode) => (
-    <div className="settings-section-toolbar">
-      {settingsSubview === 'hub' ? (
-        <span className="badge">{settingsViewLabel}</span>
-      ) : (
-        <button className="ghost mini" onClick={resetSettingsSubview}>Back</button>
-      )}
-      <div>
-        <strong>{settingsViewLabel}</strong>
-        <span>{settingsSubview === 'hub' ? 'Command center' : 'Settings panel'}</span>
-      </div>
-      {right ?? <span className="badge">{roleLabel}</span>}
-    </div>
-  )
-
-  const renderHub = () => (
-    <div className="settings-hub-surface">
-      <button className="settings-hub-tile settings-hub-tile-preferences" onClick={() => handleOpenSettingsSubview('preferences')}>
-        <span className="settings-hub-tile-kicker">Comfort</span>
-        <strong>Preferences</strong>
-        <span>{soundEnabled ? 'Sound on' : 'Sound off'} · {gesturesEnabled ? 'Swipe on' : 'Swipe off'} · {hapticsEnabled ? 'Haptics on' : 'Haptics off'}</span>
-      </button>
-      <button className="settings-hub-tile settings-hub-tile-support" onClick={() => handleOpenSettingsSubview('support')}>
-        <span className="settings-hub-tile-kicker">Help</span>
-        <strong>Support Desk</strong>
-        <span>{complaintStatus || `Priority set to ${complaintForm.severity}`}</span>
-      </button>
-      <div className="settings-hub-tile settings-hub-tile-install">
-        <span className="settings-hub-tile-kicker">Device</span>
-        <strong>{installPathLabel}</strong>
-        <span>{installState.primaryLabel}</span>
-        <button className="ghost mini" onClick={() => handleOpenSettingsSubview('preferences')}>Manage</button>
-      </div>
-      {isAdminRole && (
-        <button className="settings-hub-tile settings-hub-tile-admin" onClick={() => handleOpenSettingsSubview('admin')}>
-          <span className="settings-hub-tile-kicker">Operations</span>
-          <strong>{isOwnerRole ? 'Owner Console' : 'Admin Console'}</strong>
-          <span>{adminOverview ? `${adminOverview.totals.complaintsOpen} open tickets` : 'Live ops, roles, audit, and reports'}</span>
-        </button>
-      )}
-    </div>
-  )
-
   const renderPreferences = () => (
     <div className="settings-section-panel settings-preferences-panel" data-scene-swipe-opt-out="true">
-      {renderToolbar(<span className="badge">{installPathLabel}</span>)}
       <div className="settings-toggle-list">
         <SettingsToggleRow
           label="Arena Audio"
@@ -235,7 +183,6 @@ export function SettingsScreen() {
 
   const renderSupport = () => (
     <div className="settings-section-panel settings-support-panel" data-scene-swipe-opt-out="true">
-      {renderToolbar(<span className={`support-seal ${complaintTone}`}>{complaintForm.severity}</span>)}
       {complaintStatus && <p className="note toast-line">{complaintStatus}</p>}
       <form className="complaint-form" onSubmit={(event) => void handleSubmitComplaint(event)}>
         <div className="form-row split-fields">
@@ -304,7 +251,7 @@ export function SettingsScreen() {
 
   const renderAdminNav = () => (
     <div className="settings-admin-nav" role="tablist" aria-label="Admin sections">
-      {(['overview', 'traffic', 'complaints', 'roles', 'audit'] as AdminSubview[]).map((view) => (
+      {(['liveOps', 'traffic', 'complaints', 'roles', 'audit'] as AdminSubview[]).map((view) => (
         <button
           key={view}
           className={adminSubview === view ? 'active' : ''}
@@ -312,7 +259,7 @@ export function SettingsScreen() {
           role="tab"
           aria-selected={adminSubview === view}
         >
-          {view === 'roles' ? 'Roles' : view.charAt(0).toUpperCase() + view.slice(1)}
+          {view === 'liveOps' ? 'Live Ops' : view === 'roles' ? 'Roles' : view.charAt(0).toUpperCase() + view.slice(1)}
         </button>
       ))}
     </div>
@@ -335,7 +282,6 @@ export function SettingsScreen() {
         </div>
 
         <nav className="settings-nav-strip" aria-label="Settings sections">
-          <button className={settingsSubview === 'hub' ? 'active' : ''} onClick={resetSettingsSubview}>Overview</button>
           <button className={settingsSubview === 'preferences' ? 'active' : ''} onClick={() => handleOpenSettingsSubview('preferences')}>Preferences</button>
           <button className={settingsSubview === 'support' ? 'active' : ''} onClick={() => handleOpenSettingsSubview('support')}>Support</button>
           {isAdminRole && (
@@ -343,21 +289,16 @@ export function SettingsScreen() {
           )}
         </nav>
 
-        {settingsSubview === 'hub' && (
-          <div className="settings-section-panel">
-            {renderToolbar(<span className="badge">{backendOnline ? 'Online' : 'Fallback'}</span>)}
-            {renderHub()}
-          </div>
-        )}
         {settingsSubview === 'preferences' && renderPreferences()}
         {settingsSubview === 'support' && renderSupport()}
         {settingsSubview === 'admin' && (
           <div className="settings-section-panel admin-console scribe-console" data-scene-swipe-opt-out="true">
-            {renderToolbar(
+            <div className="admin-console-head">
+              <span className="mini-text">Admin Console</span>
               <button className="secondary mini" onClick={() => void refreshAdminOverview()}>
                 {adminLoading ? 'Loading' : adminOverview ? 'Refresh' : 'Load'}
-              </button>,
-            )}
+              </button>
+            </div>
             {!isAdminRole && (
               <p className="note toast-line">
                 Your account does not have admin privileges. Sign out and back in if this owner account was just promoted.
@@ -370,7 +311,7 @@ export function SettingsScreen() {
           <>
             {renderAdminNav()}
 
-            {adminSubview === 'overview' && (
+            {adminSubview === 'liveOps' && (
               <>
                 <div className="insight-grid">
                   <div className="stat-tile">

@@ -71,7 +71,7 @@ import { HomeScreen } from './screens/HomeScreen'
 import { PlayScreen } from './screens/PlayScreen'
 import { SocialScreen } from './screens/SocialScreen'
 import { BattleScreen } from './screens/BattleScreen'
-import { AppShellContext, type AppShellContextValue } from './AppShellContext'
+import { AppShellContext, type AppShellContextValue, type LongPressOptions } from './AppShellContext'
 import type {
   AdminAuditEntry,
   AdminOverview,
@@ -173,7 +173,7 @@ function AppShell() {
   // ─── Local screen-shell state ─────────────────────────────────────────
   const [activeScreen, setActiveScreen] = useState<AppScreen>('home')
   const activeScreenRef = useRef<AppScreen>('home')
-  const [settingsSubview, setSettingsSubview] = useState<SettingsSubview>('hub')
+  const [settingsSubview, setSettingsSubview] = useState<SettingsSubview>('preferences')
   const [screenTransitionClass, setScreenTransitionClass] = useState<'screen-enter-forward' | 'screen-enter-back' | 'screen-enter-lateral' | 'screen-enter-battle'>('screen-enter-lateral')
 
   // ─── Phase 3W — Reward cinema sequence (battle / daily / pack / rank-up)
@@ -397,6 +397,7 @@ function AppShell() {
   const [transferForm, setTransferForm] = useState({ targetAccountId: '', password: '' })
   const [transferStatus, setTransferStatus] = useState('')
   const longPressTimerRef = useRef<number | null>(null)
+  const longPressOriginRef = useRef<{ pointerId: number; clientX: number; clientY: number; moveTolerancePx: number; axisCancel: NonNullable<LongPressOptions['axisCancel']> } | null>(null)
   const longPressTriggeredRef = useRef(false)
   const battleStartedRef = useRef(false)
   const battleIntroTimerRef = useRef<number | null>(null)
@@ -468,6 +469,7 @@ function AppShell() {
       window.clearTimeout(longPressTimerRef.current)
       longPressTimerRef.current = null
     }
+    longPressOriginRef.current = null
   }
 
   function consumeLongPressAction() {
@@ -486,7 +488,7 @@ function AppShell() {
     setInspectedCard(card)
   }
 
-  function getLongPressProps(card: InspectedCard) {
+  function getLongPressProps(card: InspectedCard, options: LongPressOptions = {}) {
     return {
       onPointerDown: (event: React.PointerEvent<HTMLElement>) => {
         if (event.pointerType === 'mouse' && event.button !== 0) {
@@ -495,15 +497,29 @@ function AppShell() {
 
         clearLongPressTimer()
         longPressTriggeredRef.current = false
-        longPressTimerRef.current = window.setTimeout(() => inspectCard(card), 420)
+        longPressOriginRef.current = {
+          pointerId: event.pointerId,
+          clientX: event.clientX,
+          clientY: event.clientY,
+          moveTolerancePx: options.moveTolerancePx ?? 8,
+          axisCancel: options.axisCancel ?? 'any',
+        }
+        longPressTimerRef.current = window.setTimeout(() => inspectCard(card), options.delayMs ?? 420)
       },
       onPointerMove: (event: React.PointerEvent<HTMLElement>) => {
-        // Cancel if the finger moves more than a few px — lets the
-        // hand fan / lists scroll horizontally without the inspect
-        // modal popping mid-drag.
+        // Coordinate-based cancellation is more reliable on touch hardware
+        // than movementX/movementY, which may stay near zero on Safari/iOS.
         if (longPressTimerRef.current === null) return
-        const movement = Math.abs(event.movementX) + Math.abs(event.movementY)
-        if (movement > 6) clearLongPressTimer()
+        const origin = longPressOriginRef.current
+        if (!origin || origin.pointerId !== event.pointerId) return
+        const horizontalDelta = Math.abs(event.clientX - origin.clientX)
+        const verticalDelta = Math.abs(event.clientY - origin.clientY)
+        const movement = origin.axisCancel === 'horizontal'
+          ? horizontalDelta
+          : origin.axisCancel === 'vertical'
+            ? verticalDelta
+            : Math.hypot(horizontalDelta, verticalDelta)
+        if (movement > origin.moveTolerancePx) clearLongPressTimer()
       },
       onPointerUp: () => clearLongPressTimer(),
       onPointerLeave: () => clearLongPressTimer(),
@@ -1769,7 +1785,7 @@ function AppShell() {
   }
 
   const resetSettingsSubview = useCallback(() => {
-    setSettingsSubview('hub')
+    setSettingsSubview('preferences')
   }, [])
 
   const openSettingsSubview = useCallback((view: SettingsSubview) => {
@@ -2885,9 +2901,13 @@ function AppShell() {
     }
   }
 
-  function handlePlayCard(index: number) {
+  function handlePlayCard(index: number, laneIndex?: number) {
     const card = activePlayer.hand[index]
     if (game.winner || !isMyTurn || !card || card.cost > activePlayer.mana || !activeBoardHasOpenLane) {
+      return
+    }
+
+    if (laneIndex !== undefined && (!Number.isInteger(laneIndex) || laneIndex < 0 || laneIndex >= activePlayer.board.length || activePlayer.board[laneIndex] !== null)) {
       return
     }
 
@@ -2895,11 +2915,11 @@ function AppShell() {
     pulseFeedback(12, hapticsEnabled)
 
     if (serverBattleActive) {
-      emitAction({ type: 'playCard', handIndex: index })
+      emitAction({ type: 'playCard', handIndex: index, laneIndex })
       return
     }
 
-    setGame((current) => playCard(current, current.turn, index))
+    setGame((current) => playCard(current, current.turn, index, laneIndex))
   }
 
   function handleSelectAttacker(index: number) {

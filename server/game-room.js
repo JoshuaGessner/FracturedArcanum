@@ -144,7 +144,7 @@ class GameRoom {
   /**
    * Validate and execute a game action.
    * @param {string} socketId
-   * @param {{ type: string, handIndex?: number, attackerIndex?: number, target?: number | 'hero' }} action
+  * @param {{ type: string, handIndex?: number, laneIndex?: number, attackerIndex?: number, target?: number | 'hero' }} action
    * @returns {{ ok: boolean, error?: string }}
    */
   handleAction(socketId, action) {
@@ -173,7 +173,14 @@ class GameRoom {
         if (actor.board.every((slot) => slot !== null)) {
           return { ok: false, error: 'Board is full.' }
         }
-        newState = playCard(this.state, side, handIndex)
+        const laneIndex = action.laneIndex === undefined ? undefined : Number(action.laneIndex)
+        if (laneIndex !== undefined && (!Number.isInteger(laneIndex) || laneIndex < 0 || laneIndex >= BOARD_SIZE)) {
+          return { ok: false, error: 'Invalid lane index.' }
+        }
+        if (laneIndex !== undefined && actor.board[laneIndex] !== null) {
+          return { ok: false, error: 'Lane is occupied.' }
+        }
+        newState = playCard(this.state, side, handIndex, laneIndex)
         break
       }
       case 'attack': {

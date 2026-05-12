@@ -73,7 +73,7 @@ function buildShellValue(overrides: Partial<AppShellContextValue> = {}): AppShel
     handleClaimDailyReward: noop,
     activeScreen: 'settings' as AppScreen,
     openScreen: noop,
-    settingsSubview: 'hub' as SettingsSubview,
+    settingsSubview: 'preferences' as SettingsSubview,
     openSettingsSubview: noop,
     resetSettingsSubview: noop,
     screenTitle: 'Settings',
@@ -209,16 +209,17 @@ function renderSettingsScreen(valueOverrides: Partial<AppShellContextValue> = {}
   )
 }
 
-describe('SettingsScreen hub flow', () => {
+describe('SettingsScreen sections', () => {
   afterEach(() => {
     cleanup()
   })
 
-  it('starts on a thin hub instead of opening the complaint desk immediately', () => {
+  it('starts on preferences without rendering the old overview hub', () => {
     renderSettingsScreen()
 
-    expect(screen.getAllByRole('button', { name: /preferences/i }).length).toBeGreaterThan(0)
-    expect(screen.getByRole('button', { name: /support desk/i })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /^preferences$/i }).className).toContain('active')
+    expect(screen.queryByRole('button', { name: /overview/i })).toBeNull()
+    expect(screen.getByText(/arena audio/i)).toBeTruthy()
     expect(screen.queryByText(/complaint desk/i)).toBeNull()
   })
 
@@ -232,10 +233,15 @@ describe('SettingsScreen hub flow', () => {
     expect(container.querySelectorAll('.settings-status-chip').length).toBeGreaterThan(0)
   })
 
-  it('keeps the back action visible in support mode', () => {
+  it('shows persistent nav strip without Overview in support mode', () => {
     renderSettingsScreen({ settingsSubview: 'support' })
 
-    expect(screen.getByRole('button', { name: /back/i })).toBeTruthy()
+    const nav = screen.getByRole('navigation', { name: /settings sections/i })
+    expect(nav).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /overview/i })).toBeNull()
+    expect(screen.getByRole('button', { name: /preferences/i })).toBeTruthy()
+    const supportBtn = screen.getByRole('button', { name: /support/i })
+    expect(supportBtn.className).toContain('active')
   })
 
   it('shows manual iPhone install guidance when browser install prompts are unavailable', () => {
@@ -273,11 +279,11 @@ describe('SettingsScreen hub flow', () => {
     expect(screen.getByText(/install status/i)).toBeTruthy()
   })
 
-  it('routes to the support desk from the settings hub', () => {
+  it('routes to the support desk from the settings nav strip', () => {
     const openSettingsSubview = vi.fn()
     renderSettingsScreen({ openSettingsSubview })
 
-    fireEvent.click(screen.getByRole('button', { name: /support desk/i }))
+    fireEvent.click(screen.getByRole('button', { name: /^support$/i }))
 
     expect(openSettingsSubview).toHaveBeenCalledWith('support')
   })
@@ -315,7 +321,7 @@ describe('SettingsScreen hub flow', () => {
     })
 
     expect(screen.getByRole('button', { name: /^admin$/i })).toBeTruthy()
-    expect(screen.getByText(/owner console/i)).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /overview/i })).toBeNull()
   })
 
   it('auto-loads the admin console when an owner opens it', async () => {

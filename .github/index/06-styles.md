@@ -21,7 +21,7 @@
 | Screen backdrops and transitions | 240–380 | scene `::before` backgrounds, transition classes, nav tile framing |
 | Brand, topbar, and season progress | 380–690 | `.topbar-art`, `.brand-logo`, `.season-progress-*`, hero strips |
 | Status, badges, buttons, and game chrome | 690–1120 | `.badge`, `.deck-status`, `.streak-badge`, `.primary`, `.ghost`, pips |
-| Battle HUD, board, hand, and reactions | 1120–1680 | duel ribbon, board slots, drag states, attack telegraph, hand fan |
+| Battle HUD, board, hand, and reactions | 1120–1680 | duel ribbon, board slots, fixed drag ghost layer, drop targets, attack telegraph, hand fan |
 | Reward, queue, and ceremony surfaces | 1680–2120 | vault urgency, pack reveal, battle intro, reward cinema, banners |
 | Screen-specific density blocks | 2120–3200 | play, collection, social, shop, settings, admin surfaces |
 | Overlays, tours, and support systems | 3200–4080 | confirm modal, onboarding, pack ceremony, reward cinema, toast stack |

@@ -1,4 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import {
   RARITY_COLORS,
   type CardInstance,
@@ -22,10 +23,17 @@ const BattleFxCanvas = lazy(() =>
 type DragState = {
   handIndex: number
   pointerId: number
+  intent: 'pending' | 'scroll' | 'drag'
   originX: number
   originY: number
   pointerX: number
   pointerY: number
+  grabOffsetX: number
+  grabOffsetY: number
+  cardWidth: number
+  cardHeight: number
+  card: CardInstance
+  hoverLane: number | null
   active: boolean
   canPlay: boolean
 }
@@ -49,6 +57,11 @@ type HeroFx = 'damaged' | 'healed' | null
 
 const PULL_UP_COMMIT_PX = 60
 const DRAG_ACTIVATE_PX = 12
+const HAND_SCROLL_INTENT_PX = 6
+const HAND_DRAG_ACTIVATE_PX = 12
+const HAND_DRAG_VERTICAL_BIAS = 1.15
+const BATTLE_HAND_INSPECT_DELAY_MS = 540
+const BATTLE_HAND_INSPECT_MOVE_TOLERANCE_PX = 5
 const SLAM_DURATION_MS = 380
 
 export function BattleScreen() {
@@ -377,18 +390,18 @@ export function BattleScreen() {
   const commitDragPlay = useCallback((index: number, clientX: number, clientY: number, canPlay: boolean): boolean => {
     if (!canPlay) return false
     const dy = (dragRef.current?.originY ?? clientY) - clientY
-    let laneIndex = findDropLane(clientX, clientY)
+    let laneIndex = dragRef.current?.hoverLane ?? findDropLane(clientX, clientY)
     // Pull-up gesture: dragging > 60px above origin commits to first open lane.
     if (laneIndex === null && dy >= PULL_UP_COMMIT_PX) {
-      const openLane = game.player.board.findIndex((slot) => slot === null)
+      const openLane = activePlayer.board.findIndex((slot) => slot === null)
       if (openLane >= 0) laneIndex = openLane
     }
     if (laneIndex === null) return false
-    if (game.player.board[laneIndex] !== null) return false
-    handlePlayCard(index)
+    if (activePlayer.board[laneIndex] !== null) return false
+    handlePlayCard(index, laneIndex)
     triggerSlam(laneIndex)
     return true
-  }, [findDropLane, game.player.board, handlePlayCard, triggerSlam])
+  }, [activePlayer.board, findDropLane, handlePlayCard, triggerSlam])
 
   const cancelDrag = useCallback(() => {
     dragRef.current = null
@@ -397,20 +410,30 @@ export function BattleScreen() {
 
   const handleHandPointerDown = useCallback((event: React.PointerEvent<HTMLButtonElement>, index: number, canPlay: boolean) => {
     if (event.pointerType === 'mouse' && event.button !== 0) return
+    const rect = event.currentTarget.getBoundingClientRect()
+    const card = activePlayer.hand[index]
+    if (!card) return
     const nextDrag = {
       handIndex: index,
       pointerId: event.pointerId,
+      intent: 'pending' as const,
       originX: event.clientX,
       originY: event.clientY,
       pointerX: event.clientX,
       pointerY: event.clientY,
+      grabOffsetX: Math.max(0, event.clientX - rect.left),
+      grabOffsetY: Math.max(0, event.clientY - rect.top),
+      cardWidth: rect.width || 118,
+      cardHeight: rect.height || 142,
+      card,
+      hoverLane: null,
       active: false,
       canPlay,
     }
     dragRef.current = nextDrag
     setDrag(nextDrag)
     dragHandledRef.current = false
-  }, [])
+  }, [activePlayer.hand])
 
   const handleHandPointerMove = useCallback((event: React.PointerEvent<HTMLButtonElement>) => {
     const current = dragRef.current
@@ -420,10 +443,10 @@ export function BattleScreen() {
     const distance = Math.hypot(dx, dy)
     const absX = Math.abs(dx)
     const absY = Math.abs(dy)
-    const verticalIntent = absY > absX && dy < 0
-    const horizontalIntent = absX > absY
+    const verticalDragIntent = current.canPlay && dy < 0 && absY >= HAND_DRAG_ACTIVATE_PX && absY > absX * HAND_DRAG_VERTICAL_BIAS
+    const horizontalIntent = absX >= HAND_SCROLL_INTENT_PX && absX > absY
 
-    if (current.canPlay && verticalIntent && distance >= DRAG_ACTIVATE_PX) {
+    if (verticalDragIntent || (current.active && current.intent === 'drag')) {
       event.preventDefault()
     }
 
@@ -434,10 +457,12 @@ export function BattleScreen() {
       // as soon as intent is clear, without waiting for setPointerCapture to
       // have a chance to lock the pointer.
       if (horizontalIntent) {
+        dragHandledRef.current = true
+        dragRef.current = { ...current, intent: 'scroll' }
         cancelDrag()
         return
       }
-      if (distance >= DRAG_ACTIVATE_PX) {
+      if (distance >= HAND_DRAG_ACTIVATE_PX && verticalDragIntent) {
         playSound('cardLift', soundEnabled)
         pulseFeedback(8, hapticsEnabled)
         try {
@@ -445,17 +470,17 @@ export function BattleScreen() {
         } catch {
           /* setPointerCapture not supported / already captured */
         }
-        const nextDrag = { ...current, pointerX: event.clientX, pointerY: event.clientY, active: true }
+        const nextDrag = { ...current, intent: 'drag' as const, pointerX: event.clientX, pointerY: event.clientY, hoverLane: findDropLane(event.clientX, event.clientY), active: true }
         dragRef.current = nextDrag
         setDrag(nextDrag)
       }
     } else if (current.active) {
       event.preventDefault()
-      const nextDrag = { ...current, pointerX: event.clientX, pointerY: event.clientY }
+      const nextDrag = { ...current, pointerX: event.clientX, pointerY: event.clientY, hoverLane: findDropLane(event.clientX, event.clientY) }
       dragRef.current = nextDrag
       setDrag(nextDrag)
     }
-  }, [soundEnabled, hapticsEnabled, cancelDrag])
+  }, [soundEnabled, hapticsEnabled, cancelDrag, findDropLane])
 
   const handleHandPointerUp = useCallback((event: React.PointerEvent<HTMLButtonElement>, index: number) => {
     const current = dragRef.current
@@ -487,13 +512,63 @@ export function BattleScreen() {
 
   const dragActive = Boolean(drag?.active)
   const dragHandIndex = drag?.handIndex ?? null
+  const dragHoverLane = drag?.hoverLane ?? null
+
+  const renderHandCardFace = (card: CardInstance) => (
+    <>
+      <div className="card-top">
+        <span className="cost-pill">{card.cost}</span>
+        {card.effect && <EffectBadge effect={card.effect} compact iconOnly className="battle-hand-effect" />}
+      </div>
+      <div className="card-art-shell thumb">
+        <img className="card-illustration" src={cardArtPath(card.id)} alt={`${card.name} artwork`} loading="lazy" onError={handleCardArtError} draggable={false} />
+      </div>
+      <div>
+        <strong className="card-name">{card.name}</strong>
+      </div>
+      <div className="card-stats">
+        <span><StatIcon kind="attack" /> {card.attack}</span>
+        <span><StatIcon kind="health" /> {card.health}</span>
+      </div>
+    </>
+  )
+
+  const dragGhost = dragActive && drag
+    ? createPortal(
+        <div className="battle-drag-layer" aria-hidden="true">
+          <div
+            className={[
+              'hand-card',
+              'battle-drag-ghost',
+              `rarity-${drag.card.rarity}`,
+              `border-${selectedCardBorder}`,
+            ].join(' ')}
+            style={{
+              '--rarity-color': RARITY_COLORS[drag.card.rarity],
+              '--fan-tilt': '0deg',
+              left: `${drag.pointerX - drag.grabOffsetX}px`,
+              top: `${drag.pointerY - drag.grabOffsetY}px`,
+              width: `${drag.cardWidth}px`,
+              minHeight: `${drag.cardHeight}px`,
+            } as React.CSSProperties}
+          >
+            {renderHandCardFace(drag.card)}
+          </div>
+        </div>,
+        document.body,
+      )
+    : null
 
   // Compose pointer handlers that run BOTH the long-press inspect logic and
   // the drag-to-play logic. Long-press already cancels itself when pointer
   // moves > 6px, so the drag activation threshold (12px) keeps inspect from
   // racing the lift.
   const composeHandlers = (card: Parameters<typeof getLongPressProps>[0], index: number, canPlay: boolean) => {
-    const longPress = (getLongPressProps(card) ?? {}) as Partial<{
+    const longPress = (getLongPressProps(card, {
+      delayMs: BATTLE_HAND_INSPECT_DELAY_MS,
+      moveTolerancePx: BATTLE_HAND_INSPECT_MOVE_TOLERANCE_PX,
+      axisCancel: 'any',
+    }) ?? {}) as Partial<{
       onPointerDown: (e: React.PointerEvent<HTMLElement>) => void
       onPointerMove: (e: React.PointerEvent<HTMLElement>) => void
       onPointerUp: (e: React.PointerEvent<HTMLElement>) => void
@@ -714,6 +789,7 @@ export function BattleScreen() {
                         'empty',
                         dragActive ? 'drop-target-active' : '',
                         dragActive ? 'drop-target-valid' : '',
+                        dragHoverLane === index ? 'drop-target-hover' : '',
                         slamLane === index ? 'is-slamming' : '',
                       ].filter(Boolean).join(' ')}
                       key={`player-empty-${index}`}
@@ -750,11 +826,13 @@ export function BattleScreen() {
                       damagedSlots.has(unit.uid) ? 'damage-flash' : '',
                       dragActive ? 'drop-target-active' : '',
                       dragActive ? 'drop-target-invalid' : '',
+                      dragHoverLane === index ? 'drop-target-hover' : '',
                       slamLane === index ? 'is-slamming' : '',
                     ]
                       .filter(Boolean)
                       .join(' ')}
                     key={unit.uid}
+                    data-drop-lane={index}
                     ref={(el) => { playerSlotRefs.current[index] = el }}
                     style={{ '--rarity-color': RARITY_COLORS[unit.rarity] } as React.CSSProperties}
                     onClick={() => {
@@ -876,13 +954,6 @@ export function BattleScreen() {
                 const isDragging = dragActive && dragHandIndex === index
                 const inspectCard = toInspectPayload(card)
                 const composed = composeHandlers(inspectCard, index, canPlay)
-                const dragStyle: React.CSSProperties = isDragging && drag
-                  ? {
-                      '--drag-dx': `${drag.pointerX - drag.originX}px`,
-                      '--drag-dy': `${drag.pointerY - drag.originY}px`,
-                    } as React.CSSProperties
-                  : {}
-
                 return (
                   <button
                     className={[
@@ -912,23 +983,9 @@ export function BattleScreen() {
                       '--rarity-color': RARITY_COLORS[card.rarity],
                       '--fan-tilt': `${fanTilt}deg`,
                       '--fan-order': index + 1,
-                      ...dragStyle,
                     } as React.CSSProperties}
                   >
-                    <div className="card-top">
-                      <span className="cost-pill">{card.cost}</span>
-                      {card.effect && <EffectBadge effect={card.effect} compact iconOnly className="battle-hand-effect" />}
-                    </div>
-                    <div className="card-art-shell thumb">
-                      <img className="card-illustration" src={cardArtPath(card.id)} alt={`${card.name} artwork`} loading="lazy" onError={handleCardArtError} draggable={false} />
-                    </div>
-                    <div>
-                      <strong className="card-name">{card.name}</strong>
-                    </div>
-                    <div className="card-stats">
-                      <span><StatIcon kind="attack" /> {card.attack}</span>
-                      <span><StatIcon kind="health" /> {card.health}</span>
-                    </div>
+                    {renderHandCardFace(card)}
                   </button>
                 )
               })}
@@ -990,6 +1047,8 @@ export function BattleScreen() {
         ]}
         actions={summaryActions}
       />
+
+      {dragGhost}
 
     </>
   )

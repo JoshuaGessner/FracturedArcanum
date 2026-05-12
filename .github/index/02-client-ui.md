@@ -104,7 +104,7 @@ The transition class selection is centralized in `getScreenTransitionClass()` in
 ### Battle flow
 - cinematic VS intro
 - board-first arena layout
-- drag-to-play and attack telegraph
+- drag-to-play with a fixed unclipped ghost layer, lane-targeted drops, and attack telegraph
 - hero reactions, low-HP heartbeat, layered hand-fan layout, and live effect seals
 
 ## Scene-first style guardrails

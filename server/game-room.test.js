@@ -72,4 +72,32 @@ describe('game room reconnect recovery', () => {
     expect(room.reconnect(999, 'socket-c')).toBeNull()
     expect(getRoomBySocket('socket-c')).toBeUndefined()
   })
+
+  it('plays cards into requested empty lanes and rejects occupied lanes', () => {
+    const room = createRoom('test-room-1', 'duel')
+    room.start(
+      {
+        socketId: 'socket-player',
+        accountId: 101,
+        name: 'Player One',
+        deckConfig: { 'spark-imp': 2, 'tide-caller': 2, 'cave-bat': 2, 'copper-automaton': 2, 'shade-fox': 2 },
+      },
+      {
+        socketId: 'socket-enemy',
+        accountId: 202,
+        name: 'Player Two',
+        deckConfig: { 'spark-imp': 2, 'tide-caller': 2, 'cave-bat': 2, 'copper-automaton': 2, 'shade-fox': 2 },
+      },
+    )
+    room.state.player.mana = 10
+    room.state.player.board = [null, null, null]
+    room.state.player.hand = [
+      { ...room.state.player.hand[0], id: 'spark-imp', name: 'Crawling Spark', cost: 1 },
+      { ...room.state.player.hand[1], id: 'tide-caller', name: 'Tide Caller', cost: 1 },
+    ]
+
+    expect(room.handleAction('socket-player', { type: 'playCard', handIndex: 0, laneIndex: 2 })).toEqual({ ok: true })
+    expect(room.state.player.board[2]?.id).toBe('spark-imp')
+    expect(room.handleAction('socket-player', { type: 'playCard', handIndex: 0, laneIndex: 2 })).toEqual({ ok: false, error: 'Lane is occupied.' })
+  })
 })

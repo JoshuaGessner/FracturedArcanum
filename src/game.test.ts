@@ -96,6 +96,28 @@ describe('Fractured Arcanum core rules', () => {
     expect(result.player.board.some((slot) => slot !== null)).toBe(true)
   })
 
+  it('plays an affordable card into a requested empty lane', () => {
+    const card = findCard('spark-imp')
+    const base = craftGame([card])
+    base.player.board = [summonUnit(findCard('tide-caller')), null, null]
+
+    const result = playCard(base, 'player', 0, 2)
+
+    expect(result.player.board[0]?.id).toBe('tide-caller')
+    expect(result.player.board[1]).toBeNull()
+    expect(result.player.board[2]?.id).toBe('spark-imp')
+  })
+
+  it('rejects requested lanes that are occupied', () => {
+    const card = findCard('spark-imp')
+    const base = craftGame([card])
+    base.player.board = [summonUnit(findCard('tide-caller')), null, null]
+
+    const result = playCard(base, 'player', 0, 0)
+
+    expect(result).toBe(base)
+  })
+
   it('awards the match to the opponent when a player surrenders', () => {
     const base = createGame('duel', DEFAULT_DECK_CONFIG)
     const result = surrenderGame(base, 'player')
