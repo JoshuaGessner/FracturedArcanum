@@ -297,6 +297,11 @@ button:disabled {
   flex: 0 1 auto;
 }
 
+.home-screen:not(.social-screen).screen-panel.active > .home-command-card.home-view-quests {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
 .home-screen.play-screen.screen-panel.active > .spotlight-card {
   flex: 0 0 auto;
   overflow: visible;
@@ -1260,6 +1265,22 @@ button:disabled {
   gap: var(--panel-gap);
   min-height: 0;
   align-content: start;
+}
+
+.home-command-card.home-view-quests {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.home-view-quests > .quest-ledger-panel {
+  flex: 1 1 auto;
+  align-content: start;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(147, 197, 253, 0.35) transparent;
 }
 
 .home-command-layout {
@@ -4528,7 +4549,6 @@ button.quest-summary:focus-visible {
   gap: 14px;
   padding: 12px;
   border-radius: var(--radius-md);
-  overflow: hidden;
 }
 
 .quest-ledger-hero-medallion {
@@ -5999,13 +6019,14 @@ button.danger:hover { filter: brightness(1.08); }
   }
 
   .quest-ledger-hero {
-    grid-template-columns: 1fr;
-    justify-items: stretch;
+    grid-template-columns: auto 1fr;
+    gap: 10px;
+    padding: 8px 10px;
   }
 
   .quest-ledger-hero-medallion {
-    width: 78px;
-    justify-self: center;
+    width: 60px;
+    justify-self: start;
   }
 
   .quest-ledger-tabs {
@@ -6018,13 +6039,16 @@ button.danger:hover { filter: brightness(1.08); }
 
   .quest-ledger-card-reward {
     grid-column: 1 / -1;
-    grid-template-columns: auto 1fr auto;
+    grid-template-columns: auto auto 1fr auto;
     align-items: center;
     justify-items: start;
   }
 
   .quest-ledger-card-reward button {
     justify-self: end;
+    padding-block: 7px;
+    min-height: 34px;
+    font-size: var(--font-xs);
   }
 
   /* Play density — shorter mode cards, hide long notes */
