@@ -307,6 +307,12 @@ button:disabled {
   overflow: visible;
 }
 
+.home-screen.play-screen.screen-panel.active > .play-command-card {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
 /* Shop / social / settings: first article fills when content is sparse. */
 .vault-grid.shop-screen.screen-panel.active > article:first-child,
 .shop-market.shop-screen.screen-panel.active > article:first-child,
@@ -2123,6 +2129,65 @@ button:disabled {
   border: 1px solid rgba(147, 197, 253, 0.14);
 }
 
+.play-command-card {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(7px, 1.1svh, 12px);
+  padding: clamp(8px, 1.2svh, 14px);
+}
+
+.play-command-card .play-readiness-panel-compact,
+.play-command-card .mode-card-grid,
+.play-command-card .difficulty-panel,
+.play-command-card .play-queue-stage,
+.play-command-card .play-live-strip {
+  flex: 0 0 auto;
+}
+
+.play-command-card .mode-card-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(6px, 1svh, 10px);
+  margin-top: 0;
+}
+
+.play-command-card .mode-card {
+  min-height: clamp(74px, 12svh, 104px);
+  padding: clamp(8px, 1.2svh, 12px);
+  gap: 4px;
+  align-content: end;
+}
+
+.play-command-card .mode-card .note {
+  display: none;
+}
+
+.play-ai-settings {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  margin-top: 0;
+  padding: 8px 10px;
+  border-radius: var(--radius-md);
+}
+
+.difficulty-strip-head {
+  display: grid;
+  gap: 1px;
+  min-width: 118px;
+}
+
+.difficulty-strip-head strong {
+  color: #f8fafc;
+  font-size: var(--font-sm);
+  line-height: 1.1;
+}
+
+.play-ai-settings .difficulty-chip-row {
+  justify-content: flex-end;
+  margin-top: 0;
+}
+
 .difficulty-row {
   gap: 6px;
 }
@@ -2283,13 +2348,42 @@ button:disabled {
 /* ─── Play Action Row & Live Strip ──────────────────────────────── */
 
 .play-entry-hint {
-  margin-top: 8px;
+  margin-top: 0;
   padding: 8px 12px;
   border-radius: 12px;
   font-size: 0.88rem;
   background: rgba(37, 99, 235, 0.08);
   border: 1px solid rgba(147, 197, 253, 0.14);
   color: #dbe7ff;
+}
+
+.play-queue-stage {
+  min-height: 0;
+}
+
+.play-queue-stage .play-entry-hint {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.play-entry-hint > div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.play-entry-hint strong {
+  display: block;
+  color: #f8fafc;
+  line-height: 1.2;
+}
+
+.play-entry-hint .secondary.mini {
+  flex: 0 0 auto;
+  min-height: 34px;
+  padding: 6px 10px;
 }
 
 .play-entry-hint.ready {
@@ -2318,7 +2412,7 @@ button:disabled {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-top: 6px;
+  margin-top: 0;
   padding: 5px 10px;
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.04);
@@ -4865,6 +4959,7 @@ button.quest-summary:focus-visible {
 }
 
 @keyframes spin { to { transform: rotate(360deg); } }
+@keyframes spinCounter { to { transform: rotate(-360deg); } }
 
 .overlay-preview {
   padding: 12px;
@@ -5813,27 +5908,55 @@ button.danger:hover { filter: brightness(1.08); }
     padding: 8px;
   }
 
+  .play-readiness-panel-compact .scene-header-top.has-visual {
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .play-readiness-panel-compact .scene-header-copy {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .play-readiness-panel-compact .scene-header-copy-main strong {
+    font-size: clamp(1rem, 4.2vw, 1.18rem);
+  }
+
+  .play-readiness-panel-compact .scene-header-copy-main .note {
+    font-size: 0.88rem;
+  }
+
+  .play-readiness-panel-compact .scene-header-badges {
+    justify-self: end;
+  }
+
+  .play-readiness-panel-compact .scene-status-grid,
   .play-status-grid-compact {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 6px;
     margin-top: 6px;
   }
 
+  .play-readiness-panel-compact .scene-status-tile,
   .play-status-grid-compact .scene-status-tile {
     padding: 6px 7px;
     gap: 2px;
   }
 
+  .play-readiness-panel-compact .scene-status-kicker,
   .play-status-grid-compact .scene-status-kicker {
     font-size: 0.56rem;
     letter-spacing: 0.08em;
   }
 
+  .play-readiness-panel-compact .scene-status-tile strong,
   .play-status-grid-compact .scene-status-tile strong {
     font-size: 0.84rem;
     line-height: 1.05;
   }
 
+  .play-readiness-panel-compact .scene-status-tile .mini-text,
   .play-status-grid-compact .mini-text {
     font-size: 0.62rem;
     line-height: 1.15;
@@ -6051,7 +6174,11 @@ button.danger:hover { filter: brightness(1.08); }
     font-size: var(--font-xs);
   }
 
-  /* Play density — shorter mode cards, hide long notes */
+  /* Play density — single-screen arena gate */
+  .play-command-card {
+    gap: 6px;
+    padding: 7px;
+  }
   .mode-card {
     min-height: 76px;
     padding: 8px 6px;
@@ -6061,7 +6188,7 @@ button.danger:hover { filter: brightness(1.08); }
   .play-mode-grid-compact {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 6px;
-    margin-top: 8px;
+    margin-top: 0;
   }
   .play-mode-grid-compact .mode-card-eyebrow {
     font-size: 0.56rem;
@@ -6071,23 +6198,46 @@ button.danger:hover { filter: brightness(1.08); }
     font-size: 0.9rem;
     line-height: 1.05;
   }
-  .difficulty-panel { margin-top: 6px; padding: 6px 8px; }
+  .difficulty-panel { margin-top: 0; padding: 6px 8px; }
   .difficulty-panel .note { font-size: 0.76rem; }
   .difficulty-codex-card { grid-template-columns: 1fr; }
   .difficulty-trait-row { justify-content: flex-start; max-width: none; }
-  .difficulty-chip-row { gap: 6px; margin-top: 6px; }
-  .difficulty-chip { min-height: 44px; padding: 8px 10px; font-size: 0.74rem; }
-  .play-entry-hint,
-  .play-live-strip { display: none; }
-  .play-action-row { margin-top: 6px; }
-  .play-action-row button {
-    min-height: 34px;
-    padding: 6px 8px;
-    font-size: 0.78rem;
+  .play-ai-settings {
+    grid-template-columns: 1fr;
+    gap: 5px;
   }
-  .queue-search-portal { margin-top: 8px; padding: 10px; gap: 10px; }
-  .queue-portal-ring { width: 80px; height: 80px; }
-  .queue-portal-core { inset: 18px; font-size: 0.88rem; }
+  .difficulty-strip-head {
+    grid-template-columns: auto 1fr;
+    align-items: baseline;
+    gap: 8px;
+  }
+  .play-ai-settings .difficulty-chip-row {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 5px;
+  }
+  .difficulty-chip { min-height: 34px; padding: 6px 5px; font-size: 0.68rem; border-radius: var(--radius-sm); }
+  .play-entry-hint { display: flex; padding: 7px 9px; font-size: 0.76rem; }
+  .play-live-strip { display: flex; flex-wrap: nowrap; gap: 5px; padding: 4px 6px; font-size: 0.68rem; }
+  .play-live-label,
+  .play-live-stat { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .play-live-stat { margin-left: auto; }
+  .play-action-row { margin-top: 6px; }
+  .play-action-row button,
+  .play-entry-hint .secondary.mini {
+    min-height: 32px;
+    padding: 5px 8px;
+    font-size: 0.72rem;
+  }
+  .queue-search-portal { margin-top: 0; padding: 8px; gap: 8px; }
+  .queue-portal-ring { width: 72px; height: 72px; }
+  .queue-portal-core { font-size: 0.8rem; }
+  .queue-portal-copy { gap: 5px; }
+  .queue-portal-copy h3 { font-size: 0.96rem; }
+  .live-status-grid { gap: 6px; margin-top: 0; }
+  .live-status-grid > div { padding: 6px 8px; }
+  .live-status-grid .note { margin: 0; font-size: 0.66rem; }
+  .queue-leave-btn { min-height: 32px; padding: 5px 10px; font-size: 0.72rem; }
 
   .mode-switch, .stepper { flex-wrap: wrap; }
   .slot { min-height: 88px; padding: 7px; }
@@ -6753,6 +6903,7 @@ button.danger:hover { filter: brightness(1.08); }
   .home-status-card strong { font-size: 0.96rem; }
   .home-status-card .mini-text { font-size: 0.82rem; }
   .home-rating-meter strong { font-size: 0.82rem; }
+  .play-readiness-panel-compact .scene-status-grid,
   .play-status-grid-compact {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
@@ -7285,20 +7436,20 @@ button.danger:hover { filter: brightness(1.08); }
 }
 
 .queue-search-portal {
-  margin-top: 12px;
-  padding: 14px;
+  margin-top: 0;
+  padding: clamp(10px, 1.4svh, 14px);
   border-radius: 16px;
   background: linear-gradient(160deg, rgba(12, 18, 36, 0.94), rgba(29, 41, 82, 0.88));
   border: 1px solid rgba(96, 165, 250, 0.2);
   display: grid;
   grid-template-columns: auto 1fr;
-  gap: 14px;
+  gap: clamp(10px, 1.4svh, 14px);
   align-items: center;
 }
 
 .queue-portal-ring {
-  width: 108px;
-  height: 108px;
+  width: clamp(76px, 14svh, 108px);
+  height: clamp(76px, 14svh, 108px);
   position: relative;
   border-radius: 50%;
   background: conic-gradient(from 0deg, rgba(56, 189, 248, 0.2), rgba(124, 58, 237, 0.9), rgba(251, 191, 36, 0.22), rgba(56, 189, 248, 0.2));
@@ -7316,7 +7467,7 @@ button.danger:hover { filter: brightness(1.08); }
 
 .queue-portal-core {
   position: absolute;
-  inset: 26px;
+  inset: 24%;
   display: grid;
   place-items: center;
   border-radius: 50%;
@@ -7325,29 +7476,44 @@ button.danger:hover { filter: brightness(1.08); }
   font-weight: 800;
   background: rgba(9, 14, 28, 0.9);
   border: 1px solid rgba(96, 165, 250, 0.18);
+  animation: spinCounter 1.4s linear infinite;
 }
 
 .queue-portal-copy {
   display: grid;
-  gap: 8px;
+  gap: 7px;
+  min-width: 0;
 }
 
 .queue-portal-copy h3 {
   margin: 0;
+  font-size: clamp(1rem, 2vw, 1.25rem);
+  line-height: 1.1;
+}
+
+.queue-portal-copy > .note {
+  margin: 0;
+  line-height: 1.2;
+}
+
+.queue-leave-btn {
+  justify-self: start;
+  min-height: 34px;
+  padding: 6px 12px;
 }
 
 .queue-found-banner {
-  margin-top: 12px;
-  padding: 14px;
+  margin-top: 0;
+  padding: clamp(10px, 1.4svh, 14px);
   border-radius: 16px;
   display: grid;
-  gap: 12px;
+  gap: 10px;
   background: linear-gradient(160deg, rgba(36, 24, 8, 0.96), rgba(88, 58, 18, 0.9));
   border: 1px solid rgba(251, 191, 36, 0.3);
 }
 
 .vs-sigil-art {
-  width: min(220px, 100%);
+  width: min(150px, 100%);
   margin: 0 auto;
   display: block;
   filter: drop-shadow(0 12px 22px rgba(0, 0, 0, 0.34));
