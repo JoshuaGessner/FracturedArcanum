@@ -9,7 +9,7 @@ import { SocialProvider } from '../contexts/SocialProvider'
 import { GameProvider } from '../contexts/GameProvider'
 import { createGame } from '../game'
 import { createPwaInstallState } from '../pwa'
-import type { AppScreen, CardBorder, CosmeticTheme, SettingsSubview } from '../types'
+import type { AdminOverview, AppScreen, CardBorder, CosmeticTheme, SettingsSubview } from '../types'
 
 function buildShellValue(overrides: Partial<AppShellContextValue> = {}): AppShellContextValue {
   const noop = () => {}
@@ -228,6 +228,79 @@ function renderSettingsScreen(valueOverrides: Partial<AppShellContextValue> = {}
   )
 }
 
+function buildOwnerAdminOverrides(overrides: Partial<AppShellContextValue> = {}): Partial<AppShellContextValue> {
+  return {
+    settingsSubview: 'admin',
+    accountRole: 'owner',
+    isAdminRole: true,
+    isOwnerRole: true,
+    serverProfile: {
+      accountId: 'acct-owner',
+      username: 'josh',
+      displayName: 'Josh',
+      role: 'owner',
+      shards: 180,
+      seasonRating: 1210,
+      wins: 3,
+      losses: 2,
+      streak: 1,
+      deckConfig: {},
+      ownedThemes: ['royal'] as CosmeticTheme[],
+      selectedTheme: 'royal' as CosmeticTheme,
+      ownedCardBorders: ['default'] as CardBorder[],
+      selectedCardBorder: 'default' as CardBorder,
+      lastDaily: '',
+      totalEarned: 0,
+    },
+    ...overrides,
+  }
+}
+
+function buildAdminOverview(): AdminOverview {
+  return {
+    settings: { motd: '', quest: '', featuredMode: '', maintenanceMode: false },
+    totals: {
+      uniqueVisitors: 4,
+      sessions: 7,
+      pageViews: 18,
+      queueJoins: 2,
+      matchesStarted: 2,
+      matchesCompleted: 1,
+      installs: 1,
+      complaintsOpen: 2,
+      complaintsResolved: 0,
+      complaintsTotal: 2,
+    },
+    traffic: { pages: [], devices: [], daily: [] },
+    complaints: [
+      {
+        id: 'cmp-gameplay-1',
+        anonymousUser: 'acct-player',
+        category: 'gameplay',
+        severity: 'normal',
+        summary: 'Ranked issue stays visible',
+        details: 'A ranked issue should remain in the general complaints queue.',
+        page: '/settings',
+        status: 'open',
+        createdAt: '2026-04-18T12:00:00.000Z',
+        updates: [],
+      },
+      {
+        id: 'cmp-recovery-1',
+        anonymousUser: 'acct-locked',
+        category: 'account_recovery',
+        severity: 'high',
+        summary: 'Locked out of owner account',
+        details: 'The account recovery request needs owner or admin response.',
+        page: '/settings',
+        status: 'open',
+        createdAt: '2026-04-18T13:00:00.000Z',
+        updates: [{ at: '2026-04-18T13:10:00.000Z', note: 'Requester supplied username and recovery context.' }],
+      },
+    ],
+  }
+}
+
 describe('SettingsScreen sections', () => {
   afterEach(() => {
     cleanup()
@@ -315,61 +388,46 @@ describe('SettingsScreen sections', () => {
   })
 
   it('shows admin navigation for the owner account', () => {
-    renderSettingsScreen({
-      accountRole: 'owner',
-      isAdminRole: true,
-      isOwnerRole: true,
-      serverProfile: {
-        accountId: 'acct-owner',
-        username: 'josh',
-        displayName: 'Josh',
-        role: 'owner',
-        shards: 180,
-        seasonRating: 1210,
-        wins: 3,
-        losses: 2,
-        streak: 1,
-        deckConfig: {},
-        ownedThemes: ['royal'],
-        selectedTheme: 'royal',
-        ownedCardBorders: ['default'],
-        selectedCardBorder: 'default',
-        lastDaily: '',
-        totalEarned: 0,
-      },
-    })
+    renderSettingsScreen(buildOwnerAdminOverrides({ settingsSubview: 'preferences' }))
 
     expect(screen.getByRole('button', { name: /^admin$/i })).toBeTruthy()
     expect(screen.queryByRole('button', { name: /overview/i })).toBeNull()
   })
 
+  it('adds a recovery tab to the owner admin console', () => {
+    renderSettingsScreen(buildOwnerAdminOverrides({ adminOverview: buildAdminOverview() }))
+
+    expect(screen.getByRole('tab', { name: /^recovery$/i })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /overview/i })).toBeNull()
+  })
+
+  it('keeps account recovery requests in the recovery dashboard with response actions', () => {
+    const handleUpdateComplaintStatus = vi.fn(async () => {})
+    renderSettingsScreen(buildOwnerAdminOverrides({ adminOverview: buildAdminOverview(), handleUpdateComplaintStatus }))
+
+    fireEvent.click(screen.getByRole('tab', { name: /^recovery$/i }))
+
+    expect(screen.getByText(/account recovery requests/i)).toBeTruthy()
+    expect(screen.getByText(/locked out of owner account/i)).toBeTruthy()
+    expect(screen.queryByText(/ranked issue stays visible/i)).toBeNull()
+
+    fireEvent.click(screen.getByRole('button', { name: /request info/i }))
+
+    expect(handleUpdateComplaintStatus).toHaveBeenCalledWith('cmp-recovery-1', 'needs_info')
+  })
+
+  it('excludes account recovery requests from the general complaints tab', () => {
+    renderSettingsScreen(buildOwnerAdminOverrides({ adminOverview: buildAdminOverview() }))
+
+    fireEvent.click(screen.getByRole('tab', { name: /^complaints$/i }))
+
+    expect(screen.getByText(/ranked issue stays visible/i)).toBeTruthy()
+    expect(screen.queryByText(/locked out of owner account/i)).toBeNull()
+  })
+
   it('auto-loads the admin console when an owner opens it', async () => {
     const refreshAdminOverview = vi.fn(async () => {})
-    renderSettingsScreen({
-      settingsSubview: 'admin',
-      accountRole: 'owner',
-      isAdminRole: true,
-      isOwnerRole: true,
-      refreshAdminOverview,
-      serverProfile: {
-        accountId: 'acct-owner',
-        username: 'josh',
-        displayName: 'Josh',
-        role: 'owner',
-        shards: 180,
-        seasonRating: 1210,
-        wins: 3,
-        losses: 2,
-        streak: 1,
-        deckConfig: {},
-        ownedThemes: ['royal'],
-        selectedTheme: 'royal',
-        ownedCardBorders: ['default'],
-        selectedCardBorder: 'default',
-        lastDaily: '',
-        totalEarned: 0,
-      },
-    })
+    renderSettingsScreen(buildOwnerAdminOverrides({ refreshAdminOverview }))
 
     await waitFor(() => expect(refreshAdminOverview).toHaveBeenCalledTimes(1))
   })

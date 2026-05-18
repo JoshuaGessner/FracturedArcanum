@@ -3,8 +3,45 @@ import { PwaInstallPanel } from '../components/PwaInstallPanel'
 import { formatTimestamp } from '../utils'
 import { useAppShell, useProfile } from '../contexts'
 import { feedback } from '../feedback'
+import type { AdminComplaint } from '../types'
 
-type AdminSubview = 'liveOps' | 'traffic' | 'complaints' | 'roles' | 'audit'
+type AdminSubview = 'liveOps' | 'traffic' | 'complaints' | 'recovery' | 'roles' | 'audit'
+
+type TicketAction = {
+  label: string
+  status: string
+  variant: 'ghost' | 'primary'
+}
+
+const ADMIN_SUBVIEWS: AdminSubview[] = ['liveOps', 'traffic', 'complaints', 'recovery', 'roles', 'audit']
+
+const COMPLAINT_ACTIONS: TicketAction[] = [
+  { label: 'Investigating', status: 'investigating', variant: 'ghost' },
+  { label: 'Resolve', status: 'resolved', variant: 'primary' },
+]
+
+const RECOVERY_ACTIONS: TicketAction[] = [
+  { label: 'Review', status: 'investigating', variant: 'ghost' },
+  { label: 'Request Info', status: 'needs_info', variant: 'ghost' },
+  { label: 'Close Request', status: 'resolved', variant: 'primary' },
+]
+
+function getAdminSubviewLabel(view: AdminSubview) {
+  if (view === 'liveOps') return 'Live Ops'
+  if (view === 'roles') return 'Roles'
+  if (view === 'recovery') return 'Recovery'
+  return view.charAt(0).toUpperCase() + view.slice(1)
+}
+
+function getTicketStatusClass(status: string) {
+  if (status === 'resolved') return 'found'
+  if (status === 'investigating') return 'searching'
+  return 'idle'
+}
+
+function formatTicketStatus(status: string) {
+  return status.replace(/_/g, ' ')
+}
 
 type SettingsToggleRowProps = {
   label: string
@@ -68,6 +105,9 @@ export function SettingsScreen() {
           : 'Manual setup'
   const networkLabel = backendOnline ? 'Stable' : 'Fallback'
   const roleLabel = accountRole === 'owner' ? 'Owner' : accountRole === 'admin' ? 'Admin' : 'Player'
+  const accountRecoveryRequests = adminOverview?.complaints.filter((complaint) => complaint.category === 'account_recovery') ?? []
+  const playerComplaints = adminOverview?.complaints.filter((complaint) => complaint.category !== 'account_recovery') ?? []
+  const openRecoveryRequests = accountRecoveryRequests.filter((complaint) => complaint.status !== 'resolved')
 
   useEffect(() => {
     if (settingsSubview !== 'admin') {
@@ -409,9 +449,47 @@ export function SettingsScreen() {
     </div>
   )
 
+  const renderTicketCard = (complaint: AdminComplaint, actions: TicketAction[], className = '') => (
+    <div className={`ticket-card ${className}`.trim()} key={complaint.id}>
+      <div className="slot-head ticket-card-head">
+        <strong>{complaint.summary}</strong>
+        <span className={`queue-pill ${getTicketStatusClass(complaint.status)}`}>
+          {formatTicketStatus(complaint.status)}
+        </span>
+      </div>
+      <p className="mini-text ticket-detail-text">{complaint.details}</p>
+      <div className="badges ticket-badges">
+        <span className="badge">{complaint.id}</span>
+        <span className="badge">{formatTicketStatus(complaint.category)}</span>
+        <span className="badge">{complaint.severity}</span>
+        <span className="badge">{formatTimestamp(complaint.createdAt)}</span>
+      </div>
+      {complaint.updates.length > 0 && (
+        <div className="ticket-updates">
+          {complaint.updates.slice(-3).map((update) => (
+            <p className="mini-text" key={`${complaint.id}-${update.at}`}>
+              <strong>{formatTimestamp(update.at)}:</strong> {update.note}
+            </p>
+          ))}
+        </div>
+      )}
+      <div className="controls ticket-actions">
+        {actions.map((action) => (
+          <button
+            className={action.variant}
+            key={`${complaint.id}-${action.status}`}
+            onClick={() => void handleUpdateComplaintStatus(complaint.id, action.status)}
+          >
+            {action.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+
   const renderAdminNav = () => (
     <div className="settings-admin-nav" role="tablist" aria-label="Admin sections">
-      {(['liveOps', 'traffic', 'complaints', 'roles', 'audit'] as AdminSubview[]).map((view) => (
+      {ADMIN_SUBVIEWS.map((view) => (
         <button
           key={view}
           className={adminSubview === view ? 'active' : ''}
@@ -419,7 +497,7 @@ export function SettingsScreen() {
           role="tab"
           aria-selected={adminSubview === view}
         >
-          {view === 'liveOps' ? 'Live Ops' : view === 'roles' ? 'Roles' : view.charAt(0).toUpperCase() + view.slice(1)}
+          {getAdminSubviewLabel(view)}
         </button>
       ))}
     </div>
@@ -575,46 +653,43 @@ export function SettingsScreen() {
               <div className="admin-panel-block">
                 <div className="section-head log-heading">
                   <h3>Recent Player Complaints</h3>
-                  <span className="badge">Resolved {adminOverview.totals.complaintsResolved}</span>
+                  <span className="badge">Open {playerComplaints.filter((complaint) => complaint.status !== 'resolved').length}</span>
                 </div>
                 <div className="ticket-list">
-                  {adminOverview.complaints.length === 0 ? (
+                  {playerComplaints.length === 0 ? (
                     <p className="note">No complaints have been submitted yet.</p>
                   ) : (
-                    adminOverview.complaints.slice(0, 10).map((complaint) => (
-                      <div className="ticket-card" key={complaint.id}>
-                        <div className="slot-head">
-                          <strong>{complaint.summary}</strong>
-                          <span className={`queue-pill ${complaint.status === 'resolved' ? 'found' : complaint.status === 'investigating' ? 'searching' : 'idle'}`}>
-                            {complaint.status}
-                          </span>
-                        </div>
-                        <p className="mini-text">{complaint.details}</p>
-                        <div className="badges">
-                          <span className="badge">{complaint.id}</span>
-                          <span className="badge">{complaint.category}</span>
-                          <span className="badge">{complaint.severity}</span>
-                          <span className="badge">{formatTimestamp(complaint.createdAt)}</span>
-                        </div>
-                        {complaint.updates.length > 0 && (
-                          <div className="ticket-updates">
-                            {complaint.updates.slice(-3).map((update) => (
-                              <p className="mini-text" key={`${complaint.id}-${update.at}`}>
-                                <strong>{formatTimestamp(update.at)}:</strong> {update.note}
-                              </p>
-                            ))}
-                          </div>
-                        )}
-                        <div className="controls">
-                          <button className="ghost" onClick={() => void handleUpdateComplaintStatus(complaint.id, 'investigating')}>
-                            Investigating
-                          </button>
-                          <button className="primary" onClick={() => void handleUpdateComplaintStatus(complaint.id, 'resolved')}>
-                            Resolve
-                          </button>
-                        </div>
-                      </div>
-                    ))
+                    playerComplaints.slice(0, 10).map((complaint) => renderTicketCard(complaint, COMPLAINT_ACTIONS))
+                  )}
+                </div>
+              </div>
+            )}
+
+            {adminSubview === 'recovery' && (
+              <div className="admin-panel-block recovery-panel-block">
+                <div className="section-head log-heading">
+                  <h3>Account Recovery Requests</h3>
+                  <span className="badge">Open {openRecoveryRequests.length}</span>
+                </div>
+                <div className="recovery-request-summary">
+                  <div className="stat-tile">
+                    <strong>{accountRecoveryRequests.length}</strong>
+                    <span>Total Requests</span>
+                  </div>
+                  <div className="stat-tile">
+                    <strong>{openRecoveryRequests.length}</strong>
+                    <span>Needs Response</span>
+                  </div>
+                  <div className="stat-tile">
+                    <strong>{accountRecoveryRequests.filter((complaint) => complaint.status === 'needs_info').length}</strong>
+                    <span>Needs Info</span>
+                  </div>
+                </div>
+                <div className="ticket-list recovery-ticket-list">
+                  {accountRecoveryRequests.length === 0 ? (
+                    <p className="note">No account recovery requests are waiting.</p>
+                  ) : (
+                    accountRecoveryRequests.slice(0, 10).map((complaint) => renderTicketCard(complaint, RECOVERY_ACTIONS, 'recovery-ticket-card'))
                   )}
                 </div>
               </div>
