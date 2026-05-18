@@ -202,6 +202,10 @@ function AppShell() {
   const accountReadiness = serverProfile?.accountReadiness ?? null
   const accountRequirements = accountReadiness?.requirements ?? []
   const accountSetupRequired = serverProfile?.accountSetupRequired === true || accountReadiness?.setupRequired === true
+  const hasPasskeySetupRequirement = accountRequirements.some((item) => item.id === 'passkey' || item.id === 'owner_second_passkey')
+  const hasLegalSetupRequirement = accountRequirements.some((item) => item.id === 'terms' || item.id === 'privacy' || item.id === 'age_attestation')
+  const hasRecoverySetupRequirement = accountRequirements.some((item) => item.id === 'recovery_codes' || item.id === 'recovery_codes_saved')
+  const forcedAccountGateActive = loggedIn && (pendingRecoveryCodes.length > 0 || (accountSetupRequired && accountRequirements.length > 0))
   const shards = serverProfile?.shards ?? 0
   const seasonRating = serverProfile?.seasonRating ?? 1200
   const record = { wins: serverProfile?.wins ?? 0, losses: serverProfile?.losses ?? 0, streak: serverProfile?.streak ?? 0 }
@@ -1334,7 +1338,7 @@ function AppShell() {
       setPasskeyStatus('Passkey added.')
       setToastMessage('Passkey added.')
     } catch (error) {
-      setPasskeyStatus(formatPasskeyCeremonyError(error, 'Passkey registration failed.'))
+      setPasskeyStatus(formatPasskeyCeremonyError(error, 'Passkey creation did not finish. Try again and watch for the browser or system passkey window.'))
     }
 
     setPasskeyLoading(false)
@@ -3974,7 +3978,7 @@ function AppShell() {
       )}
 
       {loggedIn && pendingRecoveryCodes.length > 0 && (
-        <div className="auth-gate">
+        <div className="auth-gate forced-setup-gate">
           <div className="auth-card account-upgrade-card">
             <img className="auth-app-icon" src="/fractured-arcanum-icon-512.svg" alt="Fractured Arcanum app icon" />
             <h1>Save Recovery Codes</h1>
@@ -3998,66 +4002,71 @@ function AppShell() {
       )}
 
       {loggedIn && pendingRecoveryCodes.length === 0 && accountSetupRequired && accountRequirements.length > 0 && (
-        <div className="auth-gate">
-          <div className="auth-card account-upgrade-card">
+        <div className="auth-gate forced-setup-gate">
+          <div className="auth-card account-upgrade-card migration-setup-card">
             <img className="auth-app-icon" src="/fractured-arcanum-icon-512.svg" alt="Fractured Arcanum app icon" />
-            <h1>Account Setup</h1>
-            <p className="auth-tagline">Finish the new account standards before entering the arena</p>
-            <ul className="account-requirements-list">
-              {accountRequirements.map((item) => (
-                <li key={item.id}>
-                  <strong>{item.label}</strong>
-                  <span>{item.description}</span>
-                </li>
-              ))}
+            <h1>Finish Account Setup</h1>
+            <p className="auth-tagline">Your legacy password worked. Finish these passkey-only account steps to enter the arena.</p>
+            <ul className="migration-steps" aria-label="Account setup steps">
+              <li className={hasPasskeySetupRequirement ? 'active' : 'complete'}>
+                <span className="migration-step-index">1</span>
+                <span>
+                  <strong>{accountReadiness?.passkeyCount ? 'Add required passkey' : 'Create passkey'}</strong>
+                  <small>{hasPasskeySetupRequirement ? 'Use your browser or system passkey prompt.' : 'Passkey requirement complete.'}</small>
+                </span>
+              </li>
+              <li className={!hasPasskeySetupRequirement && hasLegalSetupRequirement ? 'active' : hasLegalSetupRequirement ? 'pending' : 'complete'}>
+                <span className="migration-step-index">2</span>
+                <span>
+                  <strong>Accept account terms</strong>
+                  <small>{hasLegalSetupRequirement ? 'Confirm Terms, Privacy, and age eligibility.' : 'Account terms complete.'}</small>
+                </span>
+              </li>
+              <li className={!hasPasskeySetupRequirement && !hasLegalSetupRequirement && hasRecoverySetupRequirement ? 'active' : hasRecoverySetupRequirement ? 'pending' : 'complete'}>
+                <span className="migration-step-index">3</span>
+                <span>
+                  <strong>Save recovery codes</strong>
+                  <small>{hasRecoverySetupRequirement ? 'Generate and save one-time recovery codes.' : 'Recovery codes complete.'}</small>
+                </span>
+              </li>
             </ul>
-            {accountReadiness && accountRequirements.some((item) => item.id === 'passkey' || item.id === 'owner_second_passkey') && (
-              <button className="ghost" type="button" disabled={passkeyLoading || !passkeySupported} onClick={() => void handleRegisterPasskey()}>
-                {passkeyLoading ? 'Creating Passkey...' : accountReadiness.passkeyCount > 0 ? 'Add Owner Passkey' : 'Create Passkey'}
+            {accountReadiness && hasPasskeySetupRequirement && (
+              <button className="primary" type="button" disabled={passkeyLoading || !passkeySupported} onClick={() => void handleRegisterPasskey()}>
+                {passkeyLoading ? 'Creating Passkey...' : accountReadiness.passkeyCount > 0 ? 'Add Required Passkey' : 'Create Passkey'}
               </button>
             )}
-            {accountRequirements.some((item) => item.id === 'recovery_codes' || item.id === 'recovery_codes_saved') && (
-              <button className="ghost" type="button" disabled={accountActionLoading || !passkeySupported} onClick={() => void handleGenerateRecoveryCodes()}>
+            {!hasPasskeySetupRequirement && !hasLegalSetupRequirement && hasRecoverySetupRequirement && (
+              <button className="primary" type="button" disabled={accountActionLoading || !passkeySupported} onClick={() => void handleGenerateRecoveryCodes()}>
                 {accountActionLoading ? 'Working...' : 'Generate Recovery Codes'}
               </button>
             )}
             {passkeyStatus && <p className="auth-note">{passkeyStatus}</p>}
-            <form className="auth-form" onSubmit={handleCompleteAccountUpgrade}>
-              <label>
-                Age Eligibility
-                <select
-                  required
-                  value={accountUpgradeForm.ageAttestation}
-                  onChange={(event) => setAccountUpgradeForm((current) => ({ ...current, ageAttestation: event.target.value }))}
-                >
-                  <option value="">Choose one</option>
-                  <option value="adult">I meet the age requirement</option>
-                  <option value="guardian">I have guardian consent</option>
-                </select>
-              </label>
-              <label className="legal-check">
-                <input
-                  type="checkbox"
-                  checked={accountUpgradeForm.acceptTerms}
-                  onChange={(event) => setAccountUpgradeForm((current) => ({ ...current, acceptTerms: event.target.checked }))}
-                />
-                <span>I accept the current Terms of Service</span>
-              </label>
-              <label className="legal-check">
-                <input
-                  type="checkbox"
-                  checked={accountUpgradeForm.acceptPrivacy}
-                  onChange={(event) => setAccountUpgradeForm((current) => ({ ...current, acceptPrivacy: event.target.checked }))}
-                />
-                <span>I acknowledge the current Privacy Policy</span>
-              </label>
-              {accountUpgradeStatus && <p className="auth-note">{accountUpgradeStatus}</p>}
-              {accountUpgradeError && <p className="auth-error">{accountUpgradeError}</p>}
-              <button className="primary" type="submit" disabled={accountUpgradeLoading}>
-                {accountUpgradeLoading ? 'Saving...' : 'Complete Account Setup'}
-              </button>
-              <button className="link" type="button" onClick={handleLogout}>Log out instead</button>
-            </form>
+            {!hasPasskeySetupRequirement && hasLegalSetupRequirement && (
+              <form className="auth-form migration-consent-form" onSubmit={handleCompleteAccountUpgrade}>
+                <label className="legal-check">
+                  <input
+                    type="checkbox"
+                    required
+                    checked={accountUpgradeForm.acceptTerms && accountUpgradeForm.acceptPrivacy && Boolean(accountUpgradeForm.ageAttestation)}
+                    onChange={(event) => setAccountUpgradeForm((current) => ({
+                      ...current,
+                      acceptTerms: event.target.checked,
+                      acceptPrivacy: event.target.checked,
+                      ageAttestation: event.target.checked ? 'adult' : '',
+                    }))}
+                  />
+                  <span>I accept the Terms of Service and Privacy Policy and confirm I meet the age requirement or have guardian consent.</span>
+                </label>
+                {accountUpgradeStatus && <p className="auth-note">{accountUpgradeStatus}</p>}
+                {accountUpgradeError && <p className="auth-error">{accountUpgradeError}</p>}
+                <button className="primary" type="submit" disabled={accountUpgradeLoading}>
+                  {accountUpgradeLoading ? 'Saving...' : 'Continue'}
+                </button>
+              </form>
+            )}
+            {!hasLegalSetupRequirement && accountUpgradeError && <p className="auth-error">{accountUpgradeError}</p>}
+            {accountActionStatus && <p className="auth-note">{accountActionStatus}</p>}
+            <button className="link migration-logout" type="button" onClick={handleLogout}>Log out instead</button>
           </div>
         </div>
       )}
@@ -4228,7 +4237,7 @@ function AppShell() {
         </div>
       )}
 
-      {loggedIn && activeScreen !== 'battle' && (
+      {loggedIn && !forcedAccountGateActive && activeScreen !== 'battle' && (
         <TopBar
           screenTitle={screenTitle}
           serverProfile={serverProfile}
@@ -4257,7 +4266,7 @@ function AppShell() {
       )}
 
 
-      {loggedIn && (<>
+      {loggedIn && !forcedAccountGateActive && (<>
       <div className="scene-stage" {...sceneSwipeBind}>
         <HomeScreen />
 
