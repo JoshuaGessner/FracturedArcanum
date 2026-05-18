@@ -42,11 +42,17 @@ export function SettingsScreen() {
     gesturesEnabled, setGesturesEnabled,
     hapticsEnabled, setHapticsEnabled,
     settingsSubview, openSettingsSubview,
+    passkeys, passkeySupported, passkeyLoading, passkeyStatus,
+    handleRegisterPasskey, handleDeletePasskey,
+    accountSessions, accountActionStatus, accountActionLoading,
+    recoveryStatus, refreshRecoveryStatus, handleGenerateRecoveryCodes,
+    refreshAccountSessions, handleLogoutAllSessions, handleExportAccountData, handleDeleteAccount,
     installState, handleInstallApp, handleLogout,
   } = useAppShell()
   const { isAdminRole, isOwnerRole, accountRole, serverProfile } = useProfile()
 
   const [adminSubview, setAdminSubview] = useState<AdminSubview>('liveOps')
+  const [deletePassword, setDeletePassword] = useState('')
   const adminAutoLoadRef = useRef(false)
 
   const playerDisplayName = serverProfile?.displayName ?? serverProfile?.username ?? 'Guest'
@@ -74,7 +80,7 @@ export function SettingsScreen() {
     void refreshAdminOverview()
   }, [adminLoading, adminOverview, isAdminRole, refreshAdminOverview, settingsSubview])
 
-  const handleOpenSettingsSubview = (view: 'preferences' | 'support' | 'admin') => {
+  const handleOpenSettingsSubview = (view: 'preferences' | 'account' | 'support' | 'admin') => {
     feedback('tap', soundEnabled, hapticsEnabled)
     openSettingsSubview(view)
   }
@@ -175,11 +181,161 @@ export function SettingsScreen() {
           )}
         />
         <SettingsToggleRow label="Install App" note={installState.primaryLabel} action={<span className="badge">{installPathLabel}</span>} />
+        <SettingsToggleRow
+          label="Passkeys"
+          note={passkeySupported ? `${passkeys.length} registered` : 'Browser unsupported'}
+          action={(
+            <button className="ghost mini" disabled={!passkeySupported || passkeyLoading} onClick={() => void handleRegisterPasskey()}>
+              {passkeyLoading ? 'Working' : 'Add'}
+            </button>
+          )}
+        />
+      </div>
+      <div className="settings-passkey-list">
+        {passkeyStatus && <p className="note toast-line">{passkeyStatus}</p>}
+        {passkeys.length === 0 ? (
+          <p className="mini-text">No passkeys registered.</p>
+        ) : (
+          passkeys.map((passkey) => (
+            <div className="settings-passkey-row" key={passkey.id}>
+              <div>
+                <strong>{passkey.name || 'Passkey'}</strong>
+                <span className="mini-text">
+                  {passkey.lastUsedAt ? `Last used ${formatTimestamp(passkey.lastUsedAt)}` : `Added ${formatTimestamp(passkey.createdAt)}`}
+                </span>
+              </div>
+              <button className="ghost mini" disabled={passkeyLoading || passkeys.length <= 1} onClick={() => void handleDeletePasskey(passkey.id)}>
+                Remove
+              </button>
+            </div>
+          ))
+        )}
       </div>
       <PwaInstallPanel installState={installState} onInstall={handleInstallApp} showInstalled showDiagnostics />
       <SettingsToggleRow label="Log Out" action={<button className="ghost mini" onClick={handleLogout}>Sign Out</button>} />
     </div>
   )
+
+  const renderAccount = () => {
+    const readiness = serverProfile?.accountReadiness
+    return (
+      <div className="settings-section-panel settings-account-panel" data-scene-swipe-opt-out="true">
+        <div className="settings-account-grid">
+          <section className="settings-account-block">
+            <div className="section-head log-heading">
+              <h3>Account Standard</h3>
+              <span className="badge">{readiness?.setupRequired ? 'Action needed' : 'Ready'}</span>
+            </div>
+            <div className="settings-account-facts">
+              <span>Username</span>
+              <strong>{serverProfile?.username || 'Not set'}</strong>
+              <span>Passkeys</span>
+              <strong>{readiness?.passkeyCount ?? passkeys.length}</strong>
+              <span>Terms</span>
+              <strong>{readiness?.legal.termsVersion ?? 'Current'}</strong>
+              <span>Privacy</span>
+              <strong>{readiness?.legal.privacyVersion ?? 'Current'}</strong>
+            </div>
+          </section>
+
+          <section className="settings-account-block">
+            <div className="section-head log-heading">
+              <h3>Passkeys</h3>
+              <button className="ghost mini" disabled={!passkeySupported || passkeyLoading} onClick={() => void handleRegisterPasskey()}>
+                {passkeyLoading ? 'Working' : 'Add'}
+              </button>
+            </div>
+            {passkeyStatus && <p className="note toast-line">{passkeyStatus}</p>}
+            <div className="settings-passkey-list">
+              {passkeys.length === 0 ? (
+                <p className="mini-text">No passkeys registered.</p>
+              ) : (
+                passkeys.map((passkey) => (
+                  <div className="settings-passkey-row" key={passkey.id}>
+                    <div>
+                      <strong>{passkey.name || 'Passkey'}</strong>
+                      <span className="mini-text">
+                        {passkey.lastUsedAt ? `Last used ${formatTimestamp(passkey.lastUsedAt)}` : `Added ${formatTimestamp(passkey.createdAt)}`}
+                      </span>
+                    </div>
+                    <button className="ghost mini" disabled={passkeyLoading || passkeys.length <= 1} onClick={() => void handleDeletePasskey(passkey.id)}>
+                      Remove
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          </section>
+
+          <section className="settings-account-block">
+            <div className="section-head log-heading">
+              <h3>Sessions</h3>
+              <button className="ghost mini" disabled={accountActionLoading} onClick={() => void refreshAccountSessions()}>Refresh</button>
+            </div>
+            <div className="settings-session-list">
+              {accountSessions.length === 0 ? (
+                <p className="mini-text">No active session metadata loaded.</p>
+              ) : (
+                accountSessions.slice(0, 5).map((session) => (
+                  <div className="settings-session-row" key={session.id}>
+                    <strong>{session.authMethod || 'session'}</strong>
+                    <span className="mini-text">{session.lastSeenAt ? `Seen ${formatTimestamp(session.lastSeenAt)}` : `Created ${formatTimestamp(session.createdAt)}`}</span>
+                  </div>
+                ))
+              )}
+            </div>
+            <button className="btn-danger mini" disabled={accountActionLoading} onClick={() => void handleLogoutAllSessions()}>
+              Log Out All Sessions
+            </button>
+          </section>
+
+          <section className="settings-account-block">
+            <div className="section-head log-heading">
+              <h3>Recovery Codes</h3>
+              <button className="ghost mini" disabled={accountActionLoading} onClick={() => void refreshRecoveryStatus()}>Refresh</button>
+            </div>
+            <div className="settings-account-facts">
+              <span>Active Codes</span>
+              <strong>{recoveryStatus?.activeCount ?? 0}</strong>
+              <span>Saved</span>
+              <strong>{recoveryStatus?.acknowledgedAt ? formatTimestamp(recoveryStatus.acknowledgedAt) : 'Not confirmed'}</strong>
+              <span>Generated</span>
+              <strong>{recoveryStatus?.generatedAt ? formatTimestamp(recoveryStatus.generatedAt) : 'None'}</strong>
+            </div>
+            <p className="mini-text">Generating a new batch revokes the old codes after passkey confirmation.</p>
+            <button className="ghost mini" disabled={accountActionLoading || !passkeySupported} onClick={() => void handleGenerateRecoveryCodes()}>
+              {recoveryStatus?.activeCount ? 'Regenerate Codes' : 'Generate Codes'}
+            </button>
+          </section>
+
+          <section className="settings-account-block">
+            <div className="section-head log-heading">
+              <h3>Data Rights</h3>
+              <button className="ghost mini" disabled={accountActionLoading} onClick={() => void handleExportAccountData()}>Export</button>
+            </div>
+            <label className="form-field">
+              <span>Legacy password if no passkey exists</span>
+              <input
+                className="text-input"
+                type="password"
+                autoComplete="current-password"
+                value={deletePassword}
+                onChange={(event) => setDeletePassword(event.target.value)}
+              />
+            </label>
+            <button
+              className="btn-danger mini"
+              disabled={accountActionLoading}
+              onClick={() => void handleDeleteAccount(deletePassword)}
+            >
+              Delete Account
+            </button>
+            {accountActionStatus && <p className={`toast toast-${inferToastSeverity(accountActionStatus)} toast-line`}>{accountActionStatus}</p>}
+          </section>
+        </div>
+      </div>
+    )
+  }
 
   const renderSupport = () => (
     <div className="settings-section-panel settings-support-panel" data-scene-swipe-opt-out="true">
@@ -200,6 +356,7 @@ export function SettingsScreen() {
               <option value="balance">Balance</option>
               <option value="performance">Performance</option>
               <option value="moderation">Moderation</option>
+              <option value="account_recovery">Account Recovery</option>
             </select>
           </label>
           <label className="form-field">
@@ -242,6 +399,9 @@ export function SettingsScreen() {
             }
           />
         </label>
+        {complaintForm.category === 'account_recovery' && (
+          <p className="mini-text">If every passkey and recovery code is lost, include username, approximate account age, devices, browsers, and recent activity. Recovery is reviewed by admins and is not guaranteed.</p>
+        )}
         <div className="controls">
           <button className="primary" type="submit">Send Report</button>
         </div>
@@ -283,6 +443,7 @@ export function SettingsScreen() {
 
         <nav className="settings-nav-strip" aria-label="Settings sections">
           <button className={settingsSubview === 'preferences' ? 'active' : ''} onClick={() => handleOpenSettingsSubview('preferences')}>Preferences</button>
+          <button className={settingsSubview === 'account' ? 'active' : ''} onClick={() => handleOpenSettingsSubview('account')}>Account</button>
           <button className={settingsSubview === 'support' ? 'active' : ''} onClick={() => handleOpenSettingsSubview('support')}>Support</button>
           {isAdminRole && (
             <button className={settingsSubview === 'admin' ? 'active' : ''} onClick={() => handleOpenSettingsSubview('admin')}>Admin</button>
@@ -290,6 +451,7 @@ export function SettingsScreen() {
         </nav>
 
         {settingsSubview === 'preferences' && renderPreferences()}
+        {settingsSubview === 'account' && renderAccount()}
         {settingsSubview === 'support' && renderSupport()}
         {settingsSubview === 'admin' && (
           <div className="settings-section-panel admin-console scribe-console" data-scene-swipe-opt-out="true">
@@ -434,6 +596,15 @@ export function SettingsScreen() {
                           <span className="badge">{complaint.severity}</span>
                           <span className="badge">{formatTimestamp(complaint.createdAt)}</span>
                         </div>
+                        {complaint.updates.length > 0 && (
+                          <div className="ticket-updates">
+                            {complaint.updates.slice(-3).map((update) => (
+                              <p className="mini-text" key={`${complaint.id}-${update.at}`}>
+                                <strong>{formatTimestamp(update.at)}:</strong> {update.note}
+                              </p>
+                            ))}
+                          </div>
+                        )}
                         <div className="controls">
                           <button className="ghost" onClick={() => void handleUpdateComplaintStatus(complaint.id, 'investigating')}>
                             Investigating

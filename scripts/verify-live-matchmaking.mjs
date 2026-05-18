@@ -1,8 +1,13 @@
 import { io } from 'socket.io-client'
+import {
+  completeAccountUpgrade,
+  createAccount,
+  createSession,
+  registerAccountPasskey,
+} from '../server/db.js'
 
 const port = Number(process.env.FA_PORT ?? '43277')
 const base = `http://127.0.0.1:${port}`
-const password = 'ArenaTest123x'
 const deckConfig = {
   'spark-imp': 2,
   'shade-fox': 1,
@@ -17,40 +22,40 @@ const deckConfig = {
   'tide-caller': 1,
 }
 
-async function post(path, body) {
-  const response = await fetch(base + path, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  })
-  return response.json()
-}
-
-async function signupAndLogin(username) {
-  const signupData = await post('/api/auth/signup', {
-    username,
-    password,
-    displayName: username,
-    deviceFingerprint: `fp-${username}`,
-  })
-
-  if (!signupData.ok) {
-    throw new Error(`signup failed for ${username}: ${JSON.stringify(signupData)}`)
+function createReadyVerifierSession(username) {
+  const created = createAccount(username, `ArenaTest123x-${username}`, username, `fp-${username}`, '127.0.0.1', 'live-matchmaking-verifier')
+  if (!created.ok) {
+    throw new Error(`account creation failed for ${username}: ${JSON.stringify(created)}`)
   }
 
-  const loginData = await post('/api/auth/login', { username, password })
-  if (!loginData.ok || !loginData.token) {
-    throw new Error(`login failed for ${username}: ${JSON.stringify(loginData)}`)
+  const passkey = registerAccountPasskey(created.accountId, {
+    id: `live-verifier-credential-${username}`,
+    publicKey: Buffer.from(`live-verifier-public-key-${username}`),
+    counter: 0,
+    transports: ['internal'],
+  }, { name: 'Live verifier passkey', backedUp: true, deviceType: 'qaDevice' })
+  if (!passkey.ok) {
+    throw new Error(`passkey seed failed for ${username}: ${JSON.stringify(passkey)}`)
   }
 
-  return loginData.token
+  const upgraded = completeAccountUpgrade(created.accountId, {
+    acceptTerms: true,
+    acceptPrivacy: true,
+    ageAttestation: 'adult',
+    locale: 'en-US',
+    ip: '127.0.0.1',
+    userAgent: 'live-matchmaking-verifier',
+  })
+  if (!upgraded.ok) {
+    throw new Error(`account readiness failed for ${username}: ${JSON.stringify(upgraded)}`)
+  }
+
+  return createSession(created.accountId, '127.0.0.1', 'live-matchmaking-verifier', 'passkey').token
 }
 
 const stamp = Date.now()
-const [tokenA, tokenB] = await Promise.all([
-  signupAndLogin(`arenaa${stamp}`),
-  signupAndLogin(`arenab${stamp}`),
-])
+const tokenA = createReadyVerifierSession(`arenaa${stamp}`)
+const tokenB = createReadyVerifierSession(`arenab${stamp}`)
 
 const results = []
 await new Promise((resolve, reject) => {
@@ -169,3 +174,4 @@ console.log(JSON.stringify({
   ratingB: profileB.profile?.seasonRating ?? 0,
   leaderboardCount: leaderboard.entries?.length ?? 0,
 }))
+process.exit(0)

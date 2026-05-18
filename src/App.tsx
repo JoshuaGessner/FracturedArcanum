@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { io, type Socket } from 'socket.io-client'
+import { browserSupportsWebAuthn, startAuthentication, startRegistration } from '@simplewebauthn/browser'
 import { playSound } from './audio'
 import { setAmbientScene, type AmbientScene } from './ambient'
 import { feedback } from './feedback'
@@ -36,7 +37,9 @@ import {
 import {
   authFetch,
   createAnonymousId,
+  formatPasskeyCeremonyError,
   getDeviceFingerprint,
+  getPasskeyOriginRequirementMessage,
   getRankLabel,
   getScreenBucket,
   getScreenTransitionClass,
@@ -77,6 +80,8 @@ import type {
   AdminAuditEntry,
   AdminOverview,
   AdminUser,
+  AccountRecoveryStatus,
+  AccountSessionSummary,
   AppScreen,
   AuthScreen,
   BattleKind,
@@ -90,6 +95,7 @@ import type {
   OpenedPackCard,
   OpponentProfile,
   PackOffer,
+  PasskeySummary,
   QuestOverview,
   QueuePresence,
   QueueSearchStatus,
@@ -105,6 +111,33 @@ import { ProfileProvider, useProfileState } from './contexts/ProfileProvider'
 import { SocialProvider, useSocialState } from './contexts/SocialProvider'
 import { GameProvider, useGameState } from './contexts/GameProvider'
 import './App.css'
+
+type RegistrationOptionsJSON = Parameters<typeof startRegistration>[0]['optionsJSON']
+type AuthenticationOptionsJSON = Parameters<typeof startAuthentication>[0]['optionsJSON']
+
+const PASSKEY_CEREMONY_TIMEOUT_MS = 75_000
+const PASSKEY_PROMPT_STATUS = 'Complete the passkey prompt in your browser or system window.'
+
+function createPasskeyTimeoutError(message: string): Error {
+  const error = new Error(message)
+  error.name = 'PasskeyTimeoutError'
+  return error
+}
+
+async function withPasskeyCeremonyTimeout<T>(ceremony: Promise<T>, timeoutMessage: string): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | null = null
+  const timeout = new Promise<T>((_, reject) => {
+    timeoutId = setTimeout(() => reject(createPasskeyTimeoutError(timeoutMessage)), PASSKEY_CEREMONY_TIMEOUT_MS)
+  })
+
+  ceremony.catch(() => {})
+
+  try {
+    return await Promise.race([ceremony, timeout])
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId)
+  }
+}
 
 /**
  * Phase 1B — App is now a thin wrapper that exists only to host the
@@ -134,10 +167,29 @@ function AppShell() {
   // ─── Auth state ───────────────────────────────────────────────────────
   const [authToken, setAuthToken] = useState(() => readStoredValue(STORAGE_KEYS.authToken, ''))
   const [authScreen, setAuthScreen] = useState<AuthScreen>('login')
-  const [authForm, setAuthForm] = useState({ username: '', password: '' })
+  const [authForm, setAuthForm] = useState({ username: '', password: '', recoveryCode: '' })
   const [authError, setAuthError] = useState('')
+  const [authStatus, setAuthStatus] = useState('')
   const [authLoading, setAuthLoading] = useState(false)
+  const [recoverySupportDetails, setRecoverySupportDetails] = useState('')
   const [loggedIn, setLoggedIn] = useState(false)
+  const [accountUpgradeForm, setAccountUpgradeForm] = useState({
+    acceptTerms: false,
+    acceptPrivacy: false,
+    ageAttestation: '',
+  })
+  const [accountUpgradeStatus, setAccountUpgradeStatus] = useState('')
+  const [accountUpgradeError, setAccountUpgradeError] = useState('')
+  const [accountUpgradeLoading, setAccountUpgradeLoading] = useState(false)
+  const [passkeys, setPasskeys] = useState<PasskeySummary[]>([])
+  const [passkeySupported] = useState(() => browserSupportsWebAuthn())
+  const [passkeyLoading, setPasskeyLoading] = useState(false)
+  const [passkeyStatus, setPasskeyStatus] = useState('')
+  const [accountSessions, setAccountSessions] = useState<AccountSessionSummary[]>([])
+  const [recoveryStatus, setRecoveryStatus] = useState<AccountRecoveryStatus | null>(null)
+  const [pendingRecoveryCodes, setPendingRecoveryCodes] = useState<string[]>([])
+  const [accountActionStatus, setAccountActionStatus] = useState('')
+  const [accountActionLoading, setAccountActionLoading] = useState(false)
 
   // ─── First-launch setup state ─────────────────────────────────────────
   const [setupRequired, setSetupRequired] = useState<boolean | null>(null)
@@ -147,6 +199,9 @@ function AppShell() {
 
   // ─── Server-authoritative player state ────────────────────────────────
   const [serverProfile, setServerProfile] = useState<ServerProfile | null>(null)
+  const accountReadiness = serverProfile?.accountReadiness ?? null
+  const accountRequirements = accountReadiness?.requirements ?? []
+  const accountSetupRequired = serverProfile?.accountSetupRequired === true || accountReadiness?.setupRequired === true
   const shards = serverProfile?.shards ?? 0
   const seasonRating = serverProfile?.seasonRating ?? 1200
   const record = { wins: serverProfile?.wins ?? 0, losses: serverProfile?.losses ?? 0, streak: serverProfile?.streak ?? 0 }
@@ -355,6 +410,7 @@ function AppShell() {
     confirmLabel?: string
     placeholder?: string
     initialValue?: string
+    maxLength?: number
     resolve: (value: string | null) => void
   }
   const [textPromptRequest, setTextPromptRequest] = useState<TextPromptRequest | null>(null)
@@ -583,6 +639,9 @@ function AppShell() {
           if (data.profile.deckConfig && Object.keys(data.profile.deckConfig).length > 0) {
             setDeckConfig(data.profile.deckConfig)
           }
+          void refreshPasskeys(authToken)
+          void refreshAccountSessions(authToken)
+          void refreshRecoveryStatus(authToken)
         } else {
           setAuthToken('')
         }
@@ -602,6 +661,11 @@ function AppShell() {
 
   useEffect(() => {
     if (activeScreen !== 'settings' || !authToken) return
+    if (settingsSubview === 'account') {
+      void refreshAccountSessions(authToken)
+      void refreshPasskeys(authToken)
+      void refreshRecoveryStatus(authToken)
+    }
 
     let cancelled = false
     void authFetch('/api/me', authToken)
@@ -621,7 +685,7 @@ function AppShell() {
     return () => {
       cancelled = true
     }
-  }, [activeScreen, authToken, setDeckConfig])
+  }, [activeScreen, authToken, settingsSubview, setDeckConfig]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleSetup(event: FormEvent) {
     event.preventDefault()
@@ -665,23 +729,118 @@ function AppShell() {
   async function handleAuth(event: FormEvent) {
     event.preventDefault()
     setAuthError('')
+    setAuthStatus('')
+
+    if (authScreen === 'login') {
+      await handlePasskeyLogin()
+      return
+    }
+
     setAuthLoading(true)
 
-    const endpoint = authScreen === 'signup' ? '/api/auth/signup' : '/api/auth/login'
-    const body: Record<string, string> = {
-      username: authForm.username.trim(),
-      password: authForm.password,
+    if (authScreen === 'recover') {
+      setAuthLoading(false)
+      await handleRecoverAccount()
+      return
     }
+
     if (authScreen === 'signup') {
-      body.displayName = authForm.username.trim()
-      body.deviceFingerprint = getDeviceFingerprint()
+      if (!passkeySupported) {
+        setAuthError('This browser does not support passkey account creation.')
+        setAuthLoading(false)
+        return
+      }
+      const passkeyOriginMessage = getPasskeyOriginRequirementMessage()
+      if (passkeyOriginMessage) {
+        setAuthError(passkeyOriginMessage)
+        setAuthLoading(false)
+        return
+      }
+      if (accountUpgradeForm.acceptTerms !== true || accountUpgradeForm.acceptPrivacy !== true || !accountUpgradeForm.ageAttestation) {
+        setAuthError('Accept the Terms, Privacy Policy, and age requirement to create an account.')
+        setAuthLoading(false)
+        return
+      }
+
+      try {
+        const optionsResponse = await fetch(`${ARENA_URL}/api/auth/passkey/signup/options`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            username: authForm.username.trim(),
+            displayName: authForm.username.trim(),
+            deviceFingerprint: getDeviceFingerprint(),
+            acceptTerms: accountUpgradeForm.acceptTerms,
+            acceptPrivacy: accountUpgradeForm.acceptPrivacy,
+            ageAttestation: accountUpgradeForm.ageAttestation,
+            locale: navigator.language,
+          }),
+        })
+        const optionsData = await optionsResponse.json() as {
+          ok: boolean; error?: string; pendingAccountId?: string; options?: RegistrationOptionsJSON; challengeId?: string
+        }
+        if (!optionsData.ok || !optionsData.pendingAccountId || !optionsData.options || !optionsData.challengeId) {
+          setAuthError(optionsData.error ?? 'Passkey account creation could not be started.')
+          setAuthLoading(false)
+          return
+        }
+
+        setAuthStatus(PASSKEY_PROMPT_STATUS)
+        const credential = await withPasskeyCeremonyTimeout(
+          startRegistration({ optionsJSON: optionsData.options }),
+          'Passkey prompt timed out. Try again and watch for the browser or system passkey window.',
+        )
+        setAuthStatus('')
+        const verifyResponse = await fetch(`${ARENA_URL}/api/auth/passkey/signup/verify`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            pendingAccountId: optionsData.pendingAccountId,
+            challengeId: optionsData.challengeId,
+            response: credential,
+            name: 'Primary passkey',
+            acceptTerms: accountUpgradeForm.acceptTerms,
+            acceptPrivacy: accountUpgradeForm.acceptPrivacy,
+            ageAttestation: accountUpgradeForm.ageAttestation,
+            locale: navigator.language,
+          }),
+        })
+        const data = await verifyResponse.json() as { ok: boolean; error?: string; token?: string; profile?: ServerProfile; recoveryCodes?: string[]; recovery?: AccountRecoveryStatus }
+        if (!data.ok) {
+          setAuthError(data.error ?? 'Passkey account creation failed.')
+          setAuthLoading(false)
+          return
+        }
+
+        setAuthToken(data.token ?? '')
+        setServerProfile(data.profile ?? null)
+        setLoggedIn(true)
+        if (data.profile?.deckConfig && Object.keys(data.profile.deckConfig).length > 0) {
+          setDeckConfig(data.profile.deckConfig)
+        }
+        void refreshPasskeys(data.token ?? '')
+        void refreshAccountSessions(data.token ?? '')
+        void refreshRecoveryStatus(data.token ?? '')
+        if (data.recovery) setRecoveryStatus(data.recovery)
+        if (data.recoveryCodes?.length) setPendingRecoveryCodes(data.recoveryCodes)
+        setAuthError('')
+        setToastMessage(`Welcome${data.profile?.username ? ', ' + data.profile.username : ''}!`)
+      } catch (error) {
+        setAuthStatus('')
+        setAuthError(formatPasskeyCeremonyError(error, 'Passkey account creation failed. Please try again.'))
+      }
+      setAuthLoading(false)
+      return
     }
 
     try {
-      const response = await fetch(`${ARENA_URL}${endpoint}`, {
+      const response = await fetch(`${ARENA_URL}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        body: JSON.stringify({
+          username: authForm.username.trim(),
+          password: authForm.password,
+        }),
       })
       const data = await response.json() as { ok: boolean; error?: string; token?: string; profile?: ServerProfile }
 
@@ -697,13 +856,546 @@ function AppShell() {
       if (data.profile?.deckConfig && Object.keys(data.profile.deckConfig).length > 0) {
         setDeckConfig(data.profile.deckConfig)
       }
+      void refreshPasskeys(data.token ?? '')
+      void refreshAccountSessions(data.token ?? '')
+      void refreshRecoveryStatus(data.token ?? '')
       setAuthError('')
-      setToastMessage(`Welcome${data.profile?.username ? ', ' + data.profile.username : ''}!`)
+      setToastMessage(data.profile?.accountSetupRequired ? 'Legacy password verified. Finish passkey setup.' : `Welcome${data.profile?.username ? ', ' + data.profile.username : ''}!`)
     } catch {
       setAuthError('Network error. Please try again.')
     }
 
     setAuthLoading(false)
+  }
+
+  async function handlePasskeyLogin() {
+    setAuthError('')
+    setAuthStatus('')
+    setPasskeyStatus('')
+    if (!passkeySupported) {
+      setAuthError('This browser does not support passkeys.')
+      return
+    }
+    const passkeyOriginMessage = getPasskeyOriginRequirementMessage()
+    if (passkeyOriginMessage) {
+      setAuthError(passkeyOriginMessage)
+      return
+    }
+
+    const identifier = authForm.username.trim()
+    if (!identifier) {
+      setAuthError('Enter your username before using a passkey.')
+      return
+    }
+
+    setAuthLoading(true)
+    try {
+      const optionsResponse = await fetch(`${ARENA_URL}/api/auth/passkey/login/options`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identifier }),
+      })
+      const optionsData = await optionsResponse.json() as {
+        ok: boolean; error?: string; options?: AuthenticationOptionsJSON; challengeId?: string
+      }
+      if (!optionsData.ok || !optionsData.options || !optionsData.challengeId) {
+        setAuthError(optionsData.error ?? 'Passkey login could not be started.')
+        setAuthLoading(false)
+        return
+      }
+
+      setAuthStatus(PASSKEY_PROMPT_STATUS)
+      const credential = await withPasskeyCeremonyTimeout(
+        startAuthentication({ optionsJSON: optionsData.options }),
+        'Passkey prompt timed out. Try again and watch for the browser or system passkey window.',
+      )
+      setAuthStatus('')
+      const verifyResponse = await fetch(`${ARENA_URL}/api/auth/passkey/login/verify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ challengeId: optionsData.challengeId, response: credential }),
+      })
+      const data = await verifyResponse.json() as { ok: boolean; error?: string; token?: string; profile?: ServerProfile }
+      if (!data.ok) {
+        setAuthError(data.error ?? 'Passkey login failed.')
+        setAuthLoading(false)
+        return
+      }
+
+      setAuthToken(data.token ?? '')
+      setServerProfile(data.profile ?? null)
+      setLoggedIn(true)
+      if (data.profile?.deckConfig && Object.keys(data.profile.deckConfig).length > 0) {
+        setDeckConfig(data.profile.deckConfig)
+      }
+      void refreshPasskeys(data.token ?? '')
+      void refreshAccountSessions(data.token ?? '')
+      void refreshRecoveryStatus(data.token ?? '')
+      setAuthError('')
+      setToastMessage(`Welcome${data.profile?.username ? ', ' + data.profile.username : ''}!`)
+    } catch (error) {
+      setAuthStatus('')
+      setAuthError(formatPasskeyCeremonyError(error, 'Passkey login failed. Please try again.'))
+    }
+
+    setAuthLoading(false)
+  }
+
+  async function handleRecoverAccount() {
+    setAuthError('')
+    setAuthStatus('')
+    if (!passkeySupported) {
+      setAuthError('This browser does not support passkey recovery.')
+      return
+    }
+    const passkeyOriginMessage = getPasskeyOriginRequirementMessage()
+    if (passkeyOriginMessage) {
+      setAuthError(passkeyOriginMessage)
+      return
+    }
+
+    const username = authForm.username.trim()
+    const recoveryCode = authForm.recoveryCode.trim()
+    if (!username || !recoveryCode) {
+      setAuthError('Enter your username and recovery code.')
+      return
+    }
+
+    setAuthLoading(true)
+    try {
+      const optionsResponse = await fetch(`${ARENA_URL}/api/auth/recovery/options`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, recoveryCode }),
+      })
+      const optionsData = await optionsResponse.json() as {
+        ok: boolean; error?: string; options?: RegistrationOptionsJSON; challengeId?: string
+      }
+      if (!optionsData.ok || !optionsData.options || !optionsData.challengeId) {
+        setAuthError(optionsData.error ?? 'Account recovery could not be started.')
+        setAuthLoading(false)
+        return
+      }
+
+      setAuthStatus(PASSKEY_PROMPT_STATUS)
+      const credential = await withPasskeyCeremonyTimeout(
+        startRegistration({ optionsJSON: optionsData.options }),
+        'Passkey prompt timed out. Try again and watch for the browser or system passkey window.',
+      )
+      setAuthStatus('')
+      const verifyResponse = await fetch(`${ARENA_URL}/api/auth/recovery/verify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ challengeId: optionsData.challengeId, response: credential, name: 'Recovery passkey' }),
+      })
+      const data = await verifyResponse.json() as {
+        ok: boolean; error?: string; token?: string; profile?: ServerProfile; recoveryCodes?: string[]; recovery?: AccountRecoveryStatus
+      }
+      if (!data.ok) {
+        setAuthError(data.error ?? 'Account recovery failed.')
+        setAuthLoading(false)
+        return
+      }
+
+      setAuthToken(data.token ?? '')
+      setServerProfile(data.profile ?? null)
+      setLoggedIn(true)
+      if (data.profile?.deckConfig && Object.keys(data.profile.deckConfig).length > 0) {
+        setDeckConfig(data.profile.deckConfig)
+      }
+      if (data.recovery) setRecoveryStatus(data.recovery)
+      if (data.recoveryCodes?.length) setPendingRecoveryCodes(data.recoveryCodes)
+      void refreshPasskeys(data.token ?? '')
+      void refreshAccountSessions(data.token ?? '')
+      void refreshRecoveryStatus(data.token ?? '')
+      setToastMessage('Account recovered. Old passkeys and sessions were revoked.')
+    } catch (error) {
+      setAuthStatus('')
+      setAuthError(formatPasskeyCeremonyError(error, 'Account recovery failed. Please try again.'))
+    }
+    setAuthLoading(false)
+  }
+
+  async function handleSubmitRecoverySupport() {
+    const username = authForm.username.trim()
+    const details = recoverySupportDetails.trim()
+    if (!username || !details) {
+      setAuthError('Enter your username and recovery support details before sending a ticket.')
+      return
+    }
+
+    setAuthLoading(true)
+    setAuthError('')
+    try {
+      const response = await fetch(`${ARENA_URL}/api/complaints`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          visitorId,
+          sessionId,
+          page: 'account-recovery',
+          category: 'account_recovery',
+          severity: 'high',
+          summary: `Lost access for ${username}`,
+          details: `Username: ${username}\n${details}`,
+        }),
+      })
+      const data = await response.json() as { ok?: boolean; complaintId?: string; message?: string; error?: string }
+      if (!response.ok || data.ok === false) {
+        setAuthError(data.message ?? data.error ?? 'Recovery support ticket could not be sent.')
+        setAuthLoading(false)
+        return
+      }
+      setRecoverySupportDetails('')
+      setAuthError(`Recovery support ticket ${data.complaintId ?? ''} sent. An admin can review it in Operations.`)
+    } catch {
+      setAuthError('Recovery support ticket could not be sent.')
+    }
+    setAuthLoading(false)
+  }
+
+  async function ensureRecentPasskeyAuth(): Promise<boolean> {
+    if (!authToken) return false
+    if (!passkeySupported) {
+      setAccountActionStatus('This browser does not support passkey confirmation.')
+      return false
+    }
+    const passkeyOriginMessage = getPasskeyOriginRequirementMessage()
+    if (passkeyOriginMessage) {
+      setAccountActionStatus(passkeyOriginMessage)
+      return false
+    }
+
+    try {
+      const optionsResponse = await authFetch('/api/auth/passkey/reauth/options', authToken, { method: 'POST' })
+      const optionsData = await optionsResponse.json() as { ok: boolean; error?: string; options?: AuthenticationOptionsJSON; challengeId?: string }
+      if (!optionsData.ok || !optionsData.options || !optionsData.challengeId) {
+        setAccountActionStatus(optionsData.error ?? 'Passkey confirmation could not be started.')
+        return false
+      }
+
+      setAccountActionStatus(PASSKEY_PROMPT_STATUS)
+      const credential = await withPasskeyCeremonyTimeout(
+        startAuthentication({ optionsJSON: optionsData.options }),
+        'Passkey prompt timed out. Try again and watch for the browser or system passkey window.',
+      )
+      const verifyResponse = await authFetch('/api/auth/passkey/reauth/verify', authToken, {
+        method: 'POST',
+        body: { challengeId: optionsData.challengeId, response: credential },
+      })
+      const data = await verifyResponse.json().catch(() => ({})) as { ok?: boolean; error?: string }
+      if (!verifyResponse.ok || data.ok !== true) {
+        setAccountActionStatus(data.error ?? 'Passkey confirmation failed.')
+        return false
+      }
+      setAccountActionStatus('')
+      return true
+    } catch (error) {
+      setAccountActionStatus(formatPasskeyCeremonyError(error, 'Passkey confirmation failed.', 'Passkey confirmation was cancelled.'))
+      return false
+    }
+  }
+
+  async function refreshPasskeys(tokenOverride = authToken) {
+    if (!tokenOverride) return
+    try {
+      const response = await authFetch('/api/me/passkeys', tokenOverride)
+      const data = await response.json() as { ok: boolean; passkeys?: PasskeySummary[] }
+      if (data.ok) setPasskeys(data.passkeys ?? [])
+    } catch {
+      setPasskeyStatus('Passkeys could not be loaded.')
+    }
+  }
+
+  async function refreshAccountSessions(tokenOverride = authToken) {
+    if (!tokenOverride) return
+    try {
+      const response = await authFetch('/api/me/sessions', tokenOverride)
+      const data = await response.json() as { ok: boolean; sessions?: AccountSessionSummary[] }
+      if (data.ok) setAccountSessions(data.sessions ?? [])
+    } catch {
+      setAccountActionStatus('Sessions could not be loaded.')
+    }
+  }
+
+  async function refreshRecoveryStatus(tokenOverride = authToken) {
+    if (!tokenOverride) return
+    try {
+      const response = await authFetch('/api/me/recovery-codes', tokenOverride)
+      const data = await response.json() as { ok: boolean; recovery?: AccountRecoveryStatus }
+      if (data.ok) setRecoveryStatus(data.recovery ?? null)
+    } catch {
+      setAccountActionStatus('Recovery code status could not be loaded.')
+    }
+  }
+
+  function downloadRecoveryCodes() {
+    if (pendingRecoveryCodes.length === 0) return
+    const body = [
+      'Fractured Arcanum recovery codes',
+      'Save these somewhere private. Each code can be used once to recover your account and replace old passkeys.',
+      '',
+      ...pendingRecoveryCodes,
+      '',
+    ].join('\n')
+    const blob = new Blob([body], { type: 'text/plain' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `fractured-arcanum-recovery-codes-${serverProfile?.username ?? 'account'}.txt`
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    URL.revokeObjectURL(url)
+  }
+
+  async function copyRecoveryCodes() {
+    if (pendingRecoveryCodes.length === 0) return
+    try {
+      await navigator.clipboard.writeText(pendingRecoveryCodes.join('\n'))
+      setAccountActionStatus('Recovery codes copied.')
+    } catch {
+      setAccountActionStatus('Copy failed. Download the codes instead.')
+    }
+  }
+
+  async function handleGenerateRecoveryCodes() {
+    if (!authToken) return
+    if (!await ensureRecentPasskeyAuth()) return
+    setAccountActionLoading(true)
+    setAccountActionStatus('')
+    try {
+      const response = await authFetch('/api/me/recovery-codes/generate', authToken, { method: 'POST' })
+      const data = await response.json() as { ok: boolean; error?: string; recoveryCodes?: string[]; recovery?: AccountRecoveryStatus; profile?: ServerProfile }
+      if (!data.ok || !data.recoveryCodes?.length) {
+        setAccountActionStatus(data.error ?? 'Recovery codes could not be generated.')
+        setAccountActionLoading(false)
+        return
+      }
+      setPendingRecoveryCodes(data.recoveryCodes)
+      setRecoveryStatus(data.recovery ?? null)
+      if (data.profile) setServerProfile(data.profile)
+      setAccountActionStatus('Recovery codes generated. Save them before continuing.')
+    } catch {
+      setAccountActionStatus('Recovery codes could not be generated.')
+    }
+    setAccountActionLoading(false)
+  }
+
+  async function handleAcknowledgeRecoveryCodes() {
+    if (!authToken || pendingRecoveryCodes.length === 0) return
+    setAccountActionLoading(true)
+    setAccountActionStatus('')
+    try {
+      const response = await authFetch('/api/me/recovery-codes/acknowledge', authToken, { method: 'POST' })
+      const data = await response.json() as { ok: boolean; error?: string; recovery?: AccountRecoveryStatus; profile?: ServerProfile }
+      if (!data.ok) {
+        setAccountActionStatus(data.error ?? 'Recovery codes could not be confirmed.')
+        setAccountActionLoading(false)
+        return
+      }
+      setPendingRecoveryCodes([])
+      setRecoveryStatus(data.recovery ?? null)
+      if (data.profile) setServerProfile(data.profile)
+      setToastMessage('Recovery codes saved.')
+    } catch {
+      setAccountActionStatus('Recovery codes could not be confirmed.')
+    }
+    setAccountActionLoading(false)
+  }
+
+  async function handleLogoutAllSessions() {
+    if (!authToken) return
+    const ok = await askConfirm({
+      title: 'Log out all sessions?',
+      body: 'This signs out every device for this account, including this one.',
+      confirmLabel: 'Log Out All',
+      danger: true,
+    })
+    if (!ok) return
+    if (!await ensureRecentPasskeyAuth()) return
+
+    setAccountActionLoading(true)
+    try {
+      await authFetch('/api/auth/logout-all', authToken, { method: 'POST' })
+      handleLogout()
+    } catch {
+      setAccountActionStatus('Could not log out all sessions.')
+    }
+    setAccountActionLoading(false)
+  }
+
+  async function handleExportAccountData() {
+    if (!authToken) return
+    setAccountActionLoading(true)
+    setAccountActionStatus('')
+    try {
+      const response = await authFetch('/api/me/export', authToken)
+      const data = await response.json() as { ok: boolean; error?: string; export?: unknown }
+      if (!data.ok || !data.export) {
+        setAccountActionStatus(data.error ?? 'Account export failed.')
+        setAccountActionLoading(false)
+        return
+      }
+      const blob = new Blob([JSON.stringify(data.export, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `fractured-arcanum-account-${serverProfile?.username ?? 'export'}.json`
+      link.click()
+      URL.revokeObjectURL(url)
+      setAccountActionStatus('Account export downloaded.')
+    } catch {
+      setAccountActionStatus('Account export failed.')
+    }
+    setAccountActionLoading(false)
+  }
+
+  async function handleDeleteAccount(password: string) {
+    if (!authToken) return
+    const ok = await askConfirm({
+      title: 'Delete account?',
+      body: 'This disables login, removes passkeys, cancels pending trades, and signs out all sessions.',
+      confirmLabel: 'Delete Account',
+      danger: true,
+    })
+    if (!ok) return
+    if (!await ensureRecentPasskeyAuth()) return
+
+    setAccountActionLoading(true)
+    setAccountActionStatus('')
+    try {
+      const response = await authFetch('/api/me/delete', authToken, {
+        method: 'POST',
+        body: { password },
+      })
+      const data = await response.json() as { ok: boolean; error?: string }
+      if (!data.ok) {
+        setAccountActionStatus(data.error ?? 'Account could not be deleted.')
+        setAccountActionLoading(false)
+        return
+      }
+      handleLogout()
+    } catch {
+      setAccountActionStatus('Account could not be deleted.')
+    }
+    setAccountActionLoading(false)
+  }
+
+  async function handleRegisterPasskey() {
+    if (!authToken) return
+    setPasskeyStatus('')
+    if (!passkeySupported) {
+      setPasskeyStatus('This browser does not support passkeys.')
+      return
+    }
+    const passkeyOriginMessage = getPasskeyOriginRequirementMessage()
+    if (passkeyOriginMessage) {
+      setPasskeyStatus(passkeyOriginMessage)
+      return
+    }
+
+    setPasskeyLoading(true)
+    try {
+      const optionsResponse = await authFetch('/api/auth/passkey/register/options', authToken, { method: 'POST' })
+      const optionsData = await optionsResponse.json() as {
+        ok: boolean; error?: string; options?: RegistrationOptionsJSON; challengeId?: string
+      }
+      if (!optionsData.ok || !optionsData.options || !optionsData.challengeId) {
+        setPasskeyStatus(optionsData.error ?? 'Passkey registration could not be started.')
+        setPasskeyLoading(false)
+        return
+      }
+
+      setPasskeyStatus(PASSKEY_PROMPT_STATUS)
+      const credential = await withPasskeyCeremonyTimeout(
+        startRegistration({ optionsJSON: optionsData.options }),
+        'Passkey prompt timed out. Try again and watch for the browser or system passkey window.',
+      )
+      const verifyResponse = await authFetch('/api/auth/passkey/register/verify', authToken, {
+        method: 'POST',
+        body: {
+          challengeId: optionsData.challengeId,
+          response: credential,
+          name: `Passkey ${passkeys.length + 1}`,
+        },
+      })
+      const data = await verifyResponse.json() as {
+        ok: boolean; error?: string; passkeys?: PasskeySummary[]; profile?: ServerProfile
+      }
+      if (!data.ok) {
+        setPasskeyStatus(data.error ?? 'Passkey registration could not be verified.')
+        setPasskeyLoading(false)
+        return
+      }
+
+      setPasskeys(data.passkeys ?? [])
+      if (data.profile) setServerProfile(data.profile)
+      setPasskeyStatus('Passkey added.')
+      setToastMessage('Passkey added.')
+    } catch (error) {
+      setPasskeyStatus(formatPasskeyCeremonyError(error, 'Passkey registration failed.'))
+    }
+
+    setPasskeyLoading(false)
+  }
+
+  async function handleDeletePasskey(passkeyId: string) {
+    if (!authToken) return
+    if (!await ensureRecentPasskeyAuth()) return
+    setPasskeyLoading(true)
+    setPasskeyStatus('')
+    try {
+      const response = await authFetch(`/api/me/passkeys/${encodeURIComponent(passkeyId)}`, authToken, { method: 'DELETE' })
+      const data = await response.json() as { ok: boolean; error?: string; passkeys?: PasskeySummary[] }
+      if (!data.ok) {
+        setPasskeyStatus(data.error ?? 'Passkey could not be removed.')
+        setPasskeyLoading(false)
+        return
+      }
+      setPasskeys(data.passkeys ?? [])
+      setPasskeyStatus('Passkey removed.')
+    } catch {
+      setPasskeyStatus('Network error. Please try again.')
+    }
+
+    setPasskeyLoading(false)
+  }
+
+  async function handleCompleteAccountUpgrade(event: FormEvent) {
+    event.preventDefault()
+    if (!authToken) return
+    setAccountUpgradeError('')
+    setAccountUpgradeStatus('')
+    setAccountUpgradeLoading(true)
+
+    try {
+      const response = await authFetch('/api/me/account-upgrade/complete', authToken, {
+        method: 'POST',
+        body: {
+          acceptTerms: accountUpgradeForm.acceptTerms,
+          acceptPrivacy: accountUpgradeForm.acceptPrivacy,
+          ageAttestation: accountUpgradeForm.ageAttestation,
+          locale: navigator.language,
+        },
+      })
+      const data = await response.json() as { ok: boolean; error?: string; profile?: ServerProfile; recoveryCodes?: string[]; recovery?: AccountRecoveryStatus }
+      if (!data.ok) {
+        setAccountUpgradeError(data.error ?? 'Account setup could not be completed.')
+        setAccountUpgradeLoading(false)
+        return
+      }
+
+      setServerProfile(data.profile ?? serverProfile)
+      if (data.recovery) setRecoveryStatus(data.recovery)
+      if (data.recoveryCodes?.length) setPendingRecoveryCodes(data.recoveryCodes)
+      setAccountUpgradeStatus('Account setup complete.')
+      setToastMessage('Account setup complete.')
+    } catch {
+      setAccountUpgradeError('Network error. Please try again.')
+    }
+
+    setAccountUpgradeLoading(false)
   }
 
   function handleLogout() {
@@ -726,6 +1418,15 @@ function AppShell() {
     setAuthToken('')
     setServerProfile(null)
     setLoggedIn(false)
+    setAccountUpgradeStatus('')
+    setAccountUpgradeError('')
+    setPasskeys([])
+    setPasskeyStatus('')
+    setAccountSessions([])
+    setRecoveryStatus(null)
+    setPendingRecoveryCodes([])
+    setRecoverySupportDetails('')
+    setAccountActionStatus('')
     setToastMessage('Logged out.')
   }
 
@@ -2377,15 +3078,21 @@ function AppShell() {
       return
     }
 
+    const responseNote = await askTextPrompt({
+      title: status === 'resolved' ? 'Resolve Ticket' : 'Respond To Ticket',
+      label: 'Response note',
+      placeholder: status === 'resolved' ? 'Resolution details' : 'Request details or recovery guidance',
+      confirmLabel: status === 'resolved' ? 'Resolve' : 'Send Response',
+      maxLength: 320,
+    })
+    if (!responseNote) return
+
     try {
       const response = await authFetch(`/api/admin/complaints/${id}`, authToken, {
         method: 'POST',
         body: {
           status,
-          note:
-            status === 'resolved'
-              ? 'Marked resolved from the in-app admin console.'
-              : 'Marked investigating from the in-app admin console.',
+          note: responseNote,
         },
       })
 
@@ -3114,15 +3821,21 @@ function AppShell() {
   const appCtx: AppShellContextValue = {
     // Auth / setup
     authToken, setAuthToken, authScreen, setAuthScreen, authForm, setAuthForm,
-    authError, authLoading, loggedIn,
+    authError, authLoading,
+    loggedIn,
     setupRequired, setupForm, setSetupForm, setupError, setupLoading,
-    handleSetup, handleAuth, handleLogout,
+    handleSetup, handleAuth, handlePasskeyLogin, handleLogout,
     // Profile (derived; raw state lives in AppShell)
     serverProfile, setServerProfile, shards, seasonRating, record,
     ownedThemes, selectedTheme, ownedCardBorders, selectedCardBorder,
     lastDailyClaim, accountRole, isAdminRole, isOwnerRole,
     rankLabel, totalGames, winRate, rankProgress, nextRankTarget, nextRewardLabel,
     todayKey, canClaimDailyReward, justClaimedDaily, totalOwnedCards,
+    passkeys, passkeySupported, passkeyLoading, passkeyStatus,
+    accountSessions, accountActionStatus, accountActionLoading, recoveryStatus,
+    refreshPasskeys, refreshAccountSessions, refreshRecoveryStatus, handleGenerateRecoveryCodes,
+    handleRegisterPasskey, handleDeletePasskey,
+    handleLogoutAllSessions, handleExportAccountData, handleDeleteAccount,
     // Deck / collection handlers + derived (state lives in ProfileProvider)
     selectedDeckSize, deckReady, savedDecks, activeDeckId,
     handleCreateDeck, handleRenameDeck, handleDeleteDeck, handleSelectDeck,
@@ -3260,6 +3973,95 @@ function AppShell() {
         </div>
       )}
 
+      {loggedIn && pendingRecoveryCodes.length > 0 && (
+        <div className="auth-gate">
+          <div className="auth-card account-upgrade-card">
+            <img className="auth-app-icon" src="/fractured-arcanum-icon-512.svg" alt="Fractured Arcanum app icon" />
+            <h1>Save Recovery Codes</h1>
+            <p className="auth-tagline">These one-time codes are mandatory for passkey-only account recovery.</p>
+            <ul className="account-requirements-list recovery-code-list">
+              {pendingRecoveryCodes.map((code) => (
+                <li key={code}><strong>{code}</strong><span>Store privately. Each code works once.</span></li>
+              ))}
+            </ul>
+            {accountActionStatus && <p className="auth-note">{accountActionStatus}</p>}
+            <div className="controls auth-recovery-actions">
+              <button className="ghost" type="button" onClick={() => void copyRecoveryCodes()}>Copy Codes</button>
+              <button className="ghost" type="button" onClick={downloadRecoveryCodes}>Download</button>
+              <button className="primary" type="button" disabled={accountActionLoading} onClick={() => void handleAcknowledgeRecoveryCodes()}>
+                I Saved These Codes
+              </button>
+            </div>
+            <p className="auth-note">Lost-access recovery with one of these codes will revoke old passkeys and sessions by default.</p>
+          </div>
+        </div>
+      )}
+
+      {loggedIn && pendingRecoveryCodes.length === 0 && accountSetupRequired && accountRequirements.length > 0 && (
+        <div className="auth-gate">
+          <div className="auth-card account-upgrade-card">
+            <img className="auth-app-icon" src="/fractured-arcanum-icon-512.svg" alt="Fractured Arcanum app icon" />
+            <h1>Account Setup</h1>
+            <p className="auth-tagline">Finish the new account standards before entering the arena</p>
+            <ul className="account-requirements-list">
+              {accountRequirements.map((item) => (
+                <li key={item.id}>
+                  <strong>{item.label}</strong>
+                  <span>{item.description}</span>
+                </li>
+              ))}
+            </ul>
+            {accountReadiness && accountRequirements.some((item) => item.id === 'passkey' || item.id === 'owner_second_passkey') && (
+              <button className="ghost" type="button" disabled={passkeyLoading || !passkeySupported} onClick={() => void handleRegisterPasskey()}>
+                {passkeyLoading ? 'Creating Passkey...' : accountReadiness.passkeyCount > 0 ? 'Add Owner Passkey' : 'Create Passkey'}
+              </button>
+            )}
+            {accountRequirements.some((item) => item.id === 'recovery_codes' || item.id === 'recovery_codes_saved') && (
+              <button className="ghost" type="button" disabled={accountActionLoading || !passkeySupported} onClick={() => void handleGenerateRecoveryCodes()}>
+                {accountActionLoading ? 'Working...' : 'Generate Recovery Codes'}
+              </button>
+            )}
+            {passkeyStatus && <p className="auth-note">{passkeyStatus}</p>}
+            <form className="auth-form" onSubmit={handleCompleteAccountUpgrade}>
+              <label>
+                Age Eligibility
+                <select
+                  required
+                  value={accountUpgradeForm.ageAttestation}
+                  onChange={(event) => setAccountUpgradeForm((current) => ({ ...current, ageAttestation: event.target.value }))}
+                >
+                  <option value="">Choose one</option>
+                  <option value="adult">I meet the age requirement</option>
+                  <option value="guardian">I have guardian consent</option>
+                </select>
+              </label>
+              <label className="legal-check">
+                <input
+                  type="checkbox"
+                  checked={accountUpgradeForm.acceptTerms}
+                  onChange={(event) => setAccountUpgradeForm((current) => ({ ...current, acceptTerms: event.target.checked }))}
+                />
+                <span>I accept the current Terms of Service</span>
+              </label>
+              <label className="legal-check">
+                <input
+                  type="checkbox"
+                  checked={accountUpgradeForm.acceptPrivacy}
+                  onChange={(event) => setAccountUpgradeForm((current) => ({ ...current, acceptPrivacy: event.target.checked }))}
+                />
+                <span>I acknowledge the current Privacy Policy</span>
+              </label>
+              {accountUpgradeStatus && <p className="auth-note">{accountUpgradeStatus}</p>}
+              {accountUpgradeError && <p className="auth-error">{accountUpgradeError}</p>}
+              <button className="primary" type="submit" disabled={accountUpgradeLoading}>
+                {accountUpgradeLoading ? 'Saving...' : 'Complete Account Setup'}
+              </button>
+              <button className="link" type="button" onClick={handleLogout}>Log out instead</button>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* ─── Auth gate ─────────────────────────────────────────────── */}
       {!setupRequired && !loggedIn && (
         <div className="auth-gate">
@@ -3272,7 +4074,7 @@ function AppShell() {
                 Username
                 <input
                   type="text"
-                  placeholder="3–20 chars, letters/numbers/_"
+                  placeholder="3-20 chars, letters/numbers/_"
                   maxLength={20}
                   autoComplete="username"
                   required
@@ -3280,40 +4082,148 @@ function AppShell() {
                   onChange={(event) => setAuthForm((f) => ({ ...f, username: event.target.value }))}
                 />
               </label>
-              <label>
-                Password
-                <input
-                  type="password"
-                  placeholder="8+ characters"
-                  minLength={8}
-                  autoComplete={authScreen === 'signup' ? 'new-password' : 'current-password'}
-                  required
-                  value={authForm.password}
-                  onChange={(event) => setAuthForm((f) => ({ ...f, password: event.target.value }))}
-                />
-              </label>
+              {authScreen === 'legacy' ? (
+                <label>
+                  Legacy Password
+                  <input
+                    type="password"
+                    placeholder="Legacy password"
+                    minLength={8}
+                    autoComplete="current-password"
+                    required
+                    value={authForm.password}
+                    onChange={(event) => setAuthForm((f) => ({ ...f, password: event.target.value }))}
+                  />
+                </label>
+              ) : authScreen === 'recover' ? (
+                <>
+                  <label>
+                    Recovery Code
+                    <input
+                      type="text"
+                      placeholder="FA-XXXX-XXXX-XXXX"
+                      autoComplete="one-time-code"
+                      required
+                      value={authForm.recoveryCode}
+                      onChange={(event) => setAuthForm((f) => ({ ...f, recoveryCode: event.target.value }))}
+                    />
+                  </label>
+                  <p className="auth-note">Recovery replaces old passkeys and signs out old sessions. If you did not save codes, submit an account recovery support ticket with your username and details only you would know.</p>
+                  <label>
+                    Support Details
+                    <textarea
+                      className="text-input text-area"
+                      rows={3}
+                      placeholder="Use this only if you have no recovery code. Include account details for admin review."
+                      value={recoverySupportDetails}
+                      onChange={(event) => setRecoverySupportDetails(event.target.value)}
+                    />
+                  </label>
+                  <button className="ghost" type="button" disabled={authLoading} onClick={() => void handleSubmitRecoverySupport()}>
+                    Send Recovery Support Ticket
+                  </button>
+                </>
+              ) : authScreen === 'signup' ? (
+                <>
+                  <label className="legal-check">
+                    <input
+                      type="checkbox"
+                      required
+                      checked={accountUpgradeForm.acceptTerms && accountUpgradeForm.acceptPrivacy && Boolean(accountUpgradeForm.ageAttestation)}
+                      onChange={(event) => setAccountUpgradeForm((current) => ({
+                        ...current,
+                        acceptTerms: event.target.checked,
+                        acceptPrivacy: event.target.checked,
+                        ageAttestation: event.target.checked ? 'adult' : '',
+                      }))}
+                    />
+                    <span>I accept the Terms of Service and Privacy Policy and confirm I meet the age requirement or have guardian consent.</span>
+                  </label>
+                </>
+              ) : null}
+              {authStatus && <p className="auth-note">{authStatus}</p>}
               {authError && <p className="auth-error">{authError}</p>}
-              <button className="primary" type="submit" disabled={authLoading}>
-                {authLoading ? 'Please wait…' : authScreen === 'signup' ? 'Create Account' : 'Log In'}
-              </button>
+              {authScreen === 'login' && (
+                <button className="primary" type="button" disabled={authLoading || !passkeySupported} onClick={() => void handlePasskeyLogin()}>
+                  Sign In With Passkey
+                </button>
+              )}
+              {authScreen !== 'login' && (
+                <button className="primary" type="submit" disabled={authLoading || ((authScreen === 'signup' || authScreen === 'recover') && !passkeySupported)}>
+                  {authLoading ? 'Please wait...' : authScreen === 'signup' ? 'Create Passkey Account' : authScreen === 'recover' ? 'Recover With Code' : 'Upgrade Existing Password Account'}
+                </button>
+              )}
             </form>
-            <p className="auth-switch">
+            <div className="auth-switch">
               {authScreen === 'login' ? (
                 <>
-                  New here?{' '}
-                  <button className="link" onClick={() => { setAuthScreen('signup'); setAuthError('') }}>
-                    Create account
-                  </button>
+                  <span className="auth-switch-line">
+                    <span>New here?</span>
+                    <button className="link" onClick={() => { setAuthScreen('signup'); setAuthError('') }}>
+                      Create account
+                    </button>
+                  </span>
+                  <span className="auth-switch-line">
+                    <span>Lost access?</span>
+                    <button className="link" onClick={() => { setAuthScreen('recover'); setAuthError('') }}>
+                      Recover account
+                    </button>
+                  </span>
+                  <span className="auth-switch-line">
+                    <span>Legacy account?</span>
+                    <button className="link" onClick={() => { setAuthScreen('legacy'); setAuthError('') }}>
+                      Upgrade account
+                    </button>
+                  </span>
+                </>
+              ) : authScreen === 'legacy' ? (
+                <>
+                  <span className="auth-switch-line">
+                    <span>Use passkey?</span>
+                    <button className="link" onClick={() => { setAuthScreen('login'); setAuthError('') }}>
+                      Log in
+                    </button>
+                  </span>
+                  <span className="auth-switch-line">
+                    <span>New here?</span>
+                    <button className="link" onClick={() => { setAuthScreen('signup'); setAuthError('') }}>
+                      Create account
+                    </button>
+                  </span>
+                  <span className="auth-switch-line">
+                    <span>Lost access?</span>
+                    <button className="link" onClick={() => { setAuthScreen('recover'); setAuthError('') }}>
+                      Recover account
+                    </button>
+                  </span>
                 </>
               ) : (
                 <>
-                  Already have an account?{' '}
-                  <button className="link" onClick={() => { setAuthScreen('login'); setAuthError('') }}>
-                    Log in
-                  </button>
+                  <span className="auth-switch-line">
+                    <span>Already have an account?</span>
+                    <button className="link" onClick={() => { setAuthScreen('login'); setAuthError('') }}>
+                      Log in
+                    </button>
+                  </span>
+                  {authScreen === 'signup' && (
+                    <span className="auth-switch-line">
+                      <span>Lost access?</span>
+                      <button className="link" onClick={() => { setAuthScreen('recover'); setAuthError('') }}>
+                        Recover account
+                      </button>
+                    </span>
+                  )}
+                  {authScreen === 'recover' && (
+                    <span className="auth-switch-line">
+                      <span>New here?</span>
+                      <button className="link" onClick={() => { setAuthScreen('signup'); setAuthError('') }}>
+                        Create account
+                      </button>
+                    </span>
+                  )}
                 </>
               )}
-            </p>
+            </div>
           </div>
         </div>
       )}

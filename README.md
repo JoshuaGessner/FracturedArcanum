@@ -12,8 +12,8 @@ A mobile-first cosmic-horror card battler built with React, TypeScript, and Vite
 - **AI skirmish** mode for offline practice
 - **Reconnect system** — 60-second grace period if you disconnect during a ranked match
 - **PWA** — installable on mobile devices from the login screen
-- **Economy** — earn Shards from wins and daily quests to buy card packs
-- **Account system** — scrypt password hashing, 7-day sessions
+- **Economy** — earn Shards from wins and daily quests to open card packs
+- **Account system** — passkeys, readiness gates, hashed 7-day sessions, export, and soft deletion
 
 ## Prerequisites
 
@@ -39,6 +39,7 @@ npm run dev:full
 ```
 
 This starts:
+
 - **Vite dev server** on `http://localhost:5173` (frontend with hot reload)
 - **Express/Socket.IO server** on `http://localhost:43173` (API + WebSocket backend)
 
@@ -137,7 +138,9 @@ npm run update:server
 ```
 
 What it does:
+
 - creates a timestamped hard backup before making changes
+- pauses the managed service during the data backup by default so SQLite is not copied mid-write
 - captures a full repository snapshot for rollback
 - preserves Docker volume data and local `data/` contents
 - preserves your `.env` file
@@ -158,6 +161,9 @@ bash scripts/update.sh --force
 # Skip the git pull if you've already updated the checkout manually
 bash scripts/update.sh --skip-pull
 
+# Keep the app online while backing up data, only if you accept live SQLite backup risk
+bash scripts/update.sh --no-quiesce-backup
+
 # Force node-only mode on a non-Docker VPS
 bash scripts/update.sh --mode node
 
@@ -165,7 +171,7 @@ bash scripts/update.sh --mode node
 bash scripts/update.sh --mode docker
 ```
 
-Backups are written to `backups/update-YYYYMMDD-HHMMSS/` and now include a full repository snapshot, data backup, Docker-volume backup when applicable, and a restore note.
+Backups are written to `backups/update-YYYYMMDD-HHMMSS/` and now include a full repository snapshot, data backup, Docker-volume backup when applicable, metadata showing whether the service was quiesced, and a restore note.
 
 To restore the latest backup:
 
@@ -182,11 +188,32 @@ npm run restore:server:list
 ### Environment Variables
 
 | Variable | Default | Description |
-|---|---|---|
+| --- | --- | --- |
 | `PORT` | `43173` | Server listen port |
 | `CLIENT_ORIGIN` | `*` (dev) / none (prod) | Comma-separated allowed CORS origins for production (e.g. `https://yourdomain.com`) |
 | `VITE_ARENA_URL` | (same origin) | Override the backend URL if frontend and backend are hosted separately |
+| `WEBAUTHN_RP_NAME` | `Fractured Arcanum` | Passkey relying party display name |
+| `WEBAUTHN_RP_ID` | derived from origin | Production passkey domain, usually your apex or app domain without protocol |
+| `WEBAUTHN_ORIGIN` | `PUBLIC_APP_URL` / `CLIENT_ORIGIN` | Exact HTTPS origin allowed for passkey ceremonies |
 | `ADMIN_KEY` | auto-generated | **Recovery-only** key for the owner-recovery endpoint. Not used for day-to-day admin access. See [Admin roles](#admin-roles). |
+
+### Production Passkey Account Setup
+
+Before opening the server to real users, configure account-related environment variables for the Farcanum production host:
+
+```bash
+NODE_ENV=production
+CLIENT_ORIGIN=https://farcanum.anomalousinteractive.com
+WEBAUTHN_RP_ID=farcanum.anomalousinteractive.com
+WEBAUTHN_ORIGIN=https://farcanum.anomalousinteractive.com
+WEBAUTHN_RP_NAME="Fractured Arcanum"
+```
+
+Farcanum's public marketing URL is `https://farcanum.com`, but the app runs at `https://farcanum.anomalousinteractive.com`. Configure `farcanum.com` as a normal redirect to the app subdomain. Do not use masked forwarding or iframe forwarding.
+
+The current production account plan has no real-money purchases, checkout flow, subscriptions, or payment provider setup. Legal copy should stay aligned with that no-purchase product model.
+
+Passkeys require HTTPS in production and are bound to the app origin, so `WEBAUTHN_RP_ID` and `WEBAUTHN_ORIGIN` intentionally use `farcanum.anomalousinteractive.com`. The passkey-only account plan does not require email provider configuration.
 
 ### Admin roles
 
@@ -213,7 +240,7 @@ does **not** grant access to the rest of the admin console.
 
 If you're hosting behind a domain with [Caddy](https://caddyserver.com/), you get automatic HTTPS. Create a `Caddyfile`:
 
-```
+```caddyfile
 yourdomain.com {
     reverse_proxy localhost:43173
 }
@@ -270,7 +297,7 @@ server {
 ## Card Rarities
 
 | Rarity | Cards | Deck Limit |
-|---|---|---|
+| --- | --- | --- |
 | ● Common | 28 | 2 copies |
 | ◆ Rare | 22 | 2 copies |
 | ◈ Epic | 14 | 2 copies |
@@ -279,7 +306,7 @@ server {
 ## Card Packs
 
 | Pack | Cost | Contents |
-|---|---|---|
+| --- | --- | --- |
 | Basic | 50 shards | 3 Common + 1 Rare (each slot can upgrade) |
 | Premium | 150 shards | 3 Common + 1 Rare + 1 Epic guaranteed |
 | Legendary | 400 shards | 1 Common + 2 Rare + 1 Epic + 1 Legendary guaranteed |
@@ -287,7 +314,7 @@ server {
 ## Commands Reference
 
 | Command | Purpose |
-|---|---|
+| --- | --- |
 | `npm run dev` | Vite dev server (frontend only, port 5173) |
 | `npm run server` | Build engine + start backend (port 43173) |
 | `npm run dev:full` | Full dev stack (frontend + backend concurrently) |
@@ -301,7 +328,7 @@ server {
 
 ## Project Structure
 
-```
+```text
 src/
   App.tsx            React SPA (all screens, game UI, deck builder, shop)
   App.css            Styles with rarity theming and responsive design

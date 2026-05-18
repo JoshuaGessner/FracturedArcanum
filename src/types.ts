@@ -2,9 +2,9 @@ import type { AIDifficulty, GameState, DeckConfig } from './game'
 
 export type QueueState = 'idle' | 'searching' | 'found'
 export type AppScreen = 'home' | 'play' | 'collection' | 'battle' | 'social' | 'shop' | 'settings'
-export type SettingsSubview = 'preferences' | 'support' | 'admin'
+export type SettingsSubview = 'preferences' | 'account' | 'support' | 'admin'
 export type CosmeticTheme = 'royal' | 'ember' | 'moon'
-export type AuthScreen = 'login' | 'signup'
+export type AuthScreen = 'login' | 'signup' | 'recover' | 'legacy'
 export type CardBorder = 'default' | 'bronze' | 'frost' | 'solar' | 'void'
 export type BattleKind = 'ai' | 'local' | 'ranked' | 'friend'
 export type ToastSeverity = 'info' | 'success' | 'warning' | 'error'
@@ -187,6 +187,67 @@ export type ServerProfile = {
   selectedCardBorder?: CardBorder
   lastDaily: string
   totalEarned: number
+  accountSetupRequired?: boolean
+  accountReadiness?: AccountReadiness | null
+}
+
+export type AccountRequirement = {
+  id: string
+  label: string
+  description: string
+  blocking: boolean
+}
+
+export type AccountReadiness = {
+  ready: boolean
+  setupRequired: boolean
+  accountStatus: string
+  accountStandardVersion: number
+  passkeyCount: number
+  legacyMigration?: {
+    startedAt: string | null
+    deadlineAt: string | null
+    completedAt: string | null
+    windowDays: number
+  }
+  recovery?: AccountRecoveryStatus
+  requirements: AccountRequirement[]
+  legal: {
+    accountStandardVersion: number
+    termsVersion: string
+    privacyVersion: string
+    ageGateVersion: string
+  }
+}
+
+export type AccountRecoveryStatus = {
+  activeCount: number
+  acknowledgedAt: string | null
+  generatedAt: string | null
+  requiredCount: number
+}
+
+export type PasskeySummary = {
+  id: string
+  credentialId: string
+  transports: string[]
+  backedUp: boolean
+  deviceType: string
+  name: string
+  createdAt: string
+  lastUsedAt: string | null
+}
+
+export type AccountSessionSummary = {
+  id: string
+  createdAt: string
+  expiresAt: string
+  ipHash: string | null
+  userAgentHash: string | null
+  lastSeenAt: string | null
+  revokedAt: string | null
+  authMethod: string | null
+  lastPasskeyReauthAt?: string | null
 }
 
 export type SavedDeck = {

@@ -15,6 +15,9 @@ import {
   createSession,
   validateSession,
   destroySession,
+  revokeAllSessions,
+  markSessionPasskeyReauthenticated,
+  sessionHasRecentPasskeyReauth,
   hashIp,
   hashFingerprint,
   checkRateLimit,
@@ -64,8 +67,30 @@ import {
   listAudit,
   recordAudit,
   getAccountById,
-  verifyPassword,
+  getCurrentLegalVersions,
+  getAccountReadiness,
+  completeAccountUpgrade,
+  generateAccountRecoveryCodes,
+  acknowledgeAccountRecoveryCodes,
+  listAccountRecoveryStatus,
+  expireLegacyMigrationAccounts,
+  markAccountPendingPasskeySignup,
+  listAccountSessions,
+  listAccountPasskeys,
+  deleteAccountPasskey,
+  exportAccountData,
+  deleteAccount,
 } from './db.js'
+import {
+  createPasskeyLoginOptions,
+  createPasskeyReauthOptions,
+  createPasskeyRecoveryOptions,
+  createPasskeyRegistrationOptions,
+  verifyPasskeyLogin,
+  verifyPasskeyReauth,
+  verifyPasskeyRecovery,
+  verifyPasskeyRegistration,
+} from './passkey-service.js'
 import {
   createRoom,
   getRoom,
@@ -83,6 +108,7 @@ const ADMIN_STORE_PATH = path.join(DATA_DIR, 'arena-admin-store.json')
 const SERVER_CONFIG_PATH = path.join(DATA_DIR, 'server-config.json')
 const CLIENT_ORIGINS = process.env.CLIENT_ORIGIN?.split(',').map((value) => value.trim()).filter(Boolean) ?? []
 const VIEWPORT_QA = process.env.VIEWPORT_QA === '1'
+const LOCAL_AUTH_QA_BYPASS = process.env.LOCAL_AUTH_QA_BYPASS === '1'
 
 const DEFAULT_PORT = 43173
 const PORT = Number(process.env.PORT ?? DEFAULT_PORT)
@@ -95,6 +121,10 @@ function isLocalRequest(request) {
 
 function skipViewportQaRateLimit(request) {
   return VIEWPORT_QA && isLocalRequest(request)
+}
+
+function allowLocalSignupClusterBypass(request) {
+  return isLocalRequest(request) && (VIEWPORT_QA || LOCAL_AUTH_QA_BYPASS)
 }
 
 // ─── Server config: auto-generate admin key on first launch ──────────────
@@ -187,6 +217,10 @@ io.use((socket, next) => {
   const session = validateSession(token)
   if (!session) {
     return next(new Error('Session expired. Please log in again.'))
+  }
+  const readiness = getAccountReadiness(session.account_id)
+  if (readiness.setupRequired) {
+    return next(new Error('Complete account setup before connecting to live services.'))
   }
   socket.data.accountId = session.account_id
   socket.data.username = session.username
@@ -286,6 +320,15 @@ function reapChallenges() {
   }
 }
 setInterval(reapChallenges, 10 * 1000).unref?.()
+
+function runLegacyMigrationExpiration() {
+  try {
+    expireLegacyMigrationAccounts({ metadata: { source: 'server_interval' } })
+  } catch (error) {
+    console.warn('Legacy migration expiration failed:', error)
+  }
+}
+setInterval(runLegacyMigrationExpiration, 60 * 60 * 1000).unref?.()
 
 function createDefaultAdminStore() {
   return {
@@ -747,9 +790,20 @@ function requireRoleMiddleware(minRole) {
       response.status(403).json({ ok: false, error: 'Insufficient privileges.' })
       return
     }
+    const readiness = getAccountReadiness(session.account_id)
+    if (readiness.setupRequired) {
+      response.status(403).json({ ok: false, error: 'Complete account setup before using admin tools.', accountSetupRequired: true, accountReadiness: readiness })
+      return
+    }
+    if (listAccountPasskeys(session.account_id).length < 1) {
+      response.status(403).json({ ok: false, error: 'Admin accounts must register at least one passkey before using admin tools.' })
+      return
+    }
     request.accountId = session.account_id
     request.displayName = session.display_name
     request.username = session.username
+    request.authToken = token
+    request.session = session
     request.role = role
     next()
   }
@@ -829,6 +883,19 @@ function requireAuth(request, response, next) {
   request.accountId = session.account_id
   request.displayName = session.display_name
   request.username = session.username
+  request.authMethod = session.auth_method
+  request.authToken = token
+  request.session = session
+  next()
+}
+
+const RECENT_PASSKEY_REAUTH_MS = 10 * 60 * 1000
+
+function requireRecentPasskeyAuth(request, response, next) {
+  if (!sessionHasRecentPasskeyReauth(request.session, RECENT_PASSKEY_REAUTH_MS)) {
+    response.status(403).json({ ok: false, error: 'Confirm your passkey before continuing.', passkeyReauthRequired: true })
+    return
+  }
   next()
 }
 
@@ -841,21 +908,85 @@ function clientUserAgent(request) {
   return String(request.get('user-agent') ?? '').slice(0, 512)
 }
 
+function accountRequirementsPayload(accountId) {
+  const readiness = getAccountReadiness(accountId)
+  return {
+    accountSetupRequired: readiness.setupRequired,
+    accountReadiness: readiness,
+  }
+}
+
+function validateLegalSetupPayload(body = {}) {
+  const ageAttestation = String(body.ageAttestation ?? '').trim()
+  if (body.acceptTerms !== true || body.acceptPrivacy !== true) {
+    return { ok: false, error: 'Terms of Service and Privacy Policy acceptance are required.' }
+  }
+  if (!['adult', 'guardian'].includes(ageAttestation)) {
+    return { ok: false, error: 'Confirm age eligibility or guardian consent.' }
+  }
+  return { ok: true }
+}
+
+function requireAccountReady(request, response, next) {
+  const readiness = getAccountReadiness(request.accountId)
+  if (readiness.setupRequired) {
+    response.status(403).json({ ok: false, error: 'Complete account setup before continuing.', accountSetupRequired: true, accountReadiness: readiness })
+    return
+  }
+  next()
+}
+
 // ─── Account endpoints ─────────────────────────────────────────────────────
 
+app.get('/api/legal/current', (_request, response) => {
+  response.json({
+    ok: true,
+    legal: getCurrentLegalVersions(),
+    documents: {
+      terms: {
+        version: getCurrentLegalVersions().termsVersion,
+        title: 'Terms of Service',
+        status: 'draft-pending-counsel-review',
+        path: 'docs/TERMS_OF_SERVICE.md',
+        noRealMoneyPurchases: true,
+      },
+      privacy: {
+        version: getCurrentLegalVersions().privacyVersion,
+        title: 'Privacy Policy',
+        status: 'draft-pending-counsel-review',
+      },
+      ageGate: {
+        version: getCurrentLegalVersions().ageGateVersion,
+        title: 'Age Eligibility',
+        status: 'draft-pending-counsel-review',
+      },
+    },
+  })
+})
+
 app.post('/api/auth/signup', (request, response) => {
+  response.status(410).json({ ok: false, error: 'Password signup is retired. Create a passkey account instead.' })
+})
+
+app.post('/api/auth/passkey/signup/options', async (request, response) => {
   const ip = clientIp(request)
   const userAgent = clientUserAgent(request)
-  const { username, password, displayName, deviceFingerprint } = request.body ?? {}
+  const { username, displayName, deviceFingerprint } = request.body ?? {}
+  const legalValidation = validateLegalSetupPayload(request.body ?? {})
+  if (!legalValidation.ok) {
+    response.status(400).json({ ok: false, error: legalValidation.error })
+    return
+  }
+
   const fingerprintHash = hashFingerprint(String(deviceFingerprint ?? ''))
-  const rl = checkRateLimit(`signup:${hashIp(ip)}`, 5)
+  const rl = checkRateLimit(`passkey-signup:start:${hashIp(ip)}`, 5)
   if (!rl.allowed) {
     response.status(429).json({ ok: false, error: 'Too many signup attempts. Try again later.' })
     return
   }
 
   if (fingerprintHash) {
-    const fingerprintRateLimit = checkRateLimit(`signup-fp:${fingerprintHash}`, 3)
+    const fingerprintRateLimit = checkRateLimit(`passkey-signup-fp:${fingerprintHash}`, 3)
     if (!fingerprintRateLimit.allowed) {
       response.status(429).json({ ok: false, error: 'Too many signup attempts from this device. Try again later.' })
       return
@@ -864,27 +995,95 @@ app.post('/api/auth/signup', (request, response) => {
 
   const result = createAccount(
     String(username ?? ''),
-    String(password ?? ''),
+    randomBytes(32).toString('hex'),
     String(displayName ?? username ?? ''),
     String(deviceFingerprint ?? ''),
     ip,
     userAgent,
+    { bypassSignupClusterLimits: allowLocalSignupClusterBypass(request) },
   )
 
   if (!result.ok) {
     response.status(result.status ?? 400).json({ ok: false, error: result.error })
     return
   }
+  markAccountPendingPasskeySignup(result.accountId)
 
-  const session = createSession(result.accountId, ip)
-  const profile = getProfile(result.accountId)
+  try {
+    const optionsResult = await createPasskeyRegistrationOptions(result.accountId, request)
+    if (!optionsResult.ok) {
+      response.status(optionsResult.status ?? 400).json({ ok: false, error: optionsResult.error })
+      return
+    }
 
-  response.status(201).json({
-    ok: true,
-    token: session.token,
-    expiresAt: session.expiresAt,
-    profile: sanitizeProfile(profile, username, result.accountId),
-  })
+    response.status(201).json({
+      ok: true,
+      pendingAccountId: result.accountId,
+      options: optionsResult.options,
+      challengeId: optionsResult.challengeId,
+      expiresAt: optionsResult.expiresAt,
+    })
+  } catch (error) {
+    console.warn('Passkey signup options failed:', error)
+    response.status(400).json({ ok: false, error: 'Passkey signup could not be started.' })
+  }
+})
+
+app.post('/api/auth/passkey/signup/verify', async (request, response) => {
+  const ip = clientIp(request)
+  const rl = checkRateLimit(`passkey-signup:verify:${hashIp(ip)}`, 10)
+  if (!rl.allowed) {
+    response.status(429).json({ ok: false, error: 'Too many signup attempts. Try again later.' })
+    return
+  }
+
+  const pendingAccountId = String(request.body?.pendingAccountId ?? '')
+  const legalValidation = validateLegalSetupPayload(request.body ?? {})
+  if (!legalValidation.ok) {
+    response.status(400).json({ ok: false, error: legalValidation.error })
+    return
+  }
+
+  try {
+    const passkeyResult = await verifyPasskeyRegistration(pendingAccountId, request.body ?? {}, request)
+    if (!passkeyResult.ok) {
+      response.status(passkeyResult.status ?? 400).json({ ok: false, error: passkeyResult.error })
+      return
+    }
+
+    const setupResult = completeAccountUpgrade(pendingAccountId, {
+      acceptTerms: request.body?.acceptTerms === true,
+      acceptPrivacy: request.body?.acceptPrivacy === true,
+      ageAttestation: request.body?.ageAttestation,
+      locale: request.body?.locale,
+      ip,
+      userAgent: clientUserAgent(request),
+    })
+    if (!setupResult.ok) {
+      response.status(setupResult.status ?? 400).json({ ok: false, error: setupResult.error })
+      return
+    }
+
+    const session = createSession(pendingAccountId, ip, clientUserAgent(request), 'passkey')
+    const recoveryResult = generateAccountRecoveryCodes(pendingAccountId, {
+      ip,
+      userAgent: clientUserAgent(request),
+      metadata: { source: 'passkey_signup' },
+    })
+    const profile = getProfile(pendingAccountId)
+
+    response.status(201).json({
+      ok: true,
+      token: session.token,
+      expiresAt: session.expiresAt,
+      profile: sanitizeProfile(profile, profile?.username, pendingAccountId),
+      recoveryCodes: recoveryResult.ok ? recoveryResult.codes : [],
+      recovery: recoveryResult.ok ? recoveryResult.recovery : listAccountRecoveryStatus(pendingAccountId),
+    })
+  } catch (error) {
+    console.warn('Passkey signup verification failed:', error)
+    response.status(400).json({ ok: false, error: 'Passkey signup could not be verified.' })
+  }
 })
 
 app.post('/api/auth/login', (request, response) => {
@@ -904,7 +1103,13 @@ app.post('/api/auth/login', (request, response) => {
     return
   }
 
-  const session = createSession(result.accountId, ip)
+  const readiness = getAccountReadiness(result.accountId)
+  if (!readiness.setupRequired && readiness.passkeyCount > 0) {
+    response.status(403).json({ ok: false, error: 'This account now uses passkey sign-in. Use your passkey to log in.' })
+    return
+  }
+
+  const session = createSession(result.accountId, ip, clientUserAgent(request), 'password')
   const profile = getProfile(result.accountId)
 
   response.json({
@@ -915,11 +1120,163 @@ app.post('/api/auth/login', (request, response) => {
   })
 })
 
+app.post('/api/auth/passkey/login/options', async (request, response) => {
+  const ip = clientIp(request)
+  const rl = checkRateLimit(`passkey-login:start:${hashIp(ip)}`, 20)
+  if (!rl.allowed) {
+    response.status(429).json({ ok: false, error: 'Too many passkey attempts. Try again later.' })
+    return
+  }
+
+  try {
+    const result = await createPasskeyLoginOptions(String(request.body?.identifier ?? ''), request)
+    if (!result.ok) {
+      response.status(result.status ?? 400).json({ ok: false, error: result.error })
+      return
+    }
+    response.json(result)
+  } catch (error) {
+    console.warn('Passkey login options failed:', error)
+    response.status(400).json({ ok: false, error: 'Passkey login could not be started.' })
+  }
+})
+
+app.post('/api/auth/passkey/login/verify', async (request, response) => {
+  const ip = clientIp(request)
+  const rl = checkRateLimit(`passkey-login:verify:${hashIp(ip)}`, 20)
+  if (!rl.allowed) {
+    response.status(429).json({ ok: false, error: 'Too many passkey attempts. Try again later.' })
+    return
+  }
+
+  try {
+    const result = await verifyPasskeyLogin(request.body ?? {}, request)
+    if (!result.ok) {
+      response.status(result.status ?? 400).json({ ok: false, error: result.error })
+      return
+    }
+
+    const session = createSession(result.accountId, ip, clientUserAgent(request), 'passkey')
+    const profile = getProfile(result.accountId)
+    response.json({
+      ok: true,
+      token: session.token,
+      expiresAt: session.expiresAt,
+      profile: sanitizeProfile(profile, result.username, result.accountId),
+    })
+  } catch (error) {
+    console.warn('Passkey login verification failed:', error)
+    response.status(400).json({ ok: false, error: 'Passkey login could not be verified.' })
+  }
+})
+
+app.post('/api/auth/passkey/reauth/options', requireAuth, async (request, response) => {
+  const rl = checkRateLimit(`passkey-reauth:start:${request.accountId}`, 20)
+  if (!rl.allowed) {
+    response.status(429).json({ ok: false, error: 'Too many passkey confirmation attempts. Try again later.' })
+    return
+  }
+
+  try {
+    const result = await createPasskeyReauthOptions(request.accountId, request)
+    if (!result.ok) {
+      response.status(result.status ?? 400).json({ ok: false, error: result.error })
+      return
+    }
+    response.json(result)
+  } catch (error) {
+    console.warn('Passkey reauth options failed:', error)
+    response.status(400).json({ ok: false, error: 'Passkey confirmation could not be started.' })
+  }
+})
+
+app.post('/api/auth/passkey/reauth/verify', requireAuth, async (request, response) => {
+  const rl = checkRateLimit(`passkey-reauth:verify:${request.accountId}`, 20)
+  if (!rl.allowed) {
+    response.status(429).json({ ok: false, error: 'Too many passkey confirmation attempts. Try again later.' })
+    return
+  }
+
+  try {
+    const result = await verifyPasskeyReauth(request.accountId, request.body ?? {}, request)
+    if (!result.ok) {
+      response.status(result.status ?? 400).json({ ok: false, error: result.error })
+      return
+    }
+    markSessionPasskeyReauthenticated(request.authToken)
+    response.json({ ok: true })
+  } catch (error) {
+    console.warn('Passkey reauth verification failed:', error)
+    response.status(400).json({ ok: false, error: 'Passkey confirmation could not be verified.' })
+  }
+})
+
+app.post('/api/auth/recovery/options', async (request, response) => {
+  const ip = clientIp(request)
+  const rl = checkRateLimit(`account-recovery:start:${hashIp(ip)}`, 8)
+  if (!rl.allowed) {
+    response.status(429).json({ ok: false, error: 'Too many recovery attempts. Try again later.' })
+    return
+  }
+
+  try {
+    const result = await createPasskeyRecoveryOptions(String(request.body?.username ?? ''), String(request.body?.recoveryCode ?? ''), request)
+    if (!result.ok) {
+      response.status(result.status ?? 400).json({ ok: false, error: result.error })
+      return
+    }
+    response.json(result)
+  } catch (error) {
+    console.warn('Account recovery options failed:', error)
+    response.status(400).json({ ok: false, error: 'Account recovery could not be started.' })
+  }
+})
+
+app.post('/api/auth/recovery/verify', async (request, response) => {
+  const ip = clientIp(request)
+  const rl = checkRateLimit(`account-recovery:verify:${hashIp(ip)}`, 8)
+  if (!rl.allowed) {
+    response.status(429).json({ ok: false, error: 'Too many recovery attempts. Try again later.' })
+    return
+  }
+
+  try {
+    const result = await verifyPasskeyRecovery(request.body ?? {}, request)
+    if (!result.ok) {
+      response.status(result.status ?? 400).json({ ok: false, error: result.error })
+      return
+    }
+    const recoveryResult = generateAccountRecoveryCodes(result.accountId, {
+      ip,
+      userAgent: clientUserAgent(request),
+      metadata: { source: 'lost_access_recovery' },
+    })
+    const session = createSession(result.accountId, ip, clientUserAgent(request), 'passkey')
+    const profile = getProfile(result.accountId)
+    response.json({
+      ok: true,
+      token: session.token,
+      expiresAt: session.expiresAt,
+      profile: sanitizeProfile(profile, result.username, result.accountId),
+      recoveryCodes: recoveryResult.ok ? recoveryResult.codes : [],
+      recovery: recoveryResult.ok ? recoveryResult.recovery : listAccountRecoveryStatus(result.accountId),
+    })
+  } catch (error) {
+    console.warn('Account recovery verification failed:', error)
+    response.status(400).json({ ok: false, error: 'Account recovery could not be verified.' })
+  }
+})
+
 app.post('/api/auth/logout', (request, response) => {
   // Idempotent: always succeed so clients can clear local state even if
   // the token is already expired or missing.
   const token = request.get('authorization')?.replace('Bearer ', '')
   if (token) destroySession(token)
+  response.json({ ok: true })
+})
+
+app.post('/api/auth/logout-all', requireAuth, requireRecentPasskeyAuth, (request, response) => {
+  revokeAllSessions(request.accountId)
   response.json({ ok: true })
 })
 
@@ -955,7 +1312,7 @@ app.post(
       return
     }
 
-    const session = createSession(result.accountId, ip)
+    const session = createSession(result.accountId, ip, clientUserAgent(request), 'password')
     const profile = getProfile(result.accountId)
 
     // Mark setup complete and persist
@@ -995,6 +1352,7 @@ function sanitizeProfile(profile, username, accountId, role) {
   if (!profile) return null
   const resolvedAccountId = accountId ?? profile.account_id
   const resolvedRole = role ?? (resolvedAccountId ? getAccountRole(resolvedAccountId) : 'user')
+  const accountRequirements = resolvedAccountId ? accountRequirementsPayload(resolvedAccountId) : null
   return {
     accountId: resolvedAccountId,
     displayName: profile.display_name ?? username ?? '',
@@ -1012,6 +1370,8 @@ function sanitizeProfile(profile, username, accountId, role) {
     selectedCardBorder: profile.selected_card_border,
     lastDaily: profile.last_daily,
     totalEarned: profile.total_earned,
+    accountSetupRequired: accountRequirements?.accountSetupRequired ?? false,
+    accountReadiness: accountRequirements?.accountReadiness ?? null,
   }
 }
 
@@ -1025,7 +1385,183 @@ app.get('/api/me', requireAuth, (request, response) => {
   })
 })
 
-app.post('/api/me/deck', requireAuth, (request, response) => {
+app.get('/api/me/account-requirements', requireAuth, (request, response) => {
+  response.json({
+    ok: true,
+    ...accountRequirementsPayload(request.accountId),
+  })
+})
+
+app.get('/api/me/sessions', requireAuth, (request, response) => {
+  response.json({ ok: true, sessions: listAccountSessions(request.accountId) })
+})
+
+app.get('/api/me/recovery-codes', requireAuth, (request, response) => {
+  response.json({ ok: true, recovery: listAccountRecoveryStatus(request.accountId) })
+})
+
+app.post('/api/me/recovery-codes/generate', requireAuth, requireRecentPasskeyAuth, (request, response) => {
+  const rl = checkRateLimit(`recovery-codes:generate:${request.accountId}`, 5)
+  if (!rl.allowed) {
+    response.status(429).json({ ok: false, error: 'Too many recovery code requests. Try again later.' })
+    return
+  }
+
+  const result = generateAccountRecoveryCodes(request.accountId, {
+    ip: clientIp(request),
+    userAgent: clientUserAgent(request),
+    metadata: { source: 'settings' },
+  })
+  if (!result.ok) {
+    response.status(result.status ?? 400).json({ ok: false, error: result.error })
+    return
+  }
+  const profile = getProfile(request.accountId)
+  response.json({ ok: true, recoveryCodes: result.codes, recovery: result.recovery, profile: sanitizeProfile(profile, request.username, request.accountId) })
+})
+
+app.post('/api/me/recovery-codes/acknowledge', requireAuth, (request, response) => {
+  const result = acknowledgeAccountRecoveryCodes(request.accountId, {
+    ip: clientIp(request),
+    userAgent: clientUserAgent(request),
+    metadata: { source: 'client_acknowledgement' },
+  })
+  if (!result.ok) {
+    response.status(result.status ?? 400).json({ ok: false, error: result.error })
+    return
+  }
+  const profile = getProfile(request.accountId)
+  response.json({ ok: true, recovery: result.recovery, accountReadiness: result.readiness, profile: sanitizeProfile(profile, request.username, request.accountId) })
+})
+
+app.get('/api/me/export', requireAuth, requireAccountReady, (request, response) => {
+  const exported = exportAccountData(request.accountId)
+  if (!exported) {
+    response.status(404).json({ ok: false, error: 'Account not found.' })
+    return
+  }
+  response.json({ ok: true, export: exported })
+})
+
+app.post('/api/me/delete', requireAuth, requireAccountReady, requireRecentPasskeyAuth, (request, response) => {
+  const result = deleteAccount(request.accountId, request.body?.password, {
+    ip: clientIp(request),
+    userAgent: clientUserAgent(request),
+    authMethod: 'passkey',
+  })
+  if (!result.ok) {
+    response.status(result.status ?? 400).json({ ok: false, error: result.error })
+    return
+  }
+  response.json({ ok: true })
+})
+
+app.get('/api/me/passkeys', requireAuth, (request, response) => {
+  response.json({ ok: true, passkeys: listAccountPasskeys(request.accountId) })
+})
+
+app.post('/api/auth/passkey/register/options', requireAuth, async (request, response) => {
+  const rl = checkRateLimit(`passkey-register:start:${request.accountId}`, 10)
+  if (!rl.allowed) {
+    response.status(429).json({ ok: false, error: 'Too many passkey registration attempts. Try again later.' })
+    return
+  }
+
+  try {
+    const result = await createPasskeyRegistrationOptions(request.accountId, request)
+    if (!result.ok) {
+      response.status(result.status ?? 400).json({ ok: false, error: result.error })
+      return
+    }
+    response.json(result)
+  } catch (error) {
+    console.warn('Passkey registration options failed:', error)
+    response.status(400).json({ ok: false, error: 'Passkey registration could not be started.' })
+  }
+})
+
+app.post('/api/auth/passkey/register/verify', requireAuth, async (request, response) => {
+  const rl = checkRateLimit(`passkey-register:verify:${request.accountId}`, 10)
+  if (!rl.allowed) {
+    response.status(429).json({ ok: false, error: 'Too many passkey registration attempts. Try again later.' })
+    return
+  }
+
+  try {
+    const result = await verifyPasskeyRegistration(request.accountId, request.body ?? {}, request)
+    if (!result.ok) {
+      response.status(result.status ?? 400).json({ ok: false, error: result.error })
+      return
+    }
+
+    const profile = getProfile(request.accountId)
+    markSessionPasskeyReauthenticated(request.authToken)
+    response.json({
+      ok: true,
+      passkeys: listAccountPasskeys(request.accountId),
+      profile: sanitizeProfile(profile, request.username, request.accountId),
+    })
+  } catch (error) {
+    console.warn('Passkey registration verification failed:', error)
+    response.status(400).json({ ok: false, error: 'Passkey registration could not be verified.' })
+  }
+})
+
+app.delete('/api/me/passkeys/:id', requireAuth, requireAccountReady, requireRecentPasskeyAuth, (request, response) => {
+  const rl = checkRateLimit(`passkey-delete:${request.accountId}`, 10)
+  if (!rl.allowed) {
+    response.status(429).json({ ok: false, error: 'Too many passkey changes. Try again later.' })
+    return
+  }
+
+  const result = deleteAccountPasskey(request.accountId, String(request.params.id ?? ''))
+  if (!result.ok) {
+    response.status(result.status ?? 400).json({ ok: false, error: result.error })
+    return
+  }
+  response.json({ ok: true, passkeys: listAccountPasskeys(request.accountId) })
+})
+
+app.post('/api/me/account-upgrade/complete', requireAuth, (request, response) => {
+  const rl = checkRateLimit(`account-upgrade:complete:${request.accountId}`, 20)
+  if (!rl.allowed) {
+    response.status(429).json({ ok: false, error: 'Too many account setup attempts. Try again later.' })
+    return
+  }
+
+  const result = completeAccountUpgrade(request.accountId, {
+    acceptTerms: request.body?.acceptTerms === true,
+    acceptPrivacy: request.body?.acceptPrivacy === true,
+    ageAttestation: request.body?.ageAttestation,
+    locale: request.body?.locale,
+    ip: clientIp(request),
+    userAgent: clientUserAgent(request),
+  })
+  if (!result.ok) {
+    response.status(result.status ?? 400).json({ ok: false, error: result.error })
+    return
+  }
+
+  const recoveryStatus = listAccountRecoveryStatus(request.accountId)
+  const recoveryResult = recoveryStatus.activeCount < 1
+    ? generateAccountRecoveryCodes(request.accountId, {
+        ip: clientIp(request),
+        userAgent: clientUserAgent(request),
+        metadata: { source: 'legacy_migration' },
+      })
+    : { ok: true, codes: [], recovery: recoveryStatus }
+
+  const profile = getProfile(request.accountId)
+  response.json({
+    ok: true,
+    accountReadiness: getAccountReadiness(request.accountId),
+    recoveryCodes: recoveryResult.ok ? recoveryResult.codes : [],
+    recovery: recoveryResult.ok ? recoveryResult.recovery : listAccountRecoveryStatus(request.accountId),
+    profile: sanitizeProfile(profile, request.username, request.accountId),
+  })
+})
+
+app.post('/api/me/deck', requireAuth, requireAccountReady, (request, response) => {
   const { deckConfig } = request.body ?? {}
   const validation = validateDeckConfig(deckConfig)
   if (!validation.ok) {
@@ -1042,12 +1578,12 @@ app.post('/api/me/deck', requireAuth, (request, response) => {
 
 // ─── Multi-deck CRUD endpoints ──────────────────────────────────────
 
-app.get('/api/me/decks', requireAuth, (request, response) => {
+app.get('/api/me/decks', requireAuth, requireAccountReady, (request, response) => {
   const decks = listDecks(request.accountId)
   response.json({ ok: true, decks })
 })
 
-app.post('/api/me/decks', requireAuth, (request, response) => {
+app.post('/api/me/decks', requireAuth, requireAccountReady, (request, response) => {
   const { name, deckConfig } = request.body ?? {}
   const result = createDeck(request.accountId, String(name ?? '').slice(0, 50), deckConfig ?? {})
   if (!result.ok) {
@@ -1057,7 +1593,7 @@ app.post('/api/me/decks', requireAuth, (request, response) => {
   response.json(result)
 })
 
-app.patch('/api/me/decks/:deckId', requireAuth, (request, response) => {
+app.patch('/api/me/decks/:deckId', requireAuth, requireAccountReady, (request, response) => {
   const { deckId } = request.params
   const { name, deckConfig } = request.body ?? {}
   const payload = {}
@@ -1071,7 +1607,7 @@ app.patch('/api/me/decks/:deckId', requireAuth, (request, response) => {
   response.json(result)
 })
 
-app.post('/api/me/decks/:deckId/rename', requireAuth, (request, response) => {
+app.post('/api/me/decks/:deckId/rename', requireAuth, requireAccountReady, (request, response) => {
   const { deckId } = request.params
   const { name } = request.body ?? {}
   const result = renameDeck(request.accountId, String(deckId), String(name ?? '').slice(0, 50))
@@ -1082,7 +1618,7 @@ app.post('/api/me/decks/:deckId/rename', requireAuth, (request, response) => {
   response.json(result)
 })
 
-app.delete('/api/me/decks/:deckId', requireAuth, (request, response) => {
+app.delete('/api/me/decks/:deckId', requireAuth, requireAccountReady, (request, response) => {
   const { deckId } = request.params
   const result = deleteDeck(request.accountId, String(deckId))
   if (!result.ok) {
@@ -1092,7 +1628,7 @@ app.delete('/api/me/decks/:deckId', requireAuth, (request, response) => {
   response.json(result)
 })
 
-app.post('/api/me/decks/:deckId/select', requireAuth, (request, response) => {
+app.post('/api/me/decks/:deckId/select', requireAuth, requireAccountReady, (request, response) => {
   const { deckId } = request.params
   const result = selectActiveDeck(request.accountId, String(deckId))
   if (!result.ok) {
@@ -1104,7 +1640,7 @@ app.post('/api/me/decks/:deckId/select', requireAuth, (request, response) => {
 
 // ─── Shard breakdown of excess cards ────────────────────────────────
 
-app.post('/api/cards/breakdown', requireAuth, (request, response) => {
+app.post('/api/cards/breakdown', requireAuth, requireAccountReady, (request, response) => {
   const rl = checkRateLimit(`breakdown:${request.accountId}`, 30)
   if (!rl.allowed) {
     response.status(429).json({ ok: false, error: 'Too many breakdown requests. Slow down.' })
@@ -1121,11 +1657,11 @@ app.post('/api/cards/breakdown', requireAuth, (request, response) => {
 
 // ─── Card border cosmetic endpoints ─────────────────────────────────
 
-app.get('/api/shop/borders', requireAuth, (_request, response) => {
+app.get('/api/shop/borders', requireAuth, requireAccountReady, (_request, response) => {
   response.json({ ok: true, borders: listCardBorders() })
 })
 
-app.post('/api/shop/border', requireAuth, (request, response) => {
+app.post('/api/shop/border', requireAuth, requireAccountReady, (request, response) => {
   const { borderId } = request.body ?? {}
   const result = purchaseCardBorder(request.accountId, String(borderId ?? ''))
   if (!result.ok) {
@@ -1135,7 +1671,7 @@ app.post('/api/shop/border', requireAuth, (request, response) => {
   response.json(result)
 })
 
-app.post('/api/me/border', requireAuth, (request, response) => {
+app.post('/api/me/border', requireAuth, requireAccountReady, (request, response) => {
   const { borderId } = request.body ?? {}
   const result = selectCardBorder(request.accountId, String(borderId ?? ''))
   if (!result.ok) {
@@ -1145,7 +1681,7 @@ app.post('/api/me/border', requireAuth, (request, response) => {
   response.json(result)
 })
 
-app.post('/api/me/theme', requireAuth, (request, response) => {
+app.post('/api/me/theme', requireAuth, requireAccountReady, (request, response) => {
   const { themeId } = request.body ?? {}
   const result = selectTheme(request.accountId, String(themeId ?? ''))
   if (!result.ok) {
@@ -1155,7 +1691,7 @@ app.post('/api/me/theme', requireAuth, (request, response) => {
   response.json(result)
 })
 
-app.post('/api/me/daily', requireAuth, (request, response) => {
+app.post('/api/me/daily', requireAuth, requireAccountReady, (request, response) => {
   const result = claimDailyReward(request.accountId)
   if (!result.ok) {
     response.status(400).json(result)
@@ -1164,7 +1700,7 @@ app.post('/api/me/daily', requireAuth, (request, response) => {
   response.json(result)
 })
 
-app.get('/api/me/quests', requireAuth, (request, response) => {
+app.get('/api/me/quests', requireAuth, requireAccountReady, (request, response) => {
   const result = getQuestOverview(request.accountId)
   if (!result.ok) {
     response.status(400).json(result)
@@ -1173,7 +1709,7 @@ app.get('/api/me/quests', requireAuth, (request, response) => {
   response.json(result)
 })
 
-app.post('/api/me/quests/:questId/claim', requireAuth, (request, response) => {
+app.post('/api/me/quests/:questId/claim', requireAuth, requireAccountReady, (request, response) => {
   const rl = checkRateLimit(`quest:claim:${request.accountId}`, 30)
   if (!rl.allowed) {
     response.status(429).json({ ok: false, error: 'Too many quest claim requests. Slow down.' })
@@ -1187,7 +1723,7 @@ app.post('/api/me/quests/:questId/claim', requireAuth, (request, response) => {
   response.json(result)
 })
 
-app.post('/api/shop/theme', requireAuth, (request, response) => {
+app.post('/api/shop/theme', requireAuth, requireAccountReady, (request, response) => {
   const { themeId } = request.body ?? {}
   const result = purchaseTheme(request.accountId, String(themeId ?? ''))
   if (!result.ok) {
@@ -1197,7 +1733,7 @@ app.post('/api/shop/theme', requireAuth, (request, response) => {
   response.json(result)
 })
 
-app.post('/api/match/complete', requireAuth, (request, response) => {
+app.post('/api/match/complete', requireAuth, requireAccountReady, (request, response) => {
   const rl = checkRateLimit(`match:${request.accountId}`, 20)
   if (!rl.allowed) {
     response.status(429).json({ ok: false, error: 'Too many match reports. Slow down.' })
@@ -1234,7 +1770,7 @@ app.post('/api/match/complete', requireAuth, (request, response) => {
   response.json(outcome)
 })
 
-app.get('/api/me/matches', requireAuth, (request, response) => {
+app.get('/api/me/matches', requireAuth, requireAccountReady, (request, response) => {
   const matches = getRecentMatches(request.accountId)
   response.json({ ok: true, matches })
 })
@@ -1246,7 +1782,7 @@ app.get('/api/leaderboard', (_request, response) => {
 
 // ─── Card Pack endpoints ────────────────────────────────────────────────────
 
-app.get('/api/shop/packs', requireAuth, (_request, response) => {
+app.get('/api/shop/packs', requireAuth, requireAccountReady, (_request, response) => {
   const packs = Object.entries(PACK_DEFS).map(([id, def]) => ({
     id,
     cost: def.cost,
@@ -1255,7 +1791,7 @@ app.get('/api/shop/packs', requireAuth, (_request, response) => {
   response.json({ ok: true, packs })
 })
 
-app.post('/api/shop/pack', requireAuth, (request, response) => {
+app.post('/api/shop/pack', requireAuth, requireAccountReady, (request, response) => {
   const { packType } = request.body ?? {}
   const validTypes = Object.keys(PACK_DEFS)
   if (!validTypes.includes(String(packType ?? ''))) {
@@ -1270,16 +1806,16 @@ app.post('/api/shop/pack', requireAuth, (request, response) => {
   response.json(result)
 })
 
-app.get('/api/me/collection', requireAuth, (request, response) => {
+app.get('/api/me/collection', requireAuth, requireAccountReady, (request, response) => {
   const collection = getCollection(request.accountId)
   response.json({ ok: true, collection: collection ?? {} })
 })
 
-app.get('/api/social', requireAuth, (request, response) => {
+app.get('/api/social', requireAuth, requireAccountReady, (request, response) => {
   response.json(getSocialOverview(request.accountId))
 })
 
-app.post('/api/social/friends', requireAuth, (request, response) => {
+app.post('/api/social/friends', requireAuth, requireAccountReady, (request, response) => {
   const rl = checkRateLimit(`social:friend:add:${request.accountId}`, 20)
   if (!rl.allowed) {
     response.status(429).json({ ok: false, error: 'Too many friend actions. Please try again shortly.' })
@@ -1294,7 +1830,7 @@ app.post('/api/social/friends', requireAuth, (request, response) => {
   response.json(result)
 })
 
-app.delete('/api/social/friends/:friendAccountId', requireAuth, (request, response) => {
+app.delete('/api/social/friends/:friendAccountId', requireAuth, requireAccountReady, (request, response) => {
   const rl = checkRateLimit(`social:friend:remove:${request.accountId}`, 30)
   if (!rl.allowed) {
     response.status(429).json({ ok: false, error: 'Too many friend actions. Please try again shortly.' })
@@ -1309,7 +1845,7 @@ app.delete('/api/social/friends/:friendAccountId', requireAuth, (request, respon
   response.json(result)
 })
 
-app.post('/api/social/clan/create', requireAuth, (request, response) => {
+app.post('/api/social/clan/create', requireAuth, requireAccountReady, (request, response) => {
   const rl = checkRateLimit(`social:clan:create:${request.accountId}`, 8)
   if (!rl.allowed) {
     response.status(429).json({ ok: false, error: 'Too many clan actions. Please try again later.' })
@@ -1324,7 +1860,7 @@ app.post('/api/social/clan/create', requireAuth, (request, response) => {
   response.json(result)
 })
 
-app.post('/api/social/clan/join', requireAuth, (request, response) => {
+app.post('/api/social/clan/join', requireAuth, requireAccountReady, (request, response) => {
   const rl = checkRateLimit(`social:clan:join:${request.accountId}`, 12)
   if (!rl.allowed) {
     response.status(429).json({ ok: false, error: 'Too many clan actions. Please try again later.' })
@@ -1339,7 +1875,7 @@ app.post('/api/social/clan/join', requireAuth, (request, response) => {
   response.json(result)
 })
 
-app.post('/api/social/clan/leave', requireAuth, (request, response) => {
+app.post('/api/social/clan/leave', requireAuth, requireAccountReady, (request, response) => {
   const rl = checkRateLimit(`social:clan:leave:${request.accountId}`, 12)
   if (!rl.allowed) {
     response.status(429).json({ ok: false, error: 'Too many clan actions. Please try again later.' })
@@ -1356,12 +1892,12 @@ app.post('/api/social/clan/leave', requireAuth, (request, response) => {
 
 // ─── Trading (friends-only v1) ───────────────────────────────────────────────
 
-app.get('/api/trades', requireAuth, (request, response) => {
+app.get('/api/trades', requireAuth, requireAccountReady, (request, response) => {
   const trades = listTradesForAccount(request.accountId)
   response.json({ ok: true, trades })
 })
 
-app.post('/api/trades/propose', requireAuth, (request, response) => {
+app.post('/api/trades/propose', requireAuth, requireAccountReady, (request, response) => {
   const rl = checkRateLimit(`trade:propose:${request.accountId}`, 10)
   if (!rl.allowed) {
     response.status(429).json({ ok: false, error: 'Too many trade proposals. Slow down.' })
@@ -1380,7 +1916,7 @@ app.post('/api/trades/propose', requireAuth, (request, response) => {
   response.status(201).json(result)
 })
 
-app.post('/api/trades/:id/accept', requireAuth, (request, response) => {
+app.post('/api/trades/:id/accept', requireAuth, requireAccountReady, (request, response) => {
   const rl = checkRateLimit(`trade:accept:${request.accountId}`, 20)
   if (!rl.allowed) {
     response.status(429).json({ ok: false, error: 'Too many trade actions. Please try again later.' })
@@ -1399,7 +1935,7 @@ app.post('/api/trades/:id/accept', requireAuth, (request, response) => {
   response.json(result)
 })
 
-app.post('/api/trades/:id/reject', requireAuth, (request, response) => {
+app.post('/api/trades/:id/reject', requireAuth, requireAccountReady, (request, response) => {
   const tradeId = String(request.params?.id ?? '')
   const result = cancelTrade(request.accountId, tradeId, 'rejected')
   if (!result.ok) {
@@ -1411,7 +1947,7 @@ app.post('/api/trades/:id/reject', requireAuth, (request, response) => {
   response.json(result)
 })
 
-app.post('/api/trades/:id/cancel', requireAuth, (request, response) => {
+app.post('/api/trades/:id/cancel', requireAuth, requireAccountReady, (request, response) => {
   const tradeId = String(request.params?.id ?? '')
   const result = cancelTrade(request.accountId, tradeId, 'cancelled')
   if (!result.ok) {
@@ -1634,7 +2170,7 @@ app.get('/api/admin/users', requireAdminRole, (request, response) => {
 })
 
 // Only the owner can promote/demote admins.
-app.post('/api/admin/users/:accountId/role', requireOwnerRole, adminWriteLimiter, (request, response) => {
+app.post('/api/admin/users/:accountId/role', requireOwnerRole, requireRecentPasskeyAuth, adminWriteLimiter, (request, response) => {
   const targetAccountId = String(request.params?.accountId ?? '')
   const newRole = String(request.body?.role ?? '')
   const result = setAccountRole(request.accountId, targetAccountId, newRole, {
@@ -1663,21 +2199,9 @@ app.post('/api/admin/users/:accountId/role', requireOwnerRole, adminWriteLimiter
   response.json(result)
 })
 
-// Owner-only, rate-limited (3/hour), password-gated ownership transfer.
-app.post('/api/admin/owner/transfer', requireOwnerRole, ownerTransferLimiter, (request, response) => {
+// Owner-only, rate-limited (3/hour), recent-passkey gated ownership transfer.
+app.post('/api/admin/owner/transfer', requireOwnerRole, requireRecentPasskeyAuth, ownerTransferLimiter, (request, response) => {
   const targetAccountId = String(request.body?.targetAccountId ?? '')
-  const password = String(request.body?.password ?? '')
-  if (!password) {
-    response.status(400).json({ ok: false, error: 'Password confirmation required.' })
-    return
-  }
-  const actor = getAccountById(request.accountId)
-  if (!actor || !verifyPassword(password, actor.password_hash)) {
-    // Audit even on failure to surface brute-force attempts.
-    recordAudit(request.accountId, targetAccountId || null, 'ownership_transfer_failed', { reason: 'bad_password' }, hashIp(clientIp(request)))
-    response.status(401).json({ ok: false, error: 'Password is incorrect.' })
-    return
-  }
   const result = transferOwnership(request.accountId, targetAccountId, {
     ipHash: hashIp(clientIp(request)),
   })

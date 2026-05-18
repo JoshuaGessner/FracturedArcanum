@@ -24,6 +24,22 @@ try {
 db.pragma('journal_mode = WAL')
 db.pragma('foreign_keys = ON')
 
+const CURRENT_ACCOUNT_STANDARD_VERSION = 1
+const CURRENT_TERMS_VERSION = 'terms-2026-05-17'
+const CURRENT_PRIVACY_VERSION = 'privacy-2026-05-17'
+const CURRENT_AGE_GATE_VERSION = 'age-2026-05-17'
+export const LEGACY_MIGRATION_WINDOW_DAYS = 30
+const RECOVERY_CODE_COUNT = 10
+
+export function getCurrentLegalVersions() {
+  return {
+    accountStandardVersion: CURRENT_ACCOUNT_STANDARD_VERSION,
+    termsVersion: CURRENT_TERMS_VERSION,
+    privacyVersion: CURRENT_PRIVACY_VERSION,
+    ageGateVersion: CURRENT_AGE_GATE_VERSION,
+  }
+}
+
 // ─── Schema ───────────────────────────────────────────────────────────────────
 
 db.exec(`
@@ -159,10 +175,46 @@ ensureColumns('accounts', [
   ['created_ip_hash', 'TEXT'],
   ['created_ua_hash', 'TEXT'],
   ['role', "TEXT NOT NULL DEFAULT 'user'"],
+  ['email', 'TEXT'],
+  ['email_normalized', 'TEXT'],
+  ['email_verified_at', 'TEXT'],
+  ['email_verification_required', 'INTEGER NOT NULL DEFAULT 1'],
+  ['account_status', "TEXT NOT NULL DEFAULT 'active'"],
+  ['account_standard_version', 'INTEGER NOT NULL DEFAULT 0'],
+  ['account_setup_required', 'INTEGER NOT NULL DEFAULT 1'],
+  ['terms_version', "TEXT NOT NULL DEFAULT ''"],
+  ['terms_accepted_at', 'TEXT'],
+  ['terms_accepted_ip_hash', 'TEXT'],
+  ['terms_accepted_ua_hash', 'TEXT'],
+  ['privacy_version', "TEXT NOT NULL DEFAULT ''"],
+  ['privacy_accepted_at', 'TEXT'],
+  ['privacy_accepted_ip_hash', 'TEXT'],
+  ['privacy_accepted_ua_hash', 'TEXT'],
+  ['age_gate_version', "TEXT NOT NULL DEFAULT ''"],
+  ['age_attested_at', 'TEXT'],
+  ['age_attestation', "TEXT NOT NULL DEFAULT ''"],
+  ['password_hash_algorithm', "TEXT NOT NULL DEFAULT 'scrypt-v1'"],
+  ['password_updated_at', 'TEXT'],
+  ['password_reset_required', 'INTEGER NOT NULL DEFAULT 0'],
+  ['last_security_event_at', 'TEXT'],
+  ['failed_login_count', 'INTEGER NOT NULL DEFAULT 0'],
+  ['locked_until', 'TEXT'],
+  ['deleted_at', 'TEXT'],
+  ['legacy_migration_started_at', 'TEXT'],
+  ['legacy_migration_deadline_at', 'TEXT'],
+  ['legacy_migration_completed_at', 'TEXT'],
+  ['recovery_codes_acknowledged_at', 'TEXT'],
 ])
 
 ensureColumns('sessions', [
   ['ip_hash', 'TEXT'],
+  ['token_hash', 'TEXT'],
+  ['family_id', 'TEXT'],
+  ['user_agent_hash', 'TEXT'],
+  ['last_seen_at', 'TEXT'],
+  ['revoked_at', 'TEXT'],
+  ['auth_method', "TEXT NOT NULL DEFAULT 'password'"],
+  ['last_passkey_reauth_at', 'TEXT'],
 ])
 
 ensureColumns('player_profiles', [
@@ -198,6 +250,13 @@ db.exec(`
   UPDATE match_log
   SET played_at = datetime('now')
   WHERE TRIM(COALESCE(played_at, '')) = '';
+
+  UPDATE accounts
+  SET account_setup_required = 1
+  WHERE account_standard_version < ${CURRENT_ACCOUNT_STANDARD_VERSION}
+    OR TRIM(COALESCE(terms_version, '')) <> '${CURRENT_TERMS_VERSION}'
+    OR TRIM(COALESCE(privacy_version, '')) <> '${CURRENT_PRIVACY_VERSION}'
+    OR TRIM(COALESCE(age_gate_version, '')) <> '${CURRENT_AGE_GATE_VERSION}';
 `)
 
 // Backward-safe naming migration: older or manually edited rows may have a
@@ -215,6 +274,113 @@ db.exec(`
 db.exec(`
   CREATE INDEX IF NOT EXISTS idx_accounts_created_ip ON accounts(created_ip_hash);
   CREATE INDEX IF NOT EXISTS idx_accounts_created_ip_ua_created_at ON accounts(created_ip_hash, created_ua_hash, created_at);
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_accounts_email_normalized
+    ON accounts(email_normalized)
+    WHERE email_normalized IS NOT NULL AND email_normalized <> '';
+  CREATE INDEX IF NOT EXISTS idx_accounts_setup_required
+    ON accounts(account_setup_required, account_status);
+`)
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS account_authenticators (
+    id TEXT PRIMARY KEY,
+    account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    credential_id TEXT NOT NULL UNIQUE,
+    credential_public_key BLOB NOT NULL,
+    counter INTEGER NOT NULL DEFAULT 0,
+    transports TEXT NOT NULL DEFAULT '[]',
+    backed_up INTEGER NOT NULL DEFAULT 0,
+    device_type TEXT NOT NULL DEFAULT '',
+    name TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    last_used_at TEXT
+  );
+
+  CREATE TABLE IF NOT EXISTS auth_challenges (
+    id TEXT PRIMARY KEY,
+    account_id TEXT REFERENCES accounts(id) ON DELETE CASCADE,
+    purpose TEXT NOT NULL,
+    challenge TEXT NOT NULL,
+    metadata TEXT NOT NULL DEFAULT '{}',
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    expires_at TEXT NOT NULL,
+    consumed_at TEXT
+  );
+
+  CREATE TABLE IF NOT EXISTS email_tokens (
+    id TEXT PRIMARY KEY,
+    account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    purpose TEXT NOT NULL,
+    token_hash TEXT NOT NULL UNIQUE,
+    email_normalized TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    expires_at TEXT NOT NULL,
+    consumed_at TEXT
+  );
+
+  CREATE TABLE IF NOT EXISTS account_consents (
+    id TEXT PRIMARY KEY,
+    account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    document_type TEXT NOT NULL,
+    document_version TEXT NOT NULL,
+    accepted_at TEXT NOT NULL DEFAULT (datetime('now')),
+    ip_hash TEXT,
+    ua_hash TEXT,
+    locale TEXT NOT NULL DEFAULT '',
+    source TEXT NOT NULL DEFAULT 'auth_gate'
+  );
+
+  CREATE TABLE IF NOT EXISTS account_recovery_codes (
+    id TEXT PRIMARY KEY,
+    account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    code_hash TEXT NOT NULL,
+    code_prefix TEXT NOT NULL,
+    batch_id TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    used_at TEXT,
+    revoked_at TEXT
+  );
+
+  CREATE TABLE IF NOT EXISTS security_events (
+    id TEXT PRIMARY KEY,
+    account_id TEXT REFERENCES accounts(id) ON DELETE SET NULL,
+    event_type TEXT NOT NULL,
+    ip_hash TEXT,
+    ua_hash TEXT,
+    metadata TEXT NOT NULL DEFAULT '{}',
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS session_families (
+    id TEXT PRIMARY KEY,
+    account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    revoked_at TEXT
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_account_authenticators_account ON account_authenticators(account_id);
+  CREATE INDEX IF NOT EXISTS idx_auth_challenges_account ON auth_challenges(account_id, purpose, expires_at);
+  CREATE INDEX IF NOT EXISTS idx_email_tokens_account ON email_tokens(account_id, purpose, expires_at);
+  CREATE INDEX IF NOT EXISTS idx_account_consents_account ON account_consents(account_id, document_type, document_version);
+  CREATE INDEX IF NOT EXISTS idx_account_recovery_codes_account ON account_recovery_codes(account_id, revoked_at, used_at);
+  CREATE INDEX IF NOT EXISTS idx_account_recovery_codes_prefix ON account_recovery_codes(account_id, code_prefix);
+  CREATE INDEX IF NOT EXISTS idx_security_events_account ON security_events(account_id, created_at DESC);
+  CREATE INDEX IF NOT EXISTS idx_session_families_account ON session_families(account_id);
+`)
+
+db.exec(`
+  UPDATE accounts
+  SET legacy_migration_started_at = COALESCE(legacy_migration_started_at, datetime('now')),
+      legacy_migration_deadline_at = COALESCE(legacy_migration_deadline_at, datetime('now', '+${LEGACY_MIGRATION_WINDOW_DAYS} days'))
+  WHERE account_status = 'active'
+    AND legacy_migration_completed_at IS NULL
+    AND id NOT IN (SELECT DISTINCT account_id FROM account_authenticators);
+
+  UPDATE accounts
+  SET legacy_migration_completed_at = COALESCE(legacy_migration_completed_at, datetime('now'))
+  WHERE account_status = 'active'
+    AND legacy_migration_completed_at IS NULL
+    AND id IN (SELECT DISTINCT account_id FROM account_authenticators);
 `)
 
 // ─── Admin role schema ───────────────────────────────────────────────────────
@@ -317,6 +483,7 @@ const MAX_ACCOUNTS_PER_DEVICE = 2
 const MAX_ACCOUNTS_PER_IP = 4
 const MAX_ACCOUNTS_PER_IP_PER_DAY = 2
 const MAX_ACCOUNTS_PER_IP_AND_AGENT_PER_WEEK = 3
+const AUTH_CHALLENGE_TTL_MS = 5 * 60 * 1000
 
 const _insertAccount = db.prepare(`
   INSERT INTO accounts (id, username, password_hash, display_name, device_fp, created_ip_hash, created_ua_hash, flags)
@@ -330,6 +497,133 @@ const _insertProfile = db.prepare(`
 
 const _getByUsername = db.prepare(`SELECT * FROM accounts WHERE username = ?`)
 const _getById = db.prepare(`SELECT * FROM accounts WHERE id = ?`)
+const _countAuthenticatorsByAccount = db.prepare(`SELECT COUNT(*) as cnt FROM account_authenticators WHERE account_id = ?`)
+const _listAuthenticatorsByAccount = db.prepare(`
+  SELECT id, credential_id, transports, backed_up, device_type, name, created_at, last_used_at
+  FROM account_authenticators
+  WHERE account_id = ?
+  ORDER BY created_at DESC
+`)
+const _listAuthenticatorCredentialsByAccount = db.prepare(`
+  SELECT id, credential_id, transports, counter
+  FROM account_authenticators
+  WHERE account_id = ?
+  ORDER BY created_at DESC
+`)
+const _getAuthenticatorByCredentialId = db.prepare(`
+  SELECT a.*, acct.username, acct.display_name, acct.role
+  FROM account_authenticators a
+  JOIN accounts acct ON acct.id = a.account_id
+  WHERE a.credential_id = ?
+`)
+const _insertAuthenticator = db.prepare(`
+  INSERT INTO account_authenticators (
+    id, account_id, credential_id, credential_public_key, counter, transports, backed_up, device_type, name
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+`)
+const _updateAuthenticatorCounter = db.prepare(`
+  UPDATE account_authenticators
+  SET counter = ?, backed_up = ?, device_type = ?, last_used_at = datetime('now')
+  WHERE id = ?
+`)
+const _deleteAuthenticator = db.prepare(`DELETE FROM account_authenticators WHERE id = ? AND account_id = ?`)
+const _deleteOtherAuthenticatorsByAccount = db.prepare(`DELETE FROM account_authenticators WHERE account_id = ? AND id <> ?`)
+const _consumeOutstandingAuthChallenges = db.prepare(`
+  UPDATE auth_challenges
+  SET consumed_at = datetime('now')
+  WHERE account_id = ? AND purpose = ? AND consumed_at IS NULL
+`)
+const _insertAuthChallenge = db.prepare(`
+  INSERT INTO auth_challenges (id, account_id, purpose, challenge, metadata, expires_at)
+  VALUES (?, ?, ?, ?, ?, ?)
+`)
+const _getActiveAuthChallenge = db.prepare(`
+  SELECT * FROM auth_challenges
+  WHERE id = ?
+    AND purpose = ?
+    AND consumed_at IS NULL
+    AND expires_at > datetime('now')
+`)
+const _consumeAuthChallenge = db.prepare(`UPDATE auth_challenges SET consumed_at = datetime('now') WHERE id = ?`)
+const _insertAccountConsent = db.prepare(`
+  INSERT INTO account_consents (id, account_id, document_type, document_version, ip_hash, ua_hash, locale, source)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+`)
+const _countActiveRecoveryCodes = db.prepare(`
+  SELECT COUNT(*) as cnt
+  FROM account_recovery_codes
+  WHERE account_id = ? AND used_at IS NULL AND revoked_at IS NULL
+`)
+const _listActiveRecoveryCodes = db.prepare(`
+  SELECT id, code_hash, code_prefix, batch_id, created_at
+  FROM account_recovery_codes
+  WHERE account_id = ? AND used_at IS NULL AND revoked_at IS NULL
+  ORDER BY created_at DESC
+`)
+const _revokeRecoveryCodesByAccount = db.prepare(`
+  UPDATE account_recovery_codes
+  SET revoked_at = datetime('now')
+  WHERE account_id = ? AND used_at IS NULL AND revoked_at IS NULL
+`)
+const _insertRecoveryCode = db.prepare(`
+  INSERT INTO account_recovery_codes (id, account_id, code_hash, code_prefix, batch_id)
+  VALUES (?, ?, ?, ?, ?)
+`)
+const _consumeRecoveryCode = db.prepare(`
+  UPDATE account_recovery_codes
+  SET used_at = datetime('now')
+  WHERE id = ? AND account_id = ? AND used_at IS NULL AND revoked_at IS NULL
+`)
+const _acknowledgeRecoveryCodes = db.prepare(`
+  UPDATE accounts
+  SET recovery_codes_acknowledged_at = datetime('now'), last_security_event_at = datetime('now')
+  WHERE id = ?
+`)
+const _insertSecurityEvent = db.prepare(`
+  INSERT INTO security_events (id, account_id, event_type, ip_hash, ua_hash, metadata)
+  VALUES (?, ?, ?, ?, ?, ?)
+`)
+const _markAccountDeleted = db.prepare(`
+  UPDATE accounts
+  SET account_status = 'deleted', deleted_at = datetime('now'), last_security_event_at = datetime('now')
+  WHERE id = ?
+`)
+const _markAccountPendingPasskeySignup = db.prepare(`
+  UPDATE accounts
+  SET account_status = 'pending_passkey', account_setup_required = 1, last_security_event_at = datetime('now')
+  WHERE id = ?
+`)
+const _startLegacyMigrationWindow = db.prepare(`
+  UPDATE accounts
+  SET legacy_migration_started_at = COALESCE(legacy_migration_started_at, datetime('now')),
+      legacy_migration_deadline_at = COALESCE(legacy_migration_deadline_at, datetime('now', '+${LEGACY_MIGRATION_WINDOW_DAYS} days'))
+  WHERE id = ? AND legacy_migration_completed_at IS NULL
+`)
+const _deleteAuthenticatorsByAccount = db.prepare(`DELETE FROM account_authenticators WHERE account_id = ?`)
+const _deleteEmailTokensByAccount = db.prepare(`DELETE FROM email_tokens WHERE account_id = ?`)
+const _deleteAuthChallengesByAccount = db.prepare(`DELETE FROM auth_challenges WHERE account_id = ?`)
+const _deleteFriendEdgesByAccount = db.prepare(`DELETE FROM social_friends WHERE account_id = ? OR friend_account_id = ?`)
+const _deleteClanMembershipByAccount = db.prepare(`DELETE FROM clan_members WHERE account_id = ?`)
+const _completeAccountStandards = db.prepare(`
+  UPDATE accounts
+  SET account_status = 'active',
+      terms_version = ?,
+      terms_accepted_at = datetime('now'),
+      terms_accepted_ip_hash = ?,
+      terms_accepted_ua_hash = ?,
+      privacy_version = ?,
+      privacy_accepted_at = datetime('now'),
+      privacy_accepted_ip_hash = ?,
+      privacy_accepted_ua_hash = ?,
+      age_gate_version = ?,
+      age_attested_at = datetime('now'),
+      age_attestation = ?,
+      account_standard_version = ?,
+      account_setup_required = 0,
+      legacy_migration_completed_at = COALESCE(legacy_migration_completed_at, datetime('now')),
+      last_security_event_at = datetime('now')
+  WHERE id = ?
+`)
 
 const _countByFp = db.prepare(`
   SELECT COUNT(*) as cnt FROM accounts WHERE device_fp = ? AND device_fp IS NOT NULL
@@ -361,6 +655,477 @@ function getCount(row) {
   return Number(row?.cnt ?? 0)
 }
 
+function hashSessionToken(token) {
+  return createHash('sha256').update(`rc-session-token:${token}`).digest('hex')
+}
+
+function parseJson(value, fallback) {
+  try {
+    return value ? JSON.parse(value) : fallback
+  } catch {
+    return fallback
+  }
+}
+
+function mapAuthenticatorSummary(row) {
+  return {
+    id: row.id,
+    credentialId: row.credential_id,
+    transports: parseJson(row.transports, []),
+    backedUp: Boolean(row.backed_up),
+    deviceType: row.device_type,
+    name: row.name,
+    createdAt: row.created_at,
+    lastUsedAt: row.last_used_at,
+  }
+}
+
+function normalizeRecoveryCode(code) {
+  const normalized = String(code ?? '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '')
+  return normalized.length === 12 && !normalized.startsWith('FA') ? `FA${normalized}` : normalized
+}
+
+function formatRecoveryCode(raw) {
+  return `FA-${raw.slice(0, 4)}-${raw.slice(4, 8)}-${raw.slice(8, 12)}`
+}
+
+function generateRecoveryCode() {
+  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+  let raw = ''
+  while (raw.length < 12) {
+    const byte = randomBytes(1)[0]
+    if (byte < alphabet.length * 7) raw += alphabet[byte % alphabet.length]
+  }
+  return formatRecoveryCode(raw)
+}
+
+function recoveryCodePrefix(code) {
+  return normalizeRecoveryCode(code).slice(0, 6)
+}
+
+function recoveryStatusForAccount(accountId) {
+  const account = _getById.get(accountId)
+  const activeCount = getCount(_countActiveRecoveryCodes.get(accountId))
+  const latest = _listActiveRecoveryCodes.get(accountId)
+  return {
+    activeCount,
+    acknowledgedAt: account?.recovery_codes_acknowledged_at ?? null,
+    generatedAt: latest?.created_at ?? null,
+    requiredCount: RECOVERY_CODE_COUNT,
+  }
+}
+
+function insertConsentRows(accountId, ipHash, userAgentHash, locale, source) {
+  const rows = [
+    ['terms', CURRENT_TERMS_VERSION],
+    ['privacy', CURRENT_PRIVACY_VERSION],
+    ['age_gate', CURRENT_AGE_GATE_VERSION],
+  ]
+  for (const [documentType, documentVersion] of rows) {
+    _insertAccountConsent.run(
+      `consent-${randomBytes(12).toString('hex')}`,
+      accountId,
+      documentType,
+      documentVersion,
+      ipHash,
+      userAgentHash,
+      locale,
+      source,
+    )
+  }
+}
+
+function recordSecurityEvent(accountId, eventType, details = {}) {
+  _insertSecurityEvent.run(
+    `secevt-${randomBytes(12).toString('hex')}`,
+    accountId,
+    eventType,
+    hashIp(details.ip),
+    hashUserAgent(details.userAgent),
+    JSON.stringify(details.metadata ?? {}),
+  )
+}
+
+export function listAccountRecoveryStatus(accountId) {
+  return recoveryStatusForAccount(accountId)
+}
+
+export function generateAccountRecoveryCodes(accountId, details = {}) {
+  const account = _getById.get(accountId)
+  if (!account || account.deleted_at || account.account_status !== 'active') {
+    return { ok: false, status: 404, error: 'Active account not found.' }
+  }
+
+  const batchId = `rcbatch-${randomBytes(10).toString('hex')}`
+  const codes = Array.from({ length: RECOVERY_CODE_COUNT }, () => generateRecoveryCode())
+  const tx = db.transaction(() => {
+    _revokeRecoveryCodesByAccount.run(accountId)
+    for (const code of codes) {
+      _insertRecoveryCode.run(
+        `rcode-${randomBytes(12).toString('hex')}`,
+        accountId,
+        hashPassword(normalizeRecoveryCode(code)),
+        recoveryCodePrefix(code),
+        batchId,
+      )
+    }
+    db.prepare(`UPDATE accounts SET recovery_codes_acknowledged_at = NULL, last_security_event_at = datetime('now') WHERE id = ?`).run(accountId)
+    recordSecurityEvent(accountId, 'recovery_codes_generated', { ...details, metadata: { ...(details.metadata ?? {}), batchId } })
+  })
+  tx()
+
+  return { ok: true, codes, batchId, recovery: recoveryStatusForAccount(accountId) }
+}
+
+export function acknowledgeAccountRecoveryCodes(accountId, details = {}) {
+  if (getCount(_countActiveRecoveryCodes.get(accountId)) < 1) {
+    return { ok: false, status: 400, error: 'Generate recovery codes before continuing.' }
+  }
+  _acknowledgeRecoveryCodes.run(accountId)
+  recordSecurityEvent(accountId, 'recovery_codes_acknowledged', details)
+  return { ok: true, recovery: recoveryStatusForAccount(accountId), readiness: getAccountReadiness(accountId) }
+}
+
+export function findAccountRecoveryCode(identifier, code) {
+  const normalizedIdentifier = String(identifier ?? '').trim().toLowerCase()
+  const normalizedCode = normalizeRecoveryCode(code)
+  if (!normalizedIdentifier || normalizedCode.length !== 14) {
+    return null
+  }
+  const account = _getByUsername.get(normalizedIdentifier)
+  if (!account || account.account_status !== 'active' || account.deleted_at) return null
+
+  const prefix = recoveryCodePrefix(normalizedCode)
+  const candidates = _listActiveRecoveryCodes.all(account.id).filter((row) => row.code_prefix === prefix)
+  for (const candidate of candidates) {
+    if (verifyPassword(normalizedCode, candidate.code_hash)) {
+      return { account, recoveryCodeId: candidate.id }
+    }
+  }
+  return null
+}
+
+export function completeAccountRecovery(accountId, recoveryCodeId, newPasskeyId, details = {}) {
+  const account = _getById.get(accountId)
+  if (!account || account.deleted_at || account.account_status !== 'active') {
+    return { ok: false, status: 404, error: 'Active account not found.' }
+  }
+
+  const tx = db.transaction(() => {
+    const consumed = _consumeRecoveryCode.run(recoveryCodeId, accountId)
+    if (consumed.changes < 1) throw new Error('recovery-code-consumed')
+    _deleteOtherAuthenticatorsByAccount.run(accountId, newPasskeyId)
+    _revokeSessionsByAccount.run(accountId)
+    db.prepare(`UPDATE accounts SET recovery_codes_acknowledged_at = NULL, last_security_event_at = datetime('now') WHERE id = ?`).run(accountId)
+    recordSecurityEvent(accountId, 'account_recovered', details)
+  })
+
+  try {
+    tx()
+  } catch (error) {
+    if (error?.message === 'recovery-code-consumed') {
+      return { ok: false, status: 400, error: 'Recovery code has already been used.' }
+    }
+    throw error
+  }
+
+  return { ok: true }
+}
+
+export function completeAccountRecoveryWithPasskey(accountId, recoveryCodeId, credential, details = {}) {
+  const account = _getById.get(accountId)
+  if (!account || account.deleted_at || account.account_status !== 'active') {
+    return { ok: false, status: 404, error: 'Active account not found.' }
+  }
+
+  const passkeyId = `authnr-${randomBytes(12).toString('hex')}`
+  const name = String(details.name ?? '').trim().slice(0, 48) || 'Recovery passkey'
+  const tx = db.transaction(() => {
+    const consumed = _consumeRecoveryCode.run(recoveryCodeId, accountId)
+    if (consumed.changes < 1) throw new Error('recovery-code-consumed')
+    _insertAuthenticator.run(
+      passkeyId,
+      accountId,
+      credential.id,
+      Buffer.from(credential.publicKey),
+      Number(credential.counter ?? 0),
+      JSON.stringify(credential.transports ?? []),
+      details.backedUp ? 1 : 0,
+      String(details.deviceType ?? ''),
+      name,
+    )
+    _deleteOtherAuthenticatorsByAccount.run(accountId, passkeyId)
+    _revokeSessionsByAccount.run(accountId)
+    db.prepare(`UPDATE accounts SET recovery_codes_acknowledged_at = NULL, last_security_event_at = datetime('now') WHERE id = ?`).run(accountId)
+    recordSecurityEvent(accountId, 'account_recovered', {
+      ip: details.ip,
+      userAgent: details.userAgent,
+      metadata: { ...(details.metadata ?? {}), revokedOldPasskeys: true },
+    })
+  })
+
+  try {
+    tx()
+  } catch (error) {
+    if (error?.message === 'recovery-code-consumed') {
+      return { ok: false, status: 400, error: 'Recovery code has already been used.' }
+    }
+    if (String(error?.message ?? '').toLowerCase().includes('unique')) {
+      return { ok: false, status: 409, error: 'This passkey is already registered.' }
+    }
+    throw error
+  }
+
+  return { ok: true, passkey: listAccountPasskeys(accountId).find((item) => item.id === passkeyId) }
+}
+
+function requirement(id, label, description, blocking = true) {
+  return { id, label, description, blocking }
+}
+
+export function getAccountReadiness(accountId) {
+  const account = _getById.get(accountId)
+  if (!account) {
+    return {
+      ready: false,
+      setupRequired: true,
+      accountStatus: 'missing',
+      requirements: [requirement('account', 'Account unavailable', 'The account record could not be found.')],
+      legal: getCurrentLegalVersions(),
+    }
+  }
+
+  const requirements = []
+  const now = Date.now()
+  const lockedUntil = account.locked_until ? Date.parse(account.locked_until) : 0
+
+  if (account.account_status !== 'active') {
+    requirements.push(requirement('account_status', 'Account status', 'This account must be active before play can continue.'))
+  }
+
+  if (account.deleted_at) {
+    requirements.push(requirement('deleted_account', 'Account recovery', 'This account is marked for deletion or recovery review.'))
+  }
+
+  if (Number.isFinite(lockedUntil) && lockedUntil > now) {
+    requirements.push(requirement('security_lock', 'Security lock', 'This account is temporarily locked for security review.'))
+  }
+
+  const authenticatorCount = getCount(_countAuthenticatorsByAccount.get(account.id))
+  if (authenticatorCount === 0) {
+    const deadline = account.legacy_migration_deadline_at ? ` This legacy window closes ${account.legacy_migration_deadline_at}.` : ''
+    requirements.push(requirement('passkey', 'Create passkey', `Register a passkey for account sign-in and recovery protection.${deadline}`))
+  }
+
+  if (account.terms_version !== CURRENT_TERMS_VERSION || !account.terms_accepted_at) {
+    requirements.push(requirement('terms', 'Accept Terms', 'Accept the current Terms of Service.'))
+  }
+
+  if (account.privacy_version !== CURRENT_PRIVACY_VERSION || !account.privacy_accepted_at) {
+    requirements.push(requirement('privacy', 'Accept Privacy Policy', 'Acknowledge the current Privacy Policy.'))
+  }
+
+  if (account.age_gate_version !== CURRENT_AGE_GATE_VERSION || !account.age_attested_at || !account.age_attestation) {
+    requirements.push(requirement('age_attestation', 'Age eligibility', 'Confirm age eligibility or guardian consent for the account.'))
+  }
+
+  if (account.role === 'owner' && authenticatorCount < 2) {
+    requirements.push(requirement('owner_second_passkey', 'Owner recovery passkey', 'Owner accounts must register two passkeys before privileged access is production-ready.'))
+  }
+
+  const recovery = recoveryStatusForAccount(account.id)
+  if (recovery.activeCount < 1) {
+    requirements.push(requirement('recovery_codes', 'Save recovery codes', 'Generate one-time recovery codes before entering the arena.'))
+  } else if (!recovery.acknowledgedAt) {
+    requirements.push(requirement('recovery_codes_saved', 'Confirm recovery codes', 'Copy or download your recovery codes before entering the arena.'))
+  }
+
+  const blockingRequirements = requirements.filter((item) => item.blocking)
+  return {
+    ready: blockingRequirements.length === 0,
+    setupRequired: Number(account.account_setup_required) === 1 || blockingRequirements.length > 0,
+    accountStatus: account.account_status,
+    accountStandardVersion: Number(account.account_standard_version ?? 0),
+    passkeyCount: authenticatorCount,
+    legacyMigration: {
+      startedAt: account.legacy_migration_started_at,
+      deadlineAt: account.legacy_migration_deadline_at,
+      completedAt: account.legacy_migration_completed_at,
+      windowDays: LEGACY_MIGRATION_WINDOW_DAYS,
+    },
+    recovery,
+    requirements,
+    legal: getCurrentLegalVersions(),
+  }
+}
+
+export function findAccountForPasskeyIdentifier(identifier) {
+  const normalized = String(identifier ?? '').trim().toLowerCase()
+  if (!normalized) return null
+  const account = _getByUsername.get(normalized)
+  if (!account || account.account_status !== 'active' || account.deleted_at) return null
+  return account
+}
+
+export function listAccountPasskeys(accountId) {
+  return _listAuthenticatorsByAccount.all(accountId).map(mapAuthenticatorSummary)
+}
+
+export function listAccountPasskeyCredentials(accountId) {
+  return _listAuthenticatorCredentialsByAccount.all(accountId).map((row) => ({
+    id: row.credential_id,
+    transports: parseJson(row.transports, []),
+    counter: Number(row.counter ?? 0),
+  }))
+}
+
+export function getPasskeyCredential(credentialId) {
+  const row = _getAuthenticatorByCredentialId.get(String(credentialId ?? ''))
+  if (!row) return null
+  return {
+    id: row.id,
+    accountId: row.account_id,
+    username: row.username,
+    displayName: String(row.display_name ?? '').trim() || row.username,
+    role: row.role,
+    credential: {
+      id: row.credential_id,
+      publicKey: row.credential_public_key,
+      counter: Number(row.counter ?? 0),
+      transports: parseJson(row.transports, []),
+    },
+    backedUp: Boolean(row.backed_up),
+    deviceType: row.device_type,
+  }
+}
+
+export function createAuthChallenge(accountId, purpose, challenge, metadata = {}) {
+  const id = `challenge-${randomBytes(12).toString('hex')}`
+  const expiresAt = new Date(Date.now() + AUTH_CHALLENGE_TTL_MS).toISOString()
+  const tx = db.transaction(() => {
+    if (accountId) _consumeOutstandingAuthChallenges.run(accountId, purpose)
+    _insertAuthChallenge.run(id, accountId, purpose, challenge, JSON.stringify(metadata), expiresAt)
+  })
+  tx()
+  return { id, expiresAt }
+}
+
+export function consumeAuthChallenge(challengeId, purpose) {
+  const row = _getActiveAuthChallenge.get(String(challengeId ?? ''), purpose)
+  if (!row) return null
+  _consumeAuthChallenge.run(row.id)
+  return {
+    id: row.id,
+    accountId: row.account_id,
+    challenge: row.challenge,
+    metadata: parseJson(row.metadata, {}),
+  }
+}
+
+export function registerAccountPasskey(accountId, credential, details = {}) {
+  const account = _getById.get(accountId)
+  if (!account) return { ok: false, status: 404, error: 'Account not found.' }
+
+  const name = String(details.name ?? '').trim().slice(0, 48) || 'Passkey'
+  const id = `authnr-${randomBytes(12).toString('hex')}`
+  try {
+    _insertAuthenticator.run(
+      id,
+      accountId,
+      credential.id,
+      Buffer.from(credential.publicKey),
+      Number(credential.counter ?? 0),
+      JSON.stringify(credential.transports ?? []),
+      details.backedUp ? 1 : 0,
+      String(details.deviceType ?? ''),
+      name,
+    )
+  } catch (error) {
+    if (String(error?.message ?? '').toLowerCase().includes('unique')) {
+      return { ok: false, status: 409, error: 'This passkey is already registered.' }
+    }
+    throw error
+  }
+
+  return { ok: true, passkey: listAccountPasskeys(accountId).find((item) => item.id === id) }
+}
+
+export function markAccountPendingPasskeySignup(accountId) {
+  const result = _markAccountPendingPasskeySignup.run(accountId)
+  return result.changes > 0
+}
+
+export function updatePasskeyAfterAuthentication(passkeyId, newCounter, details = {}) {
+  _updateAuthenticatorCounter.run(
+    Number(newCounter ?? 0),
+    details.backedUp ? 1 : 0,
+    String(details.deviceType ?? ''),
+    passkeyId,
+  )
+}
+
+export function deleteAccountPasskey(accountId, passkeyId) {
+  const count = getCount(_countAuthenticatorsByAccount.get(accountId))
+  const account = _getById.get(accountId)
+  if (account?.role === 'owner' && count <= 2) {
+    return { ok: false, status: 400, error: 'Owner accounts must keep at least two passkeys.' }
+  }
+  if (count <= 1) {
+    return { ok: false, status: 400, error: 'Add another passkey before removing the last one.' }
+  }
+  const result = _deleteAuthenticator.run(passkeyId, accountId)
+  if (result.changes === 0) return { ok: false, status: 404, error: 'Passkey not found.' }
+  return { ok: true }
+}
+
+export function completeAccountUpgrade(accountId, payload = {}) {
+  const account = _getById.get(accountId)
+  if (!account) return { ok: false, status: 404, error: 'Account not found.' }
+
+  if (!['active', 'pending_passkey'].includes(account.account_status) || account.deleted_at) {
+    return { ok: false, status: 403, error: 'This account is not eligible for setup completion.' }
+  }
+
+  if (payload.acceptTerms !== true || payload.acceptPrivacy !== true) {
+    return { ok: false, error: 'Terms of Service and Privacy Policy acceptance are required.' }
+  }
+
+  const ageAttestation = String(payload.ageAttestation ?? '').trim()
+  if (!['adult', 'guardian'].includes(ageAttestation)) {
+    return { ok: false, error: 'Confirm age eligibility or guardian consent.' }
+  }
+
+  const authenticatorCount = getCount(_countAuthenticatorsByAccount.get(accountId))
+  if (authenticatorCount === 0) {
+    return { ok: false, error: 'Register a passkey before completing account setup.' }
+  }
+
+  const ipHash = hashIp(payload.ip)
+  const userAgentHash = hashUserAgent(payload.userAgent)
+  const locale = String(payload.locale ?? '').slice(0, 20)
+  const tx = db.transaction(() => {
+    insertConsentRows(accountId, ipHash, userAgentHash, locale, 'account_upgrade')
+    _completeAccountStandards.run(
+      CURRENT_TERMS_VERSION,
+      ipHash,
+      userAgentHash,
+      CURRENT_PRIVACY_VERSION,
+      ipHash,
+      userAgentHash,
+      CURRENT_AGE_GATE_VERSION,
+      ageAttestation,
+      CURRENT_ACCOUNT_STANDARD_VERSION,
+      accountId,
+    )
+  })
+  tx()
+
+  return {
+    ok: true,
+    readiness: getAccountReadiness(accountId),
+  }
+}
+
 function buildAccountFlags({ deviceCount, ipCount, ipDayCount, ipAgentWeekCount }) {
   const flags = []
 
@@ -380,7 +1145,7 @@ function resolveAccountName(displayName, username) {
   }
 }
 
-export function createAccount(username, password, displayName, deviceFp, ip, userAgent) {
+export function createAccount(username, password, displayName, deviceFp, ip, userAgent, options = {}) {
   const resolved = resolveAccountName(displayName, username)
 
   if (!USERNAME_RE.test(resolved.username)) {
@@ -410,8 +1175,9 @@ export function createAccount(username, password, displayName, deviceFp, ip, use
   const ipAgentWeekCount = ipHash && userAgentHash
     ? getCount(_countByCreatedIpAndAgentPerWeek.get(ipHash, userAgentHash))
     : 0
+  const bypassSignupClusterLimits = options.bypassSignupClusterLimits === true
 
-  if (fpHash) {
+  if (!bypassSignupClusterLimits && fpHash) {
     if (deviceCount >= MAX_ACCOUNTS_PER_DEVICE) {
       return {
         ok: false,
@@ -421,7 +1187,7 @@ export function createAccount(username, password, displayName, deviceFp, ip, use
     }
   }
 
-  if (ipHash && ipDayCount >= MAX_ACCOUNTS_PER_IP_PER_DAY) {
+  if (!bypassSignupClusterLimits && ipHash && ipDayCount >= MAX_ACCOUNTS_PER_IP_PER_DAY) {
     return {
       ok: false,
       status: 429,
@@ -429,7 +1195,7 @@ export function createAccount(username, password, displayName, deviceFp, ip, use
     }
   }
 
-  if (ipHash && ipCount >= MAX_ACCOUNTS_PER_IP) {
+  if (!bypassSignupClusterLimits && ipHash && ipCount >= MAX_ACCOUNTS_PER_IP) {
     return {
       ok: false,
       status: 403,
@@ -437,7 +1203,7 @@ export function createAccount(username, password, displayName, deviceFp, ip, use
     }
   }
 
-  if (ipHash && userAgentHash && ipAgentWeekCount >= MAX_ACCOUNTS_PER_IP_AND_AGENT_PER_WEEK) {
+  if (!bypassSignupClusterLimits && ipHash && userAgentHash && ipAgentWeekCount >= MAX_ACCOUNTS_PER_IP_AND_AGENT_PER_WEEK) {
     return {
       ok: false,
       status: 403,
@@ -461,6 +1227,7 @@ export function createAccount(username, password, displayName, deviceFp, ip, use
         userAgentHash,
         flags,
       )
+      _startLegacyMigrationWindow.run(id)
       _insertProfile.run(id, JSON.stringify(DEFAULT_DECK_CONFIG), JSON.stringify(buildStarterCollection()))
     })
     tx()
@@ -476,6 +1243,9 @@ export function createAccount(username, password, displayName, deviceFp, ip, use
 export function authenticateAccount(username, password) {
   const row = _getByUsername.get(username?.toLowerCase?.() ?? '')
   if (!row) return { ok: false, error: 'Invalid username or password.' }
+  if (row.account_status !== 'active' || row.deleted_at) {
+    return { ok: false, error: 'Invalid username or password.' }
+  }
   if (!verifyPassword(password, row.password_hash)) {
     return { ok: false, error: 'Invalid username or password.' }
   }
@@ -490,19 +1260,37 @@ export function authenticateAccount(username, password) {
 
 const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000 // 7 days
 
+const _insertSessionFamily = db.prepare(`INSERT INTO session_families (id, account_id) VALUES (?, ?)`)
+
 const _insertSession = db.prepare(`
-  INSERT INTO sessions (token, account_id, expires_at, ip_hash) VALUES (?, ?, ?, ?)
+  INSERT INTO sessions (token, account_id, expires_at, ip_hash, token_hash, family_id, user_agent_hash, last_seen_at, auth_method, last_passkey_reauth_at)
+  VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), ?, CASE WHEN ? = 'passkey' THEN datetime('now') ELSE NULL END)
 `)
 
-const _getSession = db.prepare(`
+const _getSessionByRawToken = db.prepare(`
   SELECT s.*, a.username, COALESCE(NULLIF(TRIM(a.display_name), ''), a.username) as display_name FROM sessions s
   JOIN accounts a ON a.id = s.account_id
-  WHERE s.token = ? AND s.expires_at > datetime('now')
+  WHERE s.token = ? AND s.expires_at > datetime('now') AND s.revoked_at IS NULL
 `)
 
-const _deleteSession = db.prepare(`DELETE FROM sessions WHERE token = ?`)
+const _getSessionByHash = db.prepare(`
+  SELECT s.*, a.username, COALESCE(NULLIF(TRIM(a.display_name), ''), a.username) as display_name FROM sessions s
+  JOIN accounts a ON a.id = s.account_id
+  WHERE s.token_hash = ? AND s.expires_at > datetime('now') AND s.revoked_at IS NULL
+`)
 
-const _cleanExpiredSessions = db.prepare(`DELETE FROM sessions WHERE expires_at <= datetime('now')`)
+const _touchSession = db.prepare(`UPDATE sessions SET last_seen_at = datetime('now') WHERE token = ?`)
+const _markSessionPasskeyReauthenticated = db.prepare(`
+  UPDATE sessions
+  SET last_passkey_reauth_at = datetime('now'), last_seen_at = datetime('now')
+  WHERE (token = ? OR token_hash = ?) AND revoked_at IS NULL AND expires_at > datetime('now')
+`)
+
+const _revokeSession = db.prepare(`UPDATE sessions SET revoked_at = datetime('now') WHERE token = ? OR token_hash = ?`)
+
+const _revokeSessionsByAccount = db.prepare(`UPDATE sessions SET revoked_at = datetime('now') WHERE account_id = ? AND revoked_at IS NULL`)
+
+const _cleanExpiredSessions = db.prepare(`DELETE FROM sessions WHERE expires_at <= datetime('now') OR revoked_at IS NOT NULL`)
 
 const _updateLastLogin = db.prepare(`UPDATE accounts SET last_login = datetime('now') WHERE id = ?`)
 
@@ -511,22 +1299,177 @@ export function hashIp(ip) {
   return createHash('sha256').update(`rc-ip:${ip}`).digest('hex').slice(0, 24)
 }
 
-export function createSession(accountId, ip) {
+export function createSession(accountId, ip, userAgent = '', authMethod = 'password') {
   const token = randomBytes(32).toString('hex')
+  const tokenHash = hashSessionToken(token)
+  const sessionId = `sess-${randomBytes(12).toString('hex')}`
+  const familyId = `sessfam-${randomBytes(12).toString('hex')}`
   const expiresAt = new Date(Date.now() + SESSION_TTL_MS).toISOString()
-  _insertSession.run(token, accountId, expiresAt, hashIp(ip))
-  _updateLastLogin.run(accountId)
+  const tx = db.transaction(() => {
+    _insertSessionFamily.run(familyId, accountId)
+    _insertSession.run(sessionId, accountId, expiresAt, hashIp(ip), tokenHash, familyId, hashUserAgent(userAgent), authMethod, authMethod)
+    _updateLastLogin.run(accountId)
+  })
+  tx()
   return { token, expiresAt }
 }
 
 export function validateSession(token) {
   if (!token || typeof token !== 'string') return null
-  const row = _getSession.get(token)
+  const row = _getSessionByHash.get(hashSessionToken(token)) ?? _getSessionByRawToken.get(token)
+  if (row) _touchSession.run(row.token)
   return row ?? null
 }
 
+export function markSessionPasskeyReauthenticated(token) {
+  if (!token || typeof token !== 'string') return false
+  const result = _markSessionPasskeyReauthenticated.run(token, hashSessionToken(token))
+  return result.changes > 0
+}
+
+export function sessionHasRecentPasskeyReauth(session, maxAgeMs) {
+  if (!session?.last_passkey_reauth_at) return false
+  const reauthAt = Date.parse(session.last_passkey_reauth_at)
+  return Number.isFinite(reauthAt) && Date.now() - reauthAt <= maxAgeMs
+}
+
 export function destroySession(token) {
-  _deleteSession.run(token)
+  _revokeSession.run(token, hashSessionToken(token))
+}
+
+export function revokeAllSessions(accountId) {
+  _revokeSessionsByAccount.run(accountId)
+}
+
+export function listAccountSessions(accountId) {
+  return db.prepare(`
+    SELECT token, created_at, expires_at, ip_hash, user_agent_hash, last_seen_at, revoked_at, auth_method, last_passkey_reauth_at
+    FROM sessions
+    WHERE account_id = ?
+    ORDER BY COALESCE(last_seen_at, created_at) DESC
+    LIMIT 25
+  `).all(accountId).map((row) => ({
+    id: row.token,
+    createdAt: row.created_at,
+    expiresAt: row.expires_at,
+    ipHash: row.ip_hash,
+    userAgentHash: row.user_agent_hash,
+    lastSeenAt: row.last_seen_at,
+    revokedAt: row.revoked_at,
+    authMethod: row.auth_method,
+    lastPasskeyReauthAt: row.last_passkey_reauth_at,
+  }))
+}
+
+export function exportAccountData(accountId) {
+  const account = _getById.get(accountId)
+  if (!account) return null
+  return {
+    exportedAt: new Date().toISOString(),
+    account: {
+      id: account.id,
+      username: account.username,
+      displayName: account.display_name,
+      email: account.email,
+      emailVerifiedAt: account.email_verified_at,
+      role: account.role,
+      accountStatus: account.account_status,
+      accountStandardVersion: account.account_standard_version,
+      createdAt: account.created_at,
+      lastLogin: account.last_login,
+      deletedAt: account.deleted_at,
+      termsVersion: account.terms_version,
+      termsAcceptedAt: account.terms_accepted_at,
+      privacyVersion: account.privacy_version,
+      privacyAcceptedAt: account.privacy_accepted_at,
+      ageGateVersion: account.age_gate_version,
+      ageAttestedAt: account.age_attested_at,
+      ageAttestation: account.age_attestation,
+    },
+    readiness: getAccountReadiness(accountId),
+    profile: getProfile(accountId),
+    decks: listDecks(accountId),
+    collection: getCollection(accountId),
+    recentMatches: getRecentMatches(accountId),
+    social: getSocialOverview(accountId),
+    trades: listTradesForAccount(accountId),
+    passkeys: listAccountPasskeys(accountId),
+    sessions: listAccountSessions(accountId),
+    consents: db.prepare(`
+      SELECT document_type as documentType, document_version as documentVersion, accepted_at as acceptedAt, locale, source
+      FROM account_consents
+      WHERE account_id = ?
+      ORDER BY accepted_at DESC
+    `).all(accountId),
+  }
+}
+
+export function deleteAccount(accountId, password, details = {}) {
+  const account = _getById.get(accountId)
+  if (!account) return { ok: false, status: 404, error: 'Account not found.' }
+  if (account.role === 'owner') {
+    return { ok: false, status: 403, error: 'Transfer ownership before deleting the owner account.' }
+  }
+
+  const authenticatorCount = getCount(_countAuthenticatorsByAccount.get(accountId))
+  const passkeySessionConfirmed = details.authMethod === 'passkey' && authenticatorCount > 0
+  if (!passkeySessionConfirmed && !verifyPassword(String(password ?? ''), account.password_hash)) {
+    return { ok: false, status: 403, error: 'Passkey session or password confirmation required.' }
+  }
+
+  const tx = db.transaction(() => {
+    _markAccountDeleted.run(accountId)
+    _revokeSessionsByAccount.run(accountId)
+    _deleteAuthenticatorsByAccount.run(accountId)
+    _deleteEmailTokensByAccount.run(accountId)
+    _deleteAuthChallengesByAccount.run(accountId)
+    _deleteFriendEdgesByAccount.run(accountId, accountId)
+    _deleteClanMembershipByAccount.run(accountId)
+    db.prepare(`
+      UPDATE trades
+      SET status = 'cancelled', updated_at = datetime('now')
+      WHERE status = 'pending' AND (from_account_id = ? OR to_account_id = ?)
+    `).run(accountId, accountId)
+    recordSecurityEvent(accountId, 'account_deleted', details)
+  })
+  tx()
+
+  return { ok: true }
+}
+
+export function expireLegacyMigrationAccounts(details = {}) {
+  const expired = db.prepare(`
+    SELECT id
+    FROM accounts
+    WHERE account_status = 'active'
+      AND deleted_at IS NULL
+      AND legacy_migration_completed_at IS NULL
+      AND legacy_migration_deadline_at IS NOT NULL
+      AND legacy_migration_deadline_at <= datetime('now')
+      AND id NOT IN (SELECT DISTINCT account_id FROM account_authenticators)
+  `).all()
+
+  if (expired.length === 0) return { ok: true, deleted: 0 }
+
+  const tx = db.transaction(() => {
+    for (const row of expired) {
+      _markAccountDeleted.run(row.id)
+      _revokeSessionsByAccount.run(row.id)
+      _deleteEmailTokensByAccount.run(row.id)
+      _deleteAuthChallengesByAccount.run(row.id)
+      _deleteFriendEdgesByAccount.run(row.id, row.id)
+      _deleteClanMembershipByAccount.run(row.id)
+      db.prepare(`
+        UPDATE trades
+        SET status = 'cancelled', updated_at = datetime('now')
+        WHERE status = 'pending' AND (from_account_id = ? OR to_account_id = ?)
+      `).run(row.id, row.id)
+      recordSecurityEvent(row.id, 'legacy_migration_expired', details)
+    }
+  })
+  tx()
+
+  return { ok: true, deleted: expired.length }
 }
 
 export function cleanupSessions() {
@@ -534,6 +1477,7 @@ export function cleanupSessions() {
 }
 
 // Run cleanup periodically
+expireLegacyMigrationAccounts({ metadata: { source: 'startup', windowDays: LEGACY_MIGRATION_WINDOW_DAYS } })
 setInterval(cleanupSessions, 60 * 60 * 1000)
 
 // ─── Player profile operations ───────────────────────────────────────────────

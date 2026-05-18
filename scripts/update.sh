@@ -12,7 +12,9 @@ SKIP_BUILD=0
 FORCE=0
 DRY_RUN=0
 DID_RESTART=0
+SERVICE_STOPPED_FOR_BACKUP=0
 NO_CACHE=1
+QUIESCE_BACKUP="${QUIESCE_BACKUP:-1}"
 SYSTEMD_DOCKER=0
 COMPOSE_SERVICE="${COMPOSE_SERVICE:-fractured-arcanum}"
 SYSTEM_SERVICE_NAME="${SYSTEM_SERVICE_NAME:-fractured-arcanum}"
@@ -36,6 +38,7 @@ Options:
   --mode auto|docker|node   Update mode. Auto-detect by default.
   --branch <name>           Branch to pull before updating.
   --skip-backup             Skip the pre-update hard backup.
+  --no-quiesce-backup       Do not pause the managed service while backing up data.
   --skip-pull               Skip git fetch/pull and only rebuild/restart.
   --skip-build              Skip the build step in node mode.
   --force                   Continue even if the repo has local changes.
@@ -47,7 +50,7 @@ Options:
 Environment overrides:
   UPDATE_MODE, UPDATE_BRANCH, COMPOSE_SERVICE, DOCKER_VOLUME_NAME,
   SYSTEM_SERVICE_NAME, BACKUP_ROOT, PORT, HEALTH_URL,
-  HEALTH_WAIT_SECONDS, HEALTH_POLL_INTERVAL
+  HEALTH_WAIT_SECONDS, HEALTH_POLL_INTERVAL, QUIESCE_BACKUP
 
 Docker + systemd:
   When SYSTEM_SERVICE_NAME matches an active systemd unit the script will
@@ -82,12 +85,52 @@ command_exists() {
   command -v "$1" >/dev/null 2>&1
 }
 
+restart_service_after_failed_update() {
+  if [[ "$SERVICE_STOPPED_FOR_BACKUP" -ne 1 || "$DID_RESTART" -eq 1 || "$DRY_RUN" -eq 1 ]]; then
+    return 0
+  fi
+
+  warn "Attempting to restart the service that was paused for backup."
+
+  if [[ "$MODE" == "docker" ]]; then
+    if [[ "$SYSTEMD_DOCKER" -eq 1 ]] && command_exists systemctl; then
+      systemctl start "$SYSTEM_SERVICE_NAME" || return 1
+      return 0
+    fi
+
+    if command_exists docker && docker compose version >/dev/null 2>&1; then
+      docker compose start "$COMPOSE_SERVICE" || docker compose up -d "$COMPOSE_SERVICE" || return 1
+      return 0
+    fi
+
+    if command_exists docker-compose; then
+      docker-compose start "$COMPOSE_SERVICE" || docker-compose up -d "$COMPOSE_SERVICE" || return 1
+      return 0
+    fi
+  fi
+
+  if command_exists pm2 && pm2 describe "$SYSTEM_SERVICE_NAME" >/dev/null 2>&1; then
+    pm2 start "$SYSTEM_SERVICE_NAME" || return 1
+    return 0
+  fi
+
+  if command_exists systemctl; then
+    systemctl start "$SYSTEM_SERVICE_NAME" || return 1
+    return 0
+  fi
+
+  return 1
+}
+
 on_error() {
   local exit_code=$?
   if [[ "$exit_code" -ne 0 ]]; then
     warn "Update failed."
     if [[ -n "$CURRENT_BACKUP_DIR" && -d "$CURRENT_BACKUP_DIR" ]]; then
       warn "A pre-update backup is available at: $CURRENT_BACKUP_DIR"
+    fi
+    if ! restart_service_after_failed_update; then
+      warn "Automatic service restart after failure was not possible. Start the service manually after reviewing the logs."
     fi
     warn "Your user data was not intentionally removed. Review the logs above before retrying."
   fi
@@ -108,6 +151,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --skip-backup)
       SKIP_BACKUP=1
+      shift
+      ;;
+    --no-quiesce-backup)
+      QUIESCE_BACKUP=0
       shift
       ;;
     --skip-pull)
@@ -203,6 +250,55 @@ detect_mode() {
   esac
 }
 
+stop_service_for_backup() {
+  if [[ "$QUIESCE_BACKUP" != "1" ]]; then
+    warn "Service quiesce for backup is disabled. SQLite backups may include live WAL writes."
+    return 0
+  fi
+
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    log "Would pause the managed service before data backup."
+    return 0
+  fi
+
+  if [[ "$MODE" == "docker" ]]; then
+    if [[ "$SYSTEMD_DOCKER" -eq 1 ]] && command_exists systemctl; then
+      if systemctl is-active --quiet "$SYSTEM_SERVICE_NAME"; then
+        log "Pausing systemd-managed Docker service for a consistent data backup..."
+        run systemctl stop "$SYSTEM_SERVICE_NAME"
+        SERVICE_STOPPED_FOR_BACKUP=1
+      fi
+      return 0
+    fi
+
+    if detect_compose 2>/dev/null; then
+      log "Pausing Docker Compose service for a consistent data backup..."
+      if run "${COMPOSE_CMD[@]}" stop "$COMPOSE_SERVICE"; then
+        SERVICE_STOPPED_FOR_BACKUP=1
+      else
+        warn "Docker Compose service was not running or could not be paused; continuing with backup."
+      fi
+    fi
+    return 0
+  fi
+
+  if command_exists pm2 && pm2 describe "$SYSTEM_SERVICE_NAME" >/dev/null 2>&1; then
+    log "Pausing PM2 service for a consistent data backup..."
+    run pm2 stop "$SYSTEM_SERVICE_NAME"
+    SERVICE_STOPPED_FOR_BACKUP=1
+    return 0
+  fi
+
+  if command_exists systemctl && systemctl is-active --quiet "$SYSTEM_SERVICE_NAME"; then
+    log "Pausing systemd service for a consistent data backup..."
+    run systemctl stop "$SYSTEM_SERVICE_NAME"
+    SERVICE_STOPPED_FOR_BACKUP=1
+    return 0
+  fi
+
+  warn "No managed running service was found to pause before backup."
+}
+
 ensure_clean_repo() {
   cd "$REPO_ROOT"
   if [[ "$FORCE" -eq 0 ]] && [[ -n "$(git status --porcelain)" ]]; then
@@ -238,6 +334,7 @@ write_backup_metadata() {
     printf 'mode=%s\n' "$MODE"
     printf 'branch=%s\n' "${BRANCH:-unknown}"
     printf 'commit=%s\n' "$(git -C "$REPO_ROOT" rev-parse HEAD 2>/dev/null || echo unknown)"
+    printf 'quiesced_service=%s\n' "$SERVICE_STOPPED_FOR_BACKUP"
     printf 'restore_command=%s\n' "bash scripts/restore-backup.sh --backup-dir $CURRENT_BACKUP_DIR"
   } > "$CURRENT_BACKUP_DIR/metadata.txt"
 }
@@ -301,6 +398,35 @@ backup_docker_volume() {
     busybox sh -c 'cd /volume && tar -czf /backup/docker-volume-data.tar.gz .'
 }
 
+verify_backup_artifact() {
+  local archive="$1"
+  if [[ ! -f "$archive" ]]; then
+    die "Expected backup artifact was not created: $archive"
+  fi
+
+  if [[ ! -s "$archive" ]]; then
+    die "Backup artifact is empty: $archive"
+  fi
+
+  run tar -tzf "$archive" >/dev/null
+}
+
+verify_backup_artifacts() {
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    return 0
+  fi
+
+  verify_backup_artifact "$CURRENT_BACKUP_DIR/repo-snapshot.tar.gz"
+
+  if [[ -d "$REPO_ROOT/data" ]]; then
+    verify_backup_artifact "$CURRENT_BACKUP_DIR/local-data.tar.gz"
+  fi
+
+  if [[ "$MODE" == "docker" && -f "$CURRENT_BACKUP_DIR/docker-volume-data.tar.gz" ]]; then
+    verify_backup_artifact "$CURRENT_BACKUP_DIR/docker-volume-data.tar.gz"
+  fi
+}
+
 create_backup() {
   if [[ "$SKIP_BACKUP" -eq 1 ]]; then
     warn "Skipping pre-update hard backup by request."
@@ -316,6 +442,7 @@ create_backup() {
 
   run mkdir -p "$BACKUP_ROOT"
   run mkdir -p "$CURRENT_BACKUP_DIR"
+  stop_service_for_backup
   write_backup_metadata
   backup_repo_snapshot
   backup_local_data
@@ -323,6 +450,8 @@ create_backup() {
   if [[ "$MODE" == "docker" ]]; then
     backup_docker_volume
   fi
+
+  verify_backup_artifacts
 
   log "Hard backup created at $CURRENT_BACKUP_DIR"
   log "Restore with: bash scripts/restore-backup.sh --backup-dir \"$CURRENT_BACKUP_DIR\""
