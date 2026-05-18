@@ -7185,6 +7185,13 @@ button.danger:hover { filter: brightness(1.08); }
   padding: 24px 16px;
 }
 
+.forced-setup-gate {
+  align-items: flex-start;
+  min-height: 100dvh;
+  padding: max(20px, env(safe-area-inset-top)) 16px max(28px, env(safe-area-inset-bottom));
+  overflow-y: auto;
+}
+
 .auth-card {
   width: 100%;
   max-width: 380px;
@@ -7201,6 +7208,11 @@ button.danger:hover { filter: brightness(1.08); }
 
 .account-upgrade-card {
   max-width: 520px;
+}
+
+.migration-setup-card {
+  gap: 14px;
+  max-width: 540px;
 }
 
 .auth-card .brand-logo {
@@ -7285,6 +7297,76 @@ button.danger:hover { filter: brightness(1.08); }
 .account-requirements-list strong {
   color: var(--text);
   font-size: 0.82rem;
+}
+
+.migration-steps {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  text-align: left;
+}
+
+.migration-steps li {
+  display: grid;
+  grid-template-columns: 34px 1fr;
+  gap: 10px;
+  align-items: start;
+  padding: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: var(--radius-sm);
+  background: rgba(8, 14, 30, 0.42);
+}
+
+.migration-steps li.active {
+  border-color: rgba(251, 191, 36, 0.52);
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.12), rgba(59, 130, 246, 0.08));
+}
+
+.migration-steps li.complete {
+  border-color: rgba(74, 222, 128, 0.34);
+}
+
+.migration-step-index {
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: rgba(15, 23, 42, 0.82);
+  color: var(--text);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.migration-steps li.complete .migration-step-index {
+  background: rgba(22, 101, 52, 0.72);
+}
+
+.migration-steps strong {
+  display: block;
+  color: var(--text);
+  font-size: 0.86rem;
+}
+
+.migration-steps small {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 0.76rem;
+  line-height: 1.4;
+}
+
+.migration-consent-form {
+  padding: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: var(--radius-sm);
+  background: rgba(8, 14, 30, 0.34);
+}
+
+.migration-logout {
+  align-self: center;
 }
 
 .recovery-code-list {
