@@ -190,6 +190,8 @@ function AppShell() {
   const [pendingRecoveryCodes, setPendingRecoveryCodes] = useState<string[]>([])
   const [accountActionStatus, setAccountActionStatus] = useState('')
   const [accountActionLoading, setAccountActionLoading] = useState(false)
+  const passkeyCeremonyInFlightRef = useRef(false)
+  const accountActionInFlightRef = useRef(false)
 
   // ─── First-launch setup state ─────────────────────────────────────────
   const [setupRequired, setSetupRequired] = useState<boolean | null>(null)
@@ -1060,6 +1062,10 @@ function AppShell() {
 
   async function ensureRecentPasskeyAuth(): Promise<boolean> {
     if (!authToken) return false
+    if (passkeyCeremonyInFlightRef.current) {
+      setAccountActionStatus('Passkey confirmation is already in progress.')
+      return false
+    }
     if (!passkeySupported) {
       setAccountActionStatus('This browser does not support passkey confirmation.')
       return false
@@ -1070,6 +1076,7 @@ function AppShell() {
       return false
     }
 
+    passkeyCeremonyInFlightRef.current = true
     try {
       const optionsResponse = await authFetch('/api/auth/passkey/reauth/options', authToken, { method: 'POST' })
       const optionsData = await optionsResponse.json() as { ok: boolean; error?: string; options?: AuthenticationOptionsJSON; challengeId?: string }
@@ -1097,6 +1104,24 @@ function AppShell() {
     } catch (error) {
       setAccountActionStatus(formatPasskeyCeremonyError(error, 'Passkey confirmation failed.', 'Passkey confirmation was cancelled.'))
       return false
+    } finally {
+      passkeyCeremonyInFlightRef.current = false
+    }
+  }
+
+  async function refreshServerProfile(tokenOverride = authToken): Promise<ServerProfile | null> {
+    if (!tokenOverride) return null
+    try {
+      const response = await authFetch('/api/me', tokenOverride)
+      const data = await response.json() as { ok: boolean; profile?: ServerProfile }
+      if (!response.ok || !data.ok || !data.profile) return null
+      setServerProfile(data.profile)
+      if (data.profile.deckConfig && Object.keys(data.profile.deckConfig).length > 0) {
+        setDeckConfig(data.profile.deckConfig)
+      }
+      return data.profile
+    } catch {
+      return null
     }
   }
 
@@ -1165,25 +1190,40 @@ function AppShell() {
 
   async function handleGenerateRecoveryCodes() {
     if (!authToken) return
-    if (!await ensureRecentPasskeyAuth()) return
+    if (accountActionInFlightRef.current) {
+      setAccountActionStatus('Recovery code setup is already in progress.')
+      return
+    }
+    if (pendingRecoveryCodes.length > 0) {
+      setAccountActionStatus('Recovery codes are already generated. Save this batch before continuing.')
+      return
+    }
+    accountActionInFlightRef.current = true
     setAccountActionLoading(true)
+    if (!await ensureRecentPasskeyAuth()) {
+      accountActionInFlightRef.current = false
+      setAccountActionLoading(false)
+      return
+    }
     setAccountActionStatus('')
     try {
       const response = await authFetch('/api/me/recovery-codes/generate', authToken, { method: 'POST' })
       const data = await response.json() as { ok: boolean; error?: string; recoveryCodes?: string[]; recovery?: AccountRecoveryStatus; profile?: ServerProfile }
       if (!data.ok || !data.recoveryCodes?.length) {
         setAccountActionStatus(data.error ?? 'Recovery codes could not be generated.')
-        setAccountActionLoading(false)
         return
       }
       setPendingRecoveryCodes(data.recoveryCodes)
       setRecoveryStatus(data.recovery ?? null)
       if (data.profile) setServerProfile(data.profile)
+      await refreshServerProfile()
       setAccountActionStatus('Recovery codes generated. Save them before continuing.')
     } catch {
       setAccountActionStatus('Recovery codes could not be generated.')
+    } finally {
+      accountActionInFlightRef.current = false
+      setAccountActionLoading(false)
     }
-    setAccountActionLoading(false)
   }
 
   async function handleAcknowledgeRecoveryCodes() {
@@ -1201,6 +1241,8 @@ function AppShell() {
       setPendingRecoveryCodes([])
       setRecoveryStatus(data.recovery ?? null)
       if (data.profile) setServerProfile(data.profile)
+      await refreshServerProfile()
+      await refreshSocialHub()
       setToastMessage('Recovery codes saved.')
     } catch {
       setAccountActionStatus('Recovery codes could not be confirmed.')
@@ -1288,6 +1330,10 @@ function AppShell() {
 
   async function handleRegisterPasskey() {
     if (!authToken) return
+    if (passkeyCeremonyInFlightRef.current) {
+      setPasskeyStatus('Passkey setup is already in progress. Finish the browser or system prompt before trying again.')
+      return
+    }
     setPasskeyStatus('')
     if (!passkeySupported) {
       setPasskeyStatus('This browser does not support passkeys.')
@@ -1299,6 +1345,7 @@ function AppShell() {
       return
     }
 
+    passkeyCeremonyInFlightRef.current = true
     setPasskeyLoading(true)
     try {
       const optionsResponse = await authFetch('/api/auth/passkey/register/options', authToken, { method: 'POST' })
@@ -1307,7 +1354,6 @@ function AppShell() {
       }
       if (!optionsData.ok || !optionsData.options || !optionsData.challengeId) {
         setPasskeyStatus(optionsData.error ?? 'Passkey registration could not be started.')
-        setPasskeyLoading(false)
         return
       }
 
@@ -1329,19 +1375,24 @@ function AppShell() {
       }
       if (!data.ok) {
         setPasskeyStatus(data.error ?? 'Passkey registration could not be verified.')
-        setPasskeyLoading(false)
         return
       }
 
       setPasskeys(data.passkeys ?? [])
       if (data.profile) setServerProfile(data.profile)
+      await Promise.all([
+        refreshPasskeys(authToken),
+        refreshRecoveryStatus(authToken),
+        refreshServerProfile(authToken),
+      ])
       setPasskeyStatus('Passkey added.')
       setToastMessage('Passkey added.')
     } catch (error) {
       setPasskeyStatus(formatPasskeyCeremonyError(error, 'Passkey creation did not finish. Try again and watch for the browser or system passkey window.'))
+    } finally {
+      passkeyCeremonyInFlightRef.current = false
+      setPasskeyLoading(false)
     }
-
-    setPasskeyLoading(false)
   }
 
   async function handleDeletePasskey(passkeyId: string) {
@@ -1393,6 +1444,7 @@ function AppShell() {
       setServerProfile(data.profile ?? serverProfile)
       if (data.recovery) setRecoveryStatus(data.recovery)
       if (data.recoveryCodes?.length) setPendingRecoveryCodes(data.recoveryCodes)
+      await refreshServerProfile()
       setAccountUpgradeStatus('Account setup complete.')
       setToastMessage('Account setup complete.')
     } catch {
@@ -3222,13 +3274,17 @@ function AppShell() {
     setSocialLoading(true)
     try {
       const response = await authFetch('/api/social/friends', authToken, { method: 'POST', body: { username } })
-      const data = (await response.json()) as { ok?: boolean; error?: string }
+      const data = (await response.json()) as { ok?: boolean; error?: string; alreadyFriend?: boolean; social?: { friends?: SocialFriend[]; clan?: SocialClan | null } }
       if (!response.ok || !data.ok) {
         setToastMessage(data.error ?? 'Could not add friend right now.')
         return
       }
+      if (data.social) {
+        setFriends(data.social.friends ?? [])
+        setClan(data.social.clan ?? null)
+      }
       setFriendUsernameInput('')
-      setToastMessage(`Friend added: @${username}.`)
+      setToastMessage(data.alreadyFriend ? 'Friend list refreshed.' : `Friend added: @${username}.`)
       await refreshSocialHub()
     } catch {
       setToastMessage('Could not add friend right now.')
@@ -3981,8 +4037,8 @@ function AppShell() {
         <div className="auth-gate forced-setup-gate">
           <div className="auth-card account-upgrade-card">
             <img className="auth-app-icon" src="/fractured-arcanum-icon-512.svg" alt="Fractured Arcanum app icon" />
-            <h1>Save Recovery Codes</h1>
-            <p className="auth-tagline">These one-time codes are mandatory for passkey-only account recovery.</p>
+            <h1>Save {pendingRecoveryCodes.length} Recovery Codes</h1>
+            <p className="auth-tagline">This is one recovery batch. Generating a new batch later revokes this one.</p>
             <ul className="account-requirements-list recovery-code-list">
               {pendingRecoveryCodes.map((code) => (
                 <li key={code}><strong>{code}</strong><span>Store privately. Each code works once.</span></li>
@@ -4037,7 +4093,7 @@ function AppShell() {
             )}
             {!hasPasskeySetupRequirement && !hasLegalSetupRequirement && hasRecoverySetupRequirement && (
               <button className="primary" type="button" disabled={accountActionLoading || !passkeySupported} onClick={() => void handleGenerateRecoveryCodes()}>
-                {accountActionLoading ? 'Working...' : 'Generate Recovery Codes'}
+                {accountActionLoading ? 'Working...' : 'Confirm Passkey And Generate Recovery Codes'}
               </button>
             )}
             {passkeyStatus && <p className="auth-note">{passkeyStatus}</p>}

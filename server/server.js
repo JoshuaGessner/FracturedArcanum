@@ -1827,7 +1827,7 @@ app.post('/api/social/friends', requireAuth, requireAccountReady, (request, resp
     response.status(400).json(result)
     return
   }
-  response.json(result)
+  response.json({ ...result, social: getSocialOverview(request.accountId) })
 })
 
 app.delete('/api/social/friends/:friendAccountId', requireAuth, requireAccountReady, (request, response) => {

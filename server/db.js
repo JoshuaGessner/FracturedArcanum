@@ -2338,10 +2338,19 @@ const CLAN_NAME_RE = /^[a-zA-Z0-9][a-zA-Z0-9 '\-]{2,31}$/
 const CLAN_TAG_RE = /^[A-Z0-9]{2,6}$/
 
 const _getFriends = db.prepare(`
-  SELECT sf.friend_account_id as accountId, a.username, a.display_name as displayName, sf.created_at as since
-  FROM social_friends sf
-  JOIN accounts a ON a.id = sf.friend_account_id
-  WHERE sf.account_id = ?
+  SELECT linked.friend_account_id as accountId, a.username, a.display_name as displayName, MIN(linked.created_at) as since
+  FROM (
+    SELECT friend_account_id, created_at
+    FROM social_friends
+    WHERE account_id = ?
+    UNION ALL
+    SELECT account_id as friend_account_id, created_at
+    FROM social_friends
+    WHERE friend_account_id = ?
+  ) linked
+  JOIN accounts a ON a.id = linked.friend_account_id
+  WHERE a.account_status = 'active' AND a.deleted_at IS NULL
+  GROUP BY linked.friend_account_id, a.username, a.display_name
   ORDER BY a.display_name COLLATE NOCASE ASC
 `)
 
@@ -2349,9 +2358,16 @@ const _hasFriendEdge = db.prepare(`
   SELECT 1 as linked FROM social_friends WHERE account_id = ? AND friend_account_id = ? LIMIT 1
 `)
 
+const _hasAnyFriendEdge = db.prepare(`
+  SELECT 1 as linked
+  FROM social_friends
+  WHERE (account_id = ? AND friend_account_id = ?) OR (account_id = ? AND friend_account_id = ?)
+  LIMIT 1
+`)
+
 export function isFriendOf(accountId, otherAccountId) {
   if (!accountId || !otherAccountId || accountId === otherAccountId) return false
-  const row = _hasFriendEdge.get(accountId, otherAccountId)
+  const row = _hasAnyFriendEdge.get(accountId, otherAccountId, otherAccountId, accountId)
   return Boolean(row?.linked)
 }
 
@@ -2455,8 +2471,28 @@ function mapClanPayload(clanInfo, members, yourAccountId) {
   }
 }
 
+function friendSummary(account) {
+  return {
+    accountId: account.id,
+    username: account.username,
+    displayName: account.display_name,
+  }
+}
+
+function ensureFriendshipEdges(accountId, friendAccountId) {
+  const tx = db.transaction(() => {
+    _insertFriendEdge.run(accountId, friendAccountId)
+    _insertFriendEdge.run(friendAccountId, accountId)
+  })
+  tx()
+}
+
 export function getSocialOverview(accountId) {
-  const friends = _getFriends.all(accountId)
+  const linkedFriends = _getFriends.all(accountId, accountId)
+  for (const friend of linkedFriends) {
+    ensureFriendshipEdges(accountId, friend.accountId)
+  }
+  const friends = _getFriends.all(accountId, accountId)
   const membership = _getClanMembership.get(accountId)
   const members = membership ? _getClanMembers.all(membership.clanId) : []
 
@@ -2483,23 +2519,18 @@ export function addFriend(accountId, username) {
     return { ok: false, error: 'You cannot add yourself as a friend.' }
   }
 
-  if (_hasFriendEdge.get(accountId, friend.id)) {
-    return { ok: false, error: 'That player is already on your friends list.' }
+  const alreadyLinked = Boolean(_hasAnyFriendEdge.get(accountId, friend.id, friend.id, accountId))
+  if (alreadyLinked) {
+    ensureFriendshipEdges(accountId, friend.id)
+    return { ok: true, alreadyFriend: true, friend: friendSummary(friend) }
   }
 
-  const tx = db.transaction(() => {
-    _insertFriendEdge.run(accountId, friend.id)
-    _insertFriendEdge.run(friend.id, accountId)
-  })
-  tx()
+  ensureFriendshipEdges(accountId, friend.id)
 
   return {
     ok: true,
-    friend: {
-      accountId: friend.id,
-      username: friend.username,
-      displayName: friend.display_name,
-    },
+    alreadyFriend: false,
+    friend: friendSummary(friend),
   }
 }
 

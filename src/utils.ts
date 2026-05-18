@@ -119,6 +119,10 @@ export function formatPasskeyCeremonyError(error: unknown, fallbackMessage: stri
     return cancelledMessage
   }
 
+  if (error instanceof Error && error.name === 'SecurityError') {
+    return 'Passkey prompt is blocked because the app domain does not match the passkey domain. Open the canonical app URL and check passkey server configuration.'
+  }
+
   if (error instanceof Error && error.name === 'PasskeyTimeoutError') {
     return error.message
   }

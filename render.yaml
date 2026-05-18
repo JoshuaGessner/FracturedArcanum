@@ -8,3 +8,13 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      - key: CLIENT_ORIGIN
+        value: https://farcanum.anomalousinteractive.com
+      - key: PUBLIC_APP_URL
+        value: https://farcanum.anomalousinteractive.com
+      - key: WEBAUTHN_ORIGIN
+        value: https://farcanum.anomalousinteractive.com
+      - key: WEBAUTHN_RP_ID
+        value: farcanum.anomalousinteractive.com
+      - key: WEBAUTHN_RP_NAME
+        value: Fractured Arcanum

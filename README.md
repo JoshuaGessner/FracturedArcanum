@@ -84,6 +84,18 @@ docker compose down
 
 The SQLite database persists in a Docker volume (`fractured-arcanum-data`). No data is lost when the container restarts.
 
+Docker Compose automatically reads a `.env` file from the same directory as `docker-compose.yml`. For the production Farcanum host, create that file on the server with:
+
+```bash
+CLIENT_ORIGIN=https://farcanum.anomalousinteractive.com
+PUBLIC_APP_URL=https://farcanum.anomalousinteractive.com
+WEBAUTHN_ORIGIN=https://farcanum.anomalousinteractive.com
+WEBAUTHN_RP_ID=farcanum.anomalousinteractive.com
+WEBAUTHN_RP_NAME=Fractured Arcanum
+```
+
+Do not commit the server `.env` file. It is deployment-local configuration and may also contain secrets like `ADMIN_KEY`.
+
 If you are updating from an older image and the container is crash-looping on SQLite startup, rebuild and restart with:
 
 ```bash

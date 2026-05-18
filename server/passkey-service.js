@@ -21,15 +21,21 @@ const RP_NAME = process.env.WEBAUTHN_RP_NAME || 'Fractured Arcanum'
 const DEFAULT_APP_ORIGIN = 'http://localhost:43173'
 
 function firstConfiguredOrigin() {
-  return String(process.env.WEBAUTHN_ORIGIN || process.env.PUBLIC_APP_URL || process.env.CLIENT_ORIGIN || DEFAULT_APP_ORIGIN)
+  return String(process.env.WEBAUTHN_ORIGIN || process.env.PUBLIC_APP_URL || process.env.CLIENT_ORIGIN || '')
     .split(',')[0]
     .trim()
 }
 
 function requestOrigin(request) {
   const configured = firstConfiguredOrigin()
-  if (process.env.NODE_ENV === 'production' || process.env.WEBAUTHN_ORIGIN) return configured
-  return String(request.get('origin') || configured).trim()
+  if (configured) return configured
+
+  const origin = String(request?.get?.('origin') || '').trim()
+  if (origin) return origin
+
+  if (process.env.NODE_ENV !== 'production') return DEFAULT_APP_ORIGIN
+
+  return ''
 }
 
 function rpIdForOrigin(origin) {
@@ -41,9 +47,59 @@ function rpIdForOrigin(origin) {
   }
 }
 
+function isIpHostname(hostname) {
+  return /^(\d{1,3}\.){3}\d{1,3}$/.test(hostname) || hostname.includes(':')
+}
+
+function rpIdMatchesOrigin(rpID, hostname) {
+  return hostname === rpID || hostname.endsWith(`.${rpID}`)
+}
+
 function webAuthnContext(request) {
   const origin = requestOrigin(request)
-  return { origin, rpID: rpIdForOrigin(origin) }
+  if (!origin) {
+    return {
+      ok: false,
+      status: 500,
+      error: 'Passkey origin is not configured for this domain.',
+    }
+  }
+
+  try {
+    const parsed = new URL(origin)
+    if (process.env.NODE_ENV === 'production' && parsed.protocol !== 'https:') {
+      return {
+        ok: false,
+        status: 500,
+        error: 'Passkeys require an HTTPS app origin in production.',
+      }
+    }
+
+    if (parsed.hostname !== 'localhost' && isIpHostname(parsed.hostname)) {
+      return {
+        ok: false,
+        status: 500,
+        error: 'Passkeys require localhost or a DNS app origin.',
+      }
+    }
+
+    const rpID = rpIdForOrigin(origin)
+    if (!rpIdMatchesOrigin(rpID, parsed.hostname)) {
+      return {
+        ok: false,
+        status: 500,
+        error: 'Passkey relying party ID does not match this app origin.',
+      }
+    }
+
+    return { ok: true, origin, rpID }
+  } catch {
+    return {
+      ok: false,
+      status: 500,
+      error: 'Passkey origin is invalid.',
+    }
+  }
 }
 
 function credentialDescriptors(credentials) {
@@ -57,7 +113,9 @@ export async function createPasskeyRegistrationOptions(accountId, request) {
   const account = getAccountById(accountId)
   if (!account) return { ok: false, status: 404, error: 'Account not found.' }
 
-  const { origin, rpID } = webAuthnContext(request)
+  const context = webAuthnContext(request)
+  if (!context.ok) return context
+  const { origin, rpID } = context
   const existingCredentials = listAccountPasskeyCredentials(accountId)
   const options = await generateRegistrationOptions({
     rpName: RP_NAME,
@@ -86,7 +144,8 @@ export async function verifyPasskeyRegistration(accountId, payload, request) {
     return { ok: false, status: 400, error: 'Passkey registration challenge expired. Try again.' }
   }
 
-  const context = challenge.metadata?.origin && challenge.metadata?.rpID ? challenge.metadata : webAuthnContext(request)
+  const context = challenge.metadata?.origin && challenge.metadata?.rpID ? { ok: true, ...challenge.metadata } : webAuthnContext(request)
+  if (!context.ok) return context
   const verification = await verifyRegistrationResponse({
     response: payload.response,
     expectedChallenge: challenge.challenge,
@@ -114,7 +173,9 @@ export async function createPasskeyLoginOptions(identifier, request) {
   const credentials = listAccountPasskeyCredentials(account.id)
   if (credentials.length === 0) return { ok: false, status: 404, error: 'No passkeys are registered for this account.' }
 
-  const { origin, rpID } = webAuthnContext(request)
+  const context = webAuthnContext(request)
+  if (!context.ok) return context
+  const { origin, rpID } = context
   const options = await generateAuthenticationOptions({
     rpID,
     allowCredentials: credentialDescriptors(credentials),
@@ -134,7 +195,9 @@ export async function createPasskeyReauthOptions(accountId, request) {
   const credentials = listAccountPasskeyCredentials(account.id)
   if (credentials.length === 0) return { ok: false, status: 404, error: 'No passkeys are registered for this account.' }
 
-  const { origin, rpID } = webAuthnContext(request)
+  const context = webAuthnContext(request)
+  if (!context.ok) return context
+  const { origin, rpID } = context
   const options = await generateAuthenticationOptions({
     rpID,
     allowCredentials: credentialDescriptors(credentials),
@@ -157,7 +220,8 @@ export async function verifyPasskeyReauth(accountId, payload, request) {
     return { ok: false, status: 400, error: 'Passkey is not registered for this account.' }
   }
 
-  const context = challenge.metadata?.origin && challenge.metadata?.rpID ? challenge.metadata : webAuthnContext(request)
+  const context = challenge.metadata?.origin && challenge.metadata?.rpID ? { ok: true, ...challenge.metadata } : webAuthnContext(request)
+  if (!context.ok) return context
   const verification = await verifyAuthenticationResponse({
     response: payload.response,
     expectedChallenge: challenge.challenge,
@@ -186,7 +250,9 @@ export async function createPasskeyRecoveryOptions(identifier, recoveryCode, req
   }
 
   const account = recovery.account
-  const { origin, rpID } = webAuthnContext(request)
+  const context = webAuthnContext(request)
+  if (!context.ok) return context
+  const { origin, rpID } = context
   const existingCredentials = listAccountPasskeyCredentials(account.id)
   const options = await generateRegistrationOptions({
     rpName: RP_NAME,
@@ -221,7 +287,8 @@ export async function verifyPasskeyRecovery(payload, request) {
     return { ok: false, status: 404, error: 'Active account not found.' }
   }
 
-  const context = challenge.metadata?.origin && challenge.metadata?.rpID ? challenge.metadata : webAuthnContext(request)
+  const context = challenge.metadata?.origin && challenge.metadata?.rpID ? { ok: true, ...challenge.metadata } : webAuthnContext(request)
+  if (!context.ok) return context
   const verification = await verifyRegistrationResponse({
     response: payload.response,
     expectedChallenge: challenge.challenge,
@@ -265,7 +332,8 @@ export async function verifyPasskeyLogin(payload, request) {
     return { ok: false, status: 400, error: 'Passkey is not registered for this account.' }
   }
 
-  const context = challenge.metadata?.origin && challenge.metadata?.rpID ? challenge.metadata : webAuthnContext(request)
+  const context = challenge.metadata?.origin && challenge.metadata?.rpID ? { ok: true, ...challenge.metadata } : webAuthnContext(request)
+  if (!context.ok) return context
   const verification = await verifyAuthenticationResponse({
     response: payload.response,
     expectedChallenge: challenge.challenge,
