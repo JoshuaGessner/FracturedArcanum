@@ -9,6 +9,10 @@ services:
       - DATA_DIR=/app/data
       - ADMIN_KEY=${ADMIN_KEY:-}
       - CLIENT_ORIGIN=${CLIENT_ORIGIN:-}
+      - PUBLIC_APP_URL=${PUBLIC_APP_URL:-}
+      - WEBAUTHN_ORIGIN=${WEBAUTHN_ORIGIN:-}
+      - WEBAUTHN_RP_ID=${WEBAUTHN_RP_ID:-}
+      - WEBAUTHN_RP_NAME=${WEBAUTHN_RP_NAME:-Fractured Arcanum}
     volumes:
       - fractured-arcanum-data:/app/data
     restart: unless-stopped

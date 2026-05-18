@@ -101,9 +101,11 @@ describe('UI asset helpers', () => {
 
   it('formats passkey ceremony errors without hiding user cancellation', () => {
     const cancelled = new DOMException('The operation was cancelled.', 'NotAllowedError')
+    const securityError = new DOMException('The relying party ID is not valid.', 'SecurityError')
     const timedOut = new Error('Passkey prompt timed out.')
     timedOut.name = 'PasskeyTimeoutError'
     expect(formatPasskeyCeremonyError(cancelled, 'Passkey login failed.')).toBe('Passkey prompt was cancelled.')
+    expect(formatPasskeyCeremonyError(securityError, 'Passkey login failed.')).toBe('Passkey prompt is blocked because the app domain does not match the passkey domain. Open the canonical app URL and check passkey server configuration.')
     expect(formatPasskeyCeremonyError(timedOut, 'Passkey login failed.')).toBe('Passkey prompt timed out.')
     expect(formatPasskeyCeremonyError(new Error('Unknown local failure'), 'Passkey login failed.')).toBe('Passkey login failed.')
   })

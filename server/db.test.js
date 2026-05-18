@@ -2,23 +2,35 @@
 // Integration tests for the server DB layer. Uses a throwaway SQLite database
 // under a temporary DATA_DIR so production data is not touched.
 
-import { describe, it, expect, beforeAll, afterAll } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest'
 import Database from 'better-sqlite3'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 
 let db
+let passkeyService
 let tmpDir
+let originalNodeEnv
 
 beforeAll(async () => {
   tmpDir = mkdtempSync(path.join(tmpdir(), 'fa-db-test-'))
+  originalNodeEnv = process.env.NODE_ENV
   process.env.DATA_DIR = tmpDir
   db = await import('./db.js')
+  passkeyService = await import('./passkey-service.js')
 })
 
 afterAll(() => {
+  if (originalNodeEnv === undefined) delete process.env.NODE_ENV
+  else process.env.NODE_ENV = originalNodeEnv
   try { rmSync(tmpDir, { recursive: true, force: true }) } catch { /* ignore */ }
+})
+
+afterEach(() => {
+  clearWebAuthnEnv()
+  if (originalNodeEnv === undefined) delete process.env.NODE_ENV
+  else process.env.NODE_ENV = originalNodeEnv
 })
 
 function makeAccount(username) {
@@ -49,6 +61,74 @@ function acknowledgeRecoveryCodes(accountId) {
 function createClusteredAccount(username, options = {}) {
   return db.createAccount(username, 'password12345', username, 'shared-fp', '198.51.100.44', 'cluster-agent', options)
 }
+
+function requestWithOrigin(origin) {
+  return {
+    get(name) {
+      return name.toLowerCase() === 'origin' ? origin : ''
+    },
+  }
+}
+
+function clearWebAuthnEnv() {
+  delete process.env.WEBAUTHN_ORIGIN
+  delete process.env.WEBAUTHN_RP_ID
+  delete process.env.PUBLIC_APP_URL
+  delete process.env.CLIENT_ORIGIN
+}
+
+describe('passkey origin configuration', () => {
+  it('derives production passkey origin from the browser request when env origin is missing', async () => {
+    clearWebAuthnEnv()
+    process.env.NODE_ENV = 'production'
+    const accountId = makeAccount('webaprodorigin')
+
+    const result = await passkeyService.createPasskeyRegistrationOptions(
+      accountId,
+      requestWithOrigin('https://farcanum.anomalousinteractive.com'),
+    )
+
+    expect(result.ok, result.error).toBe(true)
+    expect(result.options.rp.id).toBe('farcanum.anomalousinteractive.com')
+  })
+
+  it('fails production passkey setup clearly instead of falling back to localhost', async () => {
+    clearWebAuthnEnv()
+    process.env.NODE_ENV = 'production'
+    const accountId = makeAccount('webamissorigin')
+
+    const result = await passkeyService.createPasskeyRegistrationOptions(accountId, requestWithOrigin(''))
+
+    expect(result.ok).toBe(false)
+    expect(result.error).toBe('Passkey origin is not configured for this domain.')
+  })
+
+  it('uses explicit WebAuthn origin configuration ahead of request origin', async () => {
+    clearWebAuthnEnv()
+    process.env.NODE_ENV = 'production'
+    process.env.WEBAUTHN_ORIGIN = 'https://farcanum.anomalousinteractive.com'
+    process.env.WEBAUTHN_RP_ID = 'farcanum.anomalousinteractive.com'
+    const accountId = makeAccount('webaexplicitorigin')
+
+    const result = await passkeyService.createPasskeyRegistrationOptions(accountId, requestWithOrigin('https://unexpected.example'))
+
+    expect(result.ok, result.error).toBe(true)
+    expect(result.options.rp.id).toBe('farcanum.anomalousinteractive.com')
+  })
+
+  it('rejects mismatched WebAuthn relying party IDs before browser ceremony', async () => {
+    clearWebAuthnEnv()
+    process.env.NODE_ENV = 'production'
+    process.env.WEBAUTHN_ORIGIN = 'https://farcanum.anomalousinteractive.com'
+    process.env.WEBAUTHN_RP_ID = 'farcanum.com'
+    const accountId = makeAccount('webarpmismatch')
+
+    const result = await passkeyService.createPasskeyRegistrationOptions(accountId, requestWithOrigin('https://farcanum.anomalousinteractive.com'))
+
+    expect(result.ok).toBe(false)
+    expect(result.error).toBe('Passkey relying party ID does not match this app origin.')
+  })
+})
 
 describe('schema migration compatibility', () => {
   it('opens a legacy accounts table without anti-abuse columns', async () => {
@@ -594,6 +674,34 @@ describe('friend gating', () => {
     expect(db.isFriendOf(a, a)).toBe(false)
     expect(db.isFriendOf('', a)).toBe(false)
     expect(db.isFriendOf(a, '')).toBe(false)
+  })
+
+  it('addFriend is idempotent and returns the existing friend', () => {
+    const a = makeAccount('friendidema')
+    const b = makeAccount('friendidemb')
+
+    const first = db.addFriend(a, 'friendidemb')
+    const second = db.addFriend(a, 'friendidemb')
+
+    expect(first.ok).toBe(true)
+    expect(first.alreadyFriend).toBe(false)
+    expect(second.ok).toBe(true)
+    expect(second.alreadyFriend).toBe(true)
+    expect(second.friend.accountId).toBe(b)
+    expect(db.getSocialOverview(a).friends).toHaveLength(1)
+  })
+
+  it('getSocialOverview repairs one-way friend edges', () => {
+    const a = makeAccount('friendrepaira')
+    const b = makeAccount('friendrepairb')
+
+    db.default.prepare(`INSERT INTO social_friends (account_id, friend_account_id) VALUES (?, ?)`).run(a, b)
+    expect(db.isFriendOf(b, a)).toBe(true)
+    const overview = db.getSocialOverview(b)
+
+    expect(overview.friends.some((friend) => friend.accountId === a)).toBe(true)
+    expect(db.isFriendOf(a, b)).toBe(true)
+    expect(db.isFriendOf(b, a)).toBe(true)
   })
 })
 
