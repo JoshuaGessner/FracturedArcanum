@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process'
 import { createServer } from 'node:net'
-import { createHash } from 'node:crypto'
+import { createHash, randomBytes } from 'node:crypto'
 import { mkdir, rm, writeFile } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import path from 'node:path'
@@ -56,6 +56,14 @@ function hashIp(ip) {
   return createHash('sha256').update(`rc-ip:${ip}`).digest('hex').slice(0, 24)
 }
 
+function hashUserAgent(userAgent) {
+  return createHash('sha256').update(`rc-ua:${userAgent}`).digest('hex').slice(0, 24)
+}
+
+function hashSessionToken(token) {
+  return createHash('sha256').update(`rc-session-token:${token}`).digest('hex')
+}
+
 function resetLocalhostLoginRateLimits() {
   const dataDir = path.resolve(process.env.DATA_DIR ?? 'data')
   const dbPath = path.join(dataDir, 'fractured-arcanum.db')
@@ -66,6 +74,73 @@ function resetLocalhostLoginRateLimits() {
     for (const ip of ['127.0.0.1', '::1', '0.0.0.0']) {
       deleteRateLimit.run(`login:${hashIp(ip)}`)
     }
+  } finally {
+    database.close()
+  }
+}
+
+function ensureViewportQaPasskey(accountId, minCount = 1) {
+  const dataDir = path.resolve(process.env.DATA_DIR ?? 'data')
+  const dbPath = path.join(dataDir, 'fractured-arcanum.db')
+  if (!existsSync(dbPath)) return false
+
+  const database = new Database(dbPath)
+  try {
+    const existing = database.prepare('SELECT COUNT(*) as cnt FROM account_authenticators WHERE account_id = ?').get(accountId)
+    const existingCount = Number(existing?.cnt ?? 0)
+    if (existingCount >= minCount) return true
+
+    const insertPasskey = database.prepare(`
+      INSERT INTO account_authenticators (
+        id, account_id, credential_id, credential_public_key, counter, transports, backed_up, device_type, name
+      ) VALUES (?, ?, ?, ?, 0, ?, 1, 'qaDevice', 'Viewport QA Passkey')
+    `)
+    for (let index = existingCount; index < minCount; index += 1) {
+      const suffix = createHash('sha256').update(`viewport-qa-passkey:${accountId}:${index}`).digest('hex').slice(0, 16)
+      insertPasskey.run(
+        `qa-authnr-${suffix}`,
+        accountId,
+        `qa-credential-${suffix}`,
+        Buffer.from(`viewport-qa-public-key-${suffix}`),
+        JSON.stringify(['internal']),
+      )
+    }
+    return true
+  } finally {
+    database.close()
+  }
+}
+
+function createViewportQaSession(username) {
+  const dataDir = path.resolve(process.env.DATA_DIR ?? 'data')
+  const dbPath = path.join(dataDir, 'fractured-arcanum.db')
+  if (!existsSync(dbPath)) return null
+
+  const database = new Database(dbPath)
+  try {
+    const account = database.prepare(`
+      SELECT id, account_status, deleted_at
+      FROM accounts
+      WHERE username = ? COLLATE NOCASE
+    `).get(username)
+    if (!account || account.account_status !== 'active' || account.deleted_at) return null
+
+    const token = randomBytes(32).toString('hex')
+    const sessionId = `sess-${randomBytes(12).toString('hex')}`
+    const familyId = `sessfam-${randomBytes(12).toString('hex')}`
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+    const ipHash = hashIp('127.0.0.1')
+    const uaHash = hashUserAgent('viewport-qa')
+    const tx = database.transaction(() => {
+      database.prepare(`INSERT INTO session_families (id, account_id) VALUES (?, ?)`).run(familyId, account.id)
+      database.prepare(`
+        INSERT INTO sessions (token, account_id, expires_at, ip_hash, token_hash, family_id, user_agent_hash, last_seen_at, auth_method, last_passkey_reauth_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), 'passkey', datetime('now'))
+      `).run(sessionId, account.id, expiresAt, ipHash, hashSessionToken(token), familyId, uaHash)
+      database.prepare(`UPDATE accounts SET last_login = datetime('now') WHERE id = ?`).run(account.id)
+    })
+    tx()
+    return token
   } finally {
     database.close()
   }
@@ -233,15 +308,62 @@ async function startServer() {
 
 async function authenticate(page, url, apiOrigin) {
   resetLocalhostLoginRateLimits()
-  const response = await page.request.post(`${apiOrigin}/api/auth/login`, {
+  let response = await page.request.post(`${apiOrigin}/api/auth/login`, {
     data: { username: QA_USERNAME, password: QA_PASSWORD },
   })
   if (!response.ok()) {
     const body = await response.text()
-    throw new Error(`Viewport QA could not sign in as ${QA_USERNAME}: ${response.status()} ${body}`)
+    const localToken = createViewportQaSession(QA_USERNAME)
+    if (!localToken) {
+      throw new Error(`Viewport QA could not sign in as ${QA_USERNAME}: ${response.status()} ${body}`)
+    }
+    response = await page.request.get(`${apiOrigin}/api/me`, {
+      headers: { Authorization: `Bearer ${localToken}` },
+    })
+    if (!response.ok()) {
+      throw new Error(`Viewport QA local passkey session was rejected for ${QA_USERNAME}: ${response.status()} ${await response.text()}`)
+    }
+    const profileData = await response.json()
+    response = {
+      ok: () => true,
+      json: async () => ({ token: localToken, profile: profileData.profile }),
+    }
   }
   const data = await response.json()
   if (!data.token) throw new Error(`Viewport QA login response did not include a token for ${QA_USERNAME}`)
+
+  const requirements = data.profile?.accountReadiness?.requirements ?? []
+  if (data.profile?.accountSetupRequired || data.profile?.accountReadiness?.setupRequired) {
+    const minimumPasskeys = requirements.some((item) => item.id === 'owner_second_passkey') ? 2 : 1
+    const needsPasskey = requirements.some((item) => item.id === 'passkey' || item.id === 'owner_passkey' || item.id === 'owner_second_passkey')
+    if (needsPasskey && !ensureViewportQaPasskey(data.profile?.accountId, minimumPasskeys)) {
+      throw new Error('Viewport QA account requires a passkey, but no local QA database was available to seed one.')
+    }
+
+    const completeResponse = await page.request.post(`${apiOrigin}/api/me/account-upgrade/complete`, {
+      headers: { Authorization: `Bearer ${data.token}` },
+      data: {
+        acceptTerms: true,
+        acceptPrivacy: true,
+        ageAttestation: 'adult',
+        locale: 'en-US',
+      },
+    })
+    const completeData = await completeResponse.json().catch(() => ({}))
+    if (!completeResponse.ok() || !completeData.ok) {
+      throw new Error(`Viewport QA account upgrade completion failed: ${completeResponse.status()} ${JSON.stringify(completeData)}`)
+    }
+    if (completeData.recoveryCodes?.length || (completeData.recovery?.activeCount > 0 && !completeData.recovery?.acknowledgedAt)) {
+      const acknowledgeResponse = await page.request.post(`${apiOrigin}/api/me/recovery-codes/acknowledge`, {
+        headers: { Authorization: `Bearer ${data.token}` },
+      })
+      const acknowledgeData = await acknowledgeResponse.json().catch(() => ({}))
+      if (!acknowledgeResponse.ok() || !acknowledgeData.ok) {
+        throw new Error(`Viewport QA recovery code acknowledgement failed: ${acknowledgeResponse.status()} ${JSON.stringify(acknowledgeData)}`)
+      }
+    }
+  }
+
   await page.goto(url, { waitUntil: 'domcontentloaded' })
   await page.evaluate((token) => {
     window.localStorage.setItem('fractured-arcanum.auth-token', JSON.stringify(token))
@@ -262,7 +384,7 @@ async function clickPrimaryScreen(page, label) {
   const button = page.getByRole('button', { name: new RegExp(`^${label}$`, 'i') }).last()
   if (await button.count()) {
     await button.click()
-    await page.waitForTimeout(120)
+    await page.waitForTimeout(560)
   }
 }
 
@@ -270,7 +392,7 @@ async function clickSubview(page, label) {
   const button = page.getByRole('button', { name: new RegExp(`^${label}$`, 'i') }).first()
   if (await button.count()) {
     await button.click()
-    await page.waitForTimeout(120)
+    await page.waitForTimeout(560)
   }
 }
 

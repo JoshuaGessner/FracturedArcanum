@@ -8,6 +8,8 @@ import type {
   AdminOverview,
   AdminSettings,
   AdminUser,
+  AccountRecoveryStatus,
+  AccountSessionSummary,
   AppScreen,
   AuthScreen,
   SettingsSubview,
@@ -18,6 +20,7 @@ import type {
   CosmeticTheme,
   InspectedCard,
   InstallPromptEvent,
+  PasskeySummary,
   ServerProfile,
   SavedDeck,
   ToastEntry,
@@ -47,8 +50,8 @@ export type AppShellContextValue = {
   setAuthToken: (value: string) => void
   authScreen: AuthScreen
   setAuthScreen: (value: AuthScreen) => void
-  authForm: { username: string; password: string }
-  setAuthForm: React.Dispatch<React.SetStateAction<{ username: string; password: string }>>
+  authForm: { username: string; password: string; recoveryCode: string }
+  setAuthForm: React.Dispatch<React.SetStateAction<{ username: string; password: string; recoveryCode: string }>>
   authError: string
   authLoading: boolean
   loggedIn: boolean
@@ -59,6 +62,7 @@ export type AppShellContextValue = {
   setupLoading: boolean
   handleSetup: (event: FormEvent) => Promise<void>
   handleAuth: (event: FormEvent) => Promise<void>
+  handlePasskeyLogin: () => Promise<void>
   handleLogout: () => void
 
   // ─── Derived profile (owned by AppShell, sourced from serverProfile) ──
@@ -85,6 +89,23 @@ export type AppShellContextValue = {
   canClaimDailyReward: boolean
   justClaimedDaily: boolean
   totalOwnedCards: number
+  passkeys: PasskeySummary[]
+  passkeySupported: boolean
+  passkeyLoading: boolean
+  passkeyStatus: string
+  accountSessions: AccountSessionSummary[]
+  accountActionStatus: string
+  accountActionLoading: boolean
+  recoveryStatus: AccountRecoveryStatus | null
+  refreshPasskeys: () => Promise<void>
+  refreshAccountSessions: () => Promise<void>
+  refreshRecoveryStatus: () => Promise<void>
+  handleGenerateRecoveryCodes: () => Promise<void>
+  handleRegisterPasskey: () => Promise<void>
+  handleDeletePasskey: (passkeyId: string) => Promise<void>
+  handleLogoutAllSessions: () => Promise<void>
+  handleExportAccountData: () => Promise<void>
+  handleDeleteAccount: (password: string) => Promise<void>
 
   // ─── Deck/collection handlers + derived (state in ProfileProvider) ────
   selectedDeckSize: number

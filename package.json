@@ -8,7 +8,7 @@
     "build:engine": "tsc -p tsconfig.engine.json",
     "server": "npm run build:engine && node server/server.js",
     "start": "node server/server.js",
-    "dev:full": "npm run build:engine && concurrently \"npm run server\" \"npm run dev\"",
+    "dev:full": "npm run build:engine && concurrently \"LOCAL_AUTH_QA_BYPASS=1 npm run server\" \"npm run dev\"",
     "assets:generate": "node scripts/generate-brand-assets.mjs",
     "update:server": "bash scripts/update.sh",
     "update:server:dry": "bash scripts/update.sh --dry-run",
@@ -24,10 +24,12 @@
     "preview": "vite preview"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
   },
   "dependencies": {
     "@pixi/react": "^8.0.5",
+    "@simplewebauthn/browser": "^13.3.0",
+    "@simplewebauthn/server": "^13.3.0",
     "better-sqlite3": "^12.9.0",
     "compression": "^1.8.1",
     "cors": "^2.8.6",

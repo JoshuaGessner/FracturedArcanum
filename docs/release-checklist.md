@@ -27,7 +27,9 @@
 ## Before public launch
 
 - deploy production host
+- configure passkey production account environment variables from `docs/AUTH_ACCOUNT_PRODUCTION_PLAN.md`
 - verify available real mobile devices against the current-pass device validation checklist above
 - complete deferred iPhone Safari and Home Screen Web.app validation before claiming full iOS readiness
-- add privacy policy and support email if accounts are introduced later
+- approve Terms of Service, Privacy Policy, and account/contact copy before public account launch; keep legal copy aligned with the no-real-money-purchases product decision
+- verify passkey registration, passkey login, legacy account migration, export, deletion, and owner passkey admin access on staging
 - replace any remaining placeholder UI with approved final art where desired

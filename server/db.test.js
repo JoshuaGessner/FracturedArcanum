@@ -27,6 +27,29 @@ function makeAccount(username) {
   return r.accountId
 }
 
+function addPasskey(accountId, credentialId = `credential-${accountId}`) {
+  const result = db.registerAccountPasskey(accountId, {
+    id: credentialId,
+    publicKey: Buffer.from(`public-key-${credentialId}`),
+    counter: 0,
+    transports: ['internal'],
+  }, { name: 'Primary', backedUp: true, deviceType: 'multiDevice' })
+  expect(result.ok, `failed to add passkey: ${result.error}`).toBe(true)
+  return result.passkey
+}
+
+function acknowledgeRecoveryCodes(accountId) {
+  const generated = db.generateAccountRecoveryCodes(accountId, { metadata: { source: 'vitest' } })
+  expect(generated.ok, `failed to generate recovery codes: ${generated.error}`).toBe(true)
+  const acknowledged = db.acknowledgeAccountRecoveryCodes(accountId, { metadata: { source: 'vitest' } })
+  expect(acknowledged.ok, `failed to acknowledge recovery codes: ${acknowledged.error}`).toBe(true)
+  return generated.codes
+}
+
+function createClusteredAccount(username, options = {}) {
+  return db.createAccount(username, 'password12345', username, 'shared-fp', '198.51.100.44', 'cluster-agent', options)
+}
+
 describe('schema migration compatibility', () => {
   it('opens a legacy accounts table without anti-abuse columns', async () => {
     const legacyDir = mkdtempSync(path.join(tmpdir(), 'fa-db-legacy-'))
@@ -55,6 +78,9 @@ describe('schema migration compatibility', () => {
       expect(columns.some((column) => column.name === 'created_ip_hash')).toBe(true)
       expect(columns.some((column) => column.name === 'created_ua_hash')).toBe(true)
       expect(columns.some((column) => column.name === 'role')).toBe(true)
+      expect(columns.some((column) => column.name === 'email_normalized')).toBe(true)
+      expect(columns.some((column) => column.name === 'account_setup_required')).toBe(true)
+      expect(columns.some((column) => column.name === 'terms_version')).toBe(true)
 
       migrated.default.close()
     } finally {
@@ -113,6 +139,305 @@ describe('schema migration compatibility', () => {
       process.env.DATA_DIR = previousDataDir
       try { rmSync(legacyDir, { recursive: true, force: true }) } catch { /* ignore */ }
     }
+  })
+
+  it('creates account readiness support tables without dropping user data', () => {
+    const accountId = makeAccount('readinessschema')
+    const tableNames = db.default.prepare(`SELECT name FROM sqlite_master WHERE type = 'table'`).all().map((row) => row.name)
+    const readiness = db.getAccountReadiness(accountId)
+
+    expect(tableNames).toContain('account_authenticators')
+    expect(tableNames).toContain('auth_challenges')
+    expect(tableNames).toContain('email_tokens')
+    expect(tableNames).toContain('account_recovery_codes')
+    expect(tableNames).toContain('account_consents')
+    expect(tableNames).toContain('security_events')
+    expect(tableNames).toContain('session_families')
+    expect(readiness.ready).toBe(false)
+    expect(readiness.setupRequired).toBe(true)
+    expect(readiness.requirements.some((item) => item.id === 'passkey')).toBe(true)
+    expect(db.getProfile(accountId)).toBeTruthy()
+  })
+
+  it('keeps production signup cluster limits unless an explicit local QA bypass is passed', () => {
+    expect(createClusteredAccount('clusterlimit1').ok).toBe(true)
+    expect(createClusteredAccount('clusterlimit2').ok).toBe(true)
+
+    const blocked = createClusteredAccount('clusterlimit3')
+    expect(blocked.ok).toBe(false)
+    expect(blocked.error).toContain('device')
+
+    const bypassed = createClusteredAccount('clusterlimit3', { bypassSignupClusterLimits: true })
+    expect(bypassed.ok).toBe(true)
+  })
+
+  it('completes passkey account setup and records consents', () => {
+    const accountId = makeAccount('upgradecomplete')
+    expect(db.markAccountPendingPasskeySignup(accountId)).toBe(true)
+    addPasskey(accountId)
+    const profileBefore = db.getProfile(accountId)
+
+    const completed = db.completeAccountUpgrade(accountId, {
+      acceptTerms: true,
+      acceptPrivacy: true,
+      ageAttestation: 'adult',
+      ip: '203.0.113.24',
+      userAgent: 'vitest-agent',
+      locale: 'en-US',
+    })
+
+    const account = db.default.prepare(`SELECT * FROM accounts WHERE id = ?`).get(accountId)
+    const consentCount = db.default.prepare(`SELECT COUNT(*) as cnt FROM account_consents WHERE account_id = ?`).get(accountId).cnt
+    const profileAfter = db.getProfile(accountId)
+
+    expect(completed.ok).toBe(true)
+    expect(completed.readiness.ready).toBe(false)
+    expect(completed.readiness.requirements.some((item) => item.id === 'recovery_codes')).toBe(true)
+    expect(account.account_setup_required).toBe(0)
+    expect(account.account_status).toBe('active')
+    expect(account.terms_version).toBe(db.getCurrentLegalVersions().termsVersion)
+    expect(account.privacy_version).toBe(db.getCurrentLegalVersions().privacyVersion)
+    expect(account.age_attestation).toBe('adult')
+    expect(consentCount).toBe(3)
+    expect(profileAfter.deck_config).toEqual(profileBefore.deck_config)
+
+    acknowledgeRecoveryCodes(accountId)
+    const replay = db.completeAccountUpgrade(accountId, {
+      acceptTerms: true,
+      acceptPrivacy: true,
+      ageAttestation: 'adult',
+    })
+    expect(replay.ok).toBe(true)
+    expect(db.getAccountReadiness(accountId).ready).toBe(true)
+  })
+
+  it('keeps pending passkey signups out of password and passkey login until setup completes', () => {
+    const accountId = makeAccount('pendingsignup')
+    expect(db.markAccountPendingPasskeySignup(accountId)).toBe(true)
+    expect(db.authenticateAccount('pendingsignup', 'password12345').ok).toBe(false)
+    expect(db.findAccountForPasskeyIdentifier('pendingsignup')).toBeNull()
+
+    addPasskey(accountId)
+    expect(db.completeAccountUpgrade(accountId, {
+      acceptTerms: true,
+      acceptPrivacy: true,
+      ageAttestation: 'adult',
+    }).ok).toBe(true)
+    expect(db.findAccountForPasskeyIdentifier('pendingsignup').id).toBe(accountId)
+  })
+
+  it('refuses account setup completion without legal and age consent', () => {
+    const accountId = makeAccount('upgradeconsent')
+    addPasskey(accountId)
+
+    const completed = db.completeAccountUpgrade(accountId, {
+      acceptTerms: true,
+      acceptPrivacy: false,
+      ageAttestation: '',
+    })
+
+    expect(completed.ok).toBe(false)
+    expect(db.getAccountReadiness(accountId).ready).toBe(false)
+  })
+
+  it('stores passkey authenticators and one-time auth challenges', () => {
+    const accountId = makeAccount('passkeyowner')
+    const account = db.findAccountForPasskeyIdentifier('passkeyowner')
+    expect(account.id).toBe(accountId)
+
+    const firstChallenge = db.createAuthChallenge(accountId, 'passkey_registration', 'challenge-one', { origin: 'http://localhost:5173', rpID: 'localhost' })
+    const secondChallenge = db.createAuthChallenge(accountId, 'passkey_registration', 'challenge-two', { origin: 'http://localhost:5173', rpID: 'localhost' })
+    expect(db.consumeAuthChallenge(firstChallenge.id, 'passkey_registration')).toBeNull()
+    const consumed = db.consumeAuthChallenge(secondChallenge.id, 'passkey_registration')
+    expect(consumed.challenge).toBe('challenge-two')
+    expect(consumed.metadata.rpID).toBe('localhost')
+    expect(db.consumeAuthChallenge(secondChallenge.id, 'passkey_registration')).toBeNull()
+
+    const first = db.registerAccountPasskey(accountId, {
+      id: 'credential-one',
+      publicKey: Buffer.from('public-key-one'),
+      counter: 1,
+      transports: ['internal'],
+    }, { name: 'Laptop', backedUp: true, deviceType: 'multiDevice' })
+    const second = db.registerAccountPasskey(accountId, {
+      id: 'credential-two',
+      publicKey: Buffer.from('public-key-two'),
+      counter: 0,
+      transports: ['usb'],
+    }, { name: 'Security Key', backedUp: false, deviceType: 'singleDevice' })
+
+    expect(first.ok).toBe(true)
+    expect(second.ok).toBe(true)
+    expect(db.getAccountReadiness(accountId).passkeyCount).toBe(2)
+    expect(db.listAccountPasskeys(accountId).map((item) => item.name)).toContain('Laptop')
+
+    const credential = db.getPasskeyCredential('credential-one')
+    expect(credential.accountId).toBe(accountId)
+    expect(credential.credential.counter).toBe(1)
+    expect(credential.credential.publicKey.toString()).toBe('public-key-one')
+    db.updatePasskeyAfterAuthentication(credential.id, 7, { backedUp: false, deviceType: 'singleDevice' })
+    expect(db.getPasskeyCredential('credential-one').credential.counter).toBe(7)
+
+    expect(db.deleteAccountPasskey(accountId, first.passkey.id).ok).toBe(true)
+    expect(db.deleteAccountPasskey(accountId, second.passkey.id).ok).toBe(false)
+  })
+
+  it('requires acknowledged recovery codes before account readiness is complete', () => {
+    const accountId = makeAccount('recoveryready')
+    addPasskey(accountId)
+    expect(db.completeAccountUpgrade(accountId, {
+      acceptTerms: true,
+      acceptPrivacy: true,
+      ageAttestation: 'adult',
+    }).ok).toBe(true)
+
+    const missing = db.getAccountReadiness(accountId)
+    expect(missing.ready).toBe(false)
+    expect(missing.requirements.some((item) => item.id === 'recovery_codes')).toBe(true)
+
+    const codes = db.generateAccountRecoveryCodes(accountId)
+    expect(codes.ok).toBe(true)
+    expect(codes.codes).toHaveLength(10)
+    expect(codes.recovery.activeCount).toBe(10)
+    expect(db.getAccountReadiness(accountId).requirements.some((item) => item.id === 'recovery_codes_saved')).toBe(true)
+
+    const acknowledged = db.acknowledgeAccountRecoveryCodes(accountId)
+    expect(acknowledged.ok).toBe(true)
+    expect(acknowledged.readiness.ready).toBe(true)
+    const stored = db.default.prepare(`SELECT code_hash FROM account_recovery_codes WHERE account_id = ? LIMIT 1`).get(accountId)
+    expect(stored.code_hash).not.toContain(codes.codes[0])
+  })
+
+  it('uses recovery codes once and revokes old passkeys during lost-access recovery', () => {
+    const accountId = makeAccount('recoveronce')
+    const oldPasskey = addPasskey(accountId, 'recover-old')
+    expect(db.completeAccountUpgrade(accountId, {
+      acceptTerms: true,
+      acceptPrivacy: true,
+      ageAttestation: 'adult',
+    }).ok).toBe(true)
+    const codes = acknowledgeRecoveryCodes(accountId)
+    const found = db.findAccountRecoveryCode('recoveronce', codes[0])
+    expect(found.account.id).toBe(accountId)
+
+    const newPasskey = addPasskey(accountId, 'recover-new')
+    const recovered = db.completeAccountRecovery(accountId, found.recoveryCodeId, newPasskey.id, { metadata: { source: 'vitest' } })
+    expect(recovered.ok).toBe(true)
+    expect(db.getPasskeyCredential('recover-new').accountId).toBe(accountId)
+    expect(db.getPasskeyCredential(oldPasskey.credentialId)).toBeNull()
+    expect(db.findAccountRecoveryCode('recoveronce', codes[0])).toBeNull()
+  })
+
+  it('atomically consumes recovery codes with replacement passkey registration', () => {
+    const accountId = makeAccount('recoveratomic')
+    addPasskey(accountId, 'recover-atomic-old')
+    expect(db.completeAccountUpgrade(accountId, {
+      acceptTerms: true,
+      acceptPrivacy: true,
+      ageAttestation: 'adult',
+    }).ok).toBe(true)
+    const codes = acknowledgeRecoveryCodes(accountId)
+    const found = db.findAccountRecoveryCode('recoveratomic', codes[0])
+
+    const first = db.completeAccountRecoveryWithPasskey(accountId, found.recoveryCodeId, {
+      id: 'recover-atomic-new-a',
+      publicKey: Buffer.from('recover-atomic-key-a'),
+      counter: 0,
+      transports: ['internal'],
+    }, { name: 'Recovery A', backedUp: true, deviceType: 'multiDevice' })
+    const second = db.completeAccountRecoveryWithPasskey(accountId, found.recoveryCodeId, {
+      id: 'recover-atomic-new-b',
+      publicKey: Buffer.from('recover-atomic-key-b'),
+      counter: 0,
+      transports: ['internal'],
+    }, { name: 'Recovery B', backedUp: true, deviceType: 'multiDevice' })
+
+    expect(first.ok).toBe(true)
+    expect(second.ok).toBe(false)
+    expect(db.listAccountPasskeys(accountId).map((item) => item.credentialId)).toEqual(['recover-atomic-new-a'])
+  })
+
+  it('stores only hashed session tokens and revokes sessions by account', () => {
+    const accountId = makeAccount('sessionhash')
+    const session = db.createSession(accountId, '203.0.113.12', 'vitest-agent', 'password')
+    const stored = db.default.prepare(`SELECT * FROM sessions WHERE account_id = ?`).get(accountId)
+
+    expect(stored.token).not.toBe(session.token)
+    expect(stored.token).toMatch(/^sess-/)
+    expect(stored.token_hash).toBeTruthy()
+    expect(stored.auth_method).toBe('password')
+    expect(db.validateSession(session.token).account_id).toBe(accountId)
+
+    db.revokeAllSessions(accountId)
+    expect(db.validateSession(session.token)).toBeNull()
+  })
+
+  it('tracks recent passkey reauthentication on sessions', () => {
+    const accountId = makeAccount('reauthsession')
+    const passwordSession = db.createSession(accountId, '203.0.113.12', 'vitest-agent', 'password')
+    const passkeySession = db.createSession(accountId, '203.0.113.13', 'vitest-agent', 'passkey')
+
+    expect(db.sessionHasRecentPasskeyReauth(db.validateSession(passwordSession.token), 10 * 60 * 1000)).toBe(false)
+    expect(db.sessionHasRecentPasskeyReauth(db.validateSession(passkeySession.token), 10 * 60 * 1000)).toBe(true)
+    expect(db.markSessionPasskeyReauthenticated(passwordSession.token)).toBe(true)
+    expect(db.sessionHasRecentPasskeyReauth(db.validateSession(passwordSession.token), 10 * 60 * 1000)).toBe(true)
+  })
+
+  it('exports account data and soft deletes account access', () => {
+    const accountId = makeAccount('deleteowner')
+    addPasskey(accountId)
+    expect(db.completeAccountUpgrade(accountId, {
+      acceptTerms: true,
+      acceptPrivacy: true,
+      ageAttestation: 'adult',
+    }).ok).toBe(true)
+    const session = db.createSession(accountId, '203.0.113.32', 'vitest-agent', 'password')
+    const exported = db.exportAccountData(accountId)
+
+    expect(exported.account.username).toBe('deleteowner')
+    expect(exported.account.password_hash).toBeUndefined()
+    expect(exported.sessions.length).toBeGreaterThan(0)
+
+    const deleted = db.deleteAccount(accountId, 'password12345', { ip: '203.0.113.32', userAgent: 'vitest-agent' })
+    const account = db.default.prepare(`SELECT account_status, deleted_at FROM accounts WHERE id = ?`).get(accountId)
+
+    expect(deleted.ok).toBe(true)
+    expect(account.account_status).toBe('deleted')
+    expect(account.deleted_at).toBeTruthy()
+    expect(db.validateSession(session.token)).toBeNull()
+    expect(db.authenticateAccount('deleteowner', 'password12345').ok).toBe(false)
+  })
+
+  it('allows passkey-authenticated account deletion without password fallback', () => {
+    const accountId = makeAccount('deletepasskey')
+    addPasskey(accountId)
+    expect(db.completeAccountUpgrade(accountId, {
+      acceptTerms: true,
+      acceptPrivacy: true,
+      ageAttestation: 'adult',
+    }).ok).toBe(true)
+    const session = db.createSession(accountId, '203.0.113.42', 'vitest-agent', 'passkey')
+
+    const deleted = db.deleteAccount(accountId, '', { ip: '203.0.113.42', userAgent: 'vitest-agent', authMethod: 'passkey' })
+    expect(deleted.ok).toBe(true)
+    expect(db.validateSession(session.token)).toBeNull()
+    expect(db.authenticateAccount('deletepasskey', 'password12345').ok).toBe(false)
+  })
+
+  it('soft-deletes legacy accounts that miss the migration deadline', () => {
+    const accountId = makeAccount('expiredlegacy')
+    db.default.prepare(`
+      UPDATE accounts
+      SET legacy_migration_deadline_at = datetime('now', '-1 day'), legacy_migration_completed_at = NULL
+      WHERE id = ?
+    `).run(accountId)
+
+    const expired = db.expireLegacyMigrationAccounts({ metadata: { source: 'vitest' } })
+    const account = db.default.prepare(`SELECT account_status, deleted_at FROM accounts WHERE id = ?`).get(accountId)
+
+    expect(expired.deleted).toBeGreaterThanOrEqual(1)
+    expect(account.account_status).toBe('deleted')
+    expect(account.deleted_at).toBeTruthy()
   })
 })
 
@@ -184,6 +509,24 @@ describe('admin roles', () => {
     expect(db.findOwnerAccountId()).toBe(newOwner)
     const audit = db.listAudit({ limit: 5 })
     expect(audit.some((entry) => entry.action === 'ownership_transfer')).toBe(true)
+  })
+
+  it('requires owner accounts to keep two passkeys while admin accounts need one', () => {
+    const owner = db.findOwnerAccountId()
+    addPasskey(owner, 'owner-required-a')
+    const firstReadiness = db.getAccountReadiness(owner)
+    expect(firstReadiness.requirements.some((item) => item.id === 'owner_second_passkey')).toBe(true)
+
+    const second = addPasskey(owner, 'owner-required-b')
+    const secondReadiness = db.getAccountReadiness(owner)
+    expect(secondReadiness.requirements.some((item) => item.id === 'owner_second_passkey')).toBe(false)
+    expect(db.deleteAccountPasskey(owner, second.id).ok).toBe(false)
+
+    const target = makeAccount('adminonepasskey')
+    const promoted = db.setAccountRole(owner, target, 'admin')
+    expect(promoted.ok).toBe(true)
+    addPasskey(target, 'admin-required-a')
+    expect(db.getAccountReadiness(target).requirements.some((item) => item.id === 'owner_second_passkey')).toBe(false)
   })
 
   it('listAccounts supports search by username', () => {

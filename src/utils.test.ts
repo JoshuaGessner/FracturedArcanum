@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { getCompletionPercent, getComplaintSeverityTone, getEffectIconPath, getHandFanTilt, getPackArtPath, getRankAssetPath, getRarityCompletion, getRarityGemPath, getScreenTransitionClass, getScreenTransitionSound, getStreakTier, shouldPresentScopedReward } from './utils'
+import { formatPasskeyCeremonyError, getCompletionPercent, getComplaintSeverityTone, getEffectIconPath, getHandFanTilt, getPackArtPath, getPasskeyOriginRequirementMessage, getRankAssetPath, getRarityCompletion, getRarityGemPath, getScreenTransitionClass, getScreenTransitionSound, getStreakTier, shouldPresentScopedReward } from './utils'
 
 describe('UI asset helpers', () => {
   it('resolves rank insignia from labels and ratings', () => {
@@ -83,5 +83,28 @@ describe('UI asset helpers', () => {
     expect(shouldPresentScopedReward('pack', 'shop')).toBe(true)
     expect(shouldPresentScopedReward('pack', 'home')).toBe(false)
     expect(shouldPresentScopedReward('daily', 'home')).toBe(true)
+  })
+
+  it('warns when local passkey testing uses an IP host', () => {
+    expect(getPasskeyOriginRequirementMessage({ hostname: '127.0.0.1', protocol: 'http:', port: '5173' }))
+      .toBe('Local passkey testing must use http://localhost:5173 instead of 127.0.0.1.')
+    expect(getPasskeyOriginRequirementMessage({ hostname: '[::1]', protocol: 'http:', port: '5173' }))
+      .toBe('Local passkey testing must use http://localhost:5173 instead of [::1].')
+  })
+
+  it('requires a domain name for non-local IP passkey origins', () => {
+    expect(getPasskeyOriginRequirementMessage({ hostname: 'localhost', protocol: 'http:', port: '5173' })).toBe('')
+    expect(getPasskeyOriginRequirementMessage({ hostname: 'farcanum.anomalousinteractive.com', protocol: 'https:' })).toBe('')
+    expect(getPasskeyOriginRequirementMessage({ hostname: '192.168.1.10', protocol: 'http:', port: '5173' }))
+      .toBe('Passkeys require a domain name. Open Fractured Arcanum from its configured domain instead of an IP address.')
+  })
+
+  it('formats passkey ceremony errors without hiding user cancellation', () => {
+    const cancelled = new DOMException('The operation was cancelled.', 'NotAllowedError')
+    const timedOut = new Error('Passkey prompt timed out.')
+    timedOut.name = 'PasskeyTimeoutError'
+    expect(formatPasskeyCeremonyError(cancelled, 'Passkey login failed.')).toBe('Passkey prompt was cancelled.')
+    expect(formatPasskeyCeremonyError(timedOut, 'Passkey login failed.')).toBe('Passkey prompt timed out.')
+    expect(formatPasskeyCeremonyError(new Error('Unknown local failure'), 'Passkey login failed.')).toBe('Passkey login failed.')
   })
 })

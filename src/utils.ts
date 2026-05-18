@@ -71,6 +71,61 @@ export function getDeviceFingerprint(): string {
   return parts.join('|')
 }
 
+type PasskeyOriginLocation = {
+  hostname: string
+  protocol: string
+  port?: string
+}
+
+function normalizeHostname(hostname: string): string {
+  return hostname.trim().toLowerCase().replace(/^\[/, '').replace(/\]$/, '')
+}
+
+function isIpv4Hostname(hostname: string): boolean {
+  const octets = hostname.split('.')
+  return octets.length === 4 && octets.every((octet) => /^\d{1,3}$/.test(octet) && Number(octet) <= 255)
+}
+
+function isIpHostname(hostname: string): boolean {
+  return isIpv4Hostname(hostname) || hostname.includes(':')
+}
+
+function isLocalIpHostname(hostname: string): boolean {
+  return hostname === '0.0.0.0' || hostname === '::1' || /^127\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(hostname)
+}
+
+export function getPasskeyOriginRequirementMessage(locationOverride?: PasskeyOriginLocation): string {
+  const currentLocation = locationOverride ?? (typeof window === 'undefined' ? null : window.location)
+  if (!currentLocation) {
+    return ''
+  }
+
+  const hostname = normalizeHostname(currentLocation.hostname)
+  if (!isIpHostname(hostname)) {
+    return ''
+  }
+
+  if (isLocalIpHostname(hostname)) {
+    const protocol = currentLocation.protocol || 'http:'
+    const port = currentLocation.port ? `:${currentLocation.port}` : ''
+    return `Local passkey testing must use ${protocol}//localhost${port} instead of ${currentLocation.hostname}.`
+  }
+
+  return 'Passkeys require a domain name. Open Fractured Arcanum from its configured domain instead of an IP address.'
+}
+
+export function formatPasskeyCeremonyError(error: unknown, fallbackMessage: string, cancelledMessage = 'Passkey prompt was cancelled.'): string {
+  if (error instanceof Error && error.name === 'NotAllowedError') {
+    return cancelledMessage
+  }
+
+  if (error instanceof Error && error.name === 'PasskeyTimeoutError') {
+    return error.message
+  }
+
+  return getPasskeyOriginRequirementMessage() || fallbackMessage
+}
+
 export async function authFetch(
   path: string,
   token: string,

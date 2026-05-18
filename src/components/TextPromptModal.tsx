@@ -5,6 +5,7 @@ type TextPromptRequest = {
   label: string
   confirmLabel?: string
   placeholder?: string
+  maxLength?: number
 }
 
 type TextPromptModalProps = {
@@ -25,7 +26,8 @@ export function TextPromptModal({ request, value, onChange, onClose }: TextPromp
 
   if (!request) return null
 
-  const disabled = value.trim().length === 0 || value.trim().length > 30
+  const maxLength = request.maxLength ?? 30
+  const disabled = value.trim().length === 0 || value.trim().length > maxLength
 
   return (
     <div
@@ -54,12 +56,12 @@ export function TextPromptModal({ request, value, onChange, onClose }: TextPromp
             ref={inputRef}
             className="text-input"
             value={value}
-            maxLength={30}
+            maxLength={maxLength}
             placeholder={request.placeholder ?? ''}
             onChange={(event) => onChange(event.target.value)}
           />
         </label>
-        <p className="note">Use 1–30 characters.</p>
+        <p className="note">Use 1–{maxLength} characters.</p>
         <div className="modal-actions">
           <button type="button" className="ghost" onClick={() => onClose(false)}>
             Cancel
