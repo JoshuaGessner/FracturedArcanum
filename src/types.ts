@@ -238,6 +238,12 @@ export type PasskeySummary = {
   lastUsedAt: string | null
 }
 
+export type PasskeyDeviceLink = {
+  token: string
+  linkUrl: string
+  expiresAt: string
+}
+
 export type AccountSessionSummary = {
   id: string
   createdAt: string

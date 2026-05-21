@@ -437,6 +437,53 @@ describe('schema migration compatibility', () => {
     expect(db.listAccountPasskeys(accountId).map((item) => item.credentialId)).toEqual(['recover-atomic-new-a'])
   })
 
+  it('links another device without revoking existing passkeys', () => {
+    const accountId = makeAccount('linkdevice')
+    const firstPasskey = addPasskey(accountId, 'link-device-old')
+
+    const link = db.createPasskeyDeviceLink(accountId, { metadata: { source: 'vitest' }, sessionId: 'sess-test' })
+    expect(link.ok, link.error).toBe(true)
+    expect(link.token).toMatch(/^pdlink-/)
+    expect(db.getPasskeyDeviceLink(link.token).accountId).toBe(accountId)
+
+    const linked = db.completePasskeyDeviceLinkRegistration(link.token, accountId, {
+      id: 'link-device-phone',
+      publicKey: Buffer.from('link-device-phone-key'),
+      counter: 0,
+      transports: ['internal'],
+    }, { name: 'Phone passkey', backedUp: false, deviceType: 'singleDevice' })
+
+    expect(linked.ok, linked.error).toBe(true)
+    expect(db.getPasskeyCredential(firstPasskey.credentialId).accountId).toBe(accountId)
+    expect(db.getPasskeyCredential('link-device-phone').accountId).toBe(accountId)
+    expect(db.getPasskeyDeviceLink(link.token)).toBeNull()
+    expect(db.completePasskeyDeviceLinkRegistration(link.token, accountId, {
+      id: 'link-device-replay',
+      publicKey: Buffer.from('link-device-replay-key'),
+      counter: 0,
+      transports: ['internal'],
+    }).ok).toBe(false)
+  })
+
+  it('expires passkey device links before they can add a passkey', () => {
+    const accountId = makeAccount('linkexpired')
+    addPasskey(accountId, 'link-expired-old')
+    const link = db.createPasskeyDeviceLink(accountId)
+    expect(link.ok, link.error).toBe(true)
+    db.default.prepare(`UPDATE passkey_device_links SET expires_at = datetime('now', '-1 minute') WHERE id = ?`).run(link.link.id)
+
+    expect(db.getPasskeyDeviceLink(link.token)).toBeNull()
+    const linked = db.completePasskeyDeviceLinkRegistration(link.token, accountId, {
+      id: 'link-expired-new',
+      publicKey: Buffer.from('link-expired-new-key'),
+      counter: 0,
+      transports: ['internal'],
+    })
+
+    expect(linked.ok).toBe(false)
+    expect(db.getPasskeyCredential('link-expired-new')).toBeNull()
+  })
+
   it('stores only hashed session tokens and revokes sessions by account', () => {
     const accountId = makeAccount('sessionhash')
     const session = db.createSession(accountId, '203.0.113.12', 'vitest-agent', 'password')

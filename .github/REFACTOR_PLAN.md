@@ -1,5 +1,7 @@
 # Fractured Arcanum — Unified Scene-First Refactor Plan
 
+<!-- markdownlint-disable MD022 MD024 MD032 MD060 -->
+
 > Updated 2026-04-19.
 > This file replaces older planning notes that no longer match the current direction.
 > The active goal is a unified, scene-based game presentation with floating animated elements, board-first battle play, cleaner reward flows, touch-safe interactions, and a clearer progress tracker.
@@ -263,11 +265,13 @@ Deliverables:
 - card tops remain visible in the hand rail at all times
 - effect seals are always visible on live cards
 - lane state, exhaustion, guard, and targetability remain readable from the board alone
+- viewport QA fails when hand card top controls are clipped by a rail, scrollport, or arena overflow container
 
 Rules:
 - live card surfaces should explain themselves through icons, edge lighting, and state styling
 - instructional copy should be minimized once the scene grammar is readable
 - overlap should create a premium stacked-card feel without hiding cost or effect identity
+- transformed hand cards need explicit top and bottom clearance inside their scroll owner; do not rely on `scrollHeight` to reveal clipped rotations or hover lifts
 
 #### Phase A4 — Post-battle cinematic completion
 **Goal:** finish the win/loss flow cleanly and consistently.

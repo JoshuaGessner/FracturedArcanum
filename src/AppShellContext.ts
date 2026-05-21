@@ -20,6 +20,7 @@ import type {
   CosmeticTheme,
   InspectedCard,
   InstallPromptEvent,
+  PasskeyDeviceLink,
   PasskeySummary,
   ServerProfile,
   SavedDeck,
@@ -97,10 +98,14 @@ export type AppShellContextValue = {
   accountActionStatus: string
   accountActionLoading: boolean
   recoveryStatus: AccountRecoveryStatus | null
+  passkeyDeviceLink: PasskeyDeviceLink | null
   refreshPasskeys: () => Promise<void>
   refreshAccountSessions: () => Promise<void>
   refreshRecoveryStatus: () => Promise<void>
   handleGenerateRecoveryCodes: () => Promise<void>
+  handleCreatePasskeyDeviceLink: () => Promise<void>
+  handleCopyPasskeyDeviceLink: () => Promise<void>
+  clearPasskeyDeviceLink: () => void
   handleRegisterPasskey: () => Promise<void>
   handleDeletePasskey: (passkeyId: string) => Promise<void>
   handleLogoutAllSessions: () => Promise<void>
