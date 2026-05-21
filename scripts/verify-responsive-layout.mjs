@@ -36,6 +36,7 @@ const CLIPPED_SELECTOR = [
   '.section-card', '.utility-card', '.spotlight-card', '.shop-market-card',
   '.settings-command-card', '.settings-section-panel', '.shop-section-panel', '.social-list',
   '.leaderboard-list', '.deck-roster', '.builder-card', '.theme-offer-card', '.battlefield-stage',
+  '.battle-hand-rail',
 ].join(', ')
 
 const TEXT_SELECTOR = [
@@ -420,6 +421,9 @@ async function collectLayoutMetrics(page, contextLabel) {
         clientHeight: element.clientHeight,
       }
     }
+    const summarizeRect = (rect) => ({
+      x: Math.round(rect.x), y: Math.round(rect.y), width: Math.round(rect.width), height: Math.round(rect.height),
+    })
 
     const isClippingX = (style) => /(hidden|clip)/.test(style.overflowX)
     const isClippingY = (style) => /(hidden|clip)/.test(style.overflowY)
@@ -489,6 +493,69 @@ async function collectLayoutMetrics(page, contextLabel) {
       .map(summarize)
 
     const layoutConflicts = []
+    const intersectRects = (first, second) => ({
+      top: Math.max(first.top, second.top),
+      right: Math.min(first.right, second.right),
+      bottom: Math.min(first.bottom, second.bottom),
+      left: Math.max(first.left, second.left),
+    })
+    const getVisibleClipRect = (element) => {
+      let clip = { top: 0, right: viewport.width, bottom: viewport.height, left: 0 }
+      let current = element.parentElement
+      while (current && current !== document.body) {
+        const style = getComputedStyle(current)
+        if (current.classList.contains('hand-card')) {
+          current = current.parentElement
+          continue
+        }
+        const clipsX = /(hidden|clip|auto|scroll)/.test(style.overflowX)
+        const clipsY = /(hidden|clip|auto|scroll)/.test(style.overflowY)
+        if (clipsX || clipsY) {
+          const rect = current.getBoundingClientRect()
+          clip = intersectRects(clip, {
+            top: clipsY ? rect.top : clip.top,
+            right: clipsX ? rect.right : clip.right,
+            bottom: clipsY ? rect.bottom : clip.bottom,
+            left: clipsX ? rect.left : clip.left,
+          })
+        }
+        current = current.parentElement
+      }
+      return clip
+    }
+    const isHorizontallyVisibleInClip = (rect, clip) => rect.right > clip.left + 2 && rect.left < clip.right - 2
+
+    document.querySelectorAll('.battle-hand-rail .hand-card').forEach((card, cardIndex) => {
+      if (!visible(card)) return
+      const cardRect = card.getBoundingClientRect()
+      const cardClip = getVisibleClipRect(card)
+      if (!isHorizontallyVisibleInClip(cardRect, cardClip)) return
+      card.querySelectorAll('.card-top, .cost-pill, .battle-hand-effect').forEach((target) => {
+        if (!visible(target)) return
+        const targetRect = target.getBoundingClientRect()
+        const targetClip = getVisibleClipRect(target)
+        if (!isHorizontallyVisibleInClip(targetRect, targetClip)) return
+        const topCrop = targetClip.top - targetRect.top
+        const bottomCrop = targetRect.bottom - targetClip.bottom
+        if (topCrop > 1 || bottomCrop > 1) {
+          layoutConflicts.push({
+            type: 'battle-hand-card-top-clipped',
+            selector: target.className && typeof target.className === 'string' ? target.className : target.tagName.toLowerCase(),
+            text: `Battle hand card ${cardIndex + 1} top controls are clipped by an overflow container.`,
+            rect: summarizeRect(targetRect),
+            clipRect: summarizeRect({
+              x: targetClip.left,
+              y: targetClip.top,
+              width: Math.max(0, targetClip.right - targetClip.left),
+              height: Math.max(0, targetClip.bottom - targetClip.top),
+            }),
+            topCrop: Math.round(topCrop),
+            bottomCrop: Math.round(bottomCrop),
+          })
+        }
+      })
+    })
+
     const vaultPanel = document.querySelector('.reward-vault-card')
     const vaultToolbar = document.querySelector('.reward-vault-card .shop-section-toolbar')
     const vaultConsole = document.querySelector('.reward-vault-console')
@@ -541,6 +608,24 @@ function hasFailures(metrics) {
     || metrics.layoutConflicts.length > 0
 }
 
+async function collectBattleHandHoverMetrics(page, viewportName) {
+  const cards = page.locator('.battle-hand-rail .hand-card')
+  const count = await cards.count()
+  if (count === 0) return []
+  const hoverIndexes = [...new Set([0, Math.floor(count / 2), count - 1])]
+  const hoverResults = []
+  for (const index of hoverIndexes) {
+    await cards.nth(index).hover()
+    await page.waitForTimeout(160)
+    const label = `${viewportName}-battle-ai-hand-hover-${index + 1}`
+    const metrics = await collectLayoutMetrics(page, label)
+    await page.screenshot({ path: path.join(OUTPUT_DIR, `${label}.png`), fullPage: false })
+    hoverResults.push({ viewport: viewportName, route: 'battle', subview: `AI Skirmish Hand Hover ${index + 1}`, failed: hasFailures(metrics), ...metrics })
+  }
+  await page.mouse.move(0, 0)
+  return hoverResults
+}
+
 async function main() {
   await rm(OUTPUT_DIR, { recursive: true, force: true })
   await mkdir(OUTPUT_DIR, { recursive: true })
@@ -578,6 +663,9 @@ async function main() {
           const metrics = await collectLayoutMetrics(page, label)
           await page.screenshot({ path: path.join(OUTPUT_DIR, `${label}.png`), fullPage: false })
           results.push({ viewport: viewport.name, route: 'battle', subview: 'AI Skirmish', failed: hasFailures(metrics), ...metrics })
+          if (viewport.width >= 768) {
+            results.push(...await collectBattleHandHoverMetrics(page, viewport.name))
+          }
           const leaveButton = page.getByRole('button', { name: /^Leave$/i }).first()
           if (await leaveButton.count()) await leaveButton.click()
         }

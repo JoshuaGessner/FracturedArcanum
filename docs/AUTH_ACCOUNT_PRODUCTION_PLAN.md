@@ -331,6 +331,9 @@ Keep compatibility routes only for legacy migration:
 - `POST /api/auth/passkey/register/options`
 - `POST /api/auth/passkey/register/verify`
 - `DELETE /api/me/passkeys/:id`
+- `POST /api/me/passkey-device-links`
+- `POST /api/auth/passkey/device-link/options`
+- `POST /api/auth/passkey/device-link/verify`
 - `GET /api/me/sessions`
 - `POST /api/auth/logout`
 - `POST /api/auth/logout-all`
@@ -338,6 +341,8 @@ Keep compatibility routes only for legacy migration:
 - `POST /api/me/delete`
 
 Do not allow deleting the last passkey unless another recovery method is intentionally introduced.
+
+Use device-link routes when a player is signed in on one device and needs to add a phone or second computer. Use recovery routes only when all current passkeys are unavailable.
 
 ---
 
@@ -394,6 +399,8 @@ Recommended initial policy:
 5. For accounts without recovery codes or a second passkey, support recovery is not guaranteed.
 
 Recovery codes are cheaper and more private than email. They also avoid building a mail stack.
+
+Normal multi-device setup should not use recovery. A signed-in player can create a short-lived device-link URL from Settings after recent passkey reauthentication, open it on another device, and register a new passkey there. Device links are one-time use, stored as hashed secrets, expire quickly, and add the new passkey without revoking existing passkeys or sessions.
 
 Support-assisted recovery should be manual and conservative, especially for owner/admin accounts.
 
@@ -463,6 +470,7 @@ Support-assisted recovery should be manual and conservative, especially for owne
 - Add recovery-code generation.
 - Add recovery-code verification to register a replacement passkey.
 - Add Settings UI to regenerate recovery codes after passkey reauthentication.
+- Add Settings UI for short-lived passkey device links so players can enroll another device without destructive recovery.
 
 ---
 
@@ -502,6 +510,7 @@ Support-assisted recovery should be manual and conservative, especially for owne
 - Existing password account migration.
 - Owner account migration and admin access.
 - Add second passkey.
+- Link another device from a signed-in desktop to a phone.
 - Remove non-last passkey.
 - Logout all sessions.
 - Account export.

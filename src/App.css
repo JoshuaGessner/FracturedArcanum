@@ -3399,9 +3399,12 @@ button:disabled {
 }
 
 .battle-hand-rail {
+  --battle-hand-top-clearance: 20px;
+  --battle-hand-bottom-clearance: 12px;
   display: grid;
   min-height: 0;
-  max-height: min(21svh, 168px);
+  block-size: min(27svh, 198px);
+  max-height: none;
   margin-top: -2px;
   padding: 4px 8px 8px;
   border-radius: 16px 16px 14px 14px;
@@ -3427,7 +3430,7 @@ button:disabled {
   overflow-x: auto;
   overflow-y: hidden;
   min-height: 0;
-  padding: 2px 8px 10px 2px;
+  padding: var(--battle-hand-top-clearance) 8px var(--battle-hand-bottom-clearance) 2px;
   overscroll-behavior-x: contain;
   scroll-padding-inline: 10px;
   scroll-snap-type: x proximity;
@@ -3478,16 +3481,16 @@ button:disabled {
 }
 
 .battle-hand-rail .hand-card {
-  transform: translateY(4px) rotate(var(--fan-tilt, 0deg));
+  transform: translateY(8px) rotate(var(--fan-tilt, 0deg));
 }
 
 .battle-hand-rail .hand-card:hover:not(:disabled) {
-  transform: translateY(-8px) scale(1.06) rotate(0deg);
+  transform: translateY(6px) scale(1.03) rotate(0deg);
 }
 
 /* Tactile press — card briefly compresses before commit. */
 .battle-hand-rail .hand-card:active:not(:disabled):not(.is-dragging) {
-  transform: translateY(-2px) scale(0.97) rotate(0deg);
+  transform: translateY(6px) scale(0.97) rotate(0deg);
   box-shadow: 0 2px 8px rgba(6, 10, 22, 0.5);
   transition: transform 60ms ease-out, box-shadow 60ms ease-out;
 }
@@ -5301,6 +5304,37 @@ button.quest-summary:focus-visible {
   overflow-wrap: anywhere;
 }
 
+.settings-account-block .section-head {
+  flex-direction: row;
+  align-items: center;
+}
+
+.settings-account-block .section-head .ghost.mini,
+.settings-passkey-row .ghost.mini,
+.passkey-device-link-actions .ghost.mini {
+  width: auto;
+  min-width: max-content;
+  padding-inline: 14px;
+}
+
+.settings-passkey-row .ghost.mini {
+  min-width: 86px;
+}
+
+.warning-line {
+  color: var(--gold-light);
+}
+
+.passkey-device-link-actions {
+  justify-content: flex-start;
+}
+
+.passkey-device-link-box {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
 .settings-account-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
@@ -6491,7 +6525,10 @@ button.danger:hover { filter: brightness(1.08); }
   }
   .queue-modal { width: 100%; }
   .battle-hand-rail {
-    max-height: min(22svh, 154px);
+    --battle-hand-top-clearance: 16px;
+    --battle-hand-bottom-clearance: 8px;
+    block-size: min(22svh, 154px);
+    max-height: none;
     margin-top: -4px;
     padding: 2px 6px 6px;
   }

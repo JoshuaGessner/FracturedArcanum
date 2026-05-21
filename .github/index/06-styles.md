@@ -1,5 +1,7 @@
 # Styles Index — `src/App.css` (5,440 lines)
 
+<!-- markdownlint-disable MD022 MD032 MD060 -->
+
 ## Overview
 
 `src/App.css` contains the finalized Phase 3 presentation layer:
@@ -51,7 +53,7 @@ Every primary screen now renders inside a fixed-height shell:
 ### Viewport QA
 Responsive layout work is validated by `npm run qa:viewport`, implemented in `scripts/verify-responsive-layout.mjs`.
 
-The audit starts a temporary Vite server, sweeps phone/tablet/desktop viewport sizes, visits every primary screen plus Social/Shop/Settings subviews, captures screenshots in `.layout-qa/`, and writes `.layout-qa/responsive-layout-report.json`. It fails on document horizontal overflow, clipped visible content, or offscreen interactive controls, and reports touch-target warnings separately.
+The audit starts a temporary Vite server, sweeps phone/tablet/desktop viewport sizes, visits every primary screen plus Social/Shop/Settings subviews, captures screenshots in `.layout-qa/`, and writes `.layout-qa/responsive-layout-report.json`. It fails on document horizontal overflow, clipped visible content, offscreen interactive controls, or battle hand top-control clipping, and reports touch-target warnings separately.
 
 ### Chrome strategy
 - panels use a single intentional chrome owner instead of nested frames
@@ -104,4 +106,5 @@ The stylesheet includes:
 - prefer semantic class names tied to screen roles and asset-backed primitives
 - battle-state notices should render as floating overlays, not layout-shifting banners
 - keep the battle information map consistent: cost and effect at the top of live cards, attack and health at the bottom
+- keep battle hand cards inside a padded vertical safe area so cost pips and effect seals are never cropped by hand rail overflow at desktop or mobile heights
 - use one shared summary-popup visual grammar for reward recaps, post-battle conclusions, and similar milestone overlays

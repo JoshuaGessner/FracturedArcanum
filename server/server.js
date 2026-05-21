@@ -70,6 +70,7 @@ import {
   getCurrentLegalVersions,
   getAccountReadiness,
   completeAccountUpgrade,
+  createPasskeyDeviceLink,
   generateAccountRecoveryCodes,
   acknowledgeAccountRecoveryCodes,
   listAccountRecoveryStatus,
@@ -83,9 +84,11 @@ import {
 } from './db.js'
 import {
   createPasskeyLoginOptions,
+  createPasskeyDeviceLinkRegistrationOptions,
   createPasskeyReauthOptions,
   createPasskeyRecoveryOptions,
   createPasskeyRegistrationOptions,
+  verifyPasskeyDeviceLinkRegistration,
   verifyPasskeyLogin,
   verifyPasskeyReauth,
   verifyPasskeyRecovery,
@@ -908,6 +911,17 @@ function clientUserAgent(request) {
   return String(request.get('user-agent') ?? '').slice(0, 512)
 }
 
+function publicAppOrigin(request) {
+  const configured = String(process.env.PUBLIC_APP_URL || process.env.WEBAUTHN_ORIGIN || process.env.CLIENT_ORIGIN || '')
+    .split(',')[0]
+    .trim()
+    .replace(/\/$/, '')
+  if (configured) return configured
+  const requestOrigin = String(request.get('origin') ?? '').trim().replace(/\/$/, '')
+  if (requestOrigin) return requestOrigin
+  return `${request.protocol}://${request.get('host')}`.replace(/\/$/, '')
+}
+
 function accountRequirementsPayload(accountId) {
   const readiness = getAccountReadiness(accountId)
   return {
@@ -1208,6 +1222,84 @@ app.post('/api/auth/passkey/reauth/verify', requireAuth, async (request, respons
   } catch (error) {
     console.warn('Passkey reauth verification failed:', error)
     response.status(400).json({ ok: false, error: 'Passkey confirmation could not be verified.' })
+  }
+})
+
+app.post('/api/me/passkey-device-links', requireAuth, requireRecentPasskeyAuth, (request, response) => {
+  const rl = checkRateLimit(`passkey-device-link:create:${request.accountId}`, 10)
+  if (!rl.allowed) {
+    response.status(429).json({ ok: false, error: 'Too many device link requests. Try again later.' })
+    return
+  }
+
+  const result = createPasskeyDeviceLink(request.accountId, {
+    ip: clientIp(request),
+    userAgent: clientUserAgent(request),
+    sessionId: request.session?.token,
+    metadata: { source: 'settings' },
+  })
+  if (!result.ok) {
+    response.status(result.status ?? 400).json({ ok: false, error: result.error })
+    return
+  }
+
+  response.json({
+    ok: true,
+    token: result.token,
+    link: result.link,
+    linkUrl: `${publicAppOrigin(request)}/?passkeyDeviceLink=${encodeURIComponent(result.token)}`,
+  })
+})
+
+app.post('/api/auth/passkey/device-link/options', async (request, response) => {
+  const ip = clientIp(request)
+  const rl = checkRateLimit(`passkey-device-link:start:${hashIp(ip)}`, 20)
+  if (!rl.allowed) {
+    response.status(429).json({ ok: false, error: 'Too many device link attempts. Try again later.' })
+    return
+  }
+
+  try {
+    const result = await createPasskeyDeviceLinkRegistrationOptions(String(request.body?.deviceLinkToken ?? ''), request)
+    if (!result.ok) {
+      response.status(result.status ?? 400).json({ ok: false, error: result.error })
+      return
+    }
+    response.json(result)
+  } catch (error) {
+    console.warn('Passkey device link options failed:', error)
+    response.status(400).json({ ok: false, error: 'Device link passkey setup could not be started.' })
+  }
+})
+
+app.post('/api/auth/passkey/device-link/verify', async (request, response) => {
+  const ip = clientIp(request)
+  const rl = checkRateLimit(`passkey-device-link:verify:${hashIp(ip)}`, 20)
+  if (!rl.allowed) {
+    response.status(429).json({ ok: false, error: 'Too many device link attempts. Try again later.' })
+    return
+  }
+
+  try {
+    const result = await verifyPasskeyDeviceLinkRegistration(request.body ?? {}, request)
+    if (!result.ok) {
+      response.status(result.status ?? 400).json({ ok: false, error: result.error })
+      return
+    }
+
+    const session = createSession(result.accountId, ip, clientUserAgent(request), 'passkey')
+    const profile = getProfile(result.accountId)
+    response.json({
+      ok: true,
+      token: session.token,
+      expiresAt: session.expiresAt,
+      profile: sanitizeProfile(profile, result.username, result.accountId),
+      passkey: result.passkey,
+      passkeys: listAccountPasskeys(result.accountId),
+    })
+  } catch (error) {
+    console.warn('Passkey device link verification failed:', error)
+    response.status(400).json({ ok: false, error: 'Device link passkey setup could not be verified.' })
   }
 })
 

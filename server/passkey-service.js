@@ -5,6 +5,7 @@ import {
   verifyRegistrationResponse,
 } from '@simplewebauthn/server'
 import {
+  completePasskeyDeviceLinkRegistration,
   consumeAuthChallenge,
   completeAccountRecoveryWithPasskey,
   createAuthChallenge,
@@ -12,6 +13,7 @@ import {
   findAccountForPasskeyIdentifier,
   getAccountById,
   getPasskeyCredential,
+  getPasskeyDeviceLink,
   listAccountPasskeyCredentials,
   registerAccountPasskey,
   updatePasskeyAfterAuthentication,
@@ -164,6 +166,90 @@ export async function verifyPasskeyRegistration(accountId, payload, request) {
     backedUp: credentialBackedUp,
     deviceType: credentialDeviceType,
   })
+}
+
+export async function createPasskeyDeviceLinkRegistrationOptions(token, request) {
+  const link = getPasskeyDeviceLink(token)
+  if (!link) return { ok: false, status: 400, error: 'Device link is invalid or expired.' }
+
+  const context = webAuthnContext(request)
+  if (!context.ok) return context
+  const { origin, rpID } = context
+  const existingCredentials = listAccountPasskeyCredentials(link.accountId)
+  const options = await generateRegistrationOptions({
+    rpName: RP_NAME,
+    rpID,
+    userID: Buffer.from(link.accountId),
+    userName: link.username,
+    userDisplayName: link.displayName || link.username,
+    attestationType: 'none',
+    excludeCredentials: credentialDescriptors(existingCredentials),
+    authenticatorSelection: {
+      residentKey: 'preferred',
+      userVerification: link.role === 'owner' || link.role === 'admin' ? 'required' : 'preferred',
+    },
+    timeout: 60_000,
+  })
+  const challenge = createAuthChallenge(link.accountId, 'passkey_device_link_registration', options.challenge, {
+    origin,
+    rpID,
+    deviceLinkId: link.id,
+  })
+  return {
+    ok: true,
+    options,
+    challengeId: challenge.id,
+    expiresAt: challenge.expiresAt,
+    account: {
+      username: link.username,
+      displayName: link.displayName,
+    },
+  }
+}
+
+export async function verifyPasskeyDeviceLinkRegistration(payload, request) {
+  const challenge = consumeAuthChallenge(payload?.challengeId, 'passkey_device_link_registration')
+  if (!challenge || !challenge.metadata?.deviceLinkId) {
+    return { ok: false, status: 400, error: 'Device link challenge expired. Try again from the original device.' }
+  }
+
+  const link = getPasskeyDeviceLink(payload?.deviceLinkToken)
+  if (!link || link.id !== challenge.metadata.deviceLinkId || link.accountId !== challenge.accountId) {
+    return { ok: false, status: 400, error: 'Device link is invalid or expired.' }
+  }
+
+  const context = challenge.metadata?.origin && challenge.metadata?.rpID ? { ok: true, ...challenge.metadata } : webAuthnContext(request)
+  if (!context.ok) return context
+  const verification = await verifyRegistrationResponse({
+    response: payload.response,
+    expectedChallenge: challenge.challenge,
+    expectedOrigin: context.origin,
+    expectedRPID: context.rpID,
+    requireUserVerification: link.role === 'owner' || link.role === 'admin',
+  })
+
+  if (!verification.verified || !verification.registrationInfo) {
+    return { ok: false, status: 400, error: 'Linked device passkey could not be verified.' }
+  }
+
+  const { credential, credentialBackedUp, credentialDeviceType } = verification.registrationInfo
+  const completed = completePasskeyDeviceLinkRegistration(payload?.deviceLinkToken, link.accountId, credential, {
+    name: payload?.name ?? 'Linked device passkey',
+    backedUp: credentialBackedUp,
+    deviceType: credentialDeviceType,
+    ip: request.ip,
+    userAgent: request.get('user-agent'),
+    metadata: { source: 'passkey_device_link' },
+  })
+  if (!completed.ok) return completed
+
+  return {
+    ok: true,
+    accountId: link.accountId,
+    username: link.username,
+    displayName: link.displayName,
+    passkey: completed.passkey,
+  }
 }
 
 export async function createPasskeyLoginOptions(identifier, request) {

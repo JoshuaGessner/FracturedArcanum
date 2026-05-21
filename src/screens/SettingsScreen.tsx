@@ -3,7 +3,7 @@ import { PwaInstallPanel } from '../components/PwaInstallPanel'
 import { formatTimestamp } from '../utils'
 import { useAppShell, useProfile } from '../contexts'
 import { feedback } from '../feedback'
-import type { AdminComplaint } from '../types'
+import type { AdminComplaint, PasskeySummary } from '../types'
 
 type AdminSubview = 'liveOps' | 'traffic' | 'complaints' | 'recovery' | 'roles' | 'audit'
 
@@ -14,6 +14,16 @@ type TicketAction = {
 }
 
 const ADMIN_SUBVIEWS: AdminSubview[] = ['liveOps', 'traffic', 'complaints', 'recovery', 'roles', 'audit']
+
+function getPasskeyPortabilityLabel(passkey: PasskeySummary): string {
+  if (passkey.backedUp || passkey.deviceType === 'multiDevice') return 'Synced'
+  if (passkey.deviceType === 'singleDevice') return 'Device-bound'
+  return 'Unknown sync'
+}
+
+function shouldWarnAboutSingleDevicePasskey(passkeys: PasskeySummary[]): boolean {
+  return passkeys.length === 1 && (!passkeys[0].backedUp || passkeys[0].deviceType === 'singleDevice')
+}
 
 const COMPLAINT_ACTIONS: TicketAction[] = [
   { label: 'Investigating', status: 'investigating', variant: 'ghost' },
@@ -80,7 +90,8 @@ export function SettingsScreen() {
     hapticsEnabled, setHapticsEnabled,
     settingsSubview, openSettingsSubview,
     passkeys, passkeySupported, passkeyLoading, passkeyStatus,
-    handleRegisterPasskey, handleDeletePasskey,
+    passkeyDeviceLink, handleRegisterPasskey, handleDeletePasskey,
+    handleCreatePasskeyDeviceLink, handleCopyPasskeyDeviceLink, clearPasskeyDeviceLink,
     accountSessions, accountActionStatus, accountActionLoading,
     recoveryStatus, refreshRecoveryStatus, handleGenerateRecoveryCodes,
     refreshAccountSessions, handleLogoutAllSessions, handleExportAccountData, handleDeleteAccount,
@@ -241,7 +252,7 @@ export function SettingsScreen() {
               <div>
                 <strong>{passkey.name || 'Passkey'}</strong>
                 <span className="mini-text">
-                  {passkey.lastUsedAt ? `Last used ${formatTimestamp(passkey.lastUsedAt)}` : `Added ${formatTimestamp(passkey.createdAt)}`}
+                  {getPasskeyPortabilityLabel(passkey)} - {passkey.lastUsedAt ? `Last used ${formatTimestamp(passkey.lastUsedAt)}` : `Added ${formatTimestamp(passkey.createdAt)}`}
                 </span>
               </div>
               <button className="ghost mini" disabled={passkeyLoading || passkeys.length <= 1} onClick={() => void handleDeletePasskey(passkey.id)}>
@@ -286,6 +297,9 @@ export function SettingsScreen() {
               </button>
             </div>
             {passkeyStatus && <p className="note toast-line">{passkeyStatus}</p>}
+            {shouldWarnAboutSingleDevicePasskey(passkeys) && (
+              <p className="mini-text warning-line">Only one device-bound passkey is registered. Add another device or keep recovery codes saved.</p>
+            )}
             <div className="settings-passkey-list">
               {passkeys.length === 0 ? (
                 <p className="mini-text">No passkeys registered.</p>
@@ -295,7 +309,7 @@ export function SettingsScreen() {
                     <div>
                       <strong>{passkey.name || 'Passkey'}</strong>
                       <span className="mini-text">
-                        {passkey.lastUsedAt ? `Last used ${formatTimestamp(passkey.lastUsedAt)}` : `Added ${formatTimestamp(passkey.createdAt)}`}
+                        {getPasskeyPortabilityLabel(passkey)} - {passkey.lastUsedAt ? `Last used ${formatTimestamp(passkey.lastUsedAt)}` : `Added ${formatTimestamp(passkey.createdAt)}`}
                       </span>
                     </div>
                     <button className="ghost mini" disabled={passkeyLoading || passkeys.length <= 1} onClick={() => void handleDeletePasskey(passkey.id)}>
@@ -305,6 +319,28 @@ export function SettingsScreen() {
                 ))
               )}
             </div>
+            <div className="controls passkey-device-link-actions">
+              <button className="ghost mini" disabled={accountActionLoading || !passkeySupported || passkeys.length < 1} onClick={() => void handleCreatePasskeyDeviceLink()}>
+                Link Another Device
+              </button>
+              {passkeyDeviceLink && (
+                <button className="ghost mini" disabled={accountActionLoading} onClick={clearPasskeyDeviceLink}>
+                  Clear Link
+                </button>
+              )}
+            </div>
+            {passkeyDeviceLink && (
+              <div className="passkey-device-link-box">
+                <label className="form-field">
+                  <span>Device Link</span>
+                  <input className="text-input" readOnly value={passkeyDeviceLink.linkUrl} onFocus={(event) => event.currentTarget.select()} />
+                </label>
+                <div className="controls">
+                  <button className="ghost mini" onClick={() => void handleCopyPasskeyDeviceLink()}>Copy Link</button>
+                </div>
+                <p className="mini-text">Open this link on the phone or computer you want to add. It expires {passkeyDeviceLink.expiresAt ? formatTimestamp(passkeyDeviceLink.expiresAt) : 'soon'}.</p>
+              </div>
+            )}
           </section>
 
           <section className="settings-account-block">

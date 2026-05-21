@@ -65,10 +65,14 @@ function buildShellValue(overrides: Partial<AppShellContextValue> = {}): AppShel
     accountActionStatus: '',
     accountActionLoading: false,
     recoveryStatus: null,
+    passkeyDeviceLink: null,
     refreshPasskeys: asyncNoop,
     refreshAccountSessions: asyncNoop,
     refreshRecoveryStatus: asyncNoop,
     handleGenerateRecoveryCodes: asyncNoop,
+    handleCreatePasskeyDeviceLink: asyncNoop,
+    handleCopyPasskeyDeviceLink: asyncNoop,
+    clearPasskeyDeviceLink: noop,
     handleRegisterPasskey: asyncNoop,
     handleDeletePasskey: asyncNoop,
     handleLogoutAllSessions: asyncNoop,
@@ -385,6 +389,56 @@ describe('SettingsScreen sections', () => {
 
     expect(screen.queryByRole('button', { name: /^admin$/i })).toBeNull()
     expect(container.querySelectorAll('.settings-status-chip')).toHaveLength(4)
+  })
+
+  it('warns about one device-bound passkey and exposes device linking', () => {
+    const handleCreatePasskeyDeviceLink = vi.fn(async () => {})
+    renderSettingsScreen({
+      settingsSubview: 'account',
+      handleCreatePasskeyDeviceLink,
+      passkeys: [{
+        id: 'authnr-1',
+        credentialId: 'credential-1',
+        transports: ['internal'],
+        backedUp: false,
+        deviceType: 'singleDevice',
+        name: 'Desktop passkey',
+        createdAt: '2026-05-20T12:00:00.000Z',
+        lastUsedAt: null,
+      }],
+    })
+
+    expect(screen.getByText(/^Device-bound/)).toBeTruthy()
+    expect(screen.getByText(/only one device-bound passkey/i)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: /link another device/i }))
+    expect(handleCreatePasskeyDeviceLink).toHaveBeenCalledTimes(1)
+  })
+
+  it('shows the generated passkey device link for copying', () => {
+    const handleCopyPasskeyDeviceLink = vi.fn(async () => {})
+    renderSettingsScreen({
+      settingsSubview: 'account',
+      passkeys: [{
+        id: 'authnr-1',
+        credentialId: 'credential-1',
+        transports: ['internal'],
+        backedUp: true,
+        deviceType: 'multiDevice',
+        name: 'Primary passkey',
+        createdAt: '2026-05-20T12:00:00.000Z',
+        lastUsedAt: null,
+      }],
+      passkeyDeviceLink: {
+        token: 'pdlink-test.secret',
+        linkUrl: 'https://farcanum.anomalousinteractive.com/?passkeyDeviceLink=pdlink-test.secret',
+        expiresAt: '2026-05-20T12:10:00.000Z',
+      },
+      handleCopyPasskeyDeviceLink,
+    })
+
+    expect(screen.getByDisplayValue(/passkeyDeviceLink=pdlink-test/)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: /copy link/i }))
+    expect(handleCopyPasskeyDeviceLink).toHaveBeenCalledTimes(1)
   })
 
   it('shows admin navigation for the owner account', () => {

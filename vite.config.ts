@@ -7,6 +7,9 @@ const arenaOrigin = `http://localhost:${arenaPort}`
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
+  build: {
+    chunkSizeWarningLimit: 650,
+  },
   server: {
     proxy: {
       '/api': arenaOrigin,

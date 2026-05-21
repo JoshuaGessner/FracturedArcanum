@@ -95,6 +95,7 @@ import type {
   OpenedPackCard,
   OpponentProfile,
   PackOffer,
+  PasskeyDeviceLink,
   PasskeySummary,
   QuestOverview,
   QueuePresence,
@@ -122,6 +123,19 @@ function createPasskeyTimeoutError(message: string): Error {
   const error = new Error(message)
   error.name = 'PasskeyTimeoutError'
   return error
+}
+
+function readPasskeyDeviceLinkToken(): string {
+  if (typeof window === 'undefined') return ''
+  return new URLSearchParams(window.location.search).get('passkeyDeviceLink') ?? ''
+}
+
+function clearPasskeyDeviceLinkParam(): void {
+  if (typeof window === 'undefined') return
+  const url = new URL(window.location.href)
+  if (!url.searchParams.has('passkeyDeviceLink')) return
+  url.searchParams.delete('passkeyDeviceLink')
+  window.history.replaceState({}, document.title, `${url.pathname}${url.search}${url.hash}`)
 }
 
 async function withPasskeyCeremonyTimeout<T>(ceremony: Promise<T>, timeoutMessage: string): Promise<T> {
@@ -185,6 +199,11 @@ function AppShell() {
   const [passkeySupported] = useState(() => browserSupportsWebAuthn())
   const [passkeyLoading, setPasskeyLoading] = useState(false)
   const [passkeyStatus, setPasskeyStatus] = useState('')
+  const [passkeyDeviceLink, setPasskeyDeviceLink] = useState<PasskeyDeviceLink | null>(null)
+  const [incomingPasskeyDeviceLinkToken, setIncomingPasskeyDeviceLinkToken] = useState(readPasskeyDeviceLinkToken)
+  const [incomingPasskeyDeviceLinkStatus, setIncomingPasskeyDeviceLinkStatus] = useState('')
+  const [incomingPasskeyDeviceLinkError, setIncomingPasskeyDeviceLinkError] = useState('')
+  const [incomingPasskeyDeviceLinkLoading, setIncomingPasskeyDeviceLinkLoading] = useState(false)
   const [accountSessions, setAccountSessions] = useState<AccountSessionSummary[]>([])
   const [recoveryStatus, setRecoveryStatus] = useState<AccountRecoveryStatus | null>(null)
   const [pendingRecoveryCodes, setPendingRecoveryCodes] = useState<string[]>([])
@@ -207,7 +226,8 @@ function AppShell() {
   const hasPasskeySetupRequirement = accountRequirements.some((item) => item.id === 'passkey' || item.id === 'owner_second_passkey')
   const hasLegalSetupRequirement = accountRequirements.some((item) => item.id === 'terms' || item.id === 'privacy' || item.id === 'age_attestation')
   const hasRecoverySetupRequirement = accountRequirements.some((item) => item.id === 'recovery_codes' || item.id === 'recovery_codes_saved')
-  const forcedAccountGateActive = loggedIn && (pendingRecoveryCodes.length > 0 || (accountSetupRequired && accountRequirements.length > 0))
+  const incomingPasskeyDeviceLinkActive = setupRequired === false && Boolean(incomingPasskeyDeviceLinkToken)
+  const forcedAccountGateActive = incomingPasskeyDeviceLinkActive || (loggedIn && (pendingRecoveryCodes.length > 0 || (accountSetupRequired && accountRequirements.length > 0)))
   const shards = serverProfile?.shards ?? 0
   const seasonRating = serverProfile?.seasonRating ?? 1200
   const record = { wins: serverProfile?.wins ?? 0, losses: serverProfile?.losses ?? 0, streak: serverProfile?.streak ?? 0 }
@@ -941,7 +961,7 @@ function AppShell() {
       setToastMessage(`Welcome${data.profile?.username ? ', ' + data.profile.username : ''}!`)
     } catch (error) {
       setAuthStatus('')
-      setAuthError(formatPasskeyCeremonyError(error, 'Passkey login failed. Please try again.'))
+      setAuthError(formatPasskeyCeremonyError(error, 'Passkey login failed. Use account recovery if this device does not have your passkey.'))
     }
 
     setAuthLoading(false)
@@ -1250,6 +1270,137 @@ function AppShell() {
     setAccountActionLoading(false)
   }
 
+  function clearPasskeyDeviceLink() {
+    setPasskeyDeviceLink(null)
+    setAccountActionStatus('')
+  }
+
+  async function handleCopyPasskeyDeviceLink() {
+    if (!passkeyDeviceLink?.linkUrl) return
+    try {
+      await navigator.clipboard.writeText(passkeyDeviceLink.linkUrl)
+      setAccountActionStatus('Device link copied. Open it on the device you want to add.')
+    } catch {
+      setAccountActionStatus('Copy failed. Select the link and send it to your other device.')
+    }
+  }
+
+  async function handleCreatePasskeyDeviceLink() {
+    if (!authToken) return
+    if (accountActionInFlightRef.current) {
+      setAccountActionStatus('Account security action is already in progress.')
+      return
+    }
+    accountActionInFlightRef.current = true
+    setAccountActionLoading(true)
+    setAccountActionStatus('')
+    if (!await ensureRecentPasskeyAuth()) {
+      accountActionInFlightRef.current = false
+      setAccountActionLoading(false)
+      return
+    }
+
+    try {
+      const response = await authFetch('/api/me/passkey-device-links', authToken, { method: 'POST' })
+      const data = await response.json() as { ok: boolean; error?: string; token?: string; linkUrl?: string; link?: { expiresAt?: string } }
+      if (!response.ok || !data.ok || !data.token || !data.linkUrl) {
+        setAccountActionStatus(data.error ?? 'Device link could not be created.')
+        return
+      }
+      setPasskeyDeviceLink({ token: data.token, linkUrl: data.linkUrl, expiresAt: data.link?.expiresAt ?? '' })
+      setAccountActionStatus('Device link created. Open it on the device you want to add.')
+    } catch {
+      setAccountActionStatus('Device link could not be created.')
+    } finally {
+      accountActionInFlightRef.current = false
+      setAccountActionLoading(false)
+    }
+  }
+
+  function cancelIncomingPasskeyDeviceLink() {
+    setIncomingPasskeyDeviceLinkToken('')
+    setIncomingPasskeyDeviceLinkStatus('')
+    setIncomingPasskeyDeviceLinkError('')
+    clearPasskeyDeviceLinkParam()
+  }
+
+  async function handleCompleteIncomingPasskeyDeviceLink() {
+    const deviceLinkToken = incomingPasskeyDeviceLinkToken.trim()
+    setIncomingPasskeyDeviceLinkError('')
+    setIncomingPasskeyDeviceLinkStatus('')
+    if (!deviceLinkToken) {
+      setIncomingPasskeyDeviceLinkError('Device link is missing or expired.')
+      return
+    }
+    if (!passkeySupported) {
+      setIncomingPasskeyDeviceLinkError('This browser does not support passkeys.')
+      return
+    }
+    const passkeyOriginMessage = getPasskeyOriginRequirementMessage()
+    if (passkeyOriginMessage) {
+      setIncomingPasskeyDeviceLinkError(passkeyOriginMessage)
+      return
+    }
+
+    setIncomingPasskeyDeviceLinkLoading(true)
+    try {
+      const optionsResponse = await fetch(`${ARENA_URL}/api/auth/passkey/device-link/options`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deviceLinkToken }),
+      })
+      const optionsData = await optionsResponse.json() as {
+        ok: boolean; error?: string; options?: RegistrationOptionsJSON; challengeId?: string; account?: { username?: string; displayName?: string }
+      }
+      if (!optionsResponse.ok || !optionsData.ok || !optionsData.options || !optionsData.challengeId) {
+        setIncomingPasskeyDeviceLinkError(optionsData.error ?? 'Device link passkey setup could not be started.')
+        setIncomingPasskeyDeviceLinkLoading(false)
+        return
+      }
+
+      setIncomingPasskeyDeviceLinkStatus(PASSKEY_PROMPT_STATUS)
+      const credential = await withPasskeyCeremonyTimeout(
+        startRegistration({ optionsJSON: optionsData.options }),
+        'Passkey prompt timed out. Try again and watch for the browser or system passkey window.',
+      )
+      setIncomingPasskeyDeviceLinkStatus('')
+      const verifyResponse = await fetch(`${ARENA_URL}/api/auth/passkey/device-link/verify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          deviceLinkToken,
+          challengeId: optionsData.challengeId,
+          response: credential,
+          name: 'Linked device passkey',
+        }),
+      })
+      const data = await verifyResponse.json() as { ok: boolean; error?: string; token?: string; profile?: ServerProfile; passkeys?: PasskeySummary[] }
+      if (!verifyResponse.ok || !data.ok) {
+        setIncomingPasskeyDeviceLinkError(data.error ?? 'Device link passkey setup failed.')
+        setIncomingPasskeyDeviceLinkLoading(false)
+        return
+      }
+
+      setAuthToken(data.token ?? '')
+      setServerProfile(data.profile ?? null)
+      setLoggedIn(true)
+      if (data.profile?.deckConfig && Object.keys(data.profile.deckConfig).length > 0) {
+        setDeckConfig(data.profile.deckConfig)
+      }
+      if (data.passkeys) setPasskeys(data.passkeys)
+      setIncomingPasskeyDeviceLinkToken('')
+      clearPasskeyDeviceLinkParam()
+      void refreshPasskeys(data.token ?? '')
+      void refreshAccountSessions(data.token ?? '')
+      void refreshRecoveryStatus(data.token ?? '')
+      setToastMessage('This device is linked to your account.')
+    } catch (error) {
+      setIncomingPasskeyDeviceLinkStatus('')
+      setIncomingPasskeyDeviceLinkError(formatPasskeyCeremonyError(error, 'Device link passkey setup failed. Please try again.'))
+    }
+    setIncomingPasskeyDeviceLinkLoading(false)
+  }
+
   async function handleLogoutAllSessions() {
     if (!authToken) return
     const ok = await askConfirm({
@@ -1478,6 +1629,10 @@ function AppShell() {
     setAccountUpgradeError('')
     setPasskeys([])
     setPasskeyStatus('')
+    setPasskeyDeviceLink(null)
+    setIncomingPasskeyDeviceLinkToken('')
+    setIncomingPasskeyDeviceLinkStatus('')
+    setIncomingPasskeyDeviceLinkError('')
     setAccountSessions([])
     setRecoveryStatus(null)
     setPendingRecoveryCodes([])
@@ -3892,8 +4047,9 @@ function AppShell() {
     rankLabel, totalGames, winRate, rankProgress, nextRankTarget, nextRewardLabel,
     todayKey, canClaimDailyReward, justClaimedDaily, totalOwnedCards,
     passkeys, passkeySupported, passkeyLoading, passkeyStatus,
-    accountSessions, accountActionStatus, accountActionLoading, recoveryStatus,
+    accountSessions, accountActionStatus, accountActionLoading, recoveryStatus, passkeyDeviceLink,
     refreshPasskeys, refreshAccountSessions, refreshRecoveryStatus, handleGenerateRecoveryCodes,
+    handleCreatePasskeyDeviceLink, handleCopyPasskeyDeviceLink, clearPasskeyDeviceLink,
     handleRegisterPasskey, handleDeletePasskey,
     handleLogoutAllSessions, handleExportAccountData, handleDeleteAccount,
     // Deck / collection handlers + derived (state lives in ProfileProvider)
@@ -4033,12 +4189,12 @@ function AppShell() {
         </div>
       )}
 
-      {loggedIn && pendingRecoveryCodes.length > 0 && (
+      {!incomingPasskeyDeviceLinkActive && loggedIn && pendingRecoveryCodes.length > 0 && (
         <div className="auth-gate forced-setup-gate">
           <div className="auth-card account-upgrade-card">
             <img className="auth-app-icon" src="/fractured-arcanum-icon-512.svg" alt="Fractured Arcanum app icon" />
             <h1>Save {pendingRecoveryCodes.length} Recovery Codes</h1>
-            <p className="auth-tagline">This is one recovery batch. Generating a new batch later revokes this one.</p>
+            <p className="auth-tagline">This is one recovery batch. Add another device from Settings before relying on phone sign-in.</p>
             <ul className="account-requirements-list recovery-code-list">
               {pendingRecoveryCodes.map((code) => (
                 <li key={code}><strong>{code}</strong><span>Store privately. Each code works once.</span></li>
@@ -4057,7 +4213,7 @@ function AppShell() {
         </div>
       )}
 
-      {loggedIn && pendingRecoveryCodes.length === 0 && accountSetupRequired && accountRequirements.length > 0 && (
+      {!incomingPasskeyDeviceLinkActive && loggedIn && pendingRecoveryCodes.length === 0 && accountSetupRequired && accountRequirements.length > 0 && (
         <div className="auth-gate forced-setup-gate">
           <div className="auth-card account-upgrade-card migration-setup-card">
             <img className="auth-app-icon" src="/fractured-arcanum-icon-512.svg" alt="Fractured Arcanum app icon" />
@@ -4111,7 +4267,7 @@ function AppShell() {
                       ageAttestation: event.target.checked ? 'adult' : '',
                     }))}
                   />
-                  <span>I accept the Terms of Service and Privacy Policy and confirm I meet the age requirement or have guardian consent.</span>
+                  <span>I accept the Terms of Service and Privacy Policy and confirm I meet the age requirement or have guardian consent. I understand this passkey may stay on this device unless my passkey provider syncs it.</span>
                 </label>
                 {accountUpgradeStatus && <p className="auth-note">{accountUpgradeStatus}</p>}
                 {accountUpgradeError && <p className="auth-error">{accountUpgradeError}</p>}
@@ -4127,8 +4283,29 @@ function AppShell() {
         </div>
       )}
 
+      {incomingPasskeyDeviceLinkActive && (
+        <div className="auth-gate">
+          <div className="auth-card">
+            <img className="auth-app-icon" src="/fractured-arcanum-icon-512.svg" alt="Fractured Arcanum app icon" />
+            <h1>Link This Device</h1>
+            <p className="auth-tagline">Create a passkey here to sign in on this device.</p>
+            {incomingPasskeyDeviceLinkStatus && <p className="auth-note">{incomingPasskeyDeviceLinkStatus}</p>}
+            {incomingPasskeyDeviceLinkError && <p className="auth-error">{incomingPasskeyDeviceLinkError}</p>}
+            <div className="controls auth-recovery-actions">
+              <button className="primary" type="button" disabled={incomingPasskeyDeviceLinkLoading || !passkeySupported} onClick={() => void handleCompleteIncomingPasskeyDeviceLink()}>
+                {incomingPasskeyDeviceLinkLoading ? 'Linking...' : 'Create Passkey'}
+              </button>
+              <button className="ghost" type="button" disabled={incomingPasskeyDeviceLinkLoading} onClick={cancelIncomingPasskeyDeviceLink}>
+                Use Another Login
+              </button>
+            </div>
+            <p className="auth-note">The link expires quickly and can only be used once.</p>
+          </div>
+        </div>
+      )}
+
       {/* ─── Auth gate ─────────────────────────────────────────────── */}
-      {!setupRequired && !loggedIn && (
+      {!setupRequired && !loggedIn && !incomingPasskeyDeviceLinkToken && (
         <div className="auth-gate">
           <div className="auth-card">
             <img className="auth-app-icon" src="/fractured-arcanum-icon-512.svg" alt="Fractured Arcanum app icon" />
@@ -4173,7 +4350,7 @@ function AppShell() {
                       onChange={(event) => setAuthForm((f) => ({ ...f, recoveryCode: event.target.value }))}
                     />
                   </label>
-                  <p className="auth-note">Recovery replaces old passkeys and signs out old sessions. If you did not save codes, submit an account recovery support ticket with your username and details only you would know.</p>
+                  <p className="auth-note">Recovery replaces old passkeys and signs out old sessions. Use Settings on a signed-in device to link a phone without recovery. If you did not save codes, submit an account recovery support ticket with your username and details only you would know.</p>
                   <label>
                     Support Details
                     <textarea
@@ -4202,7 +4379,7 @@ function AppShell() {
                         ageAttestation: event.target.checked ? 'adult' : '',
                       }))}
                     />
-                    <span>I accept the Terms of Service and Privacy Policy and confirm I meet the age requirement or have guardian consent.</span>
+                    <span>I accept the Terms of Service and Privacy Policy and confirm I meet the age requirement or have guardian consent. I understand this passkey may stay on this device unless my passkey provider syncs it.</span>
                   </label>
                 </>
               ) : null}

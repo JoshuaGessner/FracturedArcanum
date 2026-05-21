@@ -30,6 +30,7 @@ const CURRENT_PRIVACY_VERSION = 'privacy-2026-05-17'
 const CURRENT_AGE_GATE_VERSION = 'age-2026-05-17'
 export const LEGACY_MIGRATION_WINDOW_DAYS = 30
 const RECOVERY_CODE_COUNT = 10
+const PASSKEY_DEVICE_LINK_TTL_MS = 10 * 60 * 1000
 
 export function getCurrentLegalVersions() {
   return {
@@ -307,6 +308,17 @@ db.exec(`
     consumed_at TEXT
   );
 
+  CREATE TABLE IF NOT EXISTS passkey_device_links (
+    id TEXT PRIMARY KEY,
+    account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    secret_hash TEXT NOT NULL,
+    created_by_session TEXT,
+    status TEXT NOT NULL DEFAULT 'pending',
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    expires_at TEXT NOT NULL,
+    consumed_at TEXT
+  );
+
   CREATE TABLE IF NOT EXISTS email_tokens (
     id TEXT PRIMARY KEY,
     account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
@@ -360,6 +372,8 @@ db.exec(`
 
   CREATE INDEX IF NOT EXISTS idx_account_authenticators_account ON account_authenticators(account_id);
   CREATE INDEX IF NOT EXISTS idx_auth_challenges_account ON auth_challenges(account_id, purpose, expires_at);
+  CREATE INDEX IF NOT EXISTS idx_passkey_device_links_account ON passkey_device_links(account_id, status, expires_at);
+  CREATE INDEX IF NOT EXISTS idx_passkey_device_links_secret ON passkey_device_links(id, secret_hash, status, expires_at);
   CREATE INDEX IF NOT EXISTS idx_email_tokens_account ON email_tokens(account_id, purpose, expires_at);
   CREATE INDEX IF NOT EXISTS idx_account_consents_account ON account_consents(account_id, document_type, document_version);
   CREATE INDEX IF NOT EXISTS idx_account_recovery_codes_account ON account_recovery_codes(account_id, revoked_at, used_at);
@@ -545,6 +559,30 @@ const _getActiveAuthChallenge = db.prepare(`
     AND expires_at > datetime('now')
 `)
 const _consumeAuthChallenge = db.prepare(`UPDATE auth_challenges SET consumed_at = datetime('now') WHERE id = ?`)
+const _insertPasskeyDeviceLink = db.prepare(`
+  INSERT INTO passkey_device_links (id, account_id, secret_hash, created_by_session, expires_at)
+  VALUES (?, ?, ?, ?, ?)
+`)
+const _getPendingPasskeyDeviceLink = db.prepare(`
+  SELECT link.*, acct.username, acct.display_name, acct.role, acct.account_status, acct.deleted_at
+  FROM passkey_device_links link
+  JOIN accounts acct ON acct.id = link.account_id
+  WHERE link.id = ?
+    AND link.secret_hash = ?
+    AND link.status = 'pending'
+    AND link.consumed_at IS NULL
+    AND link.expires_at > datetime('now')
+`)
+const _consumePasskeyDeviceLink = db.prepare(`
+  UPDATE passkey_device_links
+  SET status = 'consumed', consumed_at = datetime('now')
+  WHERE id = ? AND account_id = ? AND status = 'pending' AND consumed_at IS NULL AND expires_at > datetime('now')
+`)
+const _expirePasskeyDeviceLinks = db.prepare(`
+  UPDATE passkey_device_links
+  SET status = 'expired'
+  WHERE status = 'pending' AND expires_at <= datetime('now')
+`)
 const _insertAccountConsent = db.prepare(`
   INSERT INTO account_consents (id, account_id, document_type, document_version, ip_hash, ua_hash, locale, source)
   VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -657,6 +695,16 @@ function getCount(row) {
 
 function hashSessionToken(token) {
   return createHash('sha256').update(`rc-session-token:${token}`).digest('hex')
+}
+
+function hashPasskeyDeviceLinkSecret(secret) {
+  return createHash('sha256').update(`rc-passkey-device-link:${secret}`).digest('hex')
+}
+
+function parsePasskeyDeviceLinkToken(token) {
+  const [id, secret] = String(token ?? '').split('.')
+  if (!id || !secret || !id.startsWith('pdlink-') || secret.length < 32) return null
+  return { id, secretHash: hashPasskeyDeviceLinkSecret(secret) }
 }
 
 function parseJson(value, fallback) {
@@ -1020,6 +1068,102 @@ export function consumeAuthChallenge(challengeId, purpose) {
     challenge: row.challenge,
     metadata: parseJson(row.metadata, {}),
   }
+}
+
+function mapPasskeyDeviceLink(row) {
+  return {
+    id: row.id,
+    accountId: row.account_id,
+    username: row.username,
+    displayName: String(row.display_name ?? '').trim() || row.username,
+    role: row.role,
+    expiresAt: row.expires_at,
+    createdAt: row.created_at,
+  }
+}
+
+export function createPasskeyDeviceLink(accountId, details = {}) {
+  const account = _getById.get(accountId)
+  if (!account || account.deleted_at || account.account_status !== 'active') {
+    return { ok: false, status: 404, error: 'Active account not found.' }
+  }
+  if (getCount(_countAuthenticatorsByAccount.get(accountId)) < 1) {
+    return { ok: false, status: 400, error: 'Register a passkey before linking another device.' }
+  }
+
+  const id = `pdlink-${randomBytes(12).toString('hex')}`
+  const secret = randomBytes(24).toString('hex')
+  const token = `${id}.${secret}`
+  const expiresAt = new Date(Date.now() + PASSKEY_DEVICE_LINK_TTL_MS).toISOString()
+  const tx = db.transaction(() => {
+    _expirePasskeyDeviceLinks.run()
+    _insertPasskeyDeviceLink.run(id, accountId, hashPasskeyDeviceLinkSecret(secret), String(details.sessionId ?? ''), expiresAt)
+    recordSecurityEvent(accountId, 'passkey_device_link_created', details)
+  })
+  tx()
+
+  return {
+    ok: true,
+    token,
+    link: {
+      id,
+      expiresAt,
+    },
+  }
+}
+
+export function getPasskeyDeviceLink(token) {
+  const parsed = parsePasskeyDeviceLinkToken(token)
+  if (!parsed) return null
+  _expirePasskeyDeviceLinks.run()
+  const row = _getPendingPasskeyDeviceLink.get(parsed.id, parsed.secretHash)
+  if (!row || row.account_status !== 'active' || row.deleted_at) return null
+  return mapPasskeyDeviceLink(row)
+}
+
+export function completePasskeyDeviceLinkRegistration(token, accountId, credential, details = {}) {
+  const parsed = parsePasskeyDeviceLinkToken(token)
+  if (!parsed) return { ok: false, status: 400, error: 'Device link is invalid or expired.' }
+
+  const passkeyId = `authnr-${randomBytes(12).toString('hex')}`
+  const name = String(details.name ?? '').trim().slice(0, 48) || 'Linked device passkey'
+  const tx = db.transaction(() => {
+    _expirePasskeyDeviceLinks.run()
+    const row = _getPendingPasskeyDeviceLink.get(parsed.id, parsed.secretHash)
+    if (!row || row.account_status !== 'active' || row.deleted_at || row.account_id !== accountId) {
+      throw new Error('device-link-invalid')
+    }
+    const consumed = _consumePasskeyDeviceLink.run(row.id, row.account_id)
+    if (consumed.changes < 1) throw new Error('device-link-consumed')
+    _insertAuthenticator.run(
+      passkeyId,
+      row.account_id,
+      credential.id,
+      Buffer.from(credential.publicKey),
+      Number(credential.counter ?? 0),
+      JSON.stringify(credential.transports ?? []),
+      details.backedUp ? 1 : 0,
+      String(details.deviceType ?? ''),
+      name,
+    )
+    recordSecurityEvent(row.account_id, 'passkey_device_link_completed', details)
+    return row.account_id
+  })
+
+  let linkedAccountId
+  try {
+    linkedAccountId = tx()
+  } catch (error) {
+    if (error?.message === 'device-link-invalid' || error?.message === 'device-link-consumed') {
+      return { ok: false, status: 400, error: 'Device link is invalid or expired.' }
+    }
+    if (String(error?.message ?? '').toLowerCase().includes('unique')) {
+      return { ok: false, status: 409, error: 'This passkey is already registered.' }
+    }
+    throw error
+  }
+
+  return { ok: true, passkey: listAccountPasskeys(linkedAccountId).find((item) => item.id === passkeyId) }
 }
 
 export function registerAccountPasskey(accountId, credential, details = {}) {
