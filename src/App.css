@@ -5055,6 +5055,11 @@ button.quest-summary:focus-visible {
   align-items: center;
   justify-content: flex-start;
   gap: 0;
+  overflow: hidden;
+}
+
+.app-shell:not(.battle-shell-active) .scene-stage > .settings-screen.screen-panel.active {
+  overflow: hidden;
 }
 
 .settings-command-card {
@@ -5066,12 +5071,18 @@ button.quest-summary:focus-visible {
   width: min(100%, 980px);
   max-width: 100%;
   min-width: 0;
+  height: 100%;
+  max-height: 100%;
   min-height: 0;
   overflow: hidden;
   isolation: isolate;
   background:
-    linear-gradient(135deg, rgba(8, 14, 30, 0.94), rgba(28, 24, 48, 0.9)),
-    var(--panel-bg);
+    linear-gradient(135deg, #050914, #121426),
+    linear-gradient(180deg, rgba(147, 197, 253, 0.05), rgba(7, 12, 26, 0.14));
+  box-shadow:
+    0 18px 56px rgba(0, 0, 0, 0.36),
+    inset 0 1px 0 rgba(147, 197, 253, 0.12),
+    inset 0 0 0 1px rgba(7, 12, 26, 0.7);
 }
 
 .settings-command-card::after {
@@ -5082,9 +5093,14 @@ button.quest-summary:focus-visible {
   width: 96px;
   height: 96px;
   z-index: 0;
-  opacity: 0.12;
+  opacity: 0.035;
   pointer-events: none;
   background: url('/generated/ui/particle-rune.svg') center / contain no-repeat;
+}
+
+.settings-command-card.settings-view-preferences::after,
+.settings-command-card.settings-view-account::after {
+  opacity: 0;
 }
 
 .settings-command-card.settings-view-admin::after {
@@ -5106,7 +5122,8 @@ button.quest-summary:focus-visible {
   padding: 10px 12px;
   border-radius: var(--radius-md);
   border: 1px solid rgba(147, 197, 253, 0.16);
-  background: linear-gradient(135deg, rgba(7, 12, 26, 0.62), rgba(31, 38, 68, 0.48));
+  background: linear-gradient(135deg, #070c1a, #171f39);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
 .settings-command-title {
@@ -5208,6 +5225,24 @@ button.quest-summary:focus-visible {
   overflow-y: auto;
   overscroll-behavior: contain;
   padding-right: 2px;
+  padding-bottom: 14px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(180deg, #030712, #070c1a);
+  scrollbar-width: thin;
+  scrollbar-color: rgba(147, 197, 253, 0.35) transparent;
+}
+
+.settings-section-panel::-webkit-scrollbar {
+  width: 6px;
+}
+
+.settings-section-panel::-webkit-scrollbar-thumb {
+  background: rgba(147, 197, 253, 0.35);
+  border-radius: 999px;
+}
+
+.settings-section-panel::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 .settings-section-toolbar {
@@ -5246,18 +5281,25 @@ button.quest-summary:focus-visible {
 
 .settings-toggle-row {
   display: grid;
-  grid-template-columns: minmax(120px, 1fr) minmax(0, 1.2fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 8px;
-  min-height: 40px;
-  padding: 8px 10px;
+  gap: 12px;
+  min-height: 50px;
+  padding: 10px 12px;
   border-radius: var(--radius-sm);
-  background: rgba(0, 0, 0, 0.12);
-  border: 1px solid var(--border);
+  background: linear-gradient(135deg, #040812, #0d1222);
+  border: 1px solid rgba(147, 197, 253, 0.16);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
   font-size: var(--font-sm);
 }
 
-.settings-toggle-row > span:first-child {
+.settings-toggle-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.settings-toggle-label {
   color: #f5f8ff;
   font-weight: 700;
 }
@@ -5265,6 +5307,67 @@ button.quest-summary:focus-visible {
 .settings-install-hint {
   min-width: 0;
   text-align: left;
+}
+
+.settings-toggle-note {
+  color: #9fb1d5;
+  line-height: 1.25;
+}
+
+.settings-toggle-action {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 0;
+}
+
+.settings-toggle-action .ghost.mini,
+.settings-toggle-action .badge {
+  width: auto;
+  min-width: 86px;
+  max-width: 180px;
+  padding-inline: 14px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.settings-toggle-action .ghost.mini {
+  background: linear-gradient(135deg, rgba(30, 41, 75, 0.92), rgba(17, 24, 46, 0.88));
+  border-color: rgba(147, 197, 253, 0.24);
+  color: #dbe7ff;
+}
+
+.settings-toggle-action .ghost.mini:not(.muted) {
+  border-color: rgba(96, 165, 250, 0.34);
+  color: #edf4ff;
+}
+
+.settings-toggle-action .badge {
+  display: inline-flex;
+  justify-content: center;
+  min-height: 38px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.settings-toggle-row-danger {
+  border-color: rgba(248, 113, 113, 0.24);
+  background: linear-gradient(135deg, #10080d, #161023);
+}
+
+.settings-toggle-row-danger .settings-toggle-label {
+  color: #fee2e2;
+}
+
+.settings-toggle-row-danger .settings-toggle-action .ghost.mini {
+  border-color: rgba(248, 113, 113, 0.34);
+  background: linear-gradient(135deg, rgba(88, 28, 42, 0.72), rgba(31, 18, 34, 0.9));
+  color: #fee2e2;
+}
+
+.settings-toggle-row-danger .settings-toggle-action .ghost.mini:hover:not(:disabled) {
+  border-color: rgba(248, 113, 113, 0.54);
+  box-shadow: 0 8px 22px rgba(127, 29, 29, 0.22);
 }
 
 .auth-install-hint {
@@ -5290,7 +5393,7 @@ button.quest-summary:focus-visible {
   padding: 10px;
   border: 1px solid rgba(148, 163, 184, 0.22);
   border-radius: var(--radius-sm);
-  background: rgba(8, 14, 30, 0.32);
+  background: linear-gradient(135deg, #070c1a, #0d1222);
 }
 
 .settings-passkey-row > div {
@@ -5348,7 +5451,7 @@ button.quest-summary:focus-visible {
   padding: 12px;
   border: 1px solid rgba(148, 163, 184, 0.22);
   border-radius: var(--radius-sm);
-  background: rgba(8, 14, 30, 0.32);
+  background: linear-gradient(135deg, #070c1a, #0d1222);
 }
 
 .settings-account-facts {
@@ -5379,7 +5482,7 @@ button.quest-summary:focus-visible {
   padding: 9px;
   border: 1px solid rgba(148, 163, 184, 0.18);
   border-radius: var(--radius-sm);
-  background: rgba(15, 23, 42, 0.42);
+  background: linear-gradient(135deg, #0b1020, #11182c);
 }
 
 .settings-subnav {
@@ -5429,7 +5532,7 @@ button.quest-summary:focus-visible {
   padding: 12px;
   border-radius: var(--radius-md);
   border: 1px solid rgba(251, 191, 36, 0.14);
-  background: rgba(22, 18, 10, 0.34);
+  background: linear-gradient(135deg, #141108, #1d160a);
 }
 
 .settings-support-panel .text-input {
@@ -5481,7 +5584,7 @@ button.quest-summary:focus-visible {
 .settings-command-card .scribe-console {
   border-radius: var(--radius-md);
   border: 1px solid rgba(147, 197, 253, 0.1);
-  background: linear-gradient(135deg, rgba(7, 12, 26, 0.66), rgba(15, 20, 38, 0.56));
+  background: linear-gradient(135deg, #070c1a, #0f1426);
 }
 
 .scribe-console .admin-panel-block {
@@ -7003,13 +7106,13 @@ button.danger:hover { filter: brightness(1.08); }
     flex: initial;
   }
 
-  /* Settings density — compact command surface, no hidden subview content */
+  /* Settings density — compact command surface with contained subview scroll */
   .settings-command-card {
-    height: auto;
+    height: 100%;
+    max-height: 100%;
     min-height: 100%;
     gap: 8px;
-    overflow-x: clip;
-    overflow-y: visible;
+    overflow: hidden;
   }
 
   .settings-command-ledger {
@@ -7042,9 +7145,10 @@ button.danger:hover { filter: brightness(1.08); }
   }
 
   .settings-section-panel {
-    overflow-x: clip;
-    overflow-y: visible;
+    overflow-x: hidden;
+    overflow-y: auto;
     gap: 8px;
+    padding-bottom: 18px;
   }
 
   .settings-section-toolbar {
@@ -7069,10 +7173,27 @@ button.danger:hover { filter: brightness(1.08); }
   }
 
   .settings-toggle-row {
-    grid-template-columns: minmax(94px, 1fr) minmax(0, 1fr) auto;
-    min-height: 34px;
-    padding: 6px 8px;
+    grid-template-columns: minmax(0, 1fr) auto;
+    min-height: 46px;
+    padding: 8px 10px;
     font-size: var(--font-xs);
+  }
+
+  .settings-toggle-copy {
+    gap: 1px;
+  }
+
+  .settings-toggle-note {
+    font-size: 0.72rem;
+  }
+
+  .settings-toggle-action .ghost.mini,
+  .settings-toggle-action .badge {
+    min-width: 72px;
+    max-width: 128px;
+    min-height: 38px;
+    padding-inline: 10px;
+    font-size: 0.76rem;
   }
 
   .settings-support-panel .complaint-form {

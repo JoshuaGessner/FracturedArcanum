@@ -57,14 +57,17 @@ type SettingsToggleRowProps = {
   label: string
   action: ReactNode
   note?: string
+  tone?: 'default' | 'danger'
 }
 
-function SettingsToggleRow({ label, action, note }: SettingsToggleRowProps) {
+function SettingsToggleRow({ label, action, note, tone = 'default' }: SettingsToggleRowProps) {
   return (
-    <div className="settings-toggle-row">
-      <span>{label}</span>
-      {note && <span className="mini-text settings-install-hint">{note}</span>}
-      {action}
+    <div className={`settings-toggle-row${note ? '' : ' settings-toggle-row-compact'}${tone === 'danger' ? ' settings-toggle-row-danger' : ''}`}>
+      <div className="settings-toggle-copy">
+        <span className="settings-toggle-label">{label}</span>
+        {note && <span className="mini-text settings-install-hint settings-toggle-note">{note}</span>}
+      </div>
+      <div className="settings-toggle-action">{action}</div>
     </div>
   )
 }
@@ -263,7 +266,7 @@ export function SettingsScreen() {
         )}
       </div>
       <PwaInstallPanel installState={installState} onInstall={handleInstallApp} showInstalled showDiagnostics />
-      <SettingsToggleRow label="Log Out" action={<button className="ghost mini" onClick={handleLogout}>Sign Out</button>} />
+      <SettingsToggleRow label="Log Out" tone="danger" action={<button className="ghost mini" onClick={handleLogout}>Sign Out</button>} />
     </div>
   )
 
