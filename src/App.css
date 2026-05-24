@@ -5351,23 +5351,35 @@ button.quest-summary:focus-visible {
 }
 
 .settings-toggle-row-danger {
+  grid-template-columns: minmax(0, 1fr) minmax(112px, max-content);
+  min-height: 64px;
+  padding: 9px 14px;
+  align-items: center;
   border-color: rgba(248, 113, 113, 0.24);
-  background: linear-gradient(135deg, #10080d, #161023);
+  background: linear-gradient(135deg, #0e080d, #14101f);
 }
 
 .settings-toggle-row-danger .settings-toggle-label {
   color: #fee2e2;
+  line-height: 1.1;
 }
 
 .settings-toggle-row-danger .settings-toggle-action .ghost.mini {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 112px;
+  max-width: 128px;
+  min-height: 44px;
+  padding-inline: 16px;
   border-color: rgba(248, 113, 113, 0.34);
-  background: linear-gradient(135deg, rgba(88, 28, 42, 0.72), rgba(31, 18, 34, 0.9));
+  background: linear-gradient(135deg, rgba(78, 24, 38, 0.66), rgba(29, 18, 32, 0.92));
   color: #fee2e2;
 }
 
 .settings-toggle-row-danger .settings-toggle-action .ghost.mini:hover:not(:disabled) {
   border-color: rgba(248, 113, 113, 0.54);
-  box-shadow: 0 8px 22px rgba(127, 29, 29, 0.22);
+  box-shadow: 0 6px 18px rgba(127, 29, 29, 0.18);
 }
 
 .auth-install-hint {
@@ -7177,6 +7189,21 @@ button.danger:hover { filter: brightness(1.08); }
     min-height: 46px;
     padding: 8px 10px;
     font-size: var(--font-xs);
+  }
+
+  .settings-toggle-row-danger {
+    grid-template-columns: minmax(0, 1fr) 112px;
+    min-height: 64px;
+    padding: 9px 10px;
+  }
+
+  .settings-toggle-row-danger .settings-toggle-action .ghost.mini {
+    width: 112px;
+    min-width: 112px;
+    max-width: 112px;
+    min-height: 44px;
+    padding-inline: 12px;
+    font-size: 0.86rem;
   }
 
   .settings-toggle-copy {
