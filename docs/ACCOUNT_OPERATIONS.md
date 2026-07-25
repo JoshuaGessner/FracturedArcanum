@@ -58,7 +58,12 @@ WHERE a.account_status = 'deleted';
 
 ## Restoring deleted accounts
 
-From the server, with the service stopped (or accepting WAL concurrency):
+In the app: **Settings → Admin → Accounts → Deleted Accounts**, press **Load**,
+then **Restore** on any row. Rows are labelled so you can tell an account the
+sweeper expired from one the player deleted themselves.
+
+For bulk work, or when the app is down, use the CLI from the server with the
+service stopped (or accepting WAL concurrency):
 
 ```bash
 node scripts/restore-account.mjs --list
@@ -88,7 +93,9 @@ A grant is a single-use, one-hour credential that lets its holder attach a new
 passkey to one account. It is the last-resort path for a player who lost both
 their device and their recovery codes.
 
-**Issuing.** From the owner console, or:
+**Issuing.** In the app: **Settings → Admin → Accounts**, search for the player,
+**Manage**, then either *Issue recovery code* (leaves their existing passkeys
+working) or *Reset credentials* (revokes everything first). Or by API:
 
 ```
 POST /api/admin/users/:accountId/recovery-grant     # rescue, changes nothing else
@@ -106,9 +113,12 @@ the person is the account holder first; a grant is full account access. Prefer
 `recovery-grant` over `reset-credentials` unless you believe the account is
 compromised — the gentler action leaves their existing passkeys working.
 
-**Redeeming.** The player enters the code, which identifies its own account (no
-username needed), then registers a new passkey. The grant is consumed only when
-that passkey verifies, so an abandoned attempt does not burn it.
+**Redeeming.** The player opens the app, chooses **No codes left? → Use a
+support code** from any auth screen, and enters the code. It identifies its own
+account, so they are not asked for a username. They then register a new passkey.
+The grant is consumed only when that passkey verifies, so an abandoned attempt
+does not burn it. On success they receive a fresh batch of recovery codes — tell
+them to save it.
 
 ## Suspension
 
