@@ -4,7 +4,7 @@ export type QueueState = 'idle' | 'searching' | 'found'
 export type AppScreen = 'home' | 'play' | 'collection' | 'battle' | 'social' | 'shop' | 'settings'
 export type SettingsSubview = 'preferences' | 'account' | 'support' | 'admin'
 export type CosmeticTheme = 'royal' | 'ember' | 'moon'
-export type AuthScreen = 'login' | 'signup' | 'recover' | 'legacy'
+export type AuthScreen = 'login' | 'signup' | 'recover' | 'grant' | 'legacy'
 export type CardBorder = 'default' | 'bronze' | 'frost' | 'solar' | 'void'
 export type BattleKind = 'ai' | 'local' | 'ranked' | 'friend'
 export type ServerBattleKind = Extract<BattleKind, 'ai' | 'ranked' | 'friend'>
@@ -301,6 +301,73 @@ export type AdminUser = {
   role: 'user' | 'admin' | 'owner'
   createdAt: string
   lastLogin: string | null
+  accountStatus?: string
+  deletedAt?: string | null
+  lockedUntil?: string | null
+  suspended?: boolean
+  setupRequired?: boolean
+  passwordResetRequired?: boolean
+  passkeyCount?: number
+  recoveryCodeCount?: number
+  legacy?: boolean
+}
+
+/** A deleted account plus the player value still attached to it. */
+export type AdminDeletedAccount = {
+  accountId: string
+  username: string
+  displayName: string
+  deletedAt: string | null
+  /** 'legacy_migration_expired' means a sweeper took it, not the player. */
+  reason: string
+  passkeyCount: number
+  shards: number
+  seasonRating: number
+  wins: number
+  losses: number
+}
+
+export type AdminRecoveryGrant = {
+  grantId: string
+  channel: string
+  issuedByAccountId: string | null
+  note: string
+  createdAt: string
+  expiresAt: string
+  status: 'active' | 'consumed' | 'revoked' | 'expired'
+}
+
+/** Full account view for the owner console. Never contains credential material. */
+export type AdminAccountDetail = {
+  accountId: string
+  username: string
+  displayName: string
+  role: 'user' | 'admin' | 'owner'
+  accountStatus: string
+  createdAt: string
+  lastLogin: string | null
+  deletedAt: string | null
+  lockedUntil: string | null
+  suspended: boolean
+  setupRequired: boolean
+  passwordResetRequired: boolean
+  legacyMigration: { startedAt: string | null; deadlineAt: string | null; completedAt: string | null }
+  passkeys: PasskeySummary[]
+  recovery: { activeCount: number; acknowledgedAt: string | null; generatedAt: string | null }
+  recoveryGrants: AdminRecoveryGrant[]
+  securityEvents: { eventType: string; createdAt: string; metadata: string }[]
+  profile: { shards: number; seasonRating: number; wins: number; losses: number } | null
+}
+
+/**
+ * A freshly issued grant code. Surfaced exactly once — it is hashed at rest and
+ * cannot be read back, so the console must show it until the operator dismisses it.
+ */
+export type IssuedGrant = {
+  username: string
+  grantCode: string
+  expiresAt: string
+  revokedPasskeys?: boolean
 }
 
 export type AdminAuditEntry = {

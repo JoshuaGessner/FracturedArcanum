@@ -8,6 +8,9 @@ import type {
   AdminOverview,
   AdminSettings,
   AdminUser,
+  AdminAccountDetail,
+  AdminDeletedAccount,
+  IssuedGrant,
   AccountRecoveryStatus,
   AccountSessionSummary,
   AppScreen,
@@ -51,8 +54,8 @@ export type AppShellContextValue = {
   setAuthToken: (value: string) => void
   authScreen: AuthScreen
   setAuthScreen: (value: AuthScreen) => void
-  authForm: { username: string; password: string; recoveryCode: string }
-  setAuthForm: React.Dispatch<React.SetStateAction<{ username: string; password: string; recoveryCode: string }>>
+  authForm: { username: string; password: string; recoveryCode: string; grantCode: string }
+  setAuthForm: React.Dispatch<React.SetStateAction<{ username: string; password: string; recoveryCode: string; grantCode: string }>>
   authError: string
   authLoading: boolean
   loggedIn: boolean
@@ -268,6 +271,25 @@ export type AppShellContextValue = {
   handleTransferOwnership: (event: FormEvent<HTMLFormElement>) => Promise<void>
   handleSaveAdminSettings: () => Promise<void>
   handleUpdateComplaintStatus: (id: string, status: string) => Promise<void>
+  // Account management. Actions take either a list row or the full detail view,
+  // so the console can act from the list without opening the account first.
+  adminAccountDetail: AdminAccountDetail | null
+  adminAccountLoading: boolean
+  openAdminAccount: (accountId: string) => Promise<void>
+  closeAdminAccount: () => void
+  adminDeletedAccounts: AdminDeletedAccount[]
+  adminDeletedLoading: boolean
+  refreshDeletedAccounts: () => Promise<void>
+  issuedGrant: IssuedGrant | null
+  setIssuedGrant: React.Dispatch<React.SetStateAction<IssuedGrant | null>>
+  handleAdminIssueRecoveryGrant: (
+    target: AdminUser | AdminAccountDetail,
+    resetCredentials: boolean,
+  ) => Promise<void>
+  handleAdminSuspendAccount: (target: AdminUser | AdminAccountDetail) => Promise<void>
+  handleAdminUnsuspendAccount: (target: AdminUser | AdminAccountDetail) => Promise<void>
+  handleAdminDeleteAccount: (target: AdminUser | AdminAccountDetail) => Promise<void>
+  handleAdminRestoreAccount: (accountId: string, username: string) => Promise<void>
 }
 
 export type LongPressOptions = {

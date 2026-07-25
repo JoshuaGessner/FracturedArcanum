@@ -3,9 +3,9 @@ import { PwaInstallPanel } from '../components/PwaInstallPanel'
 import { formatTimestamp } from '../utils'
 import { useAppShell, useProfile } from '../contexts'
 import { feedback } from '../feedback'
-import type { AdminComplaint, PasskeySummary } from '../types'
+import type { AdminComplaint, AdminUser, PasskeySummary } from '../types'
 
-type AdminSubview = 'liveOps' | 'traffic' | 'complaints' | 'recovery' | 'roles' | 'audit'
+type AdminSubview = 'liveOps' | 'traffic' | 'complaints' | 'recovery' | 'accounts' | 'roles' | 'audit'
 
 type TicketAction = {
   label: string
@@ -13,7 +13,7 @@ type TicketAction = {
   variant: 'ghost' | 'primary'
 }
 
-const ADMIN_SUBVIEWS: AdminSubview[] = ['liveOps', 'traffic', 'complaints', 'recovery', 'roles', 'audit']
+const ADMIN_SUBVIEWS: AdminSubview[] = ['liveOps', 'traffic', 'complaints', 'recovery', 'accounts', 'roles', 'audit']
 
 function getPasskeyPortabilityLabel(passkey: PasskeySummary): string {
   if (passkey.backedUp || passkey.deviceType === 'multiDevice') return 'Synced'
@@ -84,6 +84,11 @@ export function SettingsScreen() {
     adminSettings, setAdminSettings, handleSaveAdminSettings, handleUpdateComplaintStatus,
     adminUserSearch, setAdminUserSearch, adminUsers, adminUsersLoading, refreshAdminUsers,
     handleSetUserRole,
+    adminAccountDetail, adminAccountLoading, openAdminAccount, closeAdminAccount,
+    adminDeletedAccounts, adminDeletedLoading, refreshDeletedAccounts,
+    issuedGrant, setIssuedGrant,
+    handleAdminIssueRecoveryGrant, handleAdminSuspendAccount, handleAdminUnsuspendAccount,
+    handleAdminDeleteAccount, handleAdminRestoreAccount,
     transferForm, setTransferForm, transferStatus, handleTransferOwnership,
     adminAudit, adminAuditFilter, setAdminAuditFilter,
     adminAuditExpandedId, setAdminAuditExpandedId, refreshAdminAudit,
@@ -731,6 +736,212 @@ export function SettingsScreen() {
                     accountRecoveryRequests.slice(0, 10).map((complaint) => renderTicketCard(complaint, RECOVERY_ACTIONS, 'recovery-ticket-card'))
                   )}
                 </div>
+              </div>
+            )}
+
+            {adminSubview === 'accounts' && (
+              <div className="admin-panel-block admin-accounts-block">
+                <div className="section-head log-heading">
+                  <h3>Player Accounts</h3>
+                  <span className="badge">{isOwnerRole ? 'Owner' : 'Admin'}</span>
+                </div>
+
+                {issuedGrant && (
+                  <div className="admin-grant-callout" role="status">
+                    <h4>Recovery code for @{issuedGrant.username}</h4>
+                    <code className="admin-grant-code">{issuedGrant.grantCode}</code>
+                    <p className="mini-text">
+                      Shown once — it cannot be retrieved again. Give it only to someone you have
+                      confirmed is the account holder. Expires {formatTimestamp(issuedGrant.expiresAt)}.
+                      {issuedGrant.revokedPasskeys ? ' Their old passkeys and sessions were revoked.' : ''}
+                    </p>
+                    <div className="controls">
+                      <button
+                        className="secondary"
+                        onClick={() => {
+                          void navigator.clipboard?.writeText(issuedGrant.grantCode)
+                          setToastMessage('Recovery code copied.')
+                        }}
+                      >
+                        Copy code
+                      </button>
+                      <button className="ghost" onClick={() => setIssuedGrant(null)}>Dismiss</button>
+                    </div>
+                  </div>
+                )}
+
+                <div className="admin-auth-row">
+                  <input
+                    className="text-input"
+                    value={adminUserSearch}
+                    placeholder="Search by username, name, or id"
+                    onChange={(event) => setAdminUserSearch(event.target.value)}
+                  />
+                  <button className="secondary" onClick={() => void refreshAdminUsers(adminUserSearch)}>
+                    {adminUsersLoading ? 'Loading…' : 'Search'}
+                  </button>
+                </div>
+
+                {adminError && <p className="note toast-line error">{adminError}</p>}
+
+                <ul className="role-list">
+                  {adminUsers.length === 0 ? (
+                    <li className="note">No accounts loaded. Search to list accounts.</li>
+                  ) : (
+                    adminUsers.map((user: AdminUser) => (
+                      <li className="role-row" key={user.accountId}>
+                        <div className="role-identity">
+                          <strong>{user.displayName || user.username}</strong>
+                          <span className="mini-text">@{user.username}</span>
+                          {user.suspended && <span className="badge role-badge">Suspended</span>}
+                          {user.deletedAt && <span className="badge role-badge">Deleted</span>}
+                          {user.legacy && <span className="badge role-badge">Legacy</span>}
+                          <span className="mini-text">
+                            {user.passkeyCount ?? 0} passkey{(user.passkeyCount ?? 0) === 1 ? '' : 's'}
+                            {' · '}
+                            {user.recoveryCodeCount ?? 0} codes
+                          </span>
+                        </div>
+                        <div className="controls">
+                          {user.role === 'owner' ? (
+                            <span className="mini-text">Owner accounts are managed via transfer</span>
+                          ) : (
+                            <button className="ghost" onClick={() => void openAdminAccount(user.accountId)}>
+                              Manage
+                            </button>
+                          )}
+                        </div>
+                      </li>
+                    ))
+                  )}
+                </ul>
+
+                {adminAccountLoading && <p className="note toast-line">Loading account…</p>}
+
+                {adminAccountDetail && (
+                  <div className="admin-account-detail">
+                    <div className="section-head log-heading">
+                      <h3>@{adminAccountDetail.username}</h3>
+                      <button className="ghost" onClick={closeAdminAccount}>Close</button>
+                    </div>
+
+                    <dl className="admin-account-facts">
+                      <div><dt>Status</dt><dd>{adminAccountDetail.suspended ? 'Suspended' : adminAccountDetail.accountStatus}</dd></div>
+                      <div><dt>Passkeys</dt><dd>{adminAccountDetail.passkeys.length}</dd></div>
+                      <div><dt>Recovery codes</dt><dd>{adminAccountDetail.recovery.activeCount}</dd></div>
+                      <div><dt>Last login</dt><dd>{adminAccountDetail.lastLogin ? formatTimestamp(adminAccountDetail.lastLogin) : 'Never'}</dd></div>
+                      {adminAccountDetail.profile && (
+                        <div>
+                          <dt>Progress</dt>
+                          <dd>
+                            {adminAccountDetail.profile.shards} shards · {adminAccountDetail.profile.seasonRating} rating
+                            {' · '}{adminAccountDetail.profile.wins}W/{adminAccountDetail.profile.losses}L
+                          </dd>
+                        </div>
+                      )}
+                    </dl>
+
+                    <p className="mini-text">
+                      You can restore access to this account but never read or set its credentials.
+                      A recovery code lets the player attach a new passkey themselves.
+                    </p>
+
+                    <div className="controls admin-account-actions">
+                      <button className="secondary" onClick={() => void handleAdminIssueRecoveryGrant(adminAccountDetail, false)}>
+                        Issue recovery code
+                      </button>
+                      <button className="ghost" onClick={() => void handleAdminIssueRecoveryGrant(adminAccountDetail, true)}>
+                        Reset credentials
+                      </button>
+                      {adminAccountDetail.suspended ? (
+                        <button className="primary" onClick={() => void handleAdminUnsuspendAccount(adminAccountDetail)}>
+                          Lift suspension
+                        </button>
+                      ) : (
+                        <button className="ghost" onClick={() => void handleAdminSuspendAccount(adminAccountDetail)}>
+                          Suspend 24h
+                        </button>
+                      )}
+                      {isOwnerRole && !adminAccountDetail.deletedAt && (
+                        <button className="danger" onClick={() => void handleAdminDeleteAccount(adminAccountDetail)}>
+                          Delete account
+                        </button>
+                      )}
+                    </div>
+
+                    {adminAccountDetail.recoveryGrants.length > 0 && (
+                      <>
+                        <h4>Recovery codes issued</h4>
+                        <ul className="mini-list">
+                          {adminAccountDetail.recoveryGrants.slice(0, 5).map((grant) => (
+                            <li key={grant.grantId} className="mini-text">
+                              {grant.status} · issued {formatTimestamp(grant.createdAt)}
+                              {grant.note ? ` · ${grant.note}` : ''}
+                            </li>
+                          ))}
+                        </ul>
+                      </>
+                    )}
+
+                    {adminAccountDetail.securityEvents.length > 0 && (
+                      <>
+                        <h4>Recent security events</h4>
+                        <ul className="mini-list">
+                          {adminAccountDetail.securityEvents.slice(0, 8).map((event: { eventType: string; createdAt: string }, index: number) => (
+                            <li key={`${event.eventType}-${index}`} className="mini-text">
+                              {event.eventType.replace(/_/g, ' ')} · {formatTimestamp(event.createdAt)}
+                            </li>
+                          ))}
+                        </ul>
+                      </>
+                    )}
+                  </div>
+                )}
+
+                <div className="section-head log-heading">
+                  <h3>Deleted Accounts</h3>
+                  <button className="secondary" onClick={() => void refreshDeletedAccounts()}>
+                    {adminDeletedLoading ? 'Loading…' : 'Load'}
+                  </button>
+                </div>
+                <p className="mini-text">
+                  Deleting never erases player data. Anything listed here can be restored with its
+                  collection, rating, and match history intact.
+                </p>
+                <ul className="role-list">
+                  {adminDeletedAccounts.length === 0 ? (
+                    <li className="note">No deleted accounts loaded.</li>
+                  ) : (
+                    adminDeletedAccounts.map((account) => (
+                      <li className="role-row" key={account.accountId}>
+                        <div className="role-identity">
+                          <strong>{account.displayName || account.username}</strong>
+                          <span className="mini-text">@{account.username}</span>
+                          {/* Distinguishes a sweeper casualty from a player who chose to leave. */}
+                          <span className="badge role-badge">
+                            {account.reason === 'legacy_migration_expired' ? 'Expired by sweeper' : 'Deleted'}
+                          </span>
+                          <span className="mini-text">
+                            {account.shards} shards · {account.seasonRating} rating
+                            {' · '}{account.wins}W/{account.losses}L
+                          </span>
+                        </div>
+                        <div className="controls">
+                          {isOwnerRole ? (
+                            <button
+                              className="primary"
+                              onClick={() => void handleAdminRestoreAccount(account.accountId, account.username)}
+                            >
+                              Restore
+                            </button>
+                          ) : (
+                            <span className="mini-text">Owner only</span>
+                          )}
+                        </div>
+                      </li>
+                    ))
+                  )}
+                </ul>
               </div>
             )}
 

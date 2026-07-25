@@ -80,6 +80,9 @@ import type {
   AdminAuditEntry,
   AdminOverview,
   AdminUser,
+  AdminAccountDetail,
+  AdminDeletedAccount,
+  IssuedGrant,
   AccountRecoveryStatus,
   AccountSessionSummary,
   AppScreen,
@@ -179,11 +182,25 @@ function App() {
   )
 }
 
+/**
+ * Every way into an account, in the order a lost player should consider them.
+ * The auth footer renders all of these except the current screen, so no route
+ * is ever a dead end — the previous hand-written links left, for example, a
+ * legacy account with no way to reach the support-code path.
+ */
+const AUTH_ROUTES: { screen: AuthScreen; prompt: string; label: string }[] = [
+  { screen: 'login', prompt: 'Already have a passkey?', label: 'Sign in' },
+  { screen: 'signup', prompt: 'New here?', label: 'Create account' },
+  { screen: 'recover', prompt: 'Lost your device?', label: 'Use a recovery code' },
+  { screen: 'grant', prompt: 'No codes left?', label: 'Use a support code' },
+  { screen: 'legacy', prompt: 'Old password account?', label: 'Upgrade it' },
+]
+
 function AppShell() {
   // ─── Auth state ───────────────────────────────────────────────────────
   const [authToken, setAuthToken] = useState(() => readStoredValue(STORAGE_KEYS.authToken, ''))
   const [authScreen, setAuthScreen] = useState<AuthScreen>('login')
-  const [authForm, setAuthForm] = useState({ username: '', password: '', recoveryCode: '' })
+  const [authForm, setAuthForm] = useState({ username: '', password: '', recoveryCode: '', grantCode: '' })
   const [authError, setAuthError] = useState('')
   const [authStatus, setAuthStatus] = useState('')
   const [authLoading, setAuthLoading] = useState(false)
@@ -496,6 +513,12 @@ function AppShell() {
   const [adminAudit, setAdminAudit] = useState<AdminAuditEntry[]>([])
   const [adminAuditFilter, setAdminAuditFilter] = useState<string>('all')
   const [adminAuditExpandedId, setAdminAuditExpandedId] = useState<string | null>(null)
+  const [adminAccountDetail, setAdminAccountDetail] = useState<AdminAccountDetail | null>(null)
+  const [adminAccountLoading, setAdminAccountLoading] = useState(false)
+  const [adminDeletedAccounts, setAdminDeletedAccounts] = useState<AdminDeletedAccount[]>([])
+  const [adminDeletedLoading, setAdminDeletedLoading] = useState(false)
+  // Shown once after issuing; the code cannot be retrieved again.
+  const [issuedGrant, setIssuedGrant] = useState<IssuedGrant | null>(null)
   const [transferForm, setTransferForm] = useState({ targetAccountId: '', password: '' })
   const [transferStatus, setTransferStatus] = useState('')
   const longPressTimerRef = useRef<number | null>(null)
@@ -771,6 +794,12 @@ function AppShell() {
       return
     }
 
+    if (authScreen === 'grant') {
+      setAuthLoading(false)
+      await handleRedeemGrantCode()
+      return
+    }
+
     if (authScreen === 'signup') {
       if (!passkeySupported) {
         setAuthError('This browser does not support passkey account creation.')
@@ -965,6 +994,88 @@ function AppShell() {
       setAuthError(formatPasskeyCeremonyError(error, 'Passkey login failed. Use account recovery if this device does not have your passkey.'))
     }
 
+    setAuthLoading(false)
+  }
+
+  /**
+   * Redeem an operator-issued recovery code. This is the last-resort path for a
+   * player who lost both their device and their recovery codes: the code
+   * identifies its own account, so no username is required.
+   */
+  async function handleRedeemGrantCode() {
+    setAuthError('')
+    setAuthStatus('')
+    if (!passkeySupported) {
+      setAuthError('This browser does not support passkey recovery.')
+      return
+    }
+    const passkeyOriginMessage = getPasskeyOriginRequirementMessage()
+    if (passkeyOriginMessage) {
+      setAuthError(passkeyOriginMessage)
+      return
+    }
+
+    const grantCode = authForm.grantCode.trim()
+    if (!grantCode) {
+      setAuthError('Enter the recovery code you were given.')
+      return
+    }
+
+    setAuthLoading(true)
+    try {
+      const optionsResponse = await fetch(`${ARENA_URL}/api/auth/recovery/grant/options`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ grantCode }),
+      })
+      const optionsData = await optionsResponse.json() as {
+        ok: boolean; error?: string; options?: RegistrationOptionsJSON; challengeId?: string; username?: string
+      }
+      if (!optionsData.ok || !optionsData.options || !optionsData.challengeId) {
+        setAuthError(optionsData.error ?? 'That recovery code could not be used.')
+        setAuthLoading(false)
+        return
+      }
+
+      setAuthStatus(PASSKEY_PROMPT_STATUS)
+      const credential = await withPasskeyCeremonyTimeout(
+        startRegistration({ optionsJSON: optionsData.options }),
+        'Passkey prompt timed out. Try again and watch for the browser or system passkey window.',
+      )
+      setAuthStatus('')
+      const verifyResponse = await fetch(`${ARENA_URL}/api/auth/recovery/grant/verify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ challengeId: optionsData.challengeId, response: credential, name: 'Recovery passkey' }),
+      })
+      const data = await verifyResponse.json() as {
+        ok: boolean; error?: string; token?: string; profile?: ServerProfile; recoveryCodes?: string[]; recovery?: AccountRecoveryStatus
+      }
+      if (!data.ok) {
+        setAuthError(data.error ?? 'Account recovery failed.')
+        setAuthLoading(false)
+        return
+      }
+
+      setAuthToken(data.token ?? '')
+      setServerProfile(data.profile ?? null)
+      setLoggedIn(true)
+      if (data.profile?.deckConfig && Object.keys(data.profile.deckConfig).length > 0) {
+        setDeckConfig(data.profile.deckConfig)
+      }
+      if (data.recovery) setRecoveryStatus(data.recovery)
+      // A grant is redeemed when the player has nothing left, so a fresh batch
+      // of recovery codes always comes back with it. Surface it immediately.
+      if (data.recoveryCodes?.length) setPendingRecoveryCodes(data.recoveryCodes)
+      setAuthForm((form) => ({ ...form, grantCode: '' }))
+      void refreshPasskeys(data.token ?? '')
+      void refreshAccountSessions(data.token ?? '')
+      void refreshRecoveryStatus(data.token ?? '')
+      setToastMessage('Welcome back. Save the new recovery codes before you close this.')
+    } catch (error) {
+      setAuthStatus('')
+      setAuthError(formatPasskeyCeremonyError(error, 'Account recovery failed. Please try again.'))
+    }
     setAuthLoading(false)
   }
 
@@ -3219,6 +3330,212 @@ function AppShell() {
     }
   }
 
+  // ─── Account management (owner/admin console) ──────────────────────────────
+  // Every action here goes through an endpoint that requires recent passkey
+  // reauth and writes an audit row. Nothing here can read a credential: the
+  // only thing an operator ever receives is a one-time grant code the player
+  // must redeem themselves.
+
+  async function openAdminAccount(accountId: string) {
+    if (!authToken || !isAdminRole) return
+    setAdminAccountLoading(true)
+    setAdminError('')
+    try {
+      const response = await authFetch(`/api/admin/users/${encodeURIComponent(accountId)}`, authToken)
+      const data = (await response.json()) as { ok: boolean; account?: AdminAccountDetail; error?: string }
+      if (!response.ok || !data.ok || !data.account) {
+        setAdminError(data.error ?? 'Could not load that account.')
+        return
+      }
+      setAdminAccountDetail(data.account)
+    } catch {
+      setAdminError('Could not load that account right now.')
+    } finally {
+      setAdminAccountLoading(false)
+    }
+  }
+
+  function closeAdminAccount() {
+    setAdminAccountDetail(null)
+    setAdminError('')
+  }
+
+  async function refreshDeletedAccounts() {
+    if (!authToken || !isAdminRole) return
+    setAdminDeletedLoading(true)
+    try {
+      const response = await authFetch('/api/admin/users/deleted/list', authToken)
+      const data = (await response.json()) as { ok: boolean; accounts?: AdminDeletedAccount[] }
+      if (data.ok) setAdminDeletedAccounts(data.accounts ?? [])
+    } catch { /* non-fatal */ } finally {
+      setAdminDeletedLoading(false)
+    }
+  }
+
+  /** Shared POST wrapper for the account-management endpoints. */
+  async function postAdminAccountAction(
+    accountId: string,
+    action: string,
+    body: Record<string, unknown> = {},
+  ): Promise<{ ok: boolean; error?: string } & Record<string, unknown>> {
+    if (!authToken) return { ok: false, error: 'Not signed in.' }
+    try {
+      const response = await authFetch(
+        `/api/admin/users/${encodeURIComponent(accountId)}/${action}`,
+        authToken,
+        { method: 'POST', body },
+      )
+      const data = (await response.json()) as { ok: boolean; error?: string }
+      if (!response.ok || !data.ok) {
+        return { ok: false, error: data.error ?? 'That action could not be completed.' }
+      }
+      return data
+    } catch {
+      return { ok: false, error: 'Could not reach the server.' }
+    }
+  }
+
+  async function afterAdminAccountAction(accountId: string) {
+    await Promise.all([refreshAdminUsers(), refreshAdminAudit()])
+    if (adminAccountDetail?.accountId === accountId) await openAdminAccount(accountId)
+  }
+
+  async function handleAdminIssueRecoveryGrant(target: AdminUser | AdminAccountDetail, resetCredentials: boolean) {
+    if (!authToken || !isAdminRole) return
+    const name = target.displayName || target.username
+    const ok = await askConfirm({
+      title: resetCredentials ? 'Reset credentials?' : 'Issue a recovery code?',
+      body: (
+        <>
+          {resetCredentials ? (
+            <p>
+              Every passkey and session for <strong>@{target.username}</strong> will be revoked. They
+              will need the one-time code below to get back in.
+            </p>
+          ) : (
+            <p>
+              <strong>@{target.username}</strong> gets a one-time code to attach a new passkey.
+              Their existing passkeys keep working.
+            </p>
+          )}
+          <p className="mini-text">
+            The code is shown once and cannot be recovered afterwards. Only give it to someone you
+            have confirmed is the account holder — it grants full access to the account.
+          </p>
+        </>
+      ),
+      confirmLabel: resetCredentials ? 'Reset and issue code' : 'Issue code',
+      danger: resetCredentials,
+    })
+    if (!ok) return
+
+    const result = await postAdminAccountAction(
+      target.accountId,
+      resetCredentials ? 'reset-credentials' : 'recovery-grant',
+      { note: resetCredentials ? 'Admin credential reset' : 'Support-issued recovery grant' },
+    )
+    if (!result.ok) {
+      setAdminError(result.error ?? 'Could not issue a recovery code.')
+      return
+    }
+    setAdminError('')
+    setIssuedGrant({
+      username: String(result.username ?? target.username),
+      grantCode: String(result.grantCode ?? ''),
+      expiresAt: String(result.expiresAt ?? ''),
+      revokedPasskeys: Boolean(result.revokedPasskeys),
+    })
+    setToastMessage(`Recovery code issued for ${name}.`)
+    await afterAdminAccountAction(target.accountId)
+  }
+
+  async function handleAdminSuspendAccount(target: AdminUser | AdminAccountDetail) {
+    if (!authToken || !isAdminRole) return
+    const reason = await askTextPrompt({
+      title: `Suspend @${target.username}?`,
+      label: 'Reason (recorded in the audit log)',
+      placeholder: 'e.g. confirmed cheating',
+      confirmLabel: 'Suspend for 24h',
+      maxLength: 200,
+    })
+    if (reason === null) return
+
+    const result = await postAdminAccountAction(target.accountId, 'suspend', { hours: 24, reason })
+    if (!result.ok) {
+      setAdminError(result.error ?? 'Could not suspend that account.')
+      return
+    }
+    setAdminError('')
+    setToastMessage(`@${target.username} is suspended for 24 hours.`)
+    await afterAdminAccountAction(target.accountId)
+  }
+
+  async function handleAdminUnsuspendAccount(target: AdminUser | AdminAccountDetail) {
+    if (!authToken || !isAdminRole) return
+    const result = await postAdminAccountAction(target.accountId, 'unsuspend')
+    if (!result.ok) {
+      setAdminError(result.error ?? 'Could not lift that suspension.')
+      return
+    }
+    setAdminError('')
+    setToastMessage(`@${target.username} can play again.`)
+    await afterAdminAccountAction(target.accountId)
+  }
+
+  async function handleAdminDeleteAccount(target: AdminUser | AdminAccountDetail) {
+    if (!authToken || !isOwnerRole) return
+    // The server requires the typed username too; asking here means the
+    // operator reads the name before the action rather than after.
+    const ok = await askConfirm({
+      title: `Delete @${target.username}?`,
+      body: (
+        <>
+          <p>
+            <strong>@{target.username}</strong> will lose access immediately. Their collection,
+            rating, and match history are kept, and you can restore the account later.
+          </p>
+          <p className="mini-text">Type the username to confirm.</p>
+        </>
+      ),
+      confirmLabel: 'Delete account',
+      danger: true,
+      requireText: target.username,
+      requireTextLabel: 'Confirm username',
+    })
+    if (!ok) return
+
+    const result = await postAdminAccountAction(target.accountId, 'delete', { confirmUsername: target.username })
+    if (!result.ok) {
+      setAdminError(result.error ?? 'Could not delete that account.')
+      return
+    }
+    setAdminError('')
+    setToastMessage(`@${target.username} was deleted. You can restore them from Accounts.`)
+    closeAdminAccount()
+    await Promise.all([refreshAdminUsers(), refreshAdminAudit(), refreshDeletedAccounts()])
+  }
+
+  async function handleAdminRestoreAccount(accountId: string, username: string) {
+    if (!authToken || !isOwnerRole) return
+    const result = await postAdminAccountAction(accountId, 'restore')
+    if (!result.ok) {
+      setAdminError(result.error ?? 'Could not restore that account.')
+      return
+    }
+    setAdminError('')
+    // Tell the operator what the player has to do next, since a restored
+    // passkey-only account still needs a grant before they can sign in.
+    const nextStep = String(result.nextStep ?? '')
+    setToastMessage(
+      nextStep === 'needs_recovery_grant'
+        ? `@${username} is restored but needs a recovery code to sign in.`
+        : nextStep === 'sign_in_with_legacy_password'
+          ? `@${username} is restored and can sign in with their old password.`
+          : `@${username} is restored and can sign in with their passkey.`,
+    )
+    await Promise.all([refreshAdminUsers(), refreshAdminAudit(), refreshDeletedAccounts()])
+  }
+
   async function handleTransferOwnership(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!authToken || !isOwnerRole) return
@@ -4214,6 +4531,12 @@ function AppShell() {
     adminSettings, setAdminSettings, transferForm, setTransferForm, transferStatus,
     refreshAdminOverview, refreshAdminUsers, refreshAdminAudit,
     handleSetUserRole, handleTransferOwnership, handleSaveAdminSettings, handleUpdateComplaintStatus,
+    // Account management
+    adminAccountDetail, adminAccountLoading, openAdminAccount, closeAdminAccount,
+    adminDeletedAccounts, adminDeletedLoading, refreshDeletedAccounts,
+    issuedGrant, setIssuedGrant,
+    handleAdminIssueRecoveryGrant, handleAdminSuspendAccount, handleAdminUnsuspendAccount,
+    handleAdminDeleteAccount, handleAdminRestoreAccount,
   }
 
   return (
@@ -4425,18 +4748,22 @@ function AppShell() {
             <h1>Fractured Arcanum</h1>
             <p className="auth-tagline">Cosmic horror card battles await</p>
             <form className="auth-form" onSubmit={handleAuth}>
-              <label>
-                Username
-                <input
-                  type="text"
-                  placeholder="3-20 chars, letters/numbers/_"
-                  maxLength={20}
-                  autoComplete="username"
-                  required
-                  value={authForm.username}
-                  onChange={(event) => setAuthForm((f) => ({ ...f, username: event.target.value }))}
-                />
-              </label>
+              {/* A support-issued code carries its own account, so asking for a
+                  username here would only be one more thing to remember. */}
+              {authScreen !== 'grant' && (
+                <label>
+                  Username
+                  <input
+                    type="text"
+                    placeholder="3-20 chars, letters/numbers/_"
+                    maxLength={20}
+                    autoComplete="username"
+                    required
+                    value={authForm.username}
+                    onChange={(event) => setAuthForm((f) => ({ ...f, username: event.target.value }))}
+                  />
+                </label>
+              )}
               {authScreen === 'legacy' ? (
                 <label>
                   Legacy Password
@@ -4478,6 +4805,26 @@ function AppShell() {
                     Send Recovery Support Ticket
                   </button>
                 </>
+              ) : authScreen === 'grant' ? (
+                <>
+                  <label>
+                    Recovery Code From Support
+                    <input
+                      type="text"
+                      placeholder="FAR-XXXXX-XXXXX-XXXXX-XXXXX"
+                      autoComplete="one-time-code"
+                      required
+                      value={authForm.grantCode}
+                      onChange={(event) => setAuthForm((f) => ({ ...f, grantCode: event.target.value }))}
+                    />
+                  </label>
+                  {/* The grant identifies its own account, so no username is asked for. */}
+                  <p className="auth-note">
+                    Use the one-time code an admin sent you. It finds your account on its own, so
+                    you do not need your username. You will create a new passkey, and any old
+                    passkeys and sessions will be replaced.
+                  </p>
+                </>
               ) : authScreen === 'signup' ? (
                 <>
                   <label className="legal-check">
@@ -4504,80 +4851,35 @@ function AppShell() {
                 </button>
               )}
               {authScreen !== 'login' && (
-                <button className="primary" type="submit" disabled={authLoading || ((authScreen === 'signup' || authScreen === 'recover') && !passkeySupported)}>
-                  {authLoading ? 'Please wait...' : authScreen === 'signup' ? 'Create Passkey Account' : authScreen === 'recover' ? 'Recover With Code' : 'Upgrade Existing Password Account'}
+                <button
+                  className="primary"
+                  type="submit"
+                  disabled={authLoading || (authScreen !== 'legacy' && !passkeySupported)}
+                >
+                  {authLoading
+                    ? 'Please wait...'
+                    : authScreen === 'signup'
+                      ? 'Create Passkey Account'
+                      : authScreen === 'recover'
+                        ? 'Recover With Code'
+                        : authScreen === 'grant'
+                          ? 'Restore My Account'
+                          : 'Upgrade Existing Password Account'}
                 </button>
               )}
             </form>
             <div className="auth-switch">
-              {authScreen === 'login' ? (
-                <>
-                  <span className="auth-switch-line">
-                    <span>New here?</span>
-                    <button className="link" onClick={() => { setAuthScreen('signup'); setAuthError('') }}>
-                      Create account
-                    </button>
-                  </span>
-                  <span className="auth-switch-line">
-                    <span>Lost access?</span>
-                    <button className="link" onClick={() => { setAuthScreen('recover'); setAuthError('') }}>
-                      Recover account
-                    </button>
-                  </span>
-                  <span className="auth-switch-line">
-                    <span>Legacy account?</span>
-                    <button className="link" onClick={() => { setAuthScreen('legacy'); setAuthError('') }}>
-                      Upgrade account
-                    </button>
-                  </span>
-                </>
-              ) : authScreen === 'legacy' ? (
-                <>
-                  <span className="auth-switch-line">
-                    <span>Use passkey?</span>
-                    <button className="link" onClick={() => { setAuthScreen('login'); setAuthError('') }}>
-                      Log in
-                    </button>
-                  </span>
-                  <span className="auth-switch-line">
-                    <span>New here?</span>
-                    <button className="link" onClick={() => { setAuthScreen('signup'); setAuthError('') }}>
-                      Create account
-                    </button>
-                  </span>
-                  <span className="auth-switch-line">
-                    <span>Lost access?</span>
-                    <button className="link" onClick={() => { setAuthScreen('recover'); setAuthError('') }}>
-                      Recover account
-                    </button>
-                  </span>
-                </>
-              ) : (
-                <>
-                  <span className="auth-switch-line">
-                    <span>Already have an account?</span>
-                    <button className="link" onClick={() => { setAuthScreen('login'); setAuthError('') }}>
-                      Log in
-                    </button>
-                  </span>
-                  {authScreen === 'signup' && (
-                    <span className="auth-switch-line">
-                      <span>Lost access?</span>
-                      <button className="link" onClick={() => { setAuthScreen('recover'); setAuthError('') }}>
-                        Recover account
-                      </button>
-                    </span>
-                  )}
-                  {authScreen === 'recover' && (
-                    <span className="auth-switch-line">
-                      <span>New here?</span>
-                      <button className="link" onClick={() => { setAuthScreen('signup'); setAuthError('') }}>
-                        Create account
-                      </button>
-                    </span>
-                  )}
-                </>
-              )}
+              {AUTH_ROUTES.filter((route) => route.screen !== authScreen).map((route) => (
+                <span className="auth-switch-line" key={route.screen}>
+                  <span>{route.prompt}</span>
+                  <button
+                    className="link"
+                    onClick={() => { setAuthScreen(route.screen); setAuthError(''); setAuthStatus('') }}
+                  >
+                    {route.label}
+                  </button>
+                </span>
+              ))}
             </div>
           </div>
         </div>
