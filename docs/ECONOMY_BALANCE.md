@@ -29,10 +29,12 @@ The game uses a single soft currency called **Shards**. All code, UI, and docume
 
 | Source | Amount | Frequency | Per-Session (3 games) |
 |--------|--------|-----------|----------------------|
-| Match win | 30 shards | Per win | 45–90 (at 50–100% WR) |
-| Match loss | 10 shards | Per loss | 10–15 (at 33–50% LR) |
+| Reward-eligible match win | 30 shards | Per win | 45–90 (at 50–100% WR) |
+| Reward-eligible match loss | 10 shards | Per loss | 10–15 (at 33–50% LR) |
 | Win streak bonus | +5 per streak past 2 (cap +20) | Per qualifying win | Variable |
 | Daily reward | 25 shards | Once per day | 25 |
+| Daily quests | 10–20 shards each | 3 assigned per UTC day | Up to 35–50/day |
+| Weekly quests | 35–50 shards each | 3 assigned per server week | Up to 120–135/week |
 | Card breakdown (Common) | 5 shards | Per copy | Variable |
 | Card breakdown (Rare) | 10 shards | Per copy | Variable |
 | Card breakdown (Epic) | 25 shards | Per copy | Variable |
@@ -40,8 +42,10 @@ The game uses a single soft currency called **Shards**. All code, UI, and docume
 
 **Source constants:** `server/db.js` — `WIN_SHARDS = 30`, `LOSS_SHARDS = 10`, `DAILY_SHARDS = 25`
 **Breakdown values:** `server/db.js` — `RARITY_BREAKDOWN_VALUE` map
-**Streak bonus:** +5 shards per streak past 2 wins (capped at +20 extra). Source: `resolveMatchResult()` in `server/db.js`
+**Streak bonus:** +5 shards per streak past 2 wins (capped at +20 extra). Source: `settleAuthoritativeMatch()` in `server/db.js`
 **Match duration:** Matches typically last ~5 minutes, making shard income very fast per real-time minute of play.
+
+Authoritative AI and Ranked completions are reward-eligible. Friend matches are practice-only and grant no Shards, rating, streak, quest, or W/L progress. A Ranked surrender/disconnect before turn 2 still applies the competitive result and rating but grants no farmable Shards, streak, or quest progress. Maintenance and idle-timeout no-contests grant nothing and never deduct player resources.
 
 ### Weekly Income Model
 
@@ -64,6 +68,8 @@ Weekly total:        595 shards
 
 That's ~1.7 Basic packs per day from matches alone, or ~1 per 15-minute session.
 ```
+
+Completing every assigned quest adds up to 365–485 shards per week (daily plus weekly), for a maximum casual faucet of roughly 960–1,080 shards/week before one-time milestones. Quest requirements such as opening packs or breaking down cards mean this is a ceiling, not guaranteed income.
 
 **Dedicated player** (5 matches/day, ~25 minutes, 60% win rate):
 
@@ -250,16 +256,16 @@ This prevents the frustrating "I keep getting the same card" experience.
 | Win rating change | +25 | `WIN_RATING` in db.js |
 | Loss rating change | −15 | `LOSS_RATING` in db.js |
 | Rating floor | 1000 | `RATING_FLOOR` in db.js |
-| Starting rating | 1000 | Default on profile creation |
+| Starting rating | 1200 | Default on profile creation |
 
 ### Rating Tier Thresholds
 
 | Tier | Rating | Thematic Name |
 |------|--------|---------------|
 | Bronze | 1000–1149 | Acolyte |
-| Silver | 1150–1324 | Initiate |
-| Gold | 1325–1499 | Devoted |
-| Champion | 1500+ | Herald of the Rift |
+| Silver | 1150–1299 | Initiate |
+| Gold | 1300–1499 | Devoted |
+| Diamond | 1500+ | Herald of the Rift |
 
 ### ELO Asymmetry
 
@@ -345,7 +351,7 @@ Planned features that will need economy integration (validate against this docum
 
 - **Crafting system** — targeted card creation from breakdown shards (higher cost than breakdown value to maintain pack incentive)
 - **Season rewards** — end-of-season shard/pack bonuses based on final rating
-- **Quest system** — daily/weekly challenges with specific shard rewards
+- **Quest expansion** — the daily/weekly/milestone system is live; new quest types must be modeled against the faucet ceilings in Section 2
 - **Trading economy** — card trades between friends (already implemented; monitor for economy exploitation)
 - **Expansion packs** — new pack types that guarantee cards from a specific expansion set
 - **Catch-up packs** — discounted packs for older sets to help returning players; economy must be modeled before adding

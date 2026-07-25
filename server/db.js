@@ -155,6 +155,52 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_player_quests_account ON player_quests(account_id);
   CREATE UNIQUE INDEX IF NOT EXISTS idx_player_decks_active
     ON player_decks(account_id) WHERE is_active = 1;
+
+  CREATE TABLE IF NOT EXISTS authoritative_matches (
+    match_id      TEXT PRIMARY KEY,
+    mode          TEXT NOT NULL,
+    reason        TEXT NOT NULL,
+    turns         INTEGER NOT NULL DEFAULT 0,
+    metadata      TEXT NOT NULL DEFAULT '{}',
+    settled_at    TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS authoritative_match_participants (
+    match_id            TEXT NOT NULL REFERENCES authoritative_matches(match_id) ON DELETE CASCADE,
+    account_id          TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    opponent_account_id TEXT REFERENCES accounts(id) ON DELETE SET NULL,
+    opponent_name       TEXT NOT NULL DEFAULT '',
+    result              TEXT NOT NULL,
+    shards_earned       INTEGER NOT NULL DEFAULT 0,
+    rating_delta        INTEGER NOT NULL DEFAULT 0,
+    streak_after        INTEGER NOT NULL DEFAULT 0,
+    balance_after       INTEGER NOT NULL DEFAULT 0,
+    rating_after        INTEGER NOT NULL DEFAULT 0,
+    wins_after          INTEGER NOT NULL DEFAULT 0,
+    losses_after        INTEGER NOT NULL DEFAULT 0,
+    match_log_id        TEXT NOT NULL,
+    acknowledged_at     TEXT,
+    PRIMARY KEY (match_id, account_id)
+  );
+
+  CREATE TABLE IF NOT EXISTS economy_ledger (
+    id              TEXT PRIMARY KEY,
+    account_id      TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    idempotency_key TEXT NOT NULL UNIQUE,
+    source          TEXT NOT NULL,
+    amount          INTEGER NOT NULL,
+    balance_after   INTEGER NOT NULL,
+    match_id        TEXT REFERENCES authoritative_matches(match_id) ON DELETE SET NULL,
+    metadata        TEXT NOT NULL DEFAULT '{}',
+    created_at      TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_authoritative_match_participants_account
+    ON authoritative_match_participants(account_id, match_id);
+  CREATE INDEX IF NOT EXISTS idx_economy_ledger_account_created
+    ON economy_ledger(account_id, created_at DESC);
+  CREATE INDEX IF NOT EXISTS idx_economy_ledger_match
+    ON economy_ledger(match_id);
 `)
 
 function ensureColumn(tableName, columnName, definition) {
@@ -1767,6 +1813,73 @@ const _getActiveDeckRow = db.prepare(`
   WHERE account_id = ? AND is_active = 1 LIMIT 1
 `)
 
+const MATCH_DECK_CARD_IDS = new Set(CARD_LIBRARY.map((card) => card.id))
+
+function parseDeckSnapshot(rawValue) {
+  if (rawValue && typeof rawValue === 'object' && !Array.isArray(rawValue)) {
+    return rawValue
+  }
+  try {
+    return JSON.parse(rawValue ?? '{}')
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Build a matchmaking-safe deck snapshot without repairing or mutating profile
+ * state. A supplied candidate is allowed for backwards compatibility, but it
+ * is validated against the authenticated account's current ownership.
+ */
+export function validateDeckForMatch(accountId, candidateDeck) {
+  const profileRow = _getProfile.get(accountId)
+  if (!profileRow) return { ok: false, error: 'Profile not found.' }
+
+  const activeDeck = _getActiveDeckRow.get(accountId)
+  const source = candidateDeck !== undefined ? 'candidate' : activeDeck ? 'active' : 'profile'
+  const rawDeck = candidateDeck !== undefined
+    ? candidateDeck
+    : parseDeckSnapshot(activeDeck?.deck_config ?? profileRow.deck_config)
+  const validation = validateDeckConfig(rawDeck)
+  if (!validation.ok) return validation
+  const unknownCardId = Object.keys(rawDeck).find((cardId) => !MATCH_DECK_CARD_IDS.has(cardId))
+  if (unknownCardId) {
+    return { ok: false, error: `Unknown card in deck: ${unknownCardId}.` }
+  }
+  if (!validation.ready) {
+    return { ok: false, error: `Deck must contain at least ${DECK_MIN_TOTAL} cards to enter a match.` }
+  }
+
+  let ownedCards
+  try {
+    ownedCards = normalizeOwnedCards(profileRow.owned_cards)
+  } catch {
+    return { ok: false, error: 'Owned card data is invalid.' }
+  }
+
+  for (const [cardId, count] of Object.entries(validation.deckConfig)) {
+    const card = CARD_LIBRARY.find((entry) => entry.id === cardId)
+    if (!card) return { ok: false, error: `Unknown card in deck: ${cardId}.` }
+    if (card.rarity === 'legendary' && count > MAX_LEGENDARY_COPIES) {
+      return { ok: false, error: `Legendary cards are limited to ${MAX_LEGENDARY_COPIES} copy per deck.` }
+    }
+    const owned = ownedCards[cardId] ?? 0
+    if (count > owned) {
+      return { ok: false, error: `You only own ${owned} copy/copies of ${card.name}. Open packs to unlock more.` }
+    }
+  }
+
+  return {
+    ok: true,
+    deckConfig: { ...validation.deckConfig },
+    total: validation.total,
+    ready: true,
+    source,
+    activeDeckId: activeDeck?.id ?? null,
+    activeDeckName: activeDeck?.name ?? null,
+  }
+}
+
 function mapDeckRow(row) {
   if (!row) return null
   return {
@@ -1954,6 +2067,81 @@ const WIN_RATING = 25
 const LOSS_RATING = 15
 const RATING_FLOOR = 1000
 
+function calculateMatchEconomy(profile, mode, result) {
+  let shardsEarned = 0
+  let ratingDelta = 0
+  let newStreak = profile.streak
+  const ratingEligible = mode === 'duel'
+
+  if (result === 'win') {
+    shardsEarned = WIN_SHARDS
+    ratingDelta = ratingEligible ? WIN_RATING : 0
+    newStreak = profile.streak + 1
+    if (newStreak > 2) {
+      shardsEarned += Math.min(20, (newStreak - 2) * 5)
+    }
+  } else if (result === 'loss') {
+    shardsEarned = LOSS_SHARDS
+    ratingDelta = ratingEligible
+      ? Math.max(RATING_FLOOR, profile.season_rating - LOSS_RATING) - profile.season_rating
+      : 0
+    newStreak = 0
+  }
+
+  return { shardsEarned, ratingDelta, newStreak }
+}
+
+const FARM_GATED_MATCH_REASONS = new Set([
+  'surrender',
+  'forfeit',
+  'disconnect_forfeit',
+  'opponent_disconnected',
+])
+
+function calculateAuthoritativeMatchEconomy(profile, mode, result, reason, turns) {
+  if (mode === 'unranked') {
+    return {
+      shardsEarned: 0,
+      ratingDelta: 0,
+      newStreak: profile.streak,
+      questEligible: false,
+      rewardEligible: false,
+      recordEligible: false,
+    }
+  }
+
+  if (reason === 'server_abort' || reason === 'timeout' || (mode === 'ai' && reason !== 'completed' && reason !== 'normal')) {
+    return {
+      shardsEarned: 0,
+      ratingDelta: 0,
+      newStreak: profile.streak,
+      questEligible: false,
+      rewardEligible: false,
+      recordEligible: false,
+    }
+  }
+
+  const base = calculateMatchEconomy(profile, mode, result)
+  const gatedEarlyEnd = FARM_GATED_MATCH_REASONS.has(reason) && turns < 2
+  if (gatedEarlyEnd) {
+    return {
+      shardsEarned: 0,
+      ratingDelta: base.ratingDelta,
+      newStreak: profile.streak,
+      questEligible: false,
+      rewardEligible: false,
+      recordEligible: true,
+    }
+  }
+
+  return {
+    ...base,
+    questEligible: true,
+    rewardEligible: result !== 'draw',
+    recordEligible: true,
+  }
+}
+
 const _grantShards = db.prepare(`
   UPDATE player_profiles
   SET shards = shards + ?, total_earned = total_earned + MAX(0, ?), updated_at = datetime('now')
@@ -1975,7 +2163,7 @@ const _addOwnedTheme = db.prepare(`
 const _setDailyClaim = db.prepare(`
   UPDATE player_profiles
   SET last_daily = ?, shards = shards + ?, total_earned = total_earned + ?, updated_at = datetime('now')
-  WHERE account_id = ?
+  WHERE account_id = ? AND COALESCE(last_daily, '') <> ?
 `)
 
 const _updateRating = db.prepare(`
@@ -2179,10 +2367,12 @@ export function claimQuestReward(accountId, questId) {
   if (quest.claimed) return { ok: false, error: 'Quest reward already claimed.' }
 
   const tx = db.transaction(() => {
-    _claimQuest.run(accountId, quest.id, quest.periodKey)
+    const claimed = _claimQuest.run(accountId, quest.id, quest.periodKey)
+    if (claimed.changes !== 1) return false
     _grantShards.run(quest.reward.shards, quest.reward.shards, accountId)
+    return true
   })
-  tx()
+  if (!tx()) return { ok: false, error: 'Quest reward already claimed.' }
 
   const refreshed = getProfile(accountId)
   return {
@@ -2204,11 +2394,19 @@ export function claimDailyReward(accountId) {
     return { ok: false, error: 'Daily reward already claimed today.' }
   }
 
-  _setDailyClaim.run(todayKey, DAILY_SHARDS, DAILY_SHARDS, accountId)
+  const claimed = _setDailyClaim.run(todayKey, DAILY_SHARDS, DAILY_SHARDS, accountId, todayKey)
+  if (claimed.changes !== 1) {
+    return { ok: false, error: 'Daily reward already claimed today.' }
+  }
   recordQuestEvent(accountId, 'claim_daily')
-  const newBalance = profile.shards + DAILY_SHARDS
-  const totalEarned = (profile.total_earned ?? 0) + DAILY_SHARDS
-  return { ok: true, amount: DAILY_SHARDS, newBalance, shards: newBalance, totalEarned }
+  const refreshed = getProfile(accountId)
+  return {
+    ok: true,
+    amount: DAILY_SHARDS,
+    newBalance: refreshed.shards,
+    shards: refreshed.shards,
+    totalEarned: refreshed.total_earned,
+  }
 }
 
 export function purchaseTheme(accountId, themeId) {
@@ -2228,14 +2426,15 @@ export function purchaseTheme(accountId, themeId) {
 
   const tx = db.transaction(() => {
     if (cost > 0) {
-      _deductShards.run(cost, accountId, cost)
+      if (_deductShards.run(cost, accountId, cost).changes !== 1) return false
     }
     const updated = [...profile.owned_themes, themeId]
     _addOwnedTheme.run(JSON.stringify(updated), accountId)
     _updateTheme.run(themeId, accountId)
+    return true
   })
 
-  tx()
+  if (!tx()) return { ok: false, error: 'Not enough Shards.' }
   const refreshed = getProfile(accountId)
   return { ok: true, shards: refreshed.shards, ownedThemes: refreshed.owned_themes }
 }
@@ -2286,13 +2485,14 @@ export function purchaseCardBorder(accountId, borderId) {
 
   const tx = db.transaction(() => {
     if (entry.cost > 0) {
-      _deductShards.run(entry.cost, accountId, entry.cost)
+      if (_deductShards.run(entry.cost, accountId, entry.cost).changes !== 1) return false
     }
     const updated = [...profile.owned_card_borders, borderId]
     _setOwnedCardBorders.run(JSON.stringify(updated), accountId)
     _setCardBorder.run(borderId, accountId)
+    return true
   })
-  tx()
+  if (!tx()) return { ok: false, error: 'Not enough Shards.' }
 
   const refreshed = getProfile(accountId)
   return {
@@ -2391,30 +2591,334 @@ export function breakdownCard(accountId, cardId, qty) {
   }
 }
 
+const _insertAuthoritativeMatch = db.prepare(`
+  INSERT INTO authoritative_matches (match_id, mode, reason, turns, metadata)
+  VALUES (?, ?, ?, ?, ?)
+`)
+const _getAuthoritativeMatch = db.prepare(`
+  SELECT * FROM authoritative_matches WHERE match_id = ?
+`)
+const _insertAuthoritativeParticipant = db.prepare(`
+  INSERT INTO authoritative_match_participants (
+    match_id, account_id, opponent_account_id, opponent_name, result,
+    shards_earned, rating_delta, streak_after, balance_after, rating_after,
+    wins_after, losses_after, match_log_id
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+`)
+const _listAuthoritativeParticipants = db.prepare(`
+  SELECT * FROM authoritative_match_participants
+  WHERE match_id = ? ORDER BY account_id ASC
+`)
+const _getAuthoritativeParticipantForAccount = db.prepare(`
+  SELECT p.*, m.mode, m.reason, m.turns, m.metadata, m.settled_at
+  FROM authoritative_match_participants p
+  JOIN authoritative_matches m ON m.match_id = p.match_id
+  WHERE p.match_id = ? AND p.account_id = ?
+`)
+const _getLatestAuthoritativeParticipant = db.prepare(`
+  SELECT p.*, m.mode, m.reason, m.turns, m.metadata, m.settled_at
+  FROM authoritative_match_participants p
+  JOIN authoritative_matches m ON m.match_id = p.match_id
+  WHERE p.account_id = ? AND p.acknowledged_at IS NULL
+  ORDER BY m.settled_at DESC, m.rowid DESC
+  LIMIT 1
+`)
+const _acknowledgeAuthoritativeParticipant = db.prepare(`
+  UPDATE authoritative_match_participants
+  SET acknowledged_at = COALESCE(acknowledged_at, datetime('now'))
+  WHERE match_id = ? AND account_id = ?
+`)
+const _insertEconomyLedger = db.prepare(`
+  INSERT INTO economy_ledger (
+    id, account_id, idempotency_key, source, amount, balance_after, match_id, metadata
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+`)
+
+function parseStoredMetadata(rawValue) {
+  try {
+    const parsed = JSON.parse(rawValue ?? '{}')
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {}
+  } catch {
+    return {}
+  }
+}
+
+function mapStoredOutcome(row) {
+  return {
+    accountId: row.account_id,
+    opponentAccountId: row.opponent_account_id,
+    opponent: row.opponent_name,
+    result: row.result,
+    shardsEarned: row.shards_earned,
+    ratingDelta: row.rating_delta,
+    streak: row.streak_after,
+    shards: row.balance_after,
+    seasonRating: row.rating_after,
+    wins: row.wins_after,
+    losses: row.losses_after,
+    matchLogId: row.match_log_id,
+  }
+}
+
+function hydrateAuthoritativeMatch(matchId) {
+  const match = _getAuthoritativeMatch.get(matchId)
+  if (!match) return null
+  const outcomes = _listAuthoritativeParticipants.all(matchId).map(mapStoredOutcome)
+  return {
+    ok: true,
+    matchId: match.match_id,
+    mode: match.mode,
+    reason: match.reason,
+    turns: match.turns,
+    metadata: parseStoredMetadata(match.metadata),
+    settledAt: match.settled_at,
+    outcomes,
+  }
+}
+
+function hydrateAuthoritativeMatchForAccount(row) {
+  if (!row) return null
+  return {
+    ok: true,
+    matchId: row.match_id,
+    mode: row.mode,
+    reason: row.reason,
+    turns: row.turns,
+    metadata: parseStoredMetadata(row.metadata),
+    settledAt: row.settled_at,
+    outcome: mapStoredOutcome(row),
+  }
+}
+
+function normalizeAuthoritativeSettlement(input) {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) {
+    return { ok: false, error: 'Settlement payload must be an object.' }
+  }
+  const matchId = String(input.matchId ?? '').trim()
+  if (!/^[A-Za-z0-9._:-]{1,128}$/.test(matchId)) {
+    return { ok: false, error: 'Invalid authoritative match identifier.' }
+  }
+  const mode = String(input.mode ?? '')
+  if (!['ai', 'duel', 'unranked'].includes(mode)) {
+    return { ok: false, error: 'Authoritative match mode must be ai, duel, or unranked.' }
+  }
+  const reason = String(input.reason ?? 'completed').trim()
+  if (!/^[a-z0-9_-]{1,40}$/.test(reason)) {
+    return { ok: false, error: 'Invalid match completion reason.' }
+  }
+  const turns = Number(input.turns ?? 0)
+  if (!Number.isInteger(turns) || turns < 0 || turns > 1000) {
+    return { ok: false, error: 'Match turns must be an integer between 0 and 1000.' }
+  }
+  const expectedParticipants = mode === 'ai' ? 1 : 2
+  if (!Array.isArray(input.participants) || input.participants.length !== expectedParticipants) {
+    return { ok: false, error: `Authoritative ${mode} matches require exactly ${expectedParticipants} participant(s).` }
+  }
+
+  const participants = input.participants.map((entry) => ({
+    accountId: String(entry?.accountId ?? '').trim(),
+    name: String(entry?.name ?? entry?.displayName ?? '').trim().slice(0, 40),
+    opponentName: String(entry?.opponentName ?? entry?.opponent ?? '').trim().slice(0, 40),
+    result: String(entry?.result ?? ''),
+  }))
+  if (participants.some((entry) => !entry.accountId)) {
+    return { ok: false, error: 'Every participant requires an account identifier.' }
+  }
+  if (participants.length === 2 && participants[0].accountId === participants[1].accountId) {
+    return { ok: false, error: 'Authoritative match participants must be distinct accounts.' }
+  }
+  if (participants.some((entry) => !['win', 'loss', 'draw'].includes(entry.result))) {
+    return { ok: false, error: 'Invalid authoritative match result.' }
+  }
+  const results = participants.map((entry) => entry.result).sort().join(':')
+  if (participants.length === 2 && results !== 'draw:draw' && results !== 'loss:win') {
+    return { ok: false, error: 'Authoritative participant results are inconsistent.' }
+  }
+
+  const metadata = input.metadata ?? {}
+  if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) {
+    return { ok: false, error: 'Match metadata must be an object.' }
+  }
+  if (mode === 'ai' && !['novice', 'adept', 'veteran', 'legend'].includes(String(metadata.aiDifficulty ?? ''))) {
+    return { ok: false, error: 'Authoritative AI matches require a valid AI difficulty.' }
+  }
+  let metadataJson
+  try {
+    metadataJson = JSON.stringify(metadata)
+  } catch {
+    return { ok: false, error: 'Match metadata must be JSON serializable.' }
+  }
+  if (metadataJson.length > 16_384) {
+    return { ok: false, error: 'Match metadata is too large.' }
+  }
+
+  if (participants.length === 2) {
+    participants[0].opponentAccountId = participants[1].accountId
+    participants[1].opponentAccountId = participants[0].accountId
+    participants[0].opponentName ||= participants[1].name || 'Opponent'
+    participants[1].opponentName ||= participants[0].name || 'Opponent'
+  } else {
+    participants[0].opponentAccountId = null
+    participants[0].opponentName ||= String(metadata.opponentName ?? 'AI Opponent').slice(0, 40)
+  }
+  return { ok: true, matchId, mode, reason, turns, participants, metadata, metadataJson }
+}
+
+const _settleAuthoritativeMatch = db.transaction((settlement) => {
+  const existing = hydrateAuthoritativeMatch(settlement.matchId)
+  if (existing) return { settlement: existing, replayed: true }
+
+  const profiles = settlement.participants.map((participant) => _getProfile.get(participant.accountId))
+  const missingIndex = profiles.findIndex((profile) => !profile)
+  if (missingIndex !== -1) {
+    return { error: `Profile not found for participant ${settlement.participants[missingIndex].accountId}.` }
+  }
+
+  const calculated = settlement.participants.map((participant, index) => ({
+    participant,
+    profile: profiles[index],
+    ...calculateAuthoritativeMatchEconomy(
+      profiles[index],
+      settlement.mode,
+      participant.result,
+      settlement.reason,
+      settlement.turns,
+    ),
+  }))
+
+  _insertAuthoritativeMatch.run(
+    settlement.matchId,
+    settlement.mode,
+    settlement.reason,
+    settlement.turns,
+    settlement.metadataJson,
+  )
+
+  for (const entry of calculated) {
+    const { participant, profile, shardsEarned, ratingDelta, newStreak, questEligible, rewardEligible, recordEligible } = entry
+    const matchLogId = `${settlement.matchId}:${participant.accountId}`
+    if (_grantShards.run(shardsEarned, shardsEarned, participant.accountId).changes !== 1) {
+      throw new Error(`Failed to grant match reward to ${participant.accountId}.`)
+    }
+    if (_updateRating.run(RATING_FLOOR, ratingDelta, participant.accountId).changes !== 1) {
+      throw new Error(`Failed to update rating for ${participant.accountId}.`)
+    }
+    if (recordEligible) {
+      if (_updateRecord.run(
+        participant.result === 'win' ? 1 : 0,
+        participant.result === 'loss' ? 1 : 0,
+        newStreak,
+        participant.accountId,
+      ).changes !== 1) {
+        throw new Error(`Failed to update match record for ${participant.accountId}.`)
+      }
+    }
+    _insertMatch.run(
+      matchLogId,
+      participant.accountId,
+      participant.opponentName,
+      settlement.mode,
+      participant.result,
+      settlement.turns,
+      shardsEarned,
+      ratingDelta,
+    )
+
+    const refreshed = _getProfile.get(participant.accountId)
+    _insertAuthoritativeParticipant.run(
+      settlement.matchId,
+      participant.accountId,
+      participant.opponentAccountId,
+      participant.opponentName,
+      participant.result,
+      shardsEarned,
+      ratingDelta,
+      refreshed.streak,
+      refreshed.shards,
+      refreshed.season_rating,
+      refreshed.wins,
+      refreshed.losses,
+      matchLogId,
+    )
+    const ledgerId = `match:${settlement.matchId}:${participant.accountId}`
+    _insertEconomyLedger.run(
+      ledgerId,
+      participant.accountId,
+      ledgerId,
+      'authoritative_match',
+      shardsEarned,
+      refreshed.shards,
+      settlement.matchId,
+      JSON.stringify({
+        mode: settlement.mode,
+        reason: settlement.reason,
+        result: participant.result,
+        ratingDelta,
+        previousRating: profile.season_rating,
+        rewardEligible,
+      }),
+    )
+
+    if (questEligible) {
+      recordQuestEvent(participant.accountId, 'play_matches')
+      if (participant.result === 'win') {
+        recordQuestEvent(participant.accountId, 'win_any_match')
+        if (settlement.mode === 'ai') {
+          recordQuestEvent(participant.accountId, 'win_ai')
+          recordQuestEvent(participant.accountId, 'win_ai_difficulty', {
+            aiDifficulty: settlement.metadata.aiDifficulty,
+          })
+        }
+      }
+    }
+  }
+
+  return { settlement: hydrateAuthoritativeMatch(settlement.matchId), replayed: false }
+})
+
+export function settleAuthoritativeMatch(input) {
+  const matchId = String(input?.matchId ?? '').trim()
+  if (/^[A-Za-z0-9._:-]{1,128}$/.test(matchId)) {
+    const existing = hydrateAuthoritativeMatch(matchId)
+    if (existing) return { ...existing, replayed: true }
+  }
+
+  const normalized = normalizeAuthoritativeSettlement(input)
+  if (!normalized.ok) return normalized
+  try {
+    const result = _settleAuthoritativeMatch(normalized)
+    if (result.error) return { ok: false, error: result.error }
+    return { ...result.settlement, replayed: result.replayed }
+  } catch (error) {
+    if (error?.code?.startsWith('SQLITE_CONSTRAINT')) {
+      const existing = hydrateAuthoritativeMatch(normalized.matchId)
+      if (existing) return { ...existing, replayed: true }
+    }
+    return { ok: false, error: error instanceof Error ? error.message : 'Could not settle authoritative match.' }
+  }
+}
+
+export function getMatchSettlementForAccount(matchId, accountId) {
+  return hydrateAuthoritativeMatchForAccount(
+    _getAuthoritativeParticipantForAccount.get(String(matchId ?? ''), String(accountId ?? '')),
+  )
+}
+
+export function getLatestUnacknowledgedSettlement(accountId) {
+  return hydrateAuthoritativeMatchForAccount(
+    _getLatestAuthoritativeParticipant.get(String(accountId ?? '')),
+  )
+}
+
+export function acknowledgeMatchSettlement(matchId, accountId) {
+  return _acknowledgeAuthoritativeParticipant.run(String(matchId ?? ''), String(accountId ?? '')).changes === 1
+}
+
 export function resolveMatchResult(accountId, opponent, mode, result, turns, metadata = {}) {
   const profile = getProfile(accountId)
   if (!profile) return { ok: false, error: 'Profile not found.' }
 
-  let shardsEarned = 0
-  let ratingDelta = 0
-  let newStreak = profile.streak
-
-  // Only server-authoritative modes (duel) affect season rating
-  const ratingEligible = mode === 'duel'
-
-  if (result === 'win') {
-    shardsEarned = WIN_SHARDS
-    ratingDelta = ratingEligible ? WIN_RATING : 0
-    newStreak = profile.streak + 1
-    // Streak bonus: extra 5 shards per streak after 2
-    if (newStreak > 2) {
-      shardsEarned += Math.min(20, (newStreak - 2) * 5)
-    }
-  } else if (result === 'loss') {
-    shardsEarned = LOSS_SHARDS
-    ratingDelta = ratingEligible ? -LOSS_RATING : 0
-    newStreak = 0
-  }
+  const { shardsEarned, ratingDelta, newStreak } = calculateMatchEconomy(profile, mode, result)
 
   const matchId = `m-${randomBytes(8).toString('hex')}`
 
@@ -2836,44 +3340,43 @@ export function openPack(accountId, packType) {
   if (!profile) return { ok: false, error: 'Profile not found.' }
   if (profile.shards < packDef.cost) return { ok: false, error: 'Not enough Shards.' }
 
-  // Roll cards
-  const cards = packDef.slots.map((slot) => {
-    // Each guaranteed slot also has a chance to upgrade
-    const baseRarity = slot.rarity
-    const rolled = rollRandomRarity()
-    const rarityOrder = ['common', 'rare', 'epic', 'legendary']
-    const effectiveRarity = rarityOrder.indexOf(rolled) > rarityOrder.indexOf(baseRarity)
-      ? rolled : baseRarity
-    return { id: pickCard(effectiveRarity), rarity: effectiveRarity }
-  })
-
   const ownedRow = _getOwnedCards.get(accountId)
   const owned = ownedRow ? normalizeOwnedCards(ownedRow.owned_cards) : buildStarterCollection()
 
-  // Duplicate protection: if card already max copies (common/rare/epic: 2, legendary: 1), grant shard refund
+  // Prefer any card in the rolled rarity that is still below its copy cap.
+  // Only a fully collected rarity can roll a duplicate/refund.
   let refund = 0
   const RARITY_REFUND = { common: 5, rare: 10, epic: 25, legendary: 100 }
   const MAX_COPIES = { common: GAME_MAX_COPIES, rare: GAME_MAX_COPIES, epic: GAME_MAX_COPIES, legendary: MAX_LEGENDARY_COPIES }
+  const rarityOrder = ['common', 'rare', 'epic', 'legendary']
+  const cards = packDef.slots.map((slot) => {
+    const rolled = rollRandomRarity()
+    const rarity = rarityOrder.indexOf(rolled) > rarityOrder.indexOf(slot.rarity) ? rolled : slot.rarity
+    const max = MAX_COPIES[rarity] ?? GAME_MAX_COPIES
+    const eligiblePool = CARD_POOL[rarity].filter((cardId) => (owned[cardId] ?? 0) < max)
+    const id = eligiblePool.length > 0
+      ? eligiblePool[Math.floor(Math.random() * eligiblePool.length)]
+      : pickCard(rarity)
+    const current = owned[id] ?? 0
 
-  for (const card of cards) {
-    const current = owned[card.id] ?? 0
-    const max = MAX_COPIES[card.rarity] ?? 2
     if (current >= max) {
-      refund += RARITY_REFUND[card.rarity] ?? 5
-      card.duplicate = true
-    } else {
-      owned[card.id] = current + 1
+      refund += RARITY_REFUND[rarity] ?? 5
+      return { id, rarity, duplicate: true }
     }
-  }
+
+    owned[id] = current + 1
+    return { id, rarity }
+  })
 
   const netCost = packDef.cost - refund
 
   const tx = db.transaction(() => {
-    _deductShards.run(packDef.cost, accountId, packDef.cost)
+    if (_deductShards.run(packDef.cost, accountId, packDef.cost).changes !== 1) return false
     if (refund > 0) _grantShards.run(refund, 0, accountId)
     _setOwnedCards.run(JSON.stringify(owned), accountId)
+    return true
   })
-  tx()
+  if (!tx()) return { ok: false, error: 'Not enough Shards.' }
   recordQuestEvent(accountId, 'open_packs')
 
   const refreshed = getProfile(accountId)

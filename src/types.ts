@@ -7,6 +7,28 @@ export type CosmeticTheme = 'royal' | 'ember' | 'moon'
 export type AuthScreen = 'login' | 'signup' | 'recover' | 'legacy'
 export type CardBorder = 'default' | 'bronze' | 'frost' | 'solar' | 'void'
 export type BattleKind = 'ai' | 'local' | 'ranked' | 'friend'
+export type ServerBattleKind = Extract<BattleKind, 'ai' | 'ranked' | 'friend'>
+export type MatchEndReason = 'completed' | 'surrender' | 'disconnect_forfeit' | 'timeout' | 'server_abort'
+export type MatchResult = 'win' | 'loss' | 'draw'
+
+export type MatchSettlement = {
+  matchId: string
+  kind: ServerBattleKind
+  result: MatchResult
+  reason: MatchEndReason
+  shardsEarned: number
+  ratingDelta: number
+  shards: number
+  seasonRating: number
+  wins: number
+  losses: number
+  streak: number
+}
+
+export type ServerMatchLifecycle =
+  | { phase: 'idle'; matchId: null; revision: 0; kind: null; outcome: null }
+  | { phase: 'active' | 'reconnecting' | 'leaving'; matchId: string; revision: number; kind: ServerBattleKind; outcome: null }
+  | { phase: 'terminal'; matchId: string; revision: number; kind: ServerBattleKind; outcome: MatchSettlement }
 export type ToastSeverity = 'info' | 'success' | 'warning' | 'error'
 export type QuestCadence = 'daily' | 'weekly' | 'milestone' | 'skirmish'
 export type QuestObjectiveType = 'win_any_match' | 'win_ai' | 'win_ai_difficulty' | 'play_matches' | 'open_packs' | 'breakdown_cards' | 'claim_daily' | 'build_deck'

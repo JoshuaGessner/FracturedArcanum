@@ -2,11 +2,12 @@
 // Integration tests for the server DB layer. Uses a throwaway SQLite database
 // under a temporary DATA_DIR so production data is not touched.
 
-import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll, afterEach, vi } from 'vitest'
 import Database from 'better-sqlite3'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
+import { CARD_LIBRARY } from './game.js'
 
 let db
 let passkeyService
@@ -28,9 +29,29 @@ afterAll(() => {
 })
 
 afterEach(() => {
+  vi.restoreAllMocks()
   clearWebAuthnEnv()
   if (originalNodeEnv === undefined) delete process.env.NODE_ENV
   else process.env.NODE_ENV = originalNodeEnv
+})
+
+describe('card pack economy', () => {
+  it('avoids maxed cards while the rolled rarity still has an eligible card', () => {
+    const accountId = makeAccount('packprotection')
+    const commonCards = CARD_LIBRARY.filter((card) => card.rarity === 'common')
+    const maxedCard = commonCards.at(-1).id
+    db.default.prepare(
+      'UPDATE player_profiles SET shards = 500, owned_cards = ? WHERE account_id = ?',
+    ).run(JSON.stringify({ [maxedCard]: 3 }), accountId)
+    vi.spyOn(Math, 'random').mockReturnValue(0.999999)
+
+    const result = db.openPack(accountId, 'basic')
+
+    expect(result.ok).toBe(true)
+    expect(result.refund).toBe(0)
+    expect(result.cards.every((card) => card.id !== maxedCard)).toBe(true)
+    expect(result.cards.every((card) => card.duplicate !== true)).toBe(true)
+  })
 })
 
 function makeAccount(username) {
@@ -213,6 +234,12 @@ describe('schema migration compatibility', () => {
       expect(profile.shards).toBe(120)
       expect(profile.total_earned).toBe(120)
       expect(profile.owned_cards['spark-imp']).toBeGreaterThanOrEqual(2)
+      expect(migrated.default.prepare(
+        "SELECT COUNT(*) AS count FROM sqlite_master WHERE type = 'table' AND name = 'authoritative_matches'",
+      ).get().count).toBe(1)
+      expect(migrated.default.prepare(
+        "SELECT COUNT(*) AS count FROM sqlite_master WHERE type = 'table' AND name = 'economy_ledger'",
+      ).get().count).toBe(1)
 
       migrated.default.close()
     } finally {
@@ -803,6 +830,237 @@ describe('resolveMatchResult mode gating', () => {
 
     const duplicate = db.claimQuestReward(accountId, 'skirmish-legend')
     expect(duplicate.ok).toBe(false)
+  })
+})
+
+describe('durable authoritative match settlement', () => {
+  function settlePair(matchId, firstAccountId, secondAccountId, firstResult = 'win', mode = 'duel') {
+    const secondResult = firstResult === 'draw' ? 'draw' : 'loss'
+    return db.settleAuthoritativeMatch({
+      matchId,
+      mode,
+      reason: firstResult === 'draw' ? 'draw' : 'completed',
+      turns: 8,
+      participants: [
+        { accountId: firstAccountId, name: 'First', result: firstResult },
+        { accountId: secondAccountId, name: 'Second', result: secondResult },
+      ],
+      metadata: { source: 'vitest' },
+    })
+  }
+
+  it('settles both players once and returns the stored outcome on retry', () => {
+    const winner = makeAccount('settlementwinner')
+    const loser = makeAccount('settlementloser')
+    const winnerBefore = db.getProfile(winner)
+    const loserBefore = db.getProfile(loser)
+
+    const first = settlePair('auth-match-idempotent', winner, loser)
+    expect(first.ok, first.error).toBe(true)
+    expect(first.replayed).toBe(false)
+    expect(first.outcomes).toHaveLength(2)
+
+    const afterFirstWinner = db.getProfile(winner)
+    const afterFirstLoser = db.getProfile(loser)
+    expect(afterFirstWinner.shards).toBe(winnerBefore.shards + 30)
+    expect(afterFirstWinner.season_rating).toBe(winnerBefore.season_rating + 25)
+    expect(afterFirstWinner.wins).toBe(winnerBefore.wins + 1)
+    expect(afterFirstLoser.shards).toBe(loserBefore.shards + 10)
+    expect(afterFirstLoser.season_rating).toBe(loserBefore.season_rating - 15)
+    expect(afterFirstLoser.losses).toBe(loserBefore.losses + 1)
+
+    const replay = db.settleAuthoritativeMatch({ matchId: 'auth-match-idempotent' })
+    expect(replay.ok).toBe(true)
+    expect(replay.replayed).toBe(true)
+    expect(replay.outcomes).toEqual(first.outcomes)
+    expect(db.getProfile(winner).shards).toBe(afterFirstWinner.shards)
+    expect(db.getProfile(loser).shards).toBe(afterFirstLoser.shards)
+    expect(db.default.prepare(
+      'SELECT COUNT(*) AS count FROM economy_ledger WHERE match_id = ?',
+    ).get('auth-match-idempotent').count).toBe(2)
+
+    const winnerView = db.getMatchSettlementForAccount('auth-match-idempotent', winner)
+    expect(winnerView.outcome.result).toBe('win')
+    expect(db.getLatestUnacknowledgedSettlement(loser).matchId).toBe('auth-match-idempotent')
+    expect(db.acknowledgeMatchSettlement('auth-match-idempotent', loser)).toBe(true)
+    expect(db.getLatestUnacknowledgedSettlement(loser)).toBeNull()
+  })
+
+  it('does not partially settle when either participant profile is missing', () => {
+    const existing = makeAccount('settlementatomic')
+    const before = db.getProfile(existing)
+
+    const result = settlePair('auth-match-missing-side', existing, 'acct-does-not-exist')
+
+    expect(result.ok).toBe(false)
+    expect(db.getProfile(existing).shards).toBe(before.shards)
+    expect(db.getProfile(existing).season_rating).toBe(before.season_rating)
+    expect(db.default.prepare(
+      'SELECT COUNT(*) AS count FROM authoritative_matches WHERE match_id = ?',
+    ).get('auth-match-missing-side').count).toBe(0)
+  })
+
+  it('records a draw for both players without currency, rating, or record changes', () => {
+    const firstAccount = makeAccount('settlementdrawa')
+    const secondAccount = makeAccount('settlementdrawb')
+    const firstBefore = db.getProfile(firstAccount)
+    const secondBefore = db.getProfile(secondAccount)
+
+    const result = settlePair('auth-match-draw', firstAccount, secondAccount, 'draw')
+
+    expect(result.ok, result.error).toBe(true)
+    expect(result.outcomes.every((outcome) => outcome.shardsEarned === 0)).toBe(true)
+    expect(result.outcomes.every((outcome) => outcome.ratingDelta === 0)).toBe(true)
+    expect(db.getProfile(firstAccount).shards).toBe(firstBefore.shards)
+    expect(db.getProfile(secondAccount).shards).toBe(secondBefore.shards)
+    expect(db.getProfile(firstAccount).wins).toBe(firstBefore.wins)
+    expect(db.getProfile(secondAccount).losses).toBe(secondBefore.losses)
+  })
+
+  it('caps the authoritative streak bonus at twenty shards', () => {
+    const winner = makeAccount('settlementstreaka')
+    const loser = makeAccount('settlementstreakb')
+    db.default.prepare('UPDATE player_profiles SET streak = 20 WHERE account_id = ?').run(winner)
+
+    const result = settlePair('auth-match-streak-cap', winner, loser)
+    expect(result.ok, result.error).toBe(true)
+    const winnerOutcome = result.outcomes.find((outcome) => outcome.accountId === winner)
+    expect(winnerOutcome.shardsEarned).toBe(50)
+    expect(winnerOutcome.streak).toBe(21)
+    expect(winnerOutcome.ratingDelta).toBe(25)
+  })
+
+  it('keeps friend matches non-economic', () => {
+    const firstAccount = makeAccount('settlementfrienda')
+    const secondAccount = makeAccount('settlementfriendb')
+    const firstBefore = db.getProfile(firstAccount)
+    const secondBefore = db.getProfile(secondAccount)
+    db.default.prepare('UPDATE player_profiles SET streak = 4 WHERE account_id = ?').run(firstAccount)
+
+    const result = settlePair('auth-match-friend', firstAccount, secondAccount, 'win', 'unranked')
+
+    expect(result.ok, result.error).toBe(true)
+    expect(result.outcomes.every((outcome) => outcome.shardsEarned === 0)).toBe(true)
+    expect(result.outcomes.every((outcome) => outcome.ratingDelta === 0)).toBe(true)
+    expect(db.getProfile(firstAccount).streak).toBe(4)
+    expect(db.getProfile(firstAccount).wins).toBe(firstBefore.wins)
+    expect(db.getProfile(secondAccount).losses).toBe(secondBefore.losses)
+  })
+
+  it('settles a maintenance abort as a no-contest without rewards, record, or quest progress', () => {
+    const firstAccount = makeAccount('settlementaborta')
+    const secondAccount = makeAccount('settlementabortb')
+    const firstBefore = db.getProfile(firstAccount)
+    const questsBefore = db.getQuestOverview(firstAccount).quests.map(({ id, progress }) => ({ id, progress }))
+
+    const result = db.settleAuthoritativeMatch({
+      matchId: 'auth-match-maintenance-abort',
+      mode: 'duel',
+      reason: 'server_abort',
+      turns: 6,
+      participants: [
+        { accountId: firstAccount, name: 'First', result: 'draw' },
+        { accountId: secondAccount, name: 'Second', result: 'draw' },
+      ],
+    })
+
+    expect(result.ok, result.error).toBe(true)
+    expect(result.outcomes.every((outcome) => outcome.shardsEarned === 0)).toBe(true)
+    expect(db.getProfile(firstAccount)).toMatchObject({
+      shards: firstBefore.shards,
+      season_rating: firstBefore.season_rating,
+      wins: firstBefore.wins,
+      losses: firstBefore.losses,
+      streak: firstBefore.streak,
+    })
+    expect(db.getQuestOverview(firstAccount).quests.map(({ id, progress }) => ({ id, progress }))).toEqual(questsBefore)
+  })
+
+  it('applies ranked rating and W/L but no farmable reward for an early surrender', () => {
+    const winner = makeAccount('settlementsurrendera')
+    const loser = makeAccount('settlementsurrenderb')
+    const winnerBefore = db.getProfile(winner)
+    const loserBefore = db.getProfile(loser)
+
+    const result = db.settleAuthoritativeMatch({
+      matchId: 'auth-match-early-surrender',
+      mode: 'duel',
+      reason: 'surrender',
+      turns: 1,
+      participants: [
+        { accountId: winner, name: 'Winner', result: 'win' },
+        { accountId: loser, name: 'Loser', result: 'loss' },
+      ],
+    })
+
+    expect(result.ok, result.error).toBe(true)
+    expect(result.outcomes.every((outcome) => outcome.shardsEarned === 0)).toBe(true)
+    expect(db.getProfile(winner).season_rating).toBe(winnerBefore.season_rating + 25)
+    expect(db.getProfile(loser).season_rating).toBe(loserBefore.season_rating - 15)
+    expect(db.getProfile(winner).wins).toBe(winnerBefore.wins + 1)
+    expect(db.getProfile(loser).losses).toBe(loserBefore.losses + 1)
+    expect(db.getProfile(winner).streak).toBe(winnerBefore.streak)
+  })
+
+  it('supports one-participant authoritative AI completion and blocks abort rewards', () => {
+    const player = makeAccount('settlementaiplayer')
+    const before = db.getProfile(player)
+    const completed = db.settleAuthoritativeMatch({
+      matchId: 'auth-match-ai-complete',
+      mode: 'ai',
+      reason: 'completed',
+      turns: 7,
+      participants: [{ accountId: player, name: 'Player', opponentName: 'Legend AI', result: 'win' }],
+      metadata: { aiDifficulty: 'legend' },
+    })
+    expect(completed.ok, completed.error).toBe(true)
+    expect(completed.outcomes[0].shardsEarned).toBe(30)
+    expect(db.getProfile(player).shards).toBe(before.shards + 30)
+
+    const afterCompleted = db.getProfile(player)
+    const aborted = db.settleAuthoritativeMatch({
+      matchId: 'auth-match-ai-abort',
+      mode: 'ai',
+      reason: 'abort',
+      turns: 5,
+      participants: [{ accountId: player, name: 'Player', opponentName: 'Legend AI', result: 'loss' }],
+      metadata: { aiDifficulty: 'legend' },
+    })
+    expect(aborted.ok, aborted.error).toBe(true)
+    expect(aborted.outcomes[0].shardsEarned).toBe(0)
+    expect(db.getProfile(player).shards).toBe(afterCompleted.shards)
+    expect(db.getProfile(player).streak).toBe(afterCompleted.streak)
+  })
+})
+
+describe('match deck validation', () => {
+  it('returns a sanitized, non-mutating authenticated deck snapshot', () => {
+    const accountId = makeAccount('matchdeckvalid')
+    const decksBefore = db.default.prepare(
+      'SELECT COUNT(*) AS count FROM player_decks WHERE account_id = ?',
+    ).get(accountId).count
+
+    const result = db.validateDeckForMatch(accountId)
+
+    expect(result.ok, result.error).toBe(true)
+    expect(result.ready).toBe(true)
+    expect(result.total).toBeGreaterThanOrEqual(10)
+    expect(db.default.prepare(
+      'SELECT COUNT(*) AS count FROM player_decks WHERE account_id = ?',
+    ).get(accountId).count).toBe(decksBefore)
+  })
+
+  it('rejects unknown and unowned cards in candidate decks', () => {
+    const accountId = makeAccount('matchdeckinvalid')
+    const profile = db.getProfile(accountId)
+    const candidate = { ...profile.deck_config, 'not-a-real-card': 1 }
+    const firstCard = Object.keys(candidate)[0]
+    candidate[firstCard] = 0
+
+    const result = db.validateDeckForMatch(accountId, candidate)
+
+    expect(result.ok).toBe(false)
+    expect(result.error).toMatch(/unknown card/i)
   })
 })
 

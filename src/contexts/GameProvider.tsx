@@ -15,7 +15,7 @@ import {
   type GameMode,
   type GameState,
 } from '../game'
-import type { BattleKind, InspectedCard } from '../types'
+import type { BattleKind, InspectedCard, ServerMatchLifecycle } from '../types'
 import { STORAGE_KEYS } from '../constants'
 import { makeLobbyCode, readStoredValue } from '../utils'
 
@@ -60,7 +60,8 @@ export type GameStateValue = {
   battleSessionActive: boolean
   setBattleSessionActive: Dispatch<SetStateAction<boolean>>
   serverBattleActive: boolean
-  setServerBattleActive: Dispatch<SetStateAction<boolean>>
+  serverMatch: ServerMatchLifecycle
+  setServerMatch: Dispatch<SetStateAction<ServerMatchLifecycle>>
   enemyTurnActive: boolean
   setEnemyTurnActive: Dispatch<SetStateAction<boolean>>
   enemyTurnLabel: string
@@ -94,7 +95,16 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const [selectedAttacker, setSelectedAttacker] = useState<number | null>(null)
   const [battleKind, setBattleKind] = useState<BattleKind>(savedMode === 'duel' ? 'local' : 'ai')
   const [battleSessionActive, setBattleSessionActive] = useState(false)
-  const [serverBattleActive, setServerBattleActive] = useState(false)
+  const [serverMatch, setServerMatch] = useState<ServerMatchLifecycle>({
+    phase: 'idle',
+    matchId: null,
+    revision: 0,
+    kind: null,
+    outcome: null,
+  })
+  const serverBattleActive = serverMatch.phase === 'active'
+    || serverMatch.phase === 'reconnecting'
+    || serverMatch.phase === 'leaving'
   const [enemyTurnActive, setEnemyTurnActive] = useState(false)
   const [enemyTurnLabel, setEnemyTurnLabel] = useState('')
   const [opponentDisconnected, setOpponentDisconnected] = useState(false)
@@ -119,7 +129,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
       battleSessionActive,
       setBattleSessionActive,
       serverBattleActive,
-      setServerBattleActive,
+      serverMatch,
+      setServerMatch,
       enemyTurnActive,
       setEnemyTurnActive,
       enemyTurnLabel,
@@ -143,6 +154,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       battleKind,
       battleSessionActive,
       serverBattleActive,
+      serverMatch,
       enemyTurnActive,
       enemyTurnLabel,
       opponentDisconnected,

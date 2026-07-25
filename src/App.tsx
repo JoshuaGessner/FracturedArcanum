@@ -84,7 +84,6 @@ import type {
   AccountSessionSummary,
   AppScreen,
   AuthScreen,
-  BattleKind,
   CardBorder,
   CardCollection,
   ComplaintFormState,
@@ -100,6 +99,9 @@ import type {
   QuestOverview,
   QueuePresence,
   QueueSearchStatus,
+  MatchSettlement,
+  ServerBattleKind,
+  ServerMatchLifecycle,
   SettingsSubview,
   SavedDeck,
   ServerProfile,
@@ -302,7 +304,7 @@ function AppShell() {
     selectedAttacker, setSelectedAttacker,
     battleKind, setBattleKind,
     battleSessionActive, setBattleSessionActive,
-    serverBattleActive, setServerBattleActive,
+    serverBattleActive, serverMatch, setServerMatch,
     enemyTurnActive, setEnemyTurnActive,
     setEnemyTurnLabel,
     setOpponentDisconnected,
@@ -346,14 +348,13 @@ function AppShell() {
   // not double-emit `game:rejoin`. Cleared by game:start, game:rejoin,
   // or game:rejoin_failed.
   const rejoinInFlightRef = useRef(false)
-  // 3P: mirror of serverBattleActive so the rejoin_failed handler
-  // (registered once per auth session) sees the current value rather
-  // than the stale closure from when the socket effect ran.
-  const serverBattleActiveRef = useRef(false)
-  const pendingServerBattleKindRef = useRef<Extract<BattleKind, 'ranked' | 'friend'> | null>(null)
+  const serverMatchRef = useRef<ServerMatchLifecycle>(serverMatch)
+  const actionInFlightRef = useRef(false)
+  const actionSequenceRef = useRef(0)
+  const pendingServerBattleKindRef = useRef<ServerBattleKind | null>(null)
   useEffect(() => {
-    serverBattleActiveRef.current = serverBattleActive
-  }, [serverBattleActive])
+    serverMatchRef.current = serverMatch
+  }, [serverMatch])
   const [backendOnline, setBackendOnline] = useState(false)
   const [, setMotd] = useState('Queue up for ranked arena play.')
   const [dailyQuest, setDailyQuest] = useState('Win 1 ranked arena match')
@@ -1614,7 +1615,7 @@ function AppShell() {
     setBackendOnline(false)
     setBattleKind('ai')
     setBattleSessionActive(false)
-    setServerBattleActive(false)
+    setServerMatch({ phase: 'idle', matchId: null, revision: 0, kind: null, outcome: null })
     setCollection({})
     setPackOffers([])
     setQuestOverview(null)
@@ -1656,7 +1657,10 @@ function AppShell() {
 
     socket.on('connect', () => {
       setBackendOnline(true)
-      if (serverBattleActiveRef.current) {
+      if (serverMatchRef.current.phase !== 'idle' && serverMatchRef.current.phase !== 'terminal') {
+        setServerMatch((current) => current.phase === 'idle' || current.phase === 'terminal'
+          ? current
+          : { ...current, phase: 'reconnecting' })
         setToastMessage('Connected. Restoring your live match…')
       }
     })
@@ -1689,7 +1693,11 @@ function AppShell() {
       // 3P: clear in-flight guard so the auto-rejoin on the next
       // `connect` event is allowed through.
       rejoinInFlightRef.current = false
-      if (serverBattleActiveRef.current) {
+      actionInFlightRef.current = false
+      if (serverMatchRef.current.phase !== 'idle' && serverMatchRef.current.phase !== 'terminal') {
+        setServerMatch((current) => current.phase === 'idle' || current.phase === 'terminal'
+          ? current
+          : { ...current, phase: 'reconnecting' })
         setToastMessage('Connection lost. Reconnecting to your match...')
       } else {
         setToastMessage('Connection lost. Reconnecting to live services...')
@@ -1701,6 +1709,7 @@ function AppShell() {
       setQueueState('idle')
       setQueuedOpponent(null)
       rejoinInFlightRef.current = false
+      actionInFlightRef.current = false
     })
 
     socket.on('server:hello', (payload: { message: string; seasonName?: string; seasonEnd?: string | null }) => {
@@ -1818,14 +1827,26 @@ function AppShell() {
       },
     )
 
-    socket.on('game:start', (payload: { yourSide: BattleSide; serverMode?: 'duel' | 'unranked'; state: GameState }) => {
+    socket.on('game:start', (payload: { matchId?: string; roomId?: string; revision?: number; yourSide: BattleSide; serverMode?: 'ai' | 'duel' | 'unranked'; state: GameState }) => {
+      const matchId = payload.matchId ?? payload.roomId
+      if (!matchId) {
+        setToastMessage('The server returned an invalid match. Please queue again.')
+        return
+      }
+      const current = serverMatchRef.current
+      if (current.phase === 'terminal' && current.matchId === matchId) return
+      if (current.phase !== 'idle' && current.phase !== 'terminal' && current.matchId !== matchId) return
+      if (current.matchId === matchId && (payload.revision ?? current.revision) < current.revision) return
       rejoinInFlightRef.current = false
+      actionInFlightRef.current = false
       setGame(payload.state)
-      const nextBattleKind = pendingServerBattleKindRef.current ?? (payload.serverMode === 'unranked' ? 'friend' : 'ranked')
+      const nextBattleKind = pendingServerBattleKindRef.current
+        ?? (payload.serverMode === 'ai' ? 'ai' : payload.serverMode === 'unranked' ? 'friend' : 'ranked')
       pendingServerBattleKindRef.current = null
       setBattleKind(nextBattleKind)
       setBattleSessionActive(true)
-      setServerBattleActive(true)
+      resolvedMatchKeyRef.current = matchId
+      setServerMatch({ phase: 'active', matchId, revision: payload.revision ?? 0, kind: nextBattleKind, outcome: null })
       transitionToScreen('battle')
       setQueueState('idle')
       setQueueSeconds(0)
@@ -1834,15 +1855,85 @@ function AppShell() {
       playSound('summon', soundEnabled)
     })
 
-    socket.on('game:state', (payload: { state: GameState }) => {
+    socket.on('game:state', (payload: { matchId?: string; roomId?: string; revision?: number; state: GameState }) => {
+      const matchId = payload.matchId ?? payload.roomId
+      const current = serverMatchRef.current
+      if (!matchId || current.phase === 'idle' || current.phase === 'terminal' || current.matchId !== matchId) return
+      if ((payload.revision ?? current.revision) < current.revision) return
+      actionInFlightRef.current = false
       setGame(payload.state)
+      setServerMatch({ ...current, phase: 'active', revision: payload.revision ?? current.revision })
     })
 
-    socket.on('game:over', (payload: { result: string }) => {
+    socket.on('game:over', (payload: { matchId?: string; roomId?: string; revision?: number; result: MatchSettlement['result']; reason?: MatchSettlement['reason']; serverMode?: 'ai' | 'duel' | 'unranked'; state?: GameState; settlement?: Partial<MatchSettlement> }) => {
+      const matchId = payload.matchId ?? payload.roomId
+      const current = serverMatchRef.current
+      if (!matchId || current.phase === 'terminal') return
+      const recoveringPersistedSettlement = current.phase === 'idle'
+      if (!recoveringPersistedSettlement && current.matchId !== matchId) return
+      if (!recoveringPersistedSettlement && (payload.revision ?? current.revision) < current.revision) return
+      const matchKind: ServerBattleKind = recoveringPersistedSettlement
+        ? payload.serverMode === 'ai' ? 'ai' : payload.serverMode === 'unranked' ? 'friend' : 'ranked'
+        : current.kind
+      const settlement: MatchSettlement = {
+        matchId,
+        kind: matchKind,
+        result: payload.result,
+        reason: payload.reason ?? 'completed',
+        shardsEarned: payload.settlement?.shardsEarned ?? 0,
+        ratingDelta: payload.settlement?.ratingDelta ?? 0,
+        shards: payload.settlement?.shards ?? serverProfile?.shards ?? 0,
+        seasonRating: payload.settlement?.seasonRating ?? serverProfile?.seasonRating ?? 1200,
+        wins: payload.settlement?.wins ?? serverProfile?.wins ?? 0,
+        losses: payload.settlement?.losses ?? serverProfile?.losses ?? 0,
+        streak: payload.settlement?.streak ?? serverProfile?.streak ?? 0,
+      }
+      actionInFlightRef.current = false
+      rejoinInFlightRef.current = false
+      socket.emit('game:settlement_ack', { matchId })
+      setServerProfile((previous) => previous ? {
+        ...previous,
+        shards: settlement.shards,
+        seasonRating: settlement.seasonRating,
+        wins: settlement.wins,
+        losses: settlement.losses,
+        streak: settlement.streak,
+      } : previous)
+      void refreshQuestOverview()
+      if (recoveringPersistedSettlement) {
+        setToastMessage(`Previous ${matchKind === 'ai' ? 'AI' : matchKind === 'friend' ? 'friend' : 'ranked'} result synced: ${payload.result}.`)
+        return
+      }
+      if (payload.state) {
+        setGame(payload.state)
+      } else {
+        setGame((currentGame) => ({
+          ...currentGame,
+          winner: payload.result === 'win' ? 'player' : payload.result === 'loss' ? 'enemy' : 'draw',
+        }))
+      }
       setOpponentDisconnected(false)
       setDisconnectGraceMs(0)
       setBattleSessionActive(false)
-      setServerBattleActive(false)
+      setServerMatch({ phase: 'terminal', matchId, revision: payload.revision ?? current.revision, kind: current.kind, outcome: settlement })
+      if (payload.result === 'win') {
+        const previousRating = serverProfile?.seasonRating ?? settlement.seasonRating - settlement.ratingDelta
+        const previousRankLabel = getRankLabel(previousRating)
+        const nextRankLabel = getRankLabel(settlement.seasonRating)
+        const beats = buildBattleVictorySequence({
+          rankLabel: nextRankLabel,
+          streak: settlement.streak,
+          isRanked: current.kind === 'ranked',
+          battleKind: current.kind,
+          mode: 'duel',
+          shards: settlement.shardsEarned,
+          ratingDelta: settlement.ratingDelta,
+        })
+        if (previousRankLabel !== nextRankLabel && settlement.ratingDelta > 0) {
+          beats.push(...buildRankUpSequence({ previousRankLabel, newRankLabel: nextRankLabel }))
+        }
+        presentRewardCinema(beats, 'battle')
+      }
       if (payload.result === 'win') {
         setToastMessage('Victory! You won the match.')
       } else if (payload.result === 'loss') {
@@ -1858,28 +1949,43 @@ function AppShell() {
       setToastMessage(payload.error)
     })
 
-    socket.on('game:error', (payload: { error: string }) => {
+    socket.on('game:error', (payload: { error: string; matchId?: string; state?: GameState; revision?: number }) => {
+      actionInFlightRef.current = false
+      const current = serverMatchRef.current
+      const revision = payload.revision ?? current.revision
+      if (payload.matchId && current.phase !== 'idle' && current.phase !== 'terminal' && payload.matchId === current.matchId && payload.state && revision >= current.revision) {
+        setGame(payload.state)
+        setServerMatch({ ...current, revision, phase: 'active' })
+      }
       setToastMessage(payload.error)
     })
 
     // ─── Reconnect / disconnect events ──────────────────────────────
-    socket.on('game:rejoin', (payload: { yourSide: BattleSide; serverMode?: 'duel' | 'unranked'; state: GameState; roomId: string; opponentDisconnected: boolean }) => {
+    socket.on('game:rejoin', (payload: { matchId?: string; yourSide: BattleSide; serverMode?: 'ai' | 'duel' | 'unranked'; revision?: number; state: GameState; roomId: string; opponentDisconnected: boolean }) => {
+      const matchId = payload.matchId ?? payload.roomId
+      const current = serverMatchRef.current
+      if (current.phase === 'terminal' && current.matchId === matchId) return
+      if (current.phase !== 'idle' && current.phase !== 'terminal' && current.matchId !== matchId) return
+      if (current.matchId === matchId && (payload.revision ?? current.revision) < current.revision) return
       rejoinInFlightRef.current = false
+      actionInFlightRef.current = false
       setGame(payload.state)
-      setBattleKind(payload.serverMode === 'unranked' ? 'friend' : 'ranked')
+      const kind = payload.serverMode === 'ai' ? 'ai' : payload.serverMode === 'unranked' ? 'friend' : 'ranked'
+      setBattleKind(kind)
       setBattleSessionActive(true)
-      setServerBattleActive(true)
+      resolvedMatchKeyRef.current = matchId
+      setServerMatch({ phase: 'active', matchId, revision: payload.revision ?? 0, kind, outcome: null })
       transitionToScreen('battle')
       setQueueState('idle')
       setQueueSeconds(0)
       setQueuedOpponent(null)
       setOpponentDisconnected(payload.opponentDisconnected)
       triggerBattleIntro()
-      setToastMessage('Reconnected to your ranked match.')
+      setToastMessage(`Reconnected to your ${kind === 'ranked' ? 'ranked match' : kind === 'friend' ? 'friend duel' : 'AI skirmish'}.`)
       playSound('summon', soundEnabled)
     })
 
-    socket.on('game:rejoin_failed', () => {
+    socket.on('game:rejoin_failed', (payload?: { error?: string }) => {
       // 3P: clear the in-flight guard and recover the UI to a safe
       // state. The previous handler only cleared the opponent
       // disconnect indicator, which left ranked players staring at a
@@ -1887,12 +1993,12 @@ function AppShell() {
       rejoinInFlightRef.current = false
       setOpponentDisconnected(false)
       setDisconnectGraceMs(0)
-      if (serverBattleActiveRef.current) {
-        setServerBattleActive(false)
+      if (serverMatchRef.current.phase !== 'idle' && serverMatchRef.current.phase !== 'terminal') {
+        setServerMatch({ phase: 'idle', matchId: null, revision: 0, kind: null, outcome: null })
         setBattleSessionActive(false)
         setBattleKind('ai')
         transitionToScreen('play')
-        setToastMessage('Could not rejoin your ranked match. Returned to the arena gate.')
+        setToastMessage(payload?.error ?? 'Could not restore the live match. Returned to the arena gate.')
       }
     })
 
@@ -1906,6 +2012,10 @@ function AppShell() {
       setOpponentDisconnected(false)
       setDisconnectGraceMs(0)
       setToastMessage('Opponent reconnected!')
+    })
+
+    socket.on('game:controller_active', (payload: { error?: string }) => {
+      setToastMessage(payload.error ?? 'This match is active in another tab or device.')
     })
 
     void fetch(`${ARENA_URL}/api/profile`)
@@ -2561,6 +2671,12 @@ function AppShell() {
       return
     }
 
+    // Server-hosted ranked, friend, and AI matches are completed exclusively
+    // by the authoritative game:over settlement handler.
+    if (serverMatch.phase !== 'idle') {
+      return
+    }
+
     const matchKey = `${game.enemy.name}-${game.turnNumber}-${game.winner}`
     if (matchKey === resolvedMatchKeyRef.current) {
       return
@@ -2577,82 +2693,20 @@ function AppShell() {
       'match',
     )
 
-    if (authToken && game.mode !== 'duel') {
-      const result = game.winner === 'player' ? 'win' : game.winner === 'enemy' ? 'loss' : 'draw'
-      const previousRating = serverProfile?.seasonRating ?? 1200
-      const previousStreak = serverProfile?.streak ?? 0
-      // Capture the key so the async callback can detect staleness
-      // (e.g. user started a new match before the response arrived).
-      const capturedKey = matchKey
-      void authFetch('/api/match/complete', authToken, {
-        method: 'POST',
-        body: { opponent: game.enemy.name, mode: game.mode, result, turns: game.turnNumber, aiDifficulty: game.aiDifficulty },
-      })
-        .then((r) => r.json())
-        .then((data: { ok: boolean; shards?: number; seasonRating?: number; wins?: number; losses?: number; streak?: number; shardsEarned?: number }) => {
-          if (!data.ok) return
-          // Stale response — a new match has started since this request.
-          if (resolvedMatchKeyRef.current !== capturedKey) return
-          setServerProfile((prev) =>
-            prev
-              ? {
-                  ...prev,
-                  shards: data.shards ?? prev.shards,
-                  seasonRating: data.seasonRating ?? prev.seasonRating,
-                  wins: data.wins ?? prev.wins,
-                  losses: data.losses ?? prev.losses,
-                  streak: data.streak ?? prev.streak,
-                }
-              : prev,
-          )
-              void refreshQuestOverview()
-
-          if (game.winner !== 'player') return
-
-          const newRating = data.seasonRating ?? previousRating
-          const ratingDelta = newRating - previousRating
-          const previousRankLabel = getRankLabel(previousRating)
-          const newRankLabel = getRankLabel(newRating)
-          const rankCrossed = previousRankLabel !== newRankLabel && newRating > previousRating
-          const isRanked = game.mode !== 'ai'
-          const battleKindForBeats = isRanked ? 'ranked' : 'ai'
-          const beats = buildBattleVictorySequence({
-            rankLabel: newRankLabel,
-            streak: data.streak ?? previousStreak + 1,
-            isRanked,
-            battleKind: battleKindForBeats,
-            mode: game.mode,
-            shards: data.shardsEarned ?? ECONOMY_REWARDS.winShards,
-            ratingDelta: isRanked ? ratingDelta : undefined,
-          })
-          if (rankCrossed) {
-            beats.push(...buildRankUpSequence({ previousRankLabel, newRankLabel }))
-          }
-          presentRewardCinema(beats, 'battle')
-        })
-        .catch(() => {})
-    } else if (game.winner === 'player') {
-      // Local pass-and-play or unauthenticated AI run — fire the local
-      // victory cinema immediately (no server fetch is required).
+    if (game.winner === 'player') {
+      // Offline AI practice and pass-and-play are deliberately non-economic.
+      // Reward-bearing AI games are hosted and settled by the server.
       const localBeats = buildBattleVictorySequence({
         rankLabel: getRankLabel(serverProfile?.seasonRating ?? 1200),
-        streak: (serverProfile?.streak ?? 0) + 1,
+        streak: serverProfile?.streak ?? 0,
         isRanked: false,
         battleKind: game.mode === 'duel' ? 'local' : 'ai',
         mode: game.mode,
+        shards: 0,
       })
       presentRewardCinema(localBeats, 'battle')
     }
-
-    if (authToken && game.mode === 'duel') {
-      void authFetch('/api/me', authToken)
-        .then((r) => r.json())
-        .then((data: { ok: boolean; profile?: ServerProfile }) => {
-          if (data.ok && data.profile) setServerProfile(data.profile)
-        })
-        .catch(() => {})
-    }
-  }, [game, sendAnalytics, authToken, presentRewardCinema, serverProfile, setServerProfile, refreshQuestOverview])
+  }, [game, serverMatch.phase, sendAnalytics, presentRewardCinema, serverProfile])
 
   const isRankedBattle = battleKind === 'ranked'
   const isLocalPassBattle = battleKind === 'local'
@@ -2681,8 +2735,7 @@ function AppShell() {
     100,
     Math.round(((seasonRating - previousRankTarget) / (nextRankTarget - previousRankTarget)) * 100),
   )
-  const nextRewardLabel =
-    seasonRating >= 1500 ? 'Champion Vault' : seasonRating >= 1300 ? 'Gold Chest' : seasonRating >= 1150 ? 'Silver Cache' : 'Bronze Bundle'
+  const nextRewardLabel = '25 Shards'
   const todayKey = new Date().toISOString().slice(0, 10)
   const canClaimDailyReward = lastDailyClaim !== todayKey
 
@@ -2840,6 +2893,10 @@ function AppShell() {
   }, [loggedIn, setupRequired, activeScreen])
 
   function resetBattleState(mode: GameMode = preferredMode, toast = 'Battle reset. Ready when you are.', nextScreen: AppScreen = 'home') {
+    if (serverMatchRef.current.phase === 'active' || serverMatchRef.current.phase === 'reconnecting' || serverMatchRef.current.phase === 'leaving') {
+      setToastMessage('Finish or abandon the live match before starting another battle.')
+      return
+    }
     const nextDifficulty = mode === 'ai' ? resolvedAIDifficulty : 'legend'
     setBattleKind(mode === 'duel' ? 'local' : 'ai')
     pendingServerBattleKindRef.current = null
@@ -2854,7 +2911,7 @@ function AppShell() {
     cinemaScopeRef.current = 'generic'
     prevBoardRef.current = null
     setBattleSessionActive(false)
-    setServerBattleActive(false)
+    setServerMatch({ phase: 'idle', matchId: null, revision: 0, kind: null, outcome: null })
     setSelectedAttacker(null)
     setEnemyTurnActive(false)
     setEnemyTurnLabel('')
@@ -2874,7 +2931,7 @@ function AppShell() {
     feedback('tap', soundEnabled, hapticsEnabled)
     transitionToScreen('battle')
 
-    if (battleKind === 'ranked') {
+    if (serverMatch.phase === 'active' || serverMatch.phase === 'reconnecting') {
       if (socketClientRef.current?.connected) {
         if (!rejoinInFlightRef.current) {
           rejoinInFlightRef.current = true
@@ -2893,9 +2950,16 @@ function AppShell() {
   function handleAbandonBattle() {
     feedback('cancel', soundEnabled, hapticsEnabled)
 
-    if (serverBattleActive && hasBattleInProgress && socketClientRef.current?.connected) {
+    if (serverBattleActive && hasBattleInProgress) {
+      if (!socketClientRef.current?.connected || serverMatch.phase === 'reconnecting') {
+        setToastMessage('Reconnect before abandoning so the server can record the result safely.')
+        return
+      }
+      actionInFlightRef.current = false
+      setServerMatch((current) => current.phase === 'active' ? { ...current, phase: 'leaving' } : current)
       emitAction({ type: 'surrender' })
-      resetBattleState(preferredMode, 'Ranked match abandoned. The result will be recorded by the server.')
+      transitionToScreen('home')
+      setToastMessage('Surrender sent. Waiting for the server to record the result…')
       return
     }
 
@@ -3323,6 +3387,11 @@ function AppShell() {
     enemyName?: string,
     overrideDeckConfig?: DeckConfig,
   ) {
+    if (serverMatch.phase === 'active' || serverMatch.phase === 'reconnecting' || serverMatch.phase === 'leaving') {
+      setToastMessage(`A live match is still ${serverMatch.phase === 'leaving' ? 'being closed' : 'in progress'}. Resume or abandon it first.`)
+      transitionToScreen('home')
+      return
+    }
     const deckForMatch = overrideDeckConfig ?? deckConfig
     if (getDeckSize(deckForMatch) < MIN_DECK_SIZE) {
       setToastMessage('Finish building your deck before entering the arena.')
@@ -3332,11 +3401,33 @@ function AppShell() {
 
     const aiDifficulty = mode === 'ai' ? resolvedAIDifficulty : 'legend'
 
+    if (mode === 'ai' && backendOnline && socketClientRef.current?.connected) {
+      setPreferredMode('ai')
+      pendingServerBattleKindRef.current = 'ai'
+      setBattleSummaryVisible(false)
+      setCinemaSequence(null)
+      cinemaScopeRef.current = 'generic'
+      setSelectedAttacker(null)
+      clearEnemyTurnTimers()
+      setEnemyTurnActive(false)
+      setEnemyTurnLabel('')
+      prevBoardRef.current = null
+      setDamagedSlots(new Set())
+      transitionToScreen('play', true)
+      setToastMessage(`Preparing a server-verified ${aiDifficulty} AI skirmish…`)
+      socketClientRef.current.emit('game:ai_start', {
+        difficulty: aiDifficulty,
+        deckConfig: deckForMatch,
+        enemyName: enemyName ?? 'Arena Bot',
+      })
+      return
+    }
+
     setPreferredMode(mode)
     setBattleKind(mode === 'duel' ? 'local' : 'ai')
     pendingServerBattleKindRef.current = null
     setBattleSessionActive(true)
-    setServerBattleActive(false)
+    setServerMatch({ phase: 'idle', matchId: null, revision: 0, kind: null, outcome: null })
     setBattleSummaryVisible(false)
     setCinemaSequence(null)
     cinemaScopeRef.current = 'generic'
@@ -3349,6 +3440,9 @@ function AppShell() {
     setDamagedSlots(new Set())
     transitionToScreen('battle', true)
     setGame(createGame(mode, deckForMatch, enemyName, aiDifficulty))
+    if (mode === 'ai') {
+      setToastMessage('Live services are offline. This AI battle is practice-only and grants no rewards.')
+    }
     void sendAnalytics(
       'match_start',
       {
@@ -3776,6 +3870,11 @@ function AppShell() {
   }
 
   function handleStartQueue() {
+    if (serverMatch.phase === 'active' || serverMatch.phase === 'reconnecting' || serverMatch.phase === 'leaving') {
+      setToastMessage('A live match is already in progress. Resume or abandon it before queueing again.')
+      transitionToScreen('home')
+      return
+    }
     if (!deckReady) {
       setToastMessage('Finish your deck first so matchmaking can start.')
       transitionToScreen('collection')
@@ -3811,12 +3910,7 @@ function AppShell() {
       'queue',
     )
 
-    socketClientRef.current.emit('queue:join', {
-      name: 'Rune Captain',
-      rank: `${rankLabel} Division`,
-      rating: seasonRating,
-      deckConfig,
-    })
+    socketClientRef.current.emit('queue:join')
   }
 
   function handleCancelQueue() {
@@ -3883,9 +3977,28 @@ function AppShell() {
   }
 
   function emitAction(action: Record<string, unknown>) {
-    if (serverBattleActive && socketClientRef.current?.connected) {
-      socketClientRef.current.emit('game:action', { action })
+    const current = serverMatchRef.current
+    const socket = socketClientRef.current
+    if ((current.phase !== 'active' && current.phase !== 'leaving') || !socket?.connected || actionInFlightRef.current) {
+      return false
     }
+    actionInFlightRef.current = true
+    actionSequenceRef.current += 1
+    const actionId = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : `${current.matchId}-${actionSequenceRef.current}-${Date.now()}`
+    socket.emit('game:action', {
+      matchId: current.matchId,
+      actionId,
+      expectedRevision: current.revision,
+      action,
+    }, (response?: { ok?: boolean; error?: string; duplicate?: boolean }) => {
+      if (!response?.ok) {
+        actionInFlightRef.current = false
+        if (response?.error) setToastMessage(response.error)
+      }
+    })
+    return true
   }
 
   function handlePlayCard(index: number, laneIndex?: number) {
@@ -3902,7 +4015,7 @@ function AppShell() {
     pulseFeedback(12, hapticsEnabled)
 
     if (serverBattleActive) {
-      emitAction({ type: 'playCard', handIndex: index, laneIndex })
+      emitAction({ type: 'playCard', handIndex: index, cardInstanceId: card.instanceId, laneIndex })
       return
     }
 

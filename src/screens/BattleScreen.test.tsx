@@ -338,7 +338,7 @@ describe('BattleScreen mobile layout', () => {
     const dialog = screen.getByRole('dialog', { name: /battle summary/i })
     expect(dialog).toBeTruthy()
     expect(dialog.getAttribute('data-scene-swipe-opt-out')).toBe('true')
-    expect(screen.getByText(/\+30 base shards/i)).toBeTruthy()
+    expect(screen.getByText(/practice match/i)).toBeTruthy()
     expect(screen.getByRole('button', { name: /play again/i })).toBeTruthy()
     expect(screen.getByRole('button', { name: /leave to lobby/i })).toBeTruthy()
     expect(screen.queryByText(/victory screen/i)).toBeNull()

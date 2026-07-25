@@ -68,7 +68,6 @@ export function BattleScreen() {
   const {
     activeScreen,
     backendOnline,
-    loggedIn,
     soundEnabled,
     hapticsEnabled,
     cinemaSequence,
@@ -76,7 +75,7 @@ export function BattleScreen() {
     dismissBattleSummary,
   } = useAppShell()
   const {
-    game, activePlayer, isMyTurn, isRankedBattle, battleKind,
+    game, activePlayer, isMyTurn, isRankedBattle, battleKind, serverMatch,
     enemyTurnActive, enemyTurnLabel, opponentDisconnected, disconnectGraceMs,
     handleBurst, handleEndTurn, handleLeaveBattle,
     handleAttackFrom, handleAttackTarget, handleSelectAttacker, selectedAttacker, setSelectedAttacker,
@@ -95,28 +94,37 @@ export function BattleScreen() {
       : battleKind === 'local'
         ? 'Pass and play'
         : 'AI skirmish'
-  const resultTone = game.winner === 'player' ? 'victory' : game.winner === 'enemy' ? 'defeat' : 'draw'
-  const showBattleSummary = isBattle && Boolean(game.winner) && !enemyTurnActive
-    && ((battleSummaryVisible ?? false) || (game.winner !== 'player' && !cinemaSequence))
-  const battleSummaryTitle = game.winner === 'player'
+  const authoritativeResult = serverMatch.phase === 'terminal' ? serverMatch.outcome.result : null
+  const displayedWinner = authoritativeResult === 'win'
+    ? 'player'
+    : authoritativeResult === 'loss'
+      ? 'enemy'
+      : authoritativeResult === 'draw'
+        ? 'draw'
+        : game.winner
+  const resultTone = displayedWinner === 'player' ? 'victory' : displayedWinner === 'enemy' ? 'defeat' : 'draw'
+  const showBattleSummary = isBattle && Boolean(displayedWinner) && !enemyTurnActive
+    && ((battleSummaryVisible ?? false) || (displayedWinner !== 'player' && !cinemaSequence))
+  const battleSummaryTitle = displayedWinner === 'player'
     ? 'Victory secured'
-    : game.winner === 'enemy'
+    : displayedWinner === 'enemy'
       ? 'Defeat recorded'
       : 'Battle drawn'
-  const battleSummaryNote = game.winner === 'player'
+  const battleSummaryNote = displayedWinner === 'player'
     ? 'Rewards are tallied and the arena is ready when you are.'
-    : game.winner === 'enemy'
+    : displayedWinner === 'enemy'
       ? 'Regroup, adjust your line, and jump straight back into the arena.'
       : 'A close duel. Refine the list and queue again.'
-  const battleSummaryBadge = isRankedBattle
-    ? (game.winner === 'player' ? `+${ECONOMY_REWARDS.winRating} Rating` : game.winner === 'enemy' ? `-${ECONOMY_REWARDS.lossRating} Rating` : 'Even Match')
+  const settlement = serverMatch.phase === 'terminal' ? serverMatch.outcome : null
+  const battleSummaryBadge = settlement
+    ? settlement.ratingDelta !== 0
+      ? `${settlement.ratingDelta > 0 ? '+' : ''}${settlement.ratingDelta} Rating · +${settlement.shardsEarned} Shards`
+      : `+${settlement.shardsEarned} Shards`
+    : isRankedBattle
+    ? (displayedWinner === 'player' ? `+${ECONOMY_REWARDS.winRating} Rating` : displayedWinner === 'enemy' ? `-${ECONOMY_REWARDS.lossRating} Rating` : 'Even Match')
     : battleKind === 'local'
       ? 'Casual Duel'
-      : game.winner === 'player'
-        ? `+${ECONOMY_REWARDS.winShards} Base Shards`
-        : game.winner === 'enemy' && loggedIn
-          ? `+${ECONOMY_REWARDS.lossShards} Shards`
-          : 'Practice Match'
+      : 'Practice Match'
   const battleCenterLabel = selectedAttacker === null
     ? (isMyTurn ? 'Deploy or strike' : 'Hold formation')
     : defenderHasGuard
