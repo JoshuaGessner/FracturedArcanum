@@ -586,7 +586,8 @@ describe('schema migration compatibility', () => {
       WHERE id = ?
     `).run(accountId)
 
-    const expired = db.expireLegacyMigrationAccounts({ metadata: { source: 'vitest' } })
+    // `force` opts in to the destructive path, which is otherwise disabled.
+    const expired = db.expireLegacyMigrationAccounts({ force: true, metadata: { source: 'vitest' } })
     const account = db.default.prepare(`SELECT account_status, deleted_at FROM accounts WHERE id = ?`).get(accountId)
 
     expect(expired.deleted).toBeGreaterThanOrEqual(1)
@@ -1295,5 +1296,252 @@ describe('card border cosmetics', () => {
     expect(r1.ok).toBe(false)
     const r2 = db.selectCardBorder(id, 'bronze')
     expect(r2.ok).toBe(false)
+  })
+})
+
+describe('account lifecycle safety', () => {
+  /** Backdate an account so age-gated sweepers treat it as stale. */
+  function ageAccount(accountId, offset) {
+    db.default.prepare(`UPDATE accounts SET created_at = datetime('now', ?) WHERE id = ?`)
+      .run(offset, accountId)
+  }
+
+  function statusOf(accountId) {
+    return db.default.prepare('SELECT account_status FROM accounts WHERE id = ?')
+      .get(accountId)?.account_status ?? null
+  }
+
+  it('does not expire legacy accounts unless an operator opts in', () => {
+    const id = makeAccount('legacy_protected')
+    db.default.prepare(`
+      UPDATE accounts
+      SET legacy_migration_deadline_at = datetime('now', '-1 day'),
+          legacy_migration_completed_at = NULL
+      WHERE id = ?
+    `).run(id)
+
+    const skipped = db.expireLegacyMigrationAccounts()
+    expect(skipped.deleted).toBe(0)
+    expect(skipped.skipped).toBe('disabled')
+    expect(statusOf(id)).toBe('active')
+
+    // The destructive path still works when an operator explicitly forces it.
+    const forced = db.expireLegacyMigrationAccounts({ force: true })
+    expect(forced.deleted).toBeGreaterThanOrEqual(1)
+    expect(statusOf(id)).toBe('deleted')
+  })
+
+  it('releases an abandoned signup username instead of squatting it forever', () => {
+    const id = makeAccount('abandoned_signup')
+    db.markAccountPendingPasskeySignup(id)
+    // Past the 30-minute sweep TTL, not just the 5-minute ceremony window.
+    ageAccount(id, '-40 minutes')
+
+    const reaped = db.reapAbandonedSignups()
+    expect(reaped.released).toBeGreaterThanOrEqual(1)
+    expect(reaped.usernames).toContain('abandoned_signup')
+    expect(statusOf(id)).toBeNull()
+
+    expect(db.createAccount('abandoned_signup', 'password12345', 'abandoned_signup', '', '', '').ok).toBe(true)
+  })
+
+  it('keeps an in-flight signup ceremony reserved', () => {
+    const id = makeAccount('inflight_signup')
+    db.markAccountPendingPasskeySignup(id)
+
+    expect(db.reapAbandonedSignups().released).toBe(0)
+    expect(statusOf(id)).toBe('pending_passkey')
+    // A fresh reservation still blocks a same-username retry.
+    expect(db.createAccount('inflight_signup', 'password12345', 'x', '', '', '').ok).toBe(false)
+  })
+
+  it('lets a player reclaim their own username after a dead ceremony', () => {
+    const id = makeAccount('retry_signup')
+    db.markAccountPendingPasskeySignup(id)
+    ageAccount(id, '-10 minutes')
+
+    const retry = db.createAccount('retry_signup', 'password12345', 'retry_signup', '', '', '')
+    expect(retry.ok, retry.error).toBe(true)
+    expect(retry.accountId).not.toBe(id)
+  })
+
+  it('does not let abandoned signups consume the per-device account quota', () => {
+    const fingerprint = 'device-quota-fp'
+    for (let attempt = 0; attempt < 6; attempt += 1) {
+      const created = db.createAccount(`quota_pending_${attempt}`, 'password12345', 'q', fingerprint, '', '')
+      expect(created.ok, created.error).toBe(true)
+      db.markAccountPendingPasskeySignup(created.accountId)
+    }
+
+    const real = db.createAccount('quota_real', 'password12345', 'q', fingerprint, '', '')
+    expect(real.ok, real.error).toBe(true)
+  })
+
+  it('restores a swept account with its collection and rating intact', () => {
+    const id = makeAccount('restore_me')
+    db.default.prepare(`
+      UPDATE player_profiles SET shards = 4200, season_rating = 1480, wins = 37, losses = 12
+      WHERE account_id = ?
+    `).run(id)
+    db.default.prepare(`
+      UPDATE accounts
+      SET legacy_migration_deadline_at = datetime('now', '-1 day'), legacy_migration_completed_at = NULL
+      WHERE id = ?
+    `).run(id)
+
+    db.expireLegacyMigrationAccounts({ force: true })
+    expect(statusOf(id)).toBe('deleted')
+    expect(db.authenticateAccount('restore_me', 'password12345').ok).toBe(false)
+
+    const listed = db.listDeletedAccounts().find((row) => row.accountId === id)
+    expect(listed?.reason).toBe('legacy_migration_expired')
+    expect(listed?.shards).toBe(4200)
+
+    const restored = db.restoreAccount(id, { metadata: { source: 'vitest' } })
+    expect(restored.ok, restored.error).toBe(true)
+    expect(restored.nextStep).toBe('sign_in_with_legacy_password')
+    expect(statusOf(id)).toBe('active')
+
+    // Player value survived the whole round trip.
+    const profile = db.getProfile(id)
+    expect(profile.shards).toBe(4200)
+    expect(profile.season_rating).toBe(1480)
+    expect(profile.wins).toBe(37)
+    expect(db.authenticateAccount('restore_me', 'password12345').ok).toBe(true)
+  })
+
+  it('gives a restored account a fresh window so the sweeper cannot re-take it', () => {
+    const id = makeAccount('restore_deadline')
+    db.default.prepare(`
+      UPDATE accounts
+      SET legacy_migration_deadline_at = datetime('now', '-1 day'), legacy_migration_completed_at = NULL
+      WHERE id = ?
+    `).run(id)
+    db.expireLegacyMigrationAccounts({ force: true })
+    expect(db.restoreAccount(id).ok).toBe(true)
+
+    // Running the sweeper again immediately must not undo the restore.
+    db.expireLegacyMigrationAccounts({ force: true })
+    expect(statusOf(id)).toBe('active')
+  })
+
+  it('refuses to restore an account that was never deleted', () => {
+    const id = makeAccount('not_deleted')
+    const result = db.restoreAccount(id)
+    expect(result.ok).toBe(false)
+    expect(result.status).toBe(400)
+  })
+})
+
+describe('owner and admin account management', () => {
+  let owner
+  let admin
+  let secondAdmin
+  let player
+
+  beforeAll(() => {
+    admin = makeAccount('mgmt_admin')
+    secondAdmin = makeAccount('mgmt_admin2')
+    player = makeAccount('mgmt_player')
+    // The suite shares one database and only one account may hold the owner
+    // role, so adopt whichever account already claimed it.
+    owner = db.default.prepare(`SELECT id FROM accounts WHERE role = 'owner'`).get()?.id
+    if (!owner) {
+      owner = makeAccount('mgmt_owner')
+      expect(db.assignInitialOwner(owner).ok).toBe(true)
+    }
+    expect(db.setAccountRole(owner, admin, 'admin').ok).toBe(true)
+    expect(db.setAccountRole(owner, secondAdmin, 'admin').ok).toBe(true)
+  })
+
+  it('lets an admin reset a user but never an admin, the owner, or themselves', () => {
+    expect(db.adminResetAccountCredentials(admin, player).ok).toBe(true)
+    expect(db.adminResetAccountCredentials(admin, secondAdmin).status).toBe(403)
+    expect(db.adminResetAccountCredentials(admin, owner).status).toBe(403)
+    expect(db.adminResetAccountCredentials(admin, admin).status).toBe(400)
+    // A non-privileged account cannot use these paths at all.
+    expect(db.adminResetAccountCredentials(player, admin).status).toBe(403)
+  })
+
+  it('reserves account deletion and restore for the owner', () => {
+    const victim = makeAccount('mgmt_deletable')
+    expect(db.adminDeleteAccount(admin, victim).status).toBe(403)
+
+    const deleted = db.adminDeleteAccount(owner, victim)
+    expect(deleted.ok, deleted.error).toBe(true)
+    expect(db.authenticateAccount('mgmt_deletable', 'password12345').ok).toBe(false)
+
+    expect(db.adminRestoreAccount(admin, victim).status).toBe(403)
+    const restored = db.adminRestoreAccount(owner, victim)
+    expect(restored.ok, restored.error).toBe(true)
+    expect(db.authenticateAccount('mgmt_deletable', 'password12345').ok).toBe(true)
+  })
+
+  it('resets credentials to a single-use grant the player redeems themselves', () => {
+    const target = makeAccount('mgmt_reset')
+    addPasskey(target, 'cred-mgmt-reset')
+    const session = db.createSession(target, '', '', 'passkey')
+
+    const reset = db.adminResetAccountCredentials(owner, target)
+    expect(reset.ok, reset.error).toBe(true)
+    expect(reset.grantCode).toMatch(/^FAR-/)
+    // The reset must actually cut off the old device and session.
+    expect(db.listAccountPasskeys(target)).toHaveLength(0)
+    expect(db.validateSession(session.token)).toBeNull()
+
+    const found = db.findAccountRecoveryGrant(reset.grantCode)
+    expect(found?.account.id).toBe(target)
+
+    const completed = db.completeAccountRecoveryWithGrant(target, found.grantId, {
+      id: 'cred-mgmt-new', publicKey: Buffer.from('pk-mgmt-new'), counter: 0, transports: ['internal'],
+    })
+    expect(completed.ok, completed.error).toBe(true)
+    expect(db.listAccountPasskeys(target)).toHaveLength(1)
+
+    // Single use: the same code cannot be replayed.
+    expect(db.findAccountRecoveryGrant(reset.grantCode)).toBeNull()
+  })
+
+  it('suspends an account, cutting sessions and blocking play until lifted', () => {
+    const target = makeAccount('mgmt_suspend')
+    const session = db.createSession(target, '', '', 'password')
+
+    const suspended = db.adminSuspendAccount(owner, target, { hours: 48, reason: 'cheating' })
+    expect(suspended.ok, suspended.error).toBe(true)
+    expect(db.validateSession(session.token)).toBeNull()
+    expect(db.getAccountReadiness(target).ready).toBe(false)
+    expect(db.getAdminAccountDetail(target).suspended).toBe(true)
+
+    expect(db.adminUnsuspendAccount(owner, target).ok).toBe(true)
+    expect(db.getAdminAccountDetail(target).suspended).toBe(false)
+  })
+
+  it('never exposes credential material through the admin detail view', () => {
+    const target = makeAccount('mgmt_privacy')
+    addPasskey(target, 'cred-mgmt-privacy')
+    const reset = db.adminResetAccountCredentials(owner, target)
+
+    const detail = db.getAdminAccountDetail(target)
+    const serialized = JSON.stringify(detail)
+    expect(serialized).not.toContain('password_hash')
+    expect(serialized).not.toContain('token_hash')
+    // The one-time grant code must never be readable back after issuance.
+    expect(serialized).not.toContain(reset.grantCode)
+    expect(detail.recoveryGrants[0].status).toBe('active')
+  })
+
+  it('writes an audit row for every privileged action', () => {
+    const target = makeAccount('mgmt_audited')
+    db.adminSuspendAccount(owner, target, { hours: 1 })
+    db.adminUnsuspendAccount(owner, target)
+
+    // Read the table directly: listAudit orders by a second-granularity
+    // timestamp, so rows written in the same second have no stable order.
+    const actions = db.default
+      .prepare('SELECT action FROM admin_audit WHERE target_account_id = ?')
+      .all(target)
+      .map((row) => row.action)
+    expect(actions).toContain('account_suspended')
+    expect(actions).toContain('account_unsuspended')
   })
 })

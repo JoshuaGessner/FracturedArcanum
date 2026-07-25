@@ -68,6 +68,14 @@ import {
   transferOwnership,
   assignInitialOwner,
   listAccounts,
+  listDeletedAccounts,
+  getAdminAccountDetail,
+  adminResetAccountCredentials,
+  adminIssueRecoveryGrant,
+  adminSuspendAccount,
+  adminUnsuspendAccount,
+  adminDeleteAccount,
+  adminRestoreAccount,
   listAudit,
   recordAudit,
   getAccountById,
@@ -79,6 +87,7 @@ import {
   acknowledgeAccountRecoveryCodes,
   listAccountRecoveryStatus,
   expireLegacyMigrationAccounts,
+  reapAbandonedSignups,
   markAccountPendingPasskeySignup,
   listAccountSessions,
   listAccountPasskeys,
@@ -91,6 +100,8 @@ import {
   createPasskeyDeviceLinkRegistrationOptions,
   createPasskeyReauthOptions,
   createPasskeyRecoveryOptions,
+  createPasskeyGrantRecoveryOptions,
+  verifyPasskeyGrantRecovery,
   createPasskeyRegistrationOptions,
   verifyPasskeyDeviceLinkRegistration,
   verifyPasskeyLogin,
@@ -283,6 +294,25 @@ function emitToAccount(accountId, event, payload) {
   return sent
 }
 
+/**
+ * Force every live socket for an account to disconnect. Revoking sessions in
+ * the DB only stops the next HTTP request — an already-open socket keeps
+ * working — so suspension and credential resets must also cut the socket.
+ */
+function disconnectAccountSockets(accountId, reason) {
+  const sockets = presence.get(accountId)
+  if (!sockets) return 0
+  let closed = 0
+  for (const socketId of [...sockets]) {
+    const socket = io.sockets.sockets.get(socketId)
+    if (!socket) continue
+    socket.emit('server:session_revoked', { reason })
+    socket.disconnect(true)
+    closed += 1
+  }
+  return closed
+}
+
 // ─── Friend challenges (unranked duels) ─────────────────────────────────────
 // In-memory state machine: pending → accepted → active → completed/declined/
 // expired. Challenges live for 60s; an interval reaper cleans stale ones.
@@ -330,14 +360,33 @@ function reapChallenges() {
 }
 setInterval(reapChallenges, 10 * 1000).unref?.()
 
+// Legacy expiry deletes real player accounts and stays off unless an operator
+// sets LEGACY_MIGRATION_EXPIRY=1; db.js enforces the same flag as a backstop.
 function runLegacyMigrationExpiration() {
   try {
-    expireLegacyMigrationAccounts({ metadata: { source: 'server_interval' } })
+    const result = expireLegacyMigrationAccounts({ metadata: { source: 'server_interval' } })
+    if (result.deleted > 0) {
+      console.warn(`Legacy migration expiry soft-deleted ${result.deleted} account(s).`)
+    }
   } catch (error) {
     console.warn('Legacy migration expiration failed:', error)
   }
 }
 setInterval(runLegacyMigrationExpiration, 60 * 60 * 1000).unref?.()
+
+// Frees usernames held by passkey signups that never finished their ceremony.
+function runAbandonedSignupReaper() {
+  try {
+    const result = reapAbandonedSignups({ metadata: { source: 'server_interval' } })
+    if (result.released > 0) {
+      console.log(`Released ${result.released} abandoned signup username(s).`)
+    }
+  } catch (error) {
+    console.warn('Abandoned signup reaper failed:', error)
+  }
+}
+runAbandonedSignupReaper()
+setInterval(runAbandonedSignupReaper, 5 * 60 * 1000).unref?.()
 
 function createDefaultAdminStore() {
   return {
@@ -1442,10 +1491,81 @@ app.post('/api/auth/recovery/verify', async (request, response) => {
       response.status(result.status ?? 400).json({ ok: false, error: result.error })
       return
     }
+    // Recovery consumes exactly one code. Silently reissuing the whole batch
+    // here would kill the sheet the player still has saved, so only mint a new
+    // batch when they have none left; otherwise report what remains and let
+    // them regenerate deliberately.
+    const remaining = listAccountRecoveryStatus(result.accountId)
+    const recoveryResult = remaining.activeCount < 1
+      ? generateAccountRecoveryCodes(result.accountId, {
+          ip,
+          userAgent: clientUserAgent(request),
+          metadata: { source: 'lost_access_recovery' },
+        })
+      : { ok: true, codes: [], recovery: remaining }
+    const session = createSession(result.accountId, ip, clientUserAgent(request), 'passkey')
+    const profile = getProfile(result.accountId)
+    response.json({
+      ok: true,
+      token: session.token,
+      expiresAt: session.expiresAt,
+      profile: sanitizeProfile(profile, result.username, result.accountId),
+      recoveryCodes: recoveryResult.ok ? recoveryResult.codes : [],
+      recovery: recoveryResult.ok ? recoveryResult.recovery : listAccountRecoveryStatus(result.accountId),
+      remainingRecoveryCodes: recoveryResult.recovery?.activeCount ?? 0,
+    })
+  } catch (error) {
+    console.warn('Account recovery verification failed:', error)
+    response.status(400).json({ ok: false, error: 'Account recovery could not be verified.' })
+  }
+})
+
+// ─── Assisted recovery (operator-issued grant code) ─────────────────────────
+// The last-resort path for a player who lost both their device and their
+// recovery codes. The code is issued from the owner console and relayed over a
+// support channel; it identifies its own account, so no username is needed.
+
+app.post('/api/auth/recovery/grant/options', async (request, response) => {
+  const ip = clientIp(request)
+  const rl = checkRateLimit(`grant-recovery:start:${hashIp(ip)}`, 8)
+  if (!rl.allowed) {
+    response.status(429).json({ ok: false, error: 'Too many recovery attempts. Try again later.' })
+    return
+  }
+
+  try {
+    const result = await createPasskeyGrantRecoveryOptions(String(request.body?.grantCode ?? ''), request)
+    if (!result.ok) {
+      response.status(result.status ?? 400).json({ ok: false, error: result.error })
+      return
+    }
+    response.json(result)
+  } catch (error) {
+    console.warn('Grant recovery options failed:', error)
+    response.status(400).json({ ok: false, error: 'Account recovery could not be started.' })
+  }
+})
+
+app.post('/api/auth/recovery/grant/verify', async (request, response) => {
+  const ip = clientIp(request)
+  const rl = checkRateLimit(`grant-recovery:verify:${hashIp(ip)}`, 8)
+  if (!rl.allowed) {
+    response.status(429).json({ ok: false, error: 'Too many recovery attempts. Try again later.' })
+    return
+  }
+
+  try {
+    const result = await verifyPasskeyGrantRecovery(request.body ?? {}, request)
+    if (!result.ok) {
+      response.status(result.status ?? 400).json({ ok: false, error: result.error })
+      return
+    }
+    // A grant is used precisely when the player has nothing left, so this is
+    // the one place a fresh recovery-code batch is always the right call.
     const recoveryResult = generateAccountRecoveryCodes(result.accountId, {
       ip,
       userAgent: clientUserAgent(request),
-      metadata: { source: 'lost_access_recovery' },
+      metadata: { source: 'assisted_grant_recovery' },
     })
     const session = createSession(result.accountId, ip, clientUserAgent(request), 'passkey')
     const profile = getProfile(result.accountId)
@@ -1458,7 +1578,7 @@ app.post('/api/auth/recovery/verify', async (request, response) => {
       recovery: recoveryResult.ok ? recoveryResult.recovery : listAccountRecoveryStatus(result.accountId),
     })
   } catch (error) {
-    console.warn('Account recovery verification failed:', error)
+    console.warn('Grant recovery verification failed:', error)
     response.status(400).json({ ok: false, error: 'Account recovery could not be verified.' })
   }
 })
@@ -2403,6 +2523,163 @@ app.post('/api/admin/owner/transfer', requireOwnerRole, requireRecentPasskeyAuth
 
   response.json(result)
 })
+
+// ─── Owner/admin account management ──────────────────────────────────────────
+// Destructive and credential-affecting actions all require recent passkey
+// reauth on the operator's own session, are rate limited, and write an
+// admin_audit row. No endpoint here ever returns a credential for an account:
+// the one-time grant code is a single-use token the player must redeem
+// themselves through a WebAuthn ceremony.
+
+app.get('/api/admin/users/:accountId', requireAdminRole, (request, response) => {
+  const detail = getAdminAccountDetail(String(request.params?.accountId ?? ''))
+  if (!detail) {
+    response.status(404).json({ ok: false, error: 'Account not found.' })
+    return
+  }
+  // Admins may inspect users; only the owner may inspect another admin.
+  if (detail.role !== 'user' && request.role !== 'owner') {
+    response.status(403).json({ ok: false, error: 'Only the owner can inspect privileged accounts.' })
+    return
+  }
+  response.json({ ok: true, account: detail })
+})
+
+app.get('/api/admin/users/deleted/list', requireAdminRole, (request, response) => {
+  response.json({
+    ok: true,
+    accounts: listDeletedAccounts({
+      limit: Number(request.query?.limit ?? 100),
+      reason: String(request.query?.reason ?? ''),
+    }),
+  })
+})
+
+app.post(
+  '/api/admin/users/:accountId/reset-credentials',
+  requireAdminRole,
+  requireRecentPasskeyAuth,
+  adminWriteLimiter,
+  (request, response) => {
+    const result = adminResetAccountCredentials(request.accountId, String(request.params?.accountId ?? ''), {
+      revokePasskeys: request.body?.revokePasskeys !== false,
+      note: request.body?.note,
+      ttlMs: Number(request.body?.ttlMs) || undefined,
+      ipHash: hashIp(clientIp(request)),
+    })
+    if (!result.ok) {
+      response.status(result.status ?? 400).json(result)
+      return
+    }
+    disconnectAccountSockets(String(request.params?.accountId ?? ''), 'credentials_reset')
+    response.json(result)
+  },
+)
+
+app.post(
+  '/api/admin/users/:accountId/recovery-grant',
+  requireAdminRole,
+  requireRecentPasskeyAuth,
+  adminWriteLimiter,
+  (request, response) => {
+    const result = adminIssueRecoveryGrant(request.accountId, String(request.params?.accountId ?? ''), {
+      note: request.body?.note,
+      ttlMs: Number(request.body?.ttlMs) || undefined,
+      ipHash: hashIp(clientIp(request)),
+    })
+    if (!result.ok) {
+      response.status(result.status ?? 400).json(result)
+      return
+    }
+    response.json(result)
+  },
+)
+
+app.post(
+  '/api/admin/users/:accountId/suspend',
+  requireAdminRole,
+  requireRecentPasskeyAuth,
+  adminWriteLimiter,
+  (request, response) => {
+    const targetAccountId = String(request.params?.accountId ?? '')
+    const result = adminSuspendAccount(request.accountId, targetAccountId, {
+      hours: request.body?.hours,
+      reason: request.body?.reason,
+      ipHash: hashIp(clientIp(request)),
+    })
+    if (!result.ok) {
+      response.status(result.status ?? 400).json(result)
+      return
+    }
+    disconnectAccountSockets(targetAccountId, 'account_suspended')
+    response.json(result)
+  },
+)
+
+app.post(
+  '/api/admin/users/:accountId/unsuspend',
+  requireAdminRole,
+  requireRecentPasskeyAuth,
+  adminWriteLimiter,
+  (request, response) => {
+    const result = adminUnsuspendAccount(request.accountId, String(request.params?.accountId ?? ''), {
+      ipHash: hashIp(clientIp(request)),
+    })
+    if (!result.ok) {
+      response.status(result.status ?? 400).json(result)
+      return
+    }
+    response.json(result)
+  },
+)
+
+app.post(
+  '/api/admin/users/:accountId/delete',
+  requireOwnerRole,
+  requireRecentPasskeyAuth,
+  adminWriteLimiter,
+  (request, response) => {
+    const targetAccountId = String(request.params?.accountId ?? '')
+    // Typed confirmation guards against a misclick on an irreversible-feeling
+    // action; the username is the thing the operator must have looked at.
+    const detail = getAdminAccountDetail(targetAccountId)
+    if (!detail) {
+      response.status(404).json({ ok: false, error: 'Account not found.' })
+      return
+    }
+    if (String(request.body?.confirmUsername ?? '').toLowerCase() !== detail.username.toLowerCase()) {
+      response.status(400).json({ ok: false, error: 'Type the exact username to confirm deletion.' })
+      return
+    }
+    const result = adminDeleteAccount(request.accountId, targetAccountId, {
+      reason: request.body?.reason,
+      ipHash: hashIp(clientIp(request)),
+    })
+    if (!result.ok) {
+      response.status(result.status ?? 400).json(result)
+      return
+    }
+    disconnectAccountSockets(targetAccountId, 'account_deleted')
+    response.json(result)
+  },
+)
+
+app.post(
+  '/api/admin/users/:accountId/restore',
+  requireOwnerRole,
+  requireRecentPasskeyAuth,
+  adminWriteLimiter,
+  (request, response) => {
+    const result = adminRestoreAccount(request.accountId, String(request.params?.accountId ?? ''), {
+      ipHash: hashIp(clientIp(request)),
+    })
+    if (!result.ok) {
+      response.status(result.status ?? 400).json(result)
+      return
+    }
+    response.json(result)
+  },
+)
 
 app.get('/api/admin/audit', requireAdminRole, (request, response) => {
   const limit = Number(request.query?.limit ?? 50)

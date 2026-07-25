@@ -8,6 +8,8 @@ import {
   completePasskeyDeviceLinkRegistration,
   consumeAuthChallenge,
   completeAccountRecoveryWithPasskey,
+  completeAccountRecoveryWithGrant,
+  findAccountRecoveryGrant,
   createAuthChallenge,
   findAccountRecoveryCode,
   findAccountForPasskeyIdentifier,
@@ -395,6 +397,95 @@ export async function verifyPasskeyRecovery(payload, request) {
     ip: request.ip,
     userAgent: request.get('user-agent'),
     metadata: { revokedOldPasskeys: true },
+  })
+  if (!completed.ok) return completed
+
+  return {
+    ok: true,
+    accountId: account.id,
+    username: account.username,
+    displayName: account.display_name || account.username,
+  }
+}
+
+/**
+ * Start assisted recovery from an operator-issued grant code. Unlike the
+ * recovery-code flow this needs no username: the grant identifies its own
+ * account, so a player who has forgotten everything can still get back in.
+ * The grant is only checked here, not consumed — see verifyPasskeyGrantRecovery.
+ */
+export async function createPasskeyGrantRecoveryOptions(grantCode, request) {
+  const grant = findAccountRecoveryGrant(grantCode)
+  if (!grant) {
+    return { ok: false, status: 400, error: 'That recovery code is invalid or has expired.' }
+  }
+
+  const account = grant.account
+  const context = webAuthnContext(request)
+  if (!context.ok) return context
+  const { origin, rpID } = context
+  const options = await generateRegistrationOptions({
+    rpName: RP_NAME,
+    rpID,
+    userID: Buffer.from(account.id),
+    userName: account.username,
+    userDisplayName: account.display_name || account.username,
+    attestationType: 'none',
+    excludeCredentials: credentialDescriptors(listAccountPasskeyCredentials(account.id)),
+    authenticatorSelection: {
+      residentKey: 'preferred',
+      userVerification: account.role === 'owner' || account.role === 'admin' ? 'required' : 'preferred',
+    },
+    timeout: 60_000,
+  })
+  const challenge = createAuthChallenge(account.id, 'passkey_grant_registration', options.challenge, {
+    origin,
+    rpID,
+    grantId: grant.grantId,
+  })
+  return {
+    ok: true,
+    options,
+    challengeId: challenge.id,
+    expiresAt: challenge.expiresAt,
+    username: account.username,
+  }
+}
+
+export async function verifyPasskeyGrantRecovery(payload, request) {
+  const challenge = consumeAuthChallenge(payload?.challengeId, 'passkey_grant_registration')
+  if (!challenge || !challenge.metadata?.grantId) {
+    return { ok: false, status: 400, error: 'Recovery challenge expired. Start again with your code.' }
+  }
+
+  const account = getAccountById(challenge.accountId)
+  if (!account || account.account_status !== 'active' || account.deleted_at) {
+    return { ok: false, status: 404, error: 'Active account not found.' }
+  }
+
+  const context = challenge.metadata?.origin && challenge.metadata?.rpID
+    ? { ok: true, ...challenge.metadata }
+    : webAuthnContext(request)
+  if (!context.ok) return context
+  const verification = await verifyRegistrationResponse({
+    response: payload.response,
+    expectedChallenge: challenge.challenge,
+    expectedOrigin: context.origin,
+    expectedRPID: context.rpID,
+    requireUserVerification: account.role === 'owner' || account.role === 'admin',
+  })
+
+  if (!verification.verified || !verification.registrationInfo) {
+    return { ok: false, status: 400, error: 'Replacement passkey could not be verified.' }
+  }
+
+  const { credential, credentialBackedUp, credentialDeviceType } = verification.registrationInfo
+  const completed = completeAccountRecoveryWithGrant(account.id, challenge.metadata.grantId, credential, {
+    name: payload?.name ?? 'Recovery passkey',
+    backedUp: credentialBackedUp,
+    deviceType: credentialDeviceType,
+    ip: request.ip,
+    userAgent: request.get('user-agent'),
   })
   if (!completed.ok) return completed
 

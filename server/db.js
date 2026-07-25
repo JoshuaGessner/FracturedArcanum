@@ -32,6 +32,17 @@ export const LEGACY_MIGRATION_WINDOW_DAYS = 30
 const RECOVERY_CODE_COUNT = 10
 const PASSKEY_DEVICE_LINK_TTL_MS = 10 * 60 * 1000
 
+// A passkey signup reserves its username before the WebAuthn ceremony runs, so
+// an abandoned ceremony would otherwise squat that username forever. Rows stay
+// claimable for this long, after which `reapAbandonedSignups` releases them.
+const PENDING_SIGNUP_TTL_MS = 30 * 60 * 1000
+
+// Deleting real player accounts on a timer is destructive and, from the
+// player's side, irreversible: `account_status = 'deleted'` closes every login,
+// recovery, and upgrade path while the username stays claimed. It runs only
+// when an operator opts in explicitly, and never implicitly at import time.
+const LEGACY_MIGRATION_EXPIRY_ENABLED = process.env.LEGACY_MIGRATION_EXPIRY === '1'
+
 export function getCurrentLegalVersions() {
   return {
     accountStandardVersion: CURRENT_ACCOUNT_STANDARD_VERSION,
@@ -416,6 +427,27 @@ db.exec(`
     revoked_at TEXT
   );
 
+  CREATE TABLE IF NOT EXISTS account_recovery_grants (
+    id                   TEXT PRIMARY KEY,
+    account_id           TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    token_hash           TEXT NOT NULL UNIQUE,
+    token_prefix         TEXT NOT NULL,
+    channel              TEXT NOT NULL DEFAULT 'manual',
+    purpose              TEXT NOT NULL DEFAULT 'account_recovery',
+    issued_by_account_id TEXT REFERENCES accounts(id) ON DELETE SET NULL,
+    delivery_hint        TEXT NOT NULL DEFAULT '',
+    note                 TEXT NOT NULL DEFAULT '',
+    created_at           TEXT NOT NULL DEFAULT (datetime('now')),
+    expires_at           TEXT NOT NULL,
+    consumed_at          TEXT,
+    revoked_at           TEXT
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_recovery_grants_account
+    ON account_recovery_grants(account_id, consumed_at, revoked_at, expires_at);
+  CREATE INDEX IF NOT EXISTS idx_recovery_grants_prefix
+    ON account_recovery_grants(token_prefix);
+
   CREATE INDEX IF NOT EXISTS idx_account_authenticators_account ON account_authenticators(account_id);
   CREATE INDEX IF NOT EXISTS idx_auth_challenges_account ON auth_challenges(account_id, purpose, expires_at);
   CREATE INDEX IF NOT EXISTS idx_passkey_device_links_account ON passkey_device_links(account_id, status, expires_at);
@@ -709,12 +741,19 @@ const _completeAccountStandards = db.prepare(`
   WHERE id = ?
 `)
 
+// Signup-cluster limits count real accounts only. A `pending_passkey` row is an
+// unfinished ceremony that `reapAbandonedSignups` will delete, so counting it
+// would let a cancelled Touch ID prompt burn a player's device quota for good.
+const NOT_ABANDONED_SIGNUP = `account_status <> 'pending_passkey'`
+
 const _countByFp = db.prepare(`
-  SELECT COUNT(*) as cnt FROM accounts WHERE device_fp = ? AND device_fp IS NOT NULL
+  SELECT COUNT(*) as cnt FROM accounts
+  WHERE device_fp = ? AND device_fp IS NOT NULL AND ${NOT_ABANDONED_SIGNUP}
 `)
 
 const _countByCreatedIp = db.prepare(`
-  SELECT COUNT(*) as cnt FROM accounts WHERE created_ip_hash = ? AND created_ip_hash IS NOT NULL
+  SELECT COUNT(*) as cnt FROM accounts
+  WHERE created_ip_hash = ? AND created_ip_hash IS NOT NULL AND ${NOT_ABANDONED_SIGNUP}
 `)
 
 const _countByCreatedIpPerDay = db.prepare(`
@@ -722,6 +761,7 @@ const _countByCreatedIpPerDay = db.prepare(`
   FROM accounts
   WHERE created_ip_hash = ?
     AND created_ip_hash IS NOT NULL
+    AND ${NOT_ABANDONED_SIGNUP}
     AND created_at >= datetime('now', '-1 day')
 `)
 
@@ -732,6 +772,7 @@ const _countByCreatedIpAndAgentPerWeek = db.prepare(`
     AND created_ua_hash = ?
     AND created_ip_hash IS NOT NULL
     AND created_ua_hash IS NOT NULL
+    AND ${NOT_ABANDONED_SIGNUP}
     AND created_at >= datetime('now', '-7 day')
 `)
 
@@ -869,6 +910,218 @@ export function generateAccountRecoveryCodes(accountId, details = {}) {
   tx()
 
   return { ok: true, codes, batchId, recovery: recoveryStatusForAccount(accountId) }
+}
+
+// ─── Assisted recovery grants ────────────────────────────────────────────────
+// A grant is a single-use, short-lived credential that lets its holder attach a
+// new passkey to one account. It exists so a player who lost both their device
+// and their recovery codes has a route back in that does not require an
+// operator to ever see or set a working credential.
+//
+// `channel` records how the grant reached the player. Today the only channel is
+// 'manual' (an operator relays the code over a support channel). Adding email
+// later means issuing with channel='email' and a delivery_hint, then sending the
+// code from the transport layer — no schema or redemption change.
+
+const RECOVERY_GRANT_TTL_MS = 60 * 60 * 1000
+const RECOVERY_GRANT_CHANNELS = new Set(['manual', 'email'])
+
+const _insertRecoveryGrant = db.prepare(`
+  INSERT INTO account_recovery_grants (
+    id, account_id, token_hash, token_prefix, channel, purpose,
+    issued_by_account_id, delivery_hint, note, expires_at
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+`)
+const _revokeRecoveryGrantsByAccount = db.prepare(`
+  UPDATE account_recovery_grants
+  SET revoked_at = datetime('now')
+  WHERE account_id = ? AND consumed_at IS NULL AND revoked_at IS NULL
+`)
+const _findRecoveryGrantsByPrefix = db.prepare(`
+  SELECT * FROM account_recovery_grants
+  WHERE token_prefix = ?
+    AND consumed_at IS NULL
+    AND revoked_at IS NULL
+    AND expires_at > datetime('now')
+`)
+const _consumeRecoveryGrant = db.prepare(`
+  UPDATE account_recovery_grants
+  SET consumed_at = datetime('now')
+  WHERE id = ? AND consumed_at IS NULL AND revoked_at IS NULL AND expires_at > datetime('now')
+`)
+const _listRecoveryGrantsByAccount = db.prepare(`
+  SELECT id, channel, purpose, issued_by_account_id, delivery_hint, note,
+         created_at, expires_at, consumed_at, revoked_at
+  FROM account_recovery_grants
+  WHERE account_id = ?
+  ORDER BY created_at DESC
+  LIMIT 20
+`)
+
+/** Grant codes are their own identifier, so they carry more entropy than the
+ *  10 user-managed recovery codes: 20 chars from a 32-symbol alphabet. */
+function generateRecoveryGrantCode() {
+  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+  let raw = ''
+  while (raw.length < 20) {
+    const byte = randomBytes(1)[0]
+    if (byte < alphabet.length * 7) raw += alphabet[byte % alphabet.length]
+  }
+  return `FAR-${raw.slice(0, 5)}-${raw.slice(5, 10)}-${raw.slice(10, 15)}-${raw.slice(15, 20)}`
+}
+
+function normalizeRecoveryGrantCode(code) {
+  return String(code ?? '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '')
+}
+
+/**
+ * Mint a recovery grant. The plaintext code is returned exactly once and is
+ * never stored, so it cannot be recovered from the database or a later read of
+ * this account — an operator who loses it must issue a new grant.
+ *
+ * Issuing revokes any earlier unconsumed grant so only one is ever live.
+ */
+export function issueAccountRecoveryGrant(accountId, options = {}) {
+  const account = _getById.get(accountId)
+  if (!account) return { ok: false, status: 404, error: 'Account not found.' }
+  if (account.deleted_at || account.account_status === 'deleted') {
+    return { ok: false, status: 400, error: 'Restore the account before issuing a recovery grant.' }
+  }
+
+  const channel = RECOVERY_GRANT_CHANNELS.has(String(options.channel)) ? String(options.channel) : 'manual'
+  const ttlMs = Number.isFinite(options.ttlMs) ? Math.min(24 * 60 * 60 * 1000, Math.max(60_000, Number(options.ttlMs))) : RECOVERY_GRANT_TTL_MS
+  const code = generateRecoveryGrantCode()
+  const normalized = normalizeRecoveryGrantCode(code)
+  const grantId = `rgrant-${randomBytes(12).toString('hex')}`
+  const expiresAt = new Date(Date.now() + ttlMs).toISOString()
+
+  const tx = db.transaction(() => {
+    _revokeRecoveryGrantsByAccount.run(accountId)
+    _insertRecoveryGrant.run(
+      grantId,
+      accountId,
+      hashPassword(normalized),
+      normalized.slice(0, 6),
+      channel,
+      'account_recovery',
+      options.issuedByAccountId ?? null,
+      String(options.deliveryHint ?? '').slice(0, 120),
+      String(options.note ?? '').slice(0, 200),
+      expiresAt,
+    )
+    recordSecurityEvent(accountId, 'recovery_grant_issued', {
+      ...options,
+      metadata: { ...(options.metadata ?? {}), grantId, channel, issuedBy: options.issuedByAccountId ?? null },
+    })
+  })
+  tx()
+
+  return { ok: true, grantId, code, channel, expiresAt, username: account.username }
+}
+
+/**
+ * Validate a grant code without consuming it, so an abandoned WebAuthn ceremony
+ * does not burn the player's only route back in. The grant is consumed later by
+ * `completeAccountRecoveryWithGrant`, once a replacement passkey actually
+ * verifies.
+ */
+export function findAccountRecoveryGrant(code) {
+  const normalized = normalizeRecoveryGrantCode(code)
+  if (normalized.length < 12) return null
+
+  // The prefix narrows the candidate set; the full code is still verified
+  // against the stored hash, so a guessed prefix alone reveals nothing.
+  const candidates = _findRecoveryGrantsByPrefix.all(normalized.slice(0, 6))
+  const grant = candidates.find((row) => verifyPassword(normalized, row.token_hash))
+  if (!grant) return null
+
+  const account = _getById.get(grant.account_id)
+  if (!account || account.deleted_at || account.account_status === 'deleted') return null
+
+  return { grantId: grant.id, channel: grant.channel, account }
+}
+
+/**
+ * Consume a grant and attach the replacement passkey it authorised. Mirrors
+ * `completeAccountRecoveryWithPasskey`: old passkeys and sessions are dropped,
+ * because a grant is issued precisely when the player lost their device.
+ */
+export function completeAccountRecoveryWithGrant(accountId, grantId, credential, details = {}) {
+  const account = _getById.get(accountId)
+  if (!account || account.deleted_at || account.account_status !== 'active') {
+    return { ok: false, status: 404, error: 'Active account not found.' }
+  }
+
+  const passkeyId = `authnr-${randomBytes(12).toString('hex')}`
+  const name = String(details.name ?? '').trim().slice(0, 48) || 'Recovery passkey'
+  const tx = db.transaction(() => {
+    if (_consumeRecoveryGrant.run(grantId).changes !== 1) throw new Error('grant-consumed')
+    _insertAuthenticator.run(
+      passkeyId,
+      accountId,
+      credential.id,
+      Buffer.from(credential.publicKey),
+      Number(credential.counter ?? 0),
+      JSON.stringify(credential.transports ?? []),
+      details.backedUp ? 1 : 0,
+      String(details.deviceType ?? ''),
+      name,
+    )
+    _deleteOtherAuthenticatorsByAccount.run(accountId, passkeyId)
+    _revokeSessionsByAccount.run(accountId)
+    db.prepare(`
+      UPDATE accounts
+      SET recovery_codes_acknowledged_at = NULL, last_security_event_at = datetime('now')
+      WHERE id = ?
+    `).run(accountId)
+    recordSecurityEvent(accountId, 'account_recovered_via_grant', {
+      ip: details.ip,
+      userAgent: details.userAgent,
+      metadata: { ...(details.metadata ?? {}), grantId, revokedOldPasskeys: true },
+    })
+  })
+
+  try {
+    tx()
+  } catch (error) {
+    if (error?.message === 'grant-consumed') {
+      return { ok: false, status: 409, error: 'This recovery code was already used.' }
+    }
+    if (String(error?.message ?? '').toLowerCase().includes('unique')) {
+      return { ok: false, status: 409, error: 'This passkey is already registered.' }
+    }
+    throw error
+  }
+
+  return { ok: true, passkey: listAccountPasskeys(accountId).find((item) => item.id === passkeyId) }
+}
+
+export function revokeAccountRecoveryGrants(accountId, details = {}) {
+  const revoked = _revokeRecoveryGrantsByAccount.run(accountId).changes
+  if (revoked > 0) recordSecurityEvent(accountId, 'recovery_grant_revoked', details)
+  return { ok: true, revoked }
+}
+
+/** Grant history for the owner console. Never exposes a code or its hash. */
+export function listAccountRecoveryGrants(accountId) {
+  const now = Date.now()
+  return _listRecoveryGrantsByAccount.all(accountId).map((row) => ({
+    grantId: row.id,
+    channel: row.channel,
+    purpose: row.purpose,
+    issuedByAccountId: row.issued_by_account_id,
+    deliveryHint: row.delivery_hint,
+    note: row.note,
+    createdAt: row.created_at,
+    expiresAt: row.expires_at,
+    consumedAt: row.consumed_at,
+    revokedAt: row.revoked_at,
+    status: row.consumed_at
+      ? 'consumed'
+      : row.revoked_at
+        ? 'revoked'
+        : Date.parse(row.expires_at) <= now ? 'expired' : 'active',
+  }))
 }
 
 export function acknowledgeAccountRecoveryCodes(accountId, details = {}) {
@@ -1352,7 +1605,13 @@ export function createAccount(username, password, displayName, deviceFp, ip, use
 
   const existing = _getByUsername.get(resolved.username)
   if (existing) {
-    return { ok: false, error: 'That username is already taken.' }
+    // A `pending_passkey` row whose auth challenge has already expired can no
+    // longer complete its ceremony, so it is a dead reservation rather than a
+    // real account. Release it so the player can retry their own username
+    // instead of being told it is taken by their own abandoned attempt.
+    if (!releaseDeadSignupReservation(existing)) {
+      return { ok: false, error: 'That username is already taken.' }
+    }
   }
 
   // Anti-sybil: limit accounts per device fingerprint
@@ -1627,7 +1886,101 @@ export function deleteAccount(accountId, password, details = {}) {
   return { ok: true }
 }
 
+/**
+ * Reverse a soft delete. Player data (profile, collection, rating, match log)
+ * is never purged by `deleteAccount` or the legacy sweeper, so restoring the
+ * account row brings the whole player back.
+ *
+ * Deletion revokes sessions and drops authenticators, so a restored account
+ * always lands in setup-required state and must re-establish a sign-in factor:
+ * a legacy password if the row still has one, otherwise an owner-issued
+ * recovery grant. The caller is told which, so support can say what happens next.
+ */
+export function restoreAccount(accountId, details = {}) {
+  const account = _getById.get(accountId)
+  if (!account) return { ok: false, status: 404, error: 'Account not found.' }
+  if (account.account_status !== 'deleted' && !account.deleted_at) {
+    return { ok: false, status: 400, error: 'Account is not deleted.' }
+  }
+
+  // A restored account would be re-expired by the very sweeper that removed it
+  // unless its migration window restarts from now.
+  const tx = db.transaction(() => {
+    db.prepare(`
+      UPDATE accounts
+      SET account_status = 'active',
+          deleted_at = NULL,
+          account_setup_required = 1,
+          locked_until = NULL,
+          failed_login_count = 0,
+          legacy_migration_started_at = datetime('now'),
+          legacy_migration_deadline_at = datetime('now', '+${LEGACY_MIGRATION_WINDOW_DAYS} days'),
+          last_security_event_at = datetime('now')
+      WHERE id = ?
+    `).run(accountId)
+    recordSecurityEvent(accountId, 'account_restored', details)
+  })
+  tx()
+
+  const passkeyCount = getCount(_countAuthenticatorsByAccount.get(accountId))
+  const restored = _getById.get(accountId)
+  return {
+    ok: true,
+    accountId,
+    username: restored.username,
+    passkeyCount,
+    // A legacy row keeps a usable scrypt hash; a passkey-only account's stored
+    // hash is the random filler written at signup and can never be entered.
+    hasLegacyPassword: Number(restored.account_standard_version ?? 0) === 0 && passkeyCount === 0,
+    nextStep: passkeyCount > 0
+      ? 'sign_in_with_passkey'
+      : Number(restored.account_standard_version ?? 0) === 0
+        ? 'sign_in_with_legacy_password'
+        : 'needs_recovery_grant',
+  }
+}
+
+/**
+ * Deleted accounts with the player value still attached, newest first. Used by
+ * the restore CLI and the owner console to triage who lost what.
+ */
+export function listDeletedAccounts({ limit = 100, reason = '' } = {}) {
+  const safeLimit = Math.min(500, Math.max(1, Number(limit) || 100))
+  const rows = db.prepare(`
+    SELECT a.id, a.username, a.display_name, a.deleted_at, a.account_standard_version,
+           p.shards, p.season_rating, p.wins, p.losses,
+           (SELECT COUNT(*) FROM account_authenticators k WHERE k.account_id = a.id) AS passkey_count,
+           (SELECT s.event_type FROM security_events s
+             WHERE s.account_id = a.id AND s.event_type IN ('account_deleted', 'legacy_migration_expired')
+             ORDER BY s.created_at DESC LIMIT 1) AS delete_reason
+    FROM accounts a
+    LEFT JOIN player_profiles p ON p.account_id = a.id
+    WHERE a.account_status = 'deleted' OR a.deleted_at IS NOT NULL
+    ORDER BY a.deleted_at DESC
+    LIMIT ?
+  `).all(safeLimit)
+
+  return rows
+    .filter((row) => !reason || row.delete_reason === reason)
+    .map((row) => ({
+      accountId: row.id,
+      username: row.username,
+      displayName: row.display_name,
+      deletedAt: row.deleted_at,
+      // 'legacy_migration_expired' means the sweeper took it, not the player.
+      reason: row.delete_reason ?? 'unknown',
+      passkeyCount: row.passkey_count,
+      shards: row.shards ?? 0,
+      seasonRating: row.season_rating ?? 0,
+      wins: row.wins ?? 0,
+      losses: row.losses ?? 0,
+    }))
+}
+
 export function expireLegacyMigrationAccounts(details = {}) {
+  if (!LEGACY_MIGRATION_EXPIRY_ENABLED && details.force !== true) {
+    return { ok: true, deleted: 0, skipped: 'disabled' }
+  }
   const expired = db.prepare(`
     SELECT id
     FROM accounts
@@ -1662,13 +2015,68 @@ export function expireLegacyMigrationAccounts(details = {}) {
   return { ok: true, deleted: expired.length }
 }
 
+/**
+ * Delete a signup reservation that can provably never complete, freeing its
+ * username immediately. Returns true when the row was released.
+ * @param {{ id: string, account_status: string, created_at: string }} account
+ */
+function releaseDeadSignupReservation(account) {
+  if (!account || account.account_status !== 'pending_passkey') return false
+  if (getCount(_countAuthenticatorsByAccount.get(account.id)) > 0) return false
+
+  // The age test runs in SQL so `created_at` is read back in the same format
+  // SQLite wrote it. The WebAuthn challenge expires well before this cutoff,
+  // so anything older can no longer be verified and is safe to reclaim.
+  const cutoffSeconds = Math.floor(AUTH_CHALLENGE_TTL_MS / 1000)
+  return db.prepare(`
+    DELETE FROM accounts
+    WHERE id = ?
+      AND account_status = 'pending_passkey'
+      AND created_at <= datetime('now', ?)
+  `).run(account.id, `-${cutoffSeconds} seconds`).changes === 1
+}
+
+/**
+ * Release usernames held by passkey signups that never finished their WebAuthn
+ * ceremony. A `pending_passkey` row has no authenticator and no completed legal
+ * setup, so it represents an abandoned attempt rather than a player account —
+ * deleting it outright is safe and is what frees the username for a retry.
+ */
+export function reapAbandonedSignups(details = {}) {
+  const ttlMs = Number.isFinite(details.ttlMs) ? Number(details.ttlMs) : PENDING_SIGNUP_TTL_MS
+  const cutoffSeconds = Math.max(60, Math.floor(ttlMs / 1000))
+  const abandoned = db.prepare(`
+    SELECT id, username
+    FROM accounts
+    WHERE account_status = 'pending_passkey'
+      AND deleted_at IS NULL
+      AND created_at <= datetime('now', ?)
+      AND id NOT IN (SELECT DISTINCT account_id FROM account_authenticators)
+  `).all(`-${cutoffSeconds} seconds`)
+
+  if (abandoned.length === 0) return { ok: true, released: 0, usernames: [] }
+
+  const tx = db.transaction(() => {
+    for (const row of abandoned) {
+      // ON DELETE CASCADE clears challenges, authenticators, and the profile.
+      db.prepare(`DELETE FROM accounts WHERE id = ?`).run(row.id)
+    }
+  })
+  tx()
+
+  return { ok: true, released: abandoned.length, usernames: abandoned.map((row) => row.username) }
+}
+
 export function cleanupSessions() {
   _cleanExpiredSessions.run()
 }
 
 // Run cleanup periodically
-expireLegacyMigrationAccounts({ metadata: { source: 'startup', windowDays: LEGACY_MIGRATION_WINDOW_DAYS } })
-setInterval(cleanupSessions, 60 * 60 * 1000)
+// Intentionally not run at import time. Legacy expiry deletes real player
+// accounts, so it is driven only by the opt-in interval in server.js.
+// unref'd so importing db.js from a CLI script does not pin the event loop.
+// The server stays alive on its HTTP listener regardless.
+setInterval(cleanupSessions, 60 * 60 * 1000).unref?.()
 
 // ─── Player profile operations ───────────────────────────────────────────────
 
@@ -3403,13 +3811,21 @@ const _getRole = db.prepare(`SELECT role FROM accounts WHERE id = ?`)
 const _setRole = db.prepare(`UPDATE accounts SET role = ? WHERE id = ?`)
 const _findOwnerId = db.prepare(`SELECT id FROM accounts WHERE role = 'owner' LIMIT 1`)
 const _searchAccounts = db.prepare(`
-  SELECT id, username, display_name as displayName, role, created_at as createdAt, last_login as lastLogin
-  FROM accounts
-  WHERE (? = '' OR username LIKE ? OR display_name LIKE ? OR id = ?)
+  SELECT a.id, a.username, a.display_name as displayName, a.role,
+         a.created_at as createdAt, a.last_login as lastLogin,
+         a.account_status as accountStatus, a.deleted_at as deletedAt,
+         a.locked_until as lockedUntil, a.account_setup_required as setupRequired,
+         a.password_reset_required as passwordResetRequired,
+         a.legacy_migration_completed_at as legacyMigrationCompletedAt,
+         (SELECT COUNT(*) FROM account_authenticators k WHERE k.account_id = a.id) AS passkeyCount,
+         (SELECT COUNT(*) FROM account_recovery_codes c
+            WHERE c.account_id = a.id AND c.used_at IS NULL AND c.revoked_at IS NULL) AS recoveryCodeCount
+  FROM accounts a
+  WHERE (? = '' OR a.username LIKE ? OR a.display_name LIKE ? OR a.id = ?)
   ORDER BY
-    CASE role WHEN 'owner' THEN 0 WHEN 'admin' THEN 1 ELSE 2 END,
-    last_login DESC NULLS LAST,
-    username COLLATE NOCASE ASC
+    CASE a.role WHEN 'owner' THEN 0 WHEN 'admin' THEN 1 ELSE 2 END,
+    a.last_login DESC NULLS LAST,
+    a.username COLLATE NOCASE ASC
   LIMIT ? OFFSET ?
 `)
 
@@ -3595,14 +4011,290 @@ export function listAccounts({ search = '', limit = 25, offset = 0 } = {}) {
   const safeLimit = Math.min(100, Math.max(1, Number(limit) || 25))
   const safeOffset = Math.max(0, Number(offset) || 0)
   const rows = _searchAccounts.all(normalized, like, like, normalized, safeLimit, safeOffset)
-  return rows.map((row) => ({
-    accountId: row.id,
-    username: row.username,
-    displayName: row.displayName,
-    role: row.role,
-    createdAt: row.createdAt,
-    lastLogin: row.lastLogin,
-  }))
+  const now = Date.now()
+  return rows.map((row) => {
+    const lockedUntil = row.lockedUntil ? Date.parse(row.lockedUntil) : 0
+    const suspended = Number.isFinite(lockedUntil) && lockedUntil > now
+    return {
+      accountId: row.id,
+      username: row.username,
+      displayName: row.displayName,
+      role: row.role,
+      createdAt: row.createdAt,
+      lastLogin: row.lastLogin,
+      accountStatus: row.accountStatus,
+      deletedAt: row.deletedAt,
+      lockedUntil: row.lockedUntil,
+      suspended,
+      setupRequired: Number(row.setupRequired) === 1,
+      passwordResetRequired: Number(row.passwordResetRequired) === 1,
+      passkeyCount: row.passkeyCount,
+      recoveryCodeCount: row.recoveryCodeCount,
+      // A legacy account has not finished the passkey migration, so it can
+      // still sign in with its password.
+      legacy: !row.legacyMigrationCompletedAt && row.passkeyCount === 0,
+    }
+  })
+}
+
+// ─── Owner/admin account management ──────────────────────────────────────────
+// Every action here is mediated: an operator can reset, suspend, or restore an
+// account, but can never read or set a working credential for it. Credential
+// re-establishment always goes through a one-time grant the player redeems
+// themselves, so an operator cannot sign in as a player.
+
+/**
+ * Shared guard for privileged account actions. Admins may act on ordinary
+ * users; only the owner may act on an admin; nobody may act on the owner
+ * through this path (ownership transfer is its own flow).
+ */
+function authorizeAccountAction(actorAccountId, targetAccountId, { ownerOnly = false } = {}) {
+  if (!actorAccountId || !targetAccountId) {
+    return { ok: false, status: 400, error: 'Actor and target are required.' }
+  }
+  // Checked before the role rules so self-targeting reports why it was refused
+  // rather than falling through to a misleading privilege message.
+  if (actorAccountId === targetAccountId) {
+    return { ok: false, status: 400, error: 'Use your own account settings for this.' }
+  }
+  const actorRole = getAccountRole(actorAccountId)
+  if (actorRole !== 'owner' && actorRole !== 'admin') {
+    return { ok: false, status: 403, error: 'Admin access required.' }
+  }
+  if (ownerOnly && actorRole !== 'owner') {
+    return { ok: false, status: 403, error: 'Only the owner can perform this action.' }
+  }
+  const target = _getById.get(targetAccountId)
+  if (!target) return { ok: false, status: 404, error: 'Target account not found.' }
+  if (target.role === 'owner') {
+    return { ok: false, status: 403, error: 'The owner account cannot be managed here.' }
+  }
+  if (target.role === 'admin' && actorRole !== 'owner') {
+    return { ok: false, status: 403, error: 'Only the owner can manage an admin account.' }
+  }
+  return { ok: true, actorRole, target }
+}
+
+function writeAudit(actorAccountId, targetAccountId, action, metadata, ipHash) {
+  const auditId = `aud-${randomBytes(10).toString('hex')}`
+  _insertAudit.run(auditId, actorAccountId, targetAccountId, action, JSON.stringify(metadata ?? {}), ipHash ?? null)
+  return auditId
+}
+
+/**
+ * Force a credential reset. Revokes every session and, when `revokePasskeys` is
+ * set, every registered passkey, then mints a one-time grant the player uses to
+ * attach a new one. The returned code is the only copy — relay it to the player
+ * over your support channel and it is gone from memory.
+ */
+export function adminResetAccountCredentials(actorAccountId, targetAccountId, options = {}) {
+  const guard = authorizeAccountAction(actorAccountId, targetAccountId)
+  if (!guard.ok) return guard
+  const target = guard.target
+  if (target.deleted_at || target.account_status === 'deleted') {
+    return { ok: false, status: 400, error: 'Restore the account before resetting its credentials.' }
+  }
+
+  const revokePasskeys = options.revokePasskeys !== false
+  let grant = null
+  const tx = db.transaction(() => {
+    _revokeSessionsByAccount.run(targetAccountId)
+    if (revokePasskeys) _deleteAuthenticatorsByAccount.run(targetAccountId)
+    // A legacy password is a live credential; flag it so the account cannot
+    // simply be signed back into with a password the operator may have reset.
+    db.prepare(`
+      UPDATE accounts
+      SET password_reset_required = 1, account_setup_required = 1, last_security_event_at = datetime('now')
+      WHERE id = ?
+    `).run(targetAccountId)
+    recordSecurityEvent(targetAccountId, 'admin_credential_reset', {
+      metadata: { actorAccountId, revokePasskeys },
+    })
+  })
+  tx()
+
+  grant = issueAccountRecoveryGrant(targetAccountId, {
+    issuedByAccountId: actorAccountId,
+    channel: options.channel ?? 'manual',
+    ttlMs: options.ttlMs,
+    note: String(options.note ?? 'Admin credential reset'),
+    metadata: { actorAccountId },
+  })
+  if (!grant.ok) return grant
+
+  const auditId = writeAudit(actorAccountId, targetAccountId, 'credential_reset', {
+    revokePasskeys,
+    grantId: grant.grantId,
+    channel: grant.channel,
+  }, options.ipHash)
+
+  return {
+    ok: true,
+    auditId,
+    username: target.username,
+    // Surfaced exactly once; never stored in plaintext and never retrievable again.
+    grantCode: grant.code,
+    grantId: grant.grantId,
+    expiresAt: grant.expiresAt,
+    revokedPasskeys: revokePasskeys,
+  }
+}
+
+/** Issue a recovery grant without revoking anything — the gentler rescue. */
+export function adminIssueRecoveryGrant(actorAccountId, targetAccountId, options = {}) {
+  const guard = authorizeAccountAction(actorAccountId, targetAccountId)
+  if (!guard.ok) return guard
+
+  const grant = issueAccountRecoveryGrant(targetAccountId, {
+    issuedByAccountId: actorAccountId,
+    channel: options.channel ?? 'manual',
+    ttlMs: options.ttlMs,
+    note: String(options.note ?? 'Support-issued recovery grant'),
+    metadata: { actorAccountId },
+  })
+  if (!grant.ok) return grant
+
+  const auditId = writeAudit(actorAccountId, targetAccountId, 'recovery_grant_issued', {
+    grantId: grant.grantId,
+    channel: grant.channel,
+  }, options.ipHash)
+
+  return {
+    ok: true,
+    auditId,
+    username: guard.target.username,
+    grantCode: grant.code,
+    grantId: grant.grantId,
+    expiresAt: grant.expiresAt,
+  }
+}
+
+/** Suspend an account for a bounded window. Sessions are revoked immediately. */
+export function adminSuspendAccount(actorAccountId, targetAccountId, options = {}) {
+  const guard = authorizeAccountAction(actorAccountId, targetAccountId)
+  if (!guard.ok) return guard
+
+  const hours = Math.min(24 * 365, Math.max(1, Number(options.hours) || 24))
+  const reason = String(options.reason ?? '').slice(0, 200)
+  const tx = db.transaction(() => {
+    db.prepare(`
+      UPDATE accounts
+      SET locked_until = datetime('now', ?), last_security_event_at = datetime('now')
+      WHERE id = ?
+    `).run(`+${hours} hours`, targetAccountId)
+    _revokeSessionsByAccount.run(targetAccountId)
+    recordSecurityEvent(targetAccountId, 'admin_account_suspended', {
+      metadata: { actorAccountId, hours, reason },
+    })
+  })
+  tx()
+
+  const auditId = writeAudit(actorAccountId, targetAccountId, 'account_suspended', { hours, reason }, options.ipHash)
+  const refreshed = _getById.get(targetAccountId)
+  return { ok: true, auditId, username: refreshed.username, lockedUntil: refreshed.locked_until }
+}
+
+export function adminUnsuspendAccount(actorAccountId, targetAccountId, options = {}) {
+  const guard = authorizeAccountAction(actorAccountId, targetAccountId)
+  if (!guard.ok) return guard
+
+  db.prepare(`
+    UPDATE accounts
+    SET locked_until = NULL, failed_login_count = 0, last_security_event_at = datetime('now')
+    WHERE id = ?
+  `).run(targetAccountId)
+  recordSecurityEvent(targetAccountId, 'admin_account_unsuspended', { metadata: { actorAccountId } })
+
+  const auditId = writeAudit(actorAccountId, targetAccountId, 'account_unsuspended', {}, options.ipHash)
+  return { ok: true, auditId, username: guard.target.username }
+}
+
+/**
+ * Soft-delete an account on the player's behalf. Reversible via
+ * `adminRestoreAccount`; player data is retained untouched.
+ */
+export function adminDeleteAccount(actorAccountId, targetAccountId, options = {}) {
+  const guard = authorizeAccountAction(actorAccountId, targetAccountId, { ownerOnly: true })
+  if (!guard.ok) return guard
+  if (guard.target.deleted_at) {
+    return { ok: false, status: 400, error: 'Account is already deleted.' }
+  }
+
+  const reason = String(options.reason ?? '').slice(0, 200)
+  const tx = db.transaction(() => {
+    _markAccountDeleted.run(targetAccountId)
+    _revokeSessionsByAccount.run(targetAccountId)
+    _revokeRecoveryGrantsByAccount.run(targetAccountId)
+    _deleteAuthChallengesByAccount.run(targetAccountId)
+    db.prepare(`
+      UPDATE trades SET status = 'cancelled', updated_at = datetime('now')
+      WHERE status = 'pending' AND (from_account_id = ? OR to_account_id = ?)
+    `).run(targetAccountId, targetAccountId)
+    recordSecurityEvent(targetAccountId, 'admin_account_deleted', {
+      metadata: { actorAccountId, reason },
+    })
+  })
+  tx()
+
+  const auditId = writeAudit(actorAccountId, targetAccountId, 'account_deleted', { reason }, options.ipHash)
+  return { ok: true, auditId, username: guard.target.username }
+}
+
+export function adminRestoreAccount(actorAccountId, targetAccountId, options = {}) {
+  const guard = authorizeAccountAction(actorAccountId, targetAccountId, { ownerOnly: true })
+  if (!guard.ok) return guard
+
+  const restored = restoreAccount(targetAccountId, { metadata: { actorAccountId, source: 'admin_console' } })
+  if (!restored.ok) return restored
+
+  const auditId = writeAudit(actorAccountId, targetAccountId, 'account_restored', {
+    nextStep: restored.nextStep,
+  }, options.ipHash)
+  return { ...restored, auditId }
+}
+
+/**
+ * Full account detail for the owner console: status, auth factors, grant
+ * history, and recent security events. Contains no credential material.
+ */
+export function getAdminAccountDetail(accountId) {
+  const account = _getById.get(accountId)
+  if (!account) return null
+  const profile = _getProfile.get(accountId)
+  const lockedUntil = account.locked_until ? Date.parse(account.locked_until) : 0
+
+  return {
+    accountId: account.id,
+    username: account.username,
+    displayName: account.display_name,
+    role: account.role,
+    accountStatus: account.account_status,
+    createdAt: account.created_at,
+    lastLogin: account.last_login,
+    deletedAt: account.deleted_at,
+    lockedUntil: account.locked_until,
+    suspended: Number.isFinite(lockedUntil) && lockedUntil > Date.now(),
+    setupRequired: Number(account.account_setup_required) === 1,
+    passwordResetRequired: Number(account.password_reset_required) === 1,
+    legacyMigration: {
+      startedAt: account.legacy_migration_started_at,
+      deadlineAt: account.legacy_migration_deadline_at,
+      completedAt: account.legacy_migration_completed_at,
+    },
+    passkeys: listAccountPasskeys(accountId),
+    recovery: recoveryStatusForAccount(accountId),
+    recoveryGrants: listAccountRecoveryGrants(accountId),
+    securityEvents: db.prepare(`
+      SELECT event_type as eventType, created_at as createdAt, metadata
+      FROM security_events WHERE account_id = ? ORDER BY created_at DESC LIMIT 20
+    `).all(accountId),
+    profile: profile ? {
+      shards: profile.shards,
+      seasonRating: profile.season_rating,
+      wins: profile.wins,
+      losses: profile.losses,
+    } : null,
+  }
 }
 
 /**
