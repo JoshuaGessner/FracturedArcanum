@@ -3372,24 +3372,47 @@ function AppShell() {
     }
   }
 
-  /** Shared POST wrapper for the account-management endpoints. */
+  /**
+   * Shared POST wrapper for the account-management endpoints.
+   *
+   * Every one of them sits behind `requireRecentPasskeyAuth` (a 10-minute
+   * window), so a first attempt routinely comes back asking for confirmation.
+   * Running the reauth ceremony and retrying once keeps that a single passkey
+   * prompt instead of a dead-end error the operator cannot act on.
+   */
   async function postAdminAccountAction(
     accountId: string,
     action: string,
     body: Record<string, unknown> = {},
   ): Promise<{ ok: boolean; error?: string } & Record<string, unknown>> {
     if (!authToken) return { ok: false, error: 'Not signed in.' }
-    try {
+
+    const send = async () => {
       const response = await authFetch(
         `/api/admin/users/${encodeURIComponent(accountId)}/${action}`,
         authToken,
         { method: 'POST', body },
       )
-      const data = (await response.json()) as { ok: boolean; error?: string }
-      if (!response.ok || !data.ok) {
-        return { ok: false, error: data.error ?? 'That action could not be completed.' }
+      const data = (await response.json().catch(() => ({}))) as {
+        ok?: boolean; error?: string; passkeyReauthRequired?: boolean
       }
-      return data
+      return { response, data }
+    }
+
+    try {
+      let attempt = await send()
+
+      if (!attempt.response.ok && attempt.data.passkeyReauthRequired) {
+        if (!await ensureRecentPasskeyAuth()) {
+          return { ok: false, error: 'Passkey confirmation is required for this action.' }
+        }
+        attempt = await send()
+      }
+
+      if (!attempt.response.ok || attempt.data.ok !== true) {
+        return { ok: false, error: attempt.data.error ?? 'That action could not be completed.' }
+      }
+      return attempt.data as { ok: boolean } & Record<string, unknown>
     } catch {
       return { ok: false, error: 'Could not reach the server.' }
     }
