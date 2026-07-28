@@ -267,6 +267,7 @@ export function CollectionScreen() {
               key={card.id}
               style={{ '--rarity-color': RARITY_COLORS[card.rarity] } as React.CSSProperties}
             >
+              <span className="card-frame" aria-hidden="true" />
               <button
                 type="button"
                 className="builder-card-preview"

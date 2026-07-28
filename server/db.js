@@ -3444,12 +3444,15 @@ export function purchaseTheme(accountId, themeId) {
 // the deck builder, vault, and battlefield. Pricing is server-side so
 // the catalog cannot be tampered with from the client.
 
+// Mirrors CARD_BORDER_OFFERS in src/constants.ts — this copy is the authority
+// for cost, the client copy only for display. Ids are what `owned_card_borders`
+// stores, so they never change; names and descriptions may.
 const CARD_BORDER_CATALOG = [
-  { id: 'default', name: 'Standard Frame', cost: 0,   description: 'The default arcane bezel every player starts with.' },
-  { id: 'bronze',  name: 'Bronze Filigree', cost: 90, description: 'Warm bronze trim with hammered edges.' },
-  { id: 'frost',   name: 'Frost Shard',     cost: 180, description: 'Cool ice-shard etching with a soft inner glow.' },
-  { id: 'solar',   name: 'Solar Ember',     cost: 280, description: 'Living ember frame with a sunlit inner aura.' },
-  { id: 'void',    name: 'Voidweave',       cost: 420, description: 'Animated dark-matter weave with a violet halo.' },
+  { id: 'default', name: 'Standard Frame',  cost: 0,   description: 'The plain bezel, tinted by the card’s own rarity.' },
+  { id: 'bronze',  name: 'Bronze Filigree', cost: 90,  description: 'Hammered bronze bezel ringed with fine beadwork.' },
+  { id: 'frost',   name: 'Frost Etching',   cost: 180, description: 'Pale silver bezel scored with etched frost lines.' },
+  { id: 'solar',   name: 'Solar Ember',     cost: 280, description: 'Dark copper bezel with an ember that breathes across the card.' },
+  { id: 'void',    name: 'Voidweave',       cost: 420, description: 'Obsidian bezel swept by a travelling violet sheen.' },
 ]
 
 export function listCardBorders() {

@@ -61,12 +61,22 @@ export const THEME_OFFERS: Array<{ id: CosmeticTheme; name: string; cost: number
   { id: 'moon', name: 'Moonwell Glow', cost: 180, note: 'Cool luminous highlights and moonlight framing.' },
 ]
 
+/* Frames decorate the outer bezel with material and motion. They deliberately
+   avoid the rarity palette — the old Solar and Void frames were painted in the
+   exact hex values of --rarity-legendary and --rarity-epic, which let an
+   equipped frame make a common card read as a legendary one. Rarity is real
+   information here (copy limits, collection completion), so it keeps the gem
+   and a hairline the shop cannot reach. See "The two frame channels" in
+   App.css.
+
+   Ids are load-bearing — they are what `owned_card_borders` stores — so they
+   stay fixed even when the display name changes. */
 export const CARD_BORDER_OFFERS: CardBorderOffer[] = [
-  { id: 'default', name: 'Standard Frame', cost: 0,   description: 'The default arcane bezel every player starts with.' },
-  { id: 'bronze',  name: 'Bronze Filigree', cost: 90, description: 'Warm bronze trim with hammered edges.' },
-  { id: 'frost',   name: 'Frost Shard',     cost: 180, description: 'Cool ice-shard etching with a soft inner glow.' },
-  { id: 'solar',   name: 'Solar Ember',     cost: 280, description: 'Living ember frame with a sunlit inner aura.' },
-  { id: 'void',    name: 'Voidweave',       cost: 420, description: 'Animated dark-matter weave with a violet halo.' },
+  { id: 'default', name: 'Standard Frame',  cost: 0,   description: 'The plain bezel, tinted by the card’s own rarity.' },
+  { id: 'bronze',  name: 'Bronze Filigree', cost: 90,  description: 'Hammered bronze bezel ringed with fine beadwork.' },
+  { id: 'frost',   name: 'Frost Etching',   cost: 180, description: 'Pale silver bezel scored with etched frost lines.' },
+  { id: 'solar',   name: 'Solar Ember',     cost: 280, description: 'Dark copper bezel with an ember that breathes across the card.' },
+  { id: 'void',    name: 'Voidweave',       cost: 420, description: 'Obsidian bezel swept by a travelling violet sheen.' },
 ]
 
 export const ECONOMY_REWARDS = {

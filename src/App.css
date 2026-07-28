@@ -2928,12 +2928,52 @@ button:disabled {
   box-shadow: 0 0 16px rgba(251, 191, 36, 0.2);
 }
 
-.rarity-legendary::after {
+/* ─── The two frame channels ─────────────────────────────────────────
+   A card's frame carries two unrelated things, and they must never share a
+   pixel:
+
+     ::before  → RARITY.   System-owned, always drawn, not for sale.
+     ::after   → COSMETIC. Player-owned, purchased, decorative only.
+
+   Rarity is gameplay information — legendaries are capped at
+   MAX_LEGENDARY_COPIES while everything else allows MAX_COPIES, and collection
+   completion is tracked per rarity — so a frame bought in the shop must never
+   be able to make a common read as an epic. That is exactly what the old
+   single-ring design did: `border-solar` painted #f59e0b, the literal value of
+   --rarity-legendary, and `border-void` painted #a855f7, the literal value of
+   --rarity-epic.
+
+   The fix is a zone split. The cosmetic frame gets the outer bezel (the
+   `border`). Rarity keeps the gem plus a hairline just inside that bezel which
+   nothing in the shop can reach.
+
+   The hairline only appears once a cosmetic frame has actually taken the
+   bezel. On the default frame there is no competitor, so rarity keeps the
+   bezel itself and a second ring would just read as a thick smear. */
+
+.builder-card::before,
+.hand-card::before,
+.slot::before,
+.pack-reveal-card::before {
   content: '';
   position: absolute;
-  inset: -1px;
+  inset: 0;
   border-radius: inherit;
   pointer-events: none;
+  z-index: 3;
+}
+
+.builder-card:not(.border-default)::before,
+.hand-card:not(.border-default)::before {
+  border: 1px solid var(--rarity-color, var(--border));
+}
+
+/* The legendary wash rides the rarity layer, so an equipped frame dims it as
+   little as it dims the hairline: not at all. */
+.builder-card.rarity-legendary::before,
+.hand-card.rarity-legendary::before,
+.slot.rarity-legendary::before,
+.pack-reveal-card.rarity-legendary::before {
   background: linear-gradient(135deg, rgba(251, 191, 36, 0.15), transparent 60%);
 }
 
@@ -2964,6 +3004,10 @@ button:disabled {
   align-items: center;
   gap: 6px;
   margin-top: 2px;
+  /* Carries the rarity gem on collection cards — same reason .card-top sits
+     above .card-frame. */
+  position: relative;
+  z-index: 5;
 }
 
 /* ─── Effect Badges ─────────────────────────────────────────────── */
@@ -3026,6 +3070,47 @@ button:disabled {
   top: 6px;
   right: 6px;
   z-index: 2;
+}
+
+/* ─── Rarity gem on the battle surfaces ──────────────────────────────
+   Both of these are icon-only: the shapes carry the rarity, so the word is
+   redundant here and there is no room for it anyway. `iconOnly` puts the
+   label on aria-label/title instead. */
+
+.rarity-gem.icon-only {
+  gap: 0;
+  margin-bottom: 0;
+}
+
+/* Board units — mirrors .battle-slot-effect on the opposite corner. */
+.battle-slot-rarity {
+  position: absolute;
+  top: 5px;
+  left: 5px;
+  z-index: 2;
+}
+
+.battle-slot-rarity .rarity-gem-icon {
+  width: 13px;
+  height: 13px;
+  filter: drop-shadow(0 1px 2px rgba(6, 10, 22, 0.7));
+}
+
+/* Hand cards — inline beside the cost pill. `.card-top` is a space-between
+   flex row, so the auto margin is what keeps the gem tucked against the pill
+   instead of drifting right into the absolutely-placed effect badge. */
+.battle-hand-rarity {
+  margin-right: auto;
+}
+
+.battle-hand-rarity .rarity-gem-icon {
+  width: 13px;
+  height: 13px;
+  filter: drop-shadow(0 1px 2px rgba(6, 10, 22, 0.7));
+}
+
+.hand-card .card-top {
+  gap: 6px;
 }
 
 /* ─── Hand Cards ────────────────────────────────────────────────── */
@@ -3213,7 +3298,9 @@ button:disabled {
 
 .card-top {
   position: relative;
-  z-index: 1;
+  /* Above .card-frame (z-index 4). The gem lives in this row, and a cosmetic
+     finish must never tint the one signal it is forbidden from overriding. */
+  z-index: 5;
 }
 
 .card-stats {
@@ -8227,52 +8314,99 @@ button.icon-only {
   margin-right: 2px;
 }
 
-/* ─── Card border cosmetics ──────────────────────────────────────── */
-/*
-   Borders apply to .builder-card and .hand-card. They wrap a thin
-   outer ring + a subtle inner glow so cards stay legible. The default
-   border is a no-op (just a soft outline matching --border).
-*/
+/* ─── Card frame cosmetics ───────────────────────────────────────────
+   The cosmetic channel. Frames apply to .builder-card and .hand-card, take
+   over the outer bezel, and decorate with MATERIAL and MOTION rather than hue.
 
-.builder-card.border-default,
-.hand-card.border-default {
-  /* Default frame: keeps the existing rarity-tinted look, no extra ring. */
+   The constraint that makes this work: a frame may texture, ornament and
+   animate the bezel, but it may not lay down a static continuous ring in a
+   rarity hue. Rarity owns grey / blue / violet / gold as flat rings, and it
+   owns them exclusively. Frames get beading, etching, and moving light — a
+   different visual vocabulary, so the two channels stay separable at a glance
+   even though they sit millimetres apart.
+
+   The ladder is structural, not just chromatic: the two cheap frames are
+   static ornament, the two expensive ones are animated finishes. That is what
+   the price difference buys.
+
+   The decoration rides a real <span class="card-frame">, not ::after. Both
+   pseudos on a hand card are already spoken for — ::before is the rarity layer
+   above, and .hand-card.unplayable::after is the "Need N more mana" scrim. A
+   frame that quietly ate that scrim would be a worse bug than the one this
+   whole change exists to fix. */
+
+.card-frame {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 4;
 }
 
-.builder-card.border-bronze,
-.hand-card.border-bronze {
-  box-shadow:
-    0 0 0 1px #b07433 inset,
-    0 0 0 2px rgba(176, 116, 51, 0.45),
-    0 6px 16px rgba(176, 116, 51, 0.15);
+.border-default {
+  /* No-op. With no frame competing for it, rarity keeps the bezel. */
 }
 
-.builder-card.border-frost,
-.hand-card.border-frost {
-  box-shadow:
-    0 0 0 1px #7dd3fc inset,
-    0 0 0 2px rgba(125, 211, 252, 0.45),
-    0 6px 16px rgba(125, 211, 252, 0.18);
+/* Bronze Filigree — hammered bezel, fine beading inside it. */
+.border-bronze {
+  border-color: #8a6a45;
+  box-shadow: 0 6px 16px rgba(90, 68, 42, 0.22);
 }
 
-.builder-card.border-solar,
-.hand-card.border-solar {
-  box-shadow:
-    0 0 0 1px #f59e0b inset,
-    0 0 0 2px rgba(245, 158, 11, 0.5),
-    0 6px 18px rgba(245, 158, 11, 0.22);
+.border-bronze > .card-frame {
+  inset: 2px;
+  border: 1px dotted rgba(206, 160, 106, 0.5);
 }
 
-.builder-card.border-void,
-.hand-card.border-void {
-  box-shadow:
-    0 0 0 1px #a855f7 inset,
-    0 0 0 2px rgba(168, 85, 247, 0.55),
-    0 8px 22px rgba(168, 85, 247, 0.28);
+/* Frost Etching — pale silver bezel scored with etch marks. */
+.border-frost {
+  border-color: #b9cad8;
+  box-shadow: 0 6px 16px rgba(150, 180, 200, 0.18);
 }
 
-/* Border preview tile in vault catalog. */
+.border-frost > .card-frame {
+  inset: 2px;
+  border: 1px dashed rgba(226, 242, 252, 0.55);
+}
+
+/* Solar Ember — dark copper bezel, warm light breathing across the face.
+   The bezel itself is deliberately far from --rarity-legendary; the ember is
+   what you paid for, and it moves. */
+.border-solar {
+  border-color: #7c2d12;
+  box-shadow: 0 6px 18px rgba(124, 45, 18, 0.28);
+}
+
+.border-solar > .card-frame {
+  background: radial-gradient(120% 80% at 50% 108%, rgba(234, 88, 12, 0.42), transparent 62%);
+  animation: solarEmberBreath 3.6s ease-in-out infinite;
+}
+
+@keyframes solarEmberBreath {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+
+/* Voidweave — obsidian bezel. Violet exists only in a sweep that travels, so
+   it never sits still long enough to read as an epic ring. */
+.border-void {
+  border-color: #241a33;
+  box-shadow: 0 8px 22px rgba(24, 16, 38, 0.42);
+}
+
+.border-void > .card-frame {
+  background: linear-gradient(115deg, transparent 42%, rgba(196, 149, 255, 0.38) 50%, transparent 58%) 0 0 / 300% 100% no-repeat;
+  animation: voidweaveSheen 5s linear infinite;
+}
+
+@keyframes voidweaveSheen {
+  0% { background-position: 120% 0; }
+  100% { background-position: -120% 0; }
+}
+
+/* Frame preview tile in the vault catalog — same vocabulary at tile scale. */
 .border-preview {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -8281,6 +8415,8 @@ button.icon-only {
   border-radius: var(--radius-md);
   background: linear-gradient(135deg, rgba(124, 58, 237, 0.18), rgba(56, 189, 248, 0.12));
   margin-bottom: 8px;
+  overflow: hidden;
+  border: 2px solid transparent;
 }
 
 .border-preview-icon {
@@ -8290,11 +8426,35 @@ button.icon-only {
   opacity: 0.7;
 }
 
-.border-preview.border-default { box-shadow: 0 0 0 1px var(--border) inset; }
-.border-preview.border-bronze  { box-shadow: 0 0 0 2px #b07433 inset, 0 0 12px rgba(176, 116, 51, 0.4); }
-.border-preview.border-frost   { box-shadow: 0 0 0 2px #7dd3fc inset, 0 0 14px rgba(125, 211, 252, 0.4); }
-.border-preview.border-solar   { box-shadow: 0 0 0 2px #f59e0b inset, 0 0 16px rgba(245, 158, 11, 0.45); }
-.border-preview.border-void    { box-shadow: 0 0 0 2px #a855f7 inset, 0 0 18px rgba(168, 85, 247, 0.5); }
+.border-preview::after {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.border-preview.border-default { border-color: var(--border); }
+
+.border-preview.border-bronze { border-color: #8a6a45; }
+.border-preview.border-bronze::after { border: 1px dotted rgba(206, 160, 106, 0.5); }
+
+.border-preview.border-frost { border-color: #b9cad8; }
+.border-preview.border-frost::after { border: 1px dashed rgba(226, 242, 252, 0.55); }
+
+.border-preview.border-solar { border-color: #7c2d12; }
+.border-preview.border-solar::after {
+  inset: 0;
+  background: radial-gradient(120% 80% at 50% 108%, rgba(234, 88, 12, 0.42), transparent 62%);
+  animation: solarEmberBreath 3.6s ease-in-out infinite;
+}
+
+.border-preview.border-void { border-color: #241a33; }
+.border-preview.border-void::after {
+  inset: 0;
+  background: linear-gradient(115deg, transparent 42%, rgba(196, 149, 255, 0.38) 50%, transparent 58%) 0 0 / 300% 100% no-repeat;
+  animation: voidweaveSheen 5s linear infinite;
+}
 
 /* ─── Phase 3T — Pack Opening Ceremony Overlay ───────────────────── */
 
@@ -9161,6 +9321,21 @@ button.icon-only {
   /* Legendary card cosmetic glow. */
   .builder-card.rarity-legendary::before,
   .hand-card.rarity-legendary::before { animation: none !important; }
+
+  /* Animated cosmetic frames. The finish still reads — the ember sits at its
+     mid brightness and the sheen parks off to one side — it just stops
+     moving, so the frame keeps its identity without the motion. */
+  .border-solar > .card-frame,
+  .border-preview.border-solar::after {
+    animation: none !important;
+    opacity: 0.8;
+  }
+
+  .border-void > .card-frame,
+  .border-preview.border-void::after {
+    animation: none !important;
+    background-position: 30% 0 !important;
+  }
 
   /* Banner / challenge incoming pulse. */
   .challenge-banner { animation: none !important; }

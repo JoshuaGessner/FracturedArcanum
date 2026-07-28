@@ -7,7 +7,7 @@ import {
 import { cardArtPath, getHandFanTilt, handleCardArtError, pulseFeedback } from '../utils'
 import { ECONOMY_REWARDS, UI_ASSETS } from '../constants'
 import { playSound, startLoopingSound } from '../audio'
-import { EffectBadge, StatIcon } from '../components/AssetBadge'
+import { EffectBadge, RarityBadge, StatIcon } from '../components/AssetBadge'
 import { SummaryPopup } from '../components/SummaryPopup'
 import { useAppShell, useGame, useProfile } from '../contexts'
 import type { InspectedCard } from '../types'
@@ -522,10 +522,15 @@ export function BattleScreen() {
   const dragHandIndex = drag?.handIndex ?? null
   const dragHoverLane = drag?.hoverLane ?? null
 
+  // The gem is the only rarity signal a hand card carries that an equipped
+  // frame cannot touch, and until now the battle hand had none at all — rarity
+  // there was the border colour, which is exactly what the shop paints over.
   const renderHandCardFace = (card: CardInstance) => (
     <>
+      <span className="card-frame" aria-hidden="true" />
       <div className="card-top">
         <span className="cost-pill">{card.cost}</span>
+        <RarityBadge rarity={card.rarity} iconOnly className="battle-hand-rarity" />
         {card.effect && <EffectBadge effect={card.effect} compact iconOnly className="battle-hand-effect" />}
       </div>
       <div className="card-art-shell thumb">
@@ -764,6 +769,7 @@ export function BattleScreen() {
                         <span><StatIcon kind="health" />{unit.currentHealth}</span>
                       </span>
                     </div>
+                    <RarityBadge rarity={unit.rarity} iconOnly className="battle-slot-rarity" />
                     {unit.effect && <EffectBadge effect={unit.effect} compact iconOnly className="battle-slot-effect" />}
                   </button>
                 )
@@ -885,6 +891,7 @@ export function BattleScreen() {
                         <span><StatIcon kind="health" />{unit.currentHealth}</span>
                       </span>
                     </div>
+                    <RarityBadge rarity={unit.rarity} iconOnly className="battle-slot-rarity" />
                     {unit.effect && <EffectBadge effect={unit.effect} compact iconOnly className="battle-slot-effect" />}
                   </button>
                 )

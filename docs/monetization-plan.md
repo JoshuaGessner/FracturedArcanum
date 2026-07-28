@@ -111,6 +111,15 @@ Includes:
 - ❌ Hidden timers, misleading bundle values, or artificial urgency
 - ❌ Loot boxes with real-money purchase (Shard-purchased packs are fine — odds are transparent)
 - ❌ Any cosmetic that provides gameplay information advantage (e.g., card borders that reveal rarity)
+- ❌ Any cosmetic that obscures or imitates gameplay information. The mirror of
+  the rule above, and the one we actually broke: `border-solar` shipped painted
+  in `#f59e0b` and `border-void` in `#a855f7`, the literal values of
+  `--rarity-legendary` and `--rarity-epic`, so an equipped frame made every
+  common in hand read as a legendary. Rarity is real information — legendaries
+  are capped at one copy per deck and collection completion is tracked per
+  rarity — so it keeps the gem and an inner hairline that no purchase can
+  reach. Frames own the outer bezel and express themselves through material,
+  ornament and motion, never a static ring in a rarity hue.
 
 ---
 

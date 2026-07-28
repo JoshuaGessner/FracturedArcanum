@@ -828,15 +828,36 @@ const packs = {
 }
 
 // Rarity gems (32×32)
-const gem = (id, label, color, dark) => svg('0 0 32 32',
-  `<defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${color}"/><stop offset="100%" stop-color="${dark}"/></linearGradient></defs><path d="M16 4 L26 14 L16 28 L6 14 Z" fill="url(#${id})" stroke="#fff" stroke-width="1"/><path d="M16 4 L16 28 M6 14 L26 14" stroke="#fff" stroke-width="0.5" opacity="0.6"/>`,
+//
+// Each rarity gets its own SILHOUETTE, not just its own hue. These render as
+// small as 12px on compact collection cards and in the battle hand, where four
+// identically-shaped gems separated only by fill are unreadable — and invisible
+// to a colourblind player. The shapes escalate in complexity (disc → block →
+// shard → starburst) so the hierarchy survives in greyscale.
+//
+// Rarity is the one card signal cosmetic frames may never override, so the gem
+// has to carry it alone at thumbnail size.
+const gem = (id, label, color, dark, shape, facets) => svg('0 0 32 32',
+  `<defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${color}"/><stop offset="100%" stop-color="${dark}"/></linearGradient></defs>${shape.replace('__FILL__', `url(#${id})`)}<path d="${facets}" stroke="#fff" stroke-width="0.5" opacity="0.6" fill="none"/>`,
   label)
 
 const gems = {
-  'gem-common.svg': gem('gc', 'Common gem', '#cbd5e1', '#64748b'),
-  'gem-rare.svg': gem('gr', 'Rare gem', '#60a5fa', '#1d4ed8'),
-  'gem-epic.svg': gem('ge', 'Epic gem', '#a78bfa', '#5b21b6'),
-  'gem-legendary.svg': gem('gl', 'Legendary gem', '#fde68a', '#d97706'),
+  // Disc — the plainest form.
+  'gem-common.svg': gem('gc', 'Common gem', '#cbd5e1', '#64748b',
+    '<circle cx="16" cy="16" r="10.5" fill="__FILL__" stroke="#fff" stroke-width="1"/>',
+    'M16 5.5 A10.5 10.5 0 0 1 26.5 16'),
+  // Cut block — four flat sides.
+  'gem-rare.svg': gem('gr', 'Rare gem', '#60a5fa', '#1d4ed8',
+    '<rect x="5.5" y="5.5" width="21" height="21" rx="3.5" fill="__FILL__" stroke="#fff" stroke-width="1"/>',
+    'M5.5 11 H26.5 M11 5.5 V26.5'),
+  // Faceted shard — pentagon, point up.
+  'gem-epic.svg': gem('ge', 'Epic gem', '#a78bfa', '#5b21b6',
+    '<path d="M16 4 L27 12 L22.8 25 L9.2 25 L5 12 Z" fill="__FILL__" stroke="#fff" stroke-width="1"/>',
+    'M16 4 L16 25 M5 12 L27 12'),
+  // Starburst — eight points.
+  'gem-legendary.svg': gem('gl', 'Legendary gem', '#fde68a', '#d97706',
+    '<path d="M16 3 L18.4 10.5 L24.6 6.4 L21.5 13.6 L29 16 L21.5 18.4 L24.6 25.6 L18.4 21.5 L16 29 L13.6 21.5 L7.4 25.6 L10.5 18.4 L3 16 L10.5 13.6 L7.4 6.4 L13.6 10.5 Z" fill="__FILL__" stroke="#fff" stroke-width="1" stroke-linejoin="round"/>',
+    'M16 9 L16 23 M9 16 L23 16'),
 }
 
 // UI chrome — buttons (200×64), panel frame, divider, pips, stat icons

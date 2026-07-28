@@ -26,14 +26,26 @@ export function EffectBadge({ effect, compact = false, iconOnly = false, classNa
 
 type RarityBadgeProps = {
   rarity: string
+  iconOnly?: boolean
   className?: string
 }
 
-export function RarityBadge({ rarity, className = '' }: RarityBadgeProps) {
+/**
+ * The gem is rarity's primary channel — the one signal a purchased card frame
+ * can never override — so it needs to survive without its text label on the
+ * cramped surfaces (battle hand, board units). Each rarity has its own gem
+ * silhouette, not just its own fill, so `iconOnly` still reads at 12px and in
+ * greyscale. See the gem block in scripts/generate-brand-assets.mjs.
+ */
+export function RarityBadge({ rarity, iconOnly = false, className = '' }: RarityBadgeProps) {
+  const label = `${rarity} rarity`
   return (
-    <span className={['rarity-gem', className].filter(Boolean).join(' ')}>
+    <span
+      className={['rarity-gem', iconOnly ? 'icon-only' : '', className].filter(Boolean).join(' ')}
+      {...(iconOnly ? { role: 'img', 'aria-label': label, title: label } : {})}
+    >
       <img className="rarity-gem-icon" src={getRarityGemPath(rarity)} alt="" aria-hidden="true" />
-      <span>{rarity}</span>
+      {!iconOnly && <span>{rarity}</span>}
     </span>
   )
 }
