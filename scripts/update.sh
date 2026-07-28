@@ -473,6 +473,39 @@ update_git_checkout() {
   fi
 }
 
+# `systemctl restart` does two things: it enqueues the job, then it waits for
+# systemd to report the result back over D-Bus. The wait is the fragile half.
+# On a slow stop/start — a Compose stack rebuilding its containers easily takes
+# 30s — the client can lose its connection and exit non-zero with
+#
+#   D-Bus connection terminated while waiting for jobs
+#   Failed to wait for response: Connection reset by peer
+#
+# even though systemd went on to run the job perfectly well. That message is
+# the client losing track of the job, not the job failing.
+#
+# Treating it as fatal aborts a deploy that actually succeeded, and — worse —
+# skips run_health_check, the one step that could have told us either way. So
+# record that a restart was attempted, check the unit directly rather than
+# trusting the client's exit code, and let the health probe be the authority.
+restart_systemd_unit() {
+  local rc=0
+  DID_RESTART=1
+  run systemctl restart "$SYSTEM_SERVICE_NAME" || rc=$?
+  if (( rc != 0 )); then
+    warn "systemctl restart exited ${rc}. This is usually the client losing its"
+    warn "D-Bus connection while waiting on a slow job, not a failed restart."
+    if systemctl is-active --quiet "$SYSTEM_SERVICE_NAME"; then
+      warn "Unit is active — continuing to the health check at ${HEALTH_URL}."
+    else
+      warn "Unit is not active; attempting one explicit start."
+      run systemctl start "$SYSTEM_SERVICE_NAME" \
+        || warn "Explicit start also failed. The health check will confirm the state."
+    fi
+  fi
+  return 0
+}
+
 restart_node_service() {
   if command_exists pm2 && pm2 describe "$SYSTEM_SERVICE_NAME" >/dev/null 2>&1; then
     run pm2 restart "$SYSTEM_SERVICE_NAME" --update-env
@@ -481,8 +514,7 @@ restart_node_service() {
   fi
 
   if command_exists systemctl && systemctl list-unit-files --type=service 2>/dev/null | grep -q "^${SYSTEM_SERVICE_NAME}\.service"; then
-    run systemctl restart "$SYSTEM_SERVICE_NAME"
-    DID_RESTART=1
+    restart_systemd_unit
     return 0
   fi
 
@@ -527,12 +559,11 @@ run_docker_update() {
   # Restart phase — honour systemd lifecycle when the unit is registered,
   # otherwise bring the stack up directly through Compose.
   if [[ "$SYSTEMD_DOCKER" -eq 1 ]]; then
-    run systemctl restart "$SYSTEM_SERVICE_NAME"
+    restart_systemd_unit
   else
     run "${COMPOSE_CMD[@]}" up -d --remove-orphans
+    DID_RESTART=1
   fi
-
-  DID_RESTART=1
 }
 
 probe_health_once() {
