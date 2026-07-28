@@ -23,6 +23,7 @@ PORT="${PORT:-43173}"
 HEALTH_URL="${HEALTH_URL:-http://127.0.0.1:${PORT}/api/health}"
 HEALTH_WAIT_SECONDS="${HEALTH_WAIT_SECONDS:-90}"
 HEALTH_POLL_INTERVAL="${HEALTH_POLL_INTERVAL:-3}"
+RESTART_SETTLE_SECONDS="${RESTART_SETTLE_SECONDS:-45}"
 BACKUP_ROOT="${BACKUP_ROOT:-$REPO_ROOT/backups}"
 CURRENT_BACKUP_DIR=""
 COMPOSE_CMD=()
@@ -473,36 +474,53 @@ update_git_checkout() {
   fi
 }
 
-# `systemctl restart` does two things: it enqueues the job, then it waits for
-# systemd to report the result back over D-Bus. The wait is the fragile half.
-# On a slow stop/start — a Compose stack rebuilding its containers easily takes
-# 30s — the client can lose its connection and exit non-zero with
+# `systemctl restart` enqueues the job, then blocks on a D-Bus method call
+# waiting for the result. libdbus gives that call a 25 second default timeout,
+# and anything human-paced inside the window blows straight through it — most
+# often an interactive polkit password prompt, which is what you get when the
+# updater runs as a non-root user. The client then dies with
 #
 #   D-Bus connection terminated while waiting for jobs
 #   Failed to wait for response: Connection reset by peer
 #
-# even though systemd went on to run the job perfectly well. That message is
-# the client losing track of the job, not the job failing.
+# while systemd goes on to run the job the moment authorization lands. The
+# journal for one such run showed the unit reaching "Starting" in the very same
+# second the client gave up, exactly 25s after the command was issued.
 #
-# Treating it as fatal aborts a deploy that actually succeeded, and — worse —
-# skips run_health_check, the one step that could have told us either way. So
-# record that a restart was attempted, check the unit directly rather than
-# trusting the client's exit code, and let the health probe be the authority.
+# Treating that as fatal aborts a deploy that succeeds moments later, and skips
+# run_health_check, the one step that could have settled it either way.
+#
+# So: record the attempt, then poll the unit instead of trusting the client's
+# exit code. Polling is the part that matters — at the instant of the timeout
+# the job may genuinely not have started yet, so firing another systemctl right
+# away would only raise a second password prompt and re-run the same race.
+#
+# See docs/deployment-permissions.md for removing the prompt altogether, which
+# fixes the cause rather than tolerating it.
 restart_systemd_unit() {
   local rc=0
   DID_RESTART=1
   run systemctl restart "$SYSTEM_SERVICE_NAME" || rc=$?
-  if (( rc != 0 )); then
-    warn "systemctl restart exited ${rc}. This is usually the client losing its"
-    warn "D-Bus connection while waiting on a slow job, not a failed restart."
-    if systemctl is-active --quiet "$SYSTEM_SERVICE_NAME"; then
-      warn "Unit is active — continuing to the health check at ${HEALTH_URL}."
-    else
-      warn "Unit is not active; attempting one explicit start."
-      run systemctl start "$SYSTEM_SERVICE_NAME" \
-        || warn "Explicit start also failed. The health check will confirm the state."
-    fi
+  if (( rc == 0 )); then
+    return 0
   fi
+
+  warn "systemctl restart exited ${rc}. That is usually the client's D-Bus call"
+  warn "timing out, not a failed restart — systemd may still be acting on it."
+
+  local waited=0
+  while (( waited < RESTART_SETTLE_SECONDS )); do
+    if systemctl is-active --quiet "$SYSTEM_SERVICE_NAME"; then
+      warn "Unit became active after ${waited}s. Continuing to the health check."
+      return 0
+    fi
+    sleep "$HEALTH_POLL_INTERVAL"
+    waited=$((waited + HEALTH_POLL_INTERVAL))
+  done
+
+  warn "Unit still inactive after ${RESTART_SETTLE_SECONDS}s; attempting one explicit start."
+  run systemctl start "$SYSTEM_SERVICE_NAME" \
+    || warn "Explicit start also failed. The health check will confirm the state."
   return 0
 }
 

@@ -183,6 +183,8 @@ bash scripts/update.sh --mode node
 bash scripts/update.sh --mode docker
 ```
 
+If the updater stops with `D-Bus connection terminated while waiting for jobs`, the restart almost certainly worked — an interactive polkit password prompt sat inside a D-Bus call that times out after 25 seconds. See [docs/deployment-permissions.md](docs/deployment-permissions.md) to grant the deploy user passwordless control of the unit and remove the prompt.
+
 Backups are written to `backups/update-YYYYMMDD-HHMMSS/` and now include a full repository snapshot, data backup, Docker-volume backup when applicable, metadata showing whether the service was quiesced, and a restore note.
 
 To restore the latest backup:
