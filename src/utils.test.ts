@@ -22,17 +22,17 @@ describe('UI asset helpers', () => {
   })
 
   it('derives transition classes for app navigation', () => {
-    expect(getScreenTransitionClass('home', 'play')).toBe('screen-enter-forward')
+    expect(getScreenTransitionClass('home', 'collection')).toBe('screen-enter-forward')
     expect(getScreenTransitionClass('shop', 'home')).toBe('screen-enter-back')
-    expect(getScreenTransitionClass('social', 'shop')).toBe('screen-enter-forward')
+    expect(getScreenTransitionClass('shop', 'social')).toBe('screen-enter-forward')
     expect(getScreenTransitionClass('collection', 'battle')).toBe('screen-enter-battle')
   })
 
   it('maps each transition direction to a paired sound cue', () => {
-    expect(getScreenTransitionSound('home', 'play')).toBe('sceneOpen')
+    expect(getScreenTransitionSound('home', 'collection')).toBe('sceneOpen')
     expect(getScreenTransitionSound('shop', 'home')).toBe('sceneClose')
-    expect(getScreenTransitionSound('social', 'shop')).toBe('sceneOpen')
-    expect(getScreenTransitionSound('shop', 'social')).toBe('sceneClose')
+    expect(getScreenTransitionSound('shop', 'social')).toBe('sceneOpen')
+    expect(getScreenTransitionSound('social', 'shop')).toBe('sceneClose')
     expect(getScreenTransitionSound('settings', 'settings')).toBe('runeWipe')
     expect(getScreenTransitionSound('collection', 'battle')).toBe('portalSlam')
   })

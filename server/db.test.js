@@ -8,6 +8,7 @@ import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { CARD_LIBRARY } from './game.js'
+import { getQuestDefinition } from './quest-definitions.js'
 
 let db
 let passkeyService
@@ -810,27 +811,496 @@ describe('resolveMatchResult mode gating', () => {
     expect(result.ratingDelta).toBeGreaterThan(0)
   })
 
-  it('tracks AI mastery quest progress and claims rewards once', () => {
+  it('tracks AI mastery chain progress and claims each tier once', () => {
     const accountId = makeAccount('questmastery')
     const before = db.getProfile(accountId)
     const initial = db.getQuestOverview(accountId)
     expect(initial.ok).toBe(true)
-    expect(initial.quests.find((quest) => quest.id === 'skirmish-legend')?.completed).toBe(false)
+    expect(initial.quests.find((quest) => quest.id === 'chain-legend-path')?.completed).toBe(false)
 
     db.resolveMatchResult(accountId, 'Legend AI', 'ai', 'win', 7, { aiDifficulty: 'legend' })
 
     const progressed = db.getQuestOverview(accountId)
-    const legendQuest = progressed.quests.find((quest) => quest.id === 'skirmish-legend')
+    const legendQuest = progressed.quests.find((quest) => quest.id === 'chain-legend-path')
     expect(legendQuest?.completed).toBe(true)
     expect(legendQuest?.claimed).toBe(false)
+    expect(legendQuest?.title).toBe('Legendfall I')
 
-    const claimed = db.claimQuestReward(accountId, 'skirmish-legend')
+    const claimed = db.claimQuestReward(accountId, 'chain-legend-path')
     expect(claimed.ok).toBe(true)
     expect(claimed.reward.shards).toBe(75)
     expect(claimed.shards).toBe(before.shards + 30 + 75)
 
-    const duplicate = db.claimQuestReward(accountId, 'skirmish-legend')
+    const duplicate = db.claimQuestReward(accountId, 'chain-legend-path')
     expect(duplicate.ok).toBe(false)
+
+    // The chain does not retire — claiming tier I posts tier II immediately.
+    const nextTier = db.getQuestOverview(accountId).quests.find((quest) => quest.id === 'chain-legend-path')
+    expect(nextTier.title).toBe('Legendfall II')
+    expect(nextTier.target).toBe(5)
+    expect(nextTier.completed).toBe(false)
+  })
+})
+
+describe('quest slot rotation', () => {
+  function slotRows(accountId, cadence) {
+    return db.default
+      .prepare('SELECT * FROM player_quest_slots WHERE account_id = ? AND cadence = ? ORDER BY slot_index')
+      .all(accountId, cadence)
+  }
+
+  function completeDailySlots(accountId) {
+    db.default
+      .prepare(
+        `UPDATE player_quest_slots SET progress = target, completed_at = ?
+         WHERE account_id = ? AND cadence = 'daily'`,
+      )
+      .run(new Date().toISOString(), accountId)
+  }
+
+  it('fills every rotating slot with a distinct quest', () => {
+    const accountId = makeAccount('questslots')
+    expect(db.getQuestOverview(accountId).ok).toBe(true)
+
+    for (const cadence of ['daily', 'weekly']) {
+      const rows = slotRows(accountId, cadence)
+      expect(rows).toHaveLength(3)
+      expect(new Set(rows.map((row) => row.quest_id)).size).toBe(3)
+    }
+  })
+
+  it('holds a claimed slot until the period turns over', () => {
+    const accountId = makeAccount('questnorefill')
+    db.getQuestOverview(accountId)
+    const [slot] = slotRows(accountId, 'daily')
+    completeDailySlots(accountId)
+    expect(db.claimQuestReward(accountId, slot.quest_id).ok).toBe(true)
+
+    db.getQuestOverview(accountId)
+
+    // Refilling on claim would make the daily faucet unbounded.
+    const after = slotRows(accountId, 'daily').find((row) => row.slot_index === slot.slot_index)
+    expect(after.quest_id).toBe(slot.quest_id)
+    expect(after.claimed).toBe(1)
+  })
+
+  it('refills a spent slot once the period key advances', () => {
+    const accountId = makeAccount('questrefill')
+    db.getQuestOverview(accountId)
+    const [slot] = slotRows(accountId, 'daily')
+    db.default
+      .prepare(
+        `UPDATE player_quest_slots
+         SET claimed = 1, progress = target, assigned_key = '1999-01-01', expires_at = '1999-01-02T00:00:00.000Z'
+         WHERE account_id = ? AND cadence = 'daily' AND slot_index = ?`,
+      )
+      .run(accountId, slot.slot_index)
+
+    db.getQuestOverview(accountId)
+
+    const rows = slotRows(accountId, 'daily')
+    const refilled = rows.find((row) => row.slot_index === slot.slot_index)
+    expect(refilled.claimed).toBe(0)
+    expect(refilled.progress).toBe(0)
+    expect(refilled.assigned_key).toBe(new Date().toISOString().slice(0, 10))
+    expect(new Set(rows.map((row) => row.quest_id)).size).toBe(3)
+  })
+
+  it('carries an unclaimed daily past its own day', () => {
+    const accountId = makeAccount('questcarry')
+    db.getQuestOverview(accountId)
+    const [slot] = slotRows(accountId, 'daily')
+    db.default
+      .prepare(
+        `UPDATE player_quest_slots SET assigned_key = '1999-01-01', progress = 0
+         WHERE account_id = ? AND cadence = 'daily' AND slot_index = ?`,
+      )
+      .run(accountId, slot.slot_index)
+
+    db.getQuestOverview(accountId)
+
+    // Still unexpired and unclaimed, so partial progress survives the reset.
+    const after = slotRows(accountId, 'daily').find((row) => row.slot_index === slot.slot_index)
+    expect(after.quest_id).toBe(slot.quest_id)
+  })
+
+  it('seeds slots from pre-slot rows so in-flight progress survives the migration', () => {
+    const accountId = makeAccount('questlegacy')
+    db.default.prepare('DELETE FROM player_quest_slots WHERE account_id = ?').run(accountId)
+    db.default
+      .prepare(
+        `INSERT INTO player_quests (account_id, quest_id, cadence, period_key, progress)
+         VALUES (?, 'daily-burst-channeler', 'daily', ?, 1)`,
+      )
+      .run(accountId, new Date().toISOString().slice(0, 10))
+
+    db.getQuestOverview(accountId)
+
+    const carried = slotRows(accountId, 'daily').find((row) => row.quest_id === 'daily-burst-channeler')
+    expect(carried).toBeDefined()
+    expect(carried.progress).toBe(1)
+    // The legacy rotating rows are pruned so they cannot accumulate forever.
+    const leftover = db.default
+      .prepare("SELECT COUNT(*) AS n FROM player_quests WHERE account_id = ? AND period_key <> 'ever'")
+      .get(accountId)
+    expect(leftover.n).toBe(0)
+  })
+
+  it('claims every ready reward in one batched call', () => {
+    const accountId = makeAccount('questbatch')
+    db.getQuestOverview(accountId)
+    const before = db.getProfile(accountId)
+    const dailyIds = slotRows(accountId, 'daily').map((row) => row.quest_id)
+    completeDailySlots(accountId)
+
+    const result = db.claimQuestRewards(accountId, dailyIds)
+
+    expect(result.ok).toBe(true)
+    expect(result.claims).toHaveLength(3)
+    expect(result.totalShards).toBe(result.claims.reduce((sum, claim) => sum + claim.reward.shards, 0))
+    expect(result.shards).toBe(before.shards + result.totalShards)
+    expect(db.claimQuestRewards(accountId, dailyIds).claims).toHaveLength(0)
+  })
+
+  it('reports per-quest reasons for rewards it could not claim', () => {
+    const accountId = makeAccount('questbatchreject')
+    db.getQuestOverview(accountId)
+    const [slot] = slotRows(accountId, 'daily')
+
+    const result = db.claimQuestRewards(accountId, [slot.quest_id, 'no-such-quest'])
+
+    expect(result.claims).toHaveLength(0)
+    expect(result.rejected).toEqual([
+      { id: slot.quest_id, error: 'Quest is not complete yet.' },
+      { id: 'no-such-quest', error: 'Quest is not active.' },
+    ])
+  })
+
+  it('advances every objective a single match feeds in one batch', () => {
+    const accountId = makeAccount('questbatchevents')
+    db.getQuestOverview(accountId)
+    // Pin a known rotating objective so the batch has both a slot quest and a
+    // permanent quest to satisfy.
+    db.default
+      .prepare(
+        `UPDATE player_quest_slots SET quest_id = 'daily-first-blood', target = 1, progress = 0, claimed = 0
+         WHERE account_id = ? AND cadence = 'daily' AND slot_index = 0`,
+      )
+      .run(accountId)
+
+    const result = db.recordQuestEvents(accountId, [
+      { type: 'play_matches' },
+      { type: 'win_any_match' },
+      { type: 'win_ai' },
+      { type: 'win_ai_difficulty', aiDifficulty: 'legend' },
+    ])
+
+    expect(result.ok).toBe(true)
+    const completedIds = result.completed.map((quest) => quest.id)
+    expect(completedIds).toContain('daily-first-blood')
+    expect(completedIds).toContain('chain-legend-path')
+
+    const quests = db.getQuestOverview(accountId).quests
+    expect(quests.find((quest) => quest.id === 'daily-first-blood').completed).toBe(true)
+  })
+
+  it('keeps weekly periods seven days long across the year boundary', () => {
+    // floor(dayOfYear / 7) restarted at January 1 and produced a one-day
+    // "week 53" every December; Monday-anchored epoch buckets do not.
+    const lengths = new Map()
+    for (let offset = 0; offset < 400; offset += 1) {
+      const key = db.questPeriodKey('weekly', new Date(Date.UTC(2026, 0, 1) + offset * 86_400_000))
+      lengths.set(key, (lengths.get(key) ?? 0) + 1)
+    }
+
+    const interior = [...lengths.values()].slice(1, -1)
+    expect(interior.length).toBeGreaterThan(50)
+    expect(interior.every((length) => length === 7)).toBe(true)
+  })
+
+  it('expires a weekly quest at the next Monday, not seven days out', () => {
+    const wednesday = new Date(Date.UTC(2026, 6, 29))
+    expect(db.questExpiresAt('weekly', wednesday)).toBe('2026-08-03T00:00:00.000Z')
+    expect(db.questPeriodKey('weekly', wednesday)).toBe('w2026-07-27')
+  })
+})
+
+describe('quest variety and reroll', () => {
+  function slotRows(accountId, cadence) {
+    return db.default
+      .prepare('SELECT * FROM player_quest_slots WHERE account_id = ? AND cadence = ? ORDER BY slot_index')
+      .all(accountId, cadence)
+  }
+
+  function forceSlot(accountId, cadence, slotIndex, questId, target) {
+    db.default
+      .prepare(
+        `UPDATE player_quest_slots
+         SET quest_id = ?, target = ?, reward_shards = 10, progress = 0, claimed = 0, completed_at = NULL
+         WHERE account_id = ? AND cadence = ? AND slot_index = ?`,
+      )
+      .run(questId, target, accountId, cadence, slotIndex)
+  }
+
+  function progressOf(accountId, questId) {
+    return db.getQuestOverview(accountId).quests.find((quest) => quest.id === questId)
+  }
+
+  it('offers one quest per difficulty tier so a board is never all-hard or all-trivial', () => {
+    for (const cadence of ['daily', 'weekly']) {
+      const accountId = makeAccount(`questtier${cadence}`)
+      db.getQuestOverview(accountId)
+
+      const tiers = slotRows(accountId, cadence).map((row) => getQuestDefinition(row.quest_id).tier)
+      expect(tiers).toEqual(['light', 'standard', 'hard'])
+    }
+  })
+
+  it('assigns a target and payout drawn from the definition\'s declared variants', () => {
+    const accountId = makeAccount('questvariant')
+    db.getQuestOverview(accountId)
+
+    for (const row of slotRows(accountId, 'daily')) {
+      const variants = getQuestDefinition(row.quest_id).variants
+      expect(variants).toContainEqual({ target: row.target, shards: row.reward_shards })
+    }
+  })
+
+  it('renders the rolled target into the description rather than the definition default', () => {
+    const accountId = makeAccount('questdescription')
+    db.getQuestOverview(accountId)
+    forceSlot(accountId, 'daily', 1, 'daily-burst-channeler', 4)
+
+    const quest = progressOf(accountId, 'daily-burst-channeler')
+    expect(quest.description).toBe('Complete 4 battles to charge the arena ledger.')
+    expect(quest.description).not.toContain('{target}')
+  })
+
+  it('never leaks the server-side variant table to the client', () => {
+    const accountId = makeAccount('questnoleak')
+    const overview = db.getQuestOverview(accountId)
+    expect(overview.quests.every((quest) => quest.variants === undefined)).toBe(true)
+  })
+
+  it('rerolls a quest for a different objective in the same tier', () => {
+    const accountId = makeAccount('questreroll')
+    db.getQuestOverview(accountId)
+    const before = slotRows(accountId, 'daily')[2]
+
+    const result = db.rerollQuest(accountId, before.quest_id)
+
+    expect(result.ok).toBe(true)
+    const after = slotRows(accountId, 'daily')[2]
+    expect(after.quest_id).not.toBe(before.quest_id)
+    expect(getQuestDefinition(after.quest_id).tier).toBe('hard')
+    expect(after.progress).toBe(0)
+    expect(after.rerolled).toBe(1)
+    // The other two slots are untouched, and the board stays duplicate-free.
+    expect(new Set(slotRows(accountId, 'daily').map((row) => row.quest_id)).size).toBe(3)
+  })
+
+  it('allows one free reroll per cadence per day', () => {
+    const accountId = makeAccount('questrerollonce')
+    expect(db.getQuestOverview(accountId).rerolls).toEqual({ daily: true, weekly: true })
+
+    const [daily] = slotRows(accountId, 'daily')
+    expect(db.rerollQuest(accountId, daily.quest_id).ok).toBe(true)
+
+    const second = db.rerollQuest(accountId, slotRows(accountId, 'daily')[1].quest_id)
+    expect(second.ok).toBe(false)
+    expect(second.error).toMatch(/already used/i)
+
+    // The weekly reroll is tracked separately and is still available.
+    const overview = db.getQuestOverview(accountId)
+    expect(overview.rerolls).toEqual({ daily: false, weekly: true })
+    expect(db.rerollQuest(accountId, slotRows(accountId, 'weekly')[0].quest_id).ok).toBe(true)
+  })
+
+  it('refuses to reroll a quest that is ready to claim', () => {
+    const accountId = makeAccount('questrerollready')
+    db.getQuestOverview(accountId)
+    const [slot] = slotRows(accountId, 'daily')
+    db.default
+      .prepare(
+        `UPDATE player_quest_slots SET progress = target, completed_at = ?
+         WHERE account_id = ? AND cadence = 'daily' AND slot_index = ?`,
+      )
+      .run(new Date().toISOString(), accountId, slot.slot_index)
+
+    const result = db.rerollQuest(accountId, slot.quest_id)
+
+    expect(result.ok).toBe(false)
+    expect(result.error).toMatch(/claim/i)
+    // The free reroll was not consumed by the rejected attempt.
+    expect(db.getQuestOverview(accountId).rerolls.daily).toBe(true)
+  })
+
+  it('refuses to reroll a permanent quest', () => {
+    const accountId = makeAccount('questrerollpermanent')
+    db.getQuestOverview(accountId)
+    expect(db.rerollQuest(accountId, 'skirmish-legend').ok).toBe(false)
+  })
+
+  it('tracks streak objectives at their high-water mark', () => {
+    const accountId = makeAccount('queststreak')
+    db.getQuestOverview(accountId)
+    forceSlot(accountId, 'daily', 1, 'daily-momentum-run', 3)
+
+    db.recordQuestEvents(accountId, [{ type: 'reach_streak', amount: 2 }])
+    expect(progressOf(accountId, 'daily-momentum-run').progress).toBe(2)
+
+    // A shorter streak must not add to the peak, or three separate one-win
+    // streaks would satisfy "reach a 3 win streak".
+    db.recordQuestEvents(accountId, [{ type: 'reach_streak', amount: 1 }])
+    expect(progressOf(accountId, 'daily-momentum-run').progress).toBe(2)
+
+    db.recordQuestEvents(accountId, [{ type: 'reach_streak', amount: 3 }])
+    expect(progressOf(accountId, 'daily-momentum-run').completed).toBe(true)
+  })
+
+  it('accumulates spend objectives by amount and caps at the target', () => {
+    const accountId = makeAccount('questspend')
+    db.getQuestOverview(accountId)
+    forceSlot(accountId, 'daily', 1, 'daily-shardflow', 100)
+
+    db.recordQuestEvents(accountId, [{ type: 'spend_shards', amount: 60 }])
+    expect(progressOf(accountId, 'daily-shardflow').progress).toBe(60)
+
+    db.recordQuestEvents(accountId, [{ type: 'spend_shards', amount: 60 }])
+    const quest = progressOf(accountId, 'daily-shardflow')
+    expect(quest.progress).toBe(100)
+    expect(quest.completed).toBe(true)
+  })
+
+  it('only credits pack-tier objectives for a pack at or above the required tier', () => {
+    const accountId = makeAccount('questpacktier')
+    db.getQuestOverview(accountId)
+    forceSlot(accountId, 'daily', 2, 'daily-premium-seal', 1)
+
+    db.recordQuestEvents(accountId, [{ type: 'open_pack_type', packTier: 'basic' }])
+    expect(progressOf(accountId, 'daily-premium-seal').progress).toBe(0)
+
+    db.recordQuestEvents(accountId, [{ type: 'open_pack_type', packTier: 'legendary' }])
+    expect(progressOf(accountId, 'daily-premium-seal').completed).toBe(true)
+  })
+
+  it('keeps the permanent tabs stocked instead of emptying them', () => {
+    const accountId = makeAccount('questchainstocked')
+    const overview = db.getQuestOverview(accountId)
+
+    // The old milestone/skirmish tabs held five one-shot quests between them.
+    for (const cadence of ['milestone', 'skirmish']) {
+      const live = overview.quests.filter((quest) => quest.cadence === cadence && !quest.claimed)
+      expect(live.length).toBeGreaterThan(0)
+    }
+    expect(overview.chains.length).toBe(13)
+  })
+
+  it('rolls surplus progress into later chain tiers instead of discarding it', () => {
+    const accountId = makeAccount('questchainsurplus')
+    db.getQuestOverview(accountId)
+
+    // Far past tier I (1 win) and tier II (5 wins) in one go.
+    db.recordQuestEvents(accountId, [{ type: 'win_any_match', amount: 30 }])
+
+    const chain = db.getQuestOverview(accountId).chains.find((entry) => entry.id === 'chain-riftbreaker')
+    expect(chain.progress).toBe(30)
+    expect(chain.completed).toBe(true)
+
+    // Each claim advances one tier, and the banked total keeps satisfying them.
+    expect(db.claimQuestReward(accountId, 'chain-riftbreaker').ok).toBe(true)
+    expect(db.claimQuestReward(accountId, 'chain-riftbreaker').ok).toBe(true)
+    expect(db.claimQuestReward(accountId, 'chain-riftbreaker').ok).toBe(true)
+
+    const after = db.getQuestOverview(accountId).chains.find((entry) => entry.id === 'chain-riftbreaker')
+    expect(after.tierIndex).toBe(3)
+    expect(after.target).toBe(100)
+    expect(after.progress).toBe(30)
+    expect(after.completed).toBe(false)
+  })
+
+  it('generates further tiers past the end of an endless ladder', () => {
+    const accountId = makeAccount('questchainendless')
+    db.getQuestOverview(accountId)
+    // chain-legend-path lists 1/5/25 then continues in steps of 25.
+    db.default
+      .prepare('UPDATE player_quest_chains SET claimed_tier = 3, progress = 25 WHERE account_id = ? AND chain_id = ?')
+      .run(accountId, 'chain-legend-path')
+
+    const chain = db.getQuestOverview(accountId).chains.find((entry) => entry.id === 'chain-legend-path')
+
+    expect(chain.exhausted).toBe(false)
+    expect(chain.target).toBe(50)
+    expect(chain.reward.shards).toBe(350)
+  })
+
+  it('marks a finite chain exhausted once its last tier is claimed', () => {
+    const accountId = makeAccount('questchainfinite')
+    db.getQuestOverview(accountId)
+    db.default
+      .prepare('UPDATE player_quest_chains SET claimed_tier = 1, progress = 14 WHERE account_id = ? AND chain_id = ?')
+      .run(accountId, 'chain-deckwright')
+
+    const chain = db.getQuestOverview(accountId).chains.find((entry) => entry.id === 'chain-deckwright')
+
+    expect(chain.exhausted).toBe(true)
+    expect(chain.endless).toBe(false)
+    expect(db.claimQuestReward(accountId, 'chain-deckwright').ok).toBe(false)
+  })
+
+  it('credits chain tier I to players who claimed the one-shot quest it replaced', () => {
+    const accountId = makeAccount('questchainlegacy')
+    // Simulate a pre-chain account that had already beaten the Legend skirmish.
+    db.default.prepare('DELETE FROM player_quest_chains WHERE account_id = ?').run(accountId)
+    db.default
+      .prepare(
+        `INSERT INTO player_quests (account_id, quest_id, cadence, period_key, progress, claimed)
+         VALUES (?, 'skirmish-legend', 'skirmish', 'ever', 1, 1)`,
+      )
+      .run(accountId)
+
+    const chain = db.getQuestOverview(accountId).chains.find((entry) => entry.id === 'chain-legend-path')
+
+    expect(chain.tierIndex).toBe(1)
+    expect(chain.progress).toBe(1)
+    expect(chain.tierLabel).toBe('II')
+    // An unclaimed legacy quest must not hand out credit.
+    const untouched = db.getQuestOverview(accountId).chains.find((entry) => entry.id === 'chain-adept-path')
+    expect(untouched.tierIndex).toBe(0)
+  })
+
+  it('tracks collection size from live ownership rather than an event tally', () => {
+    const accountId = makeAccount('questchaincollect')
+    const archivist = () => db.getQuestOverview(accountId).chains.find((entry) => entry.id === 'chain-archivist')
+
+    const starter = Object.keys(db.getProfile(accountId).owned_cards).length
+    expect(archivist().progress).toBe(starter)
+
+    const owned = Object.fromEntries(CARD_LIBRARY.slice(0, starter + 8).map((card) => [card.id, 1]))
+    db.default
+      .prepare('UPDATE player_profiles SET owned_cards = ? WHERE account_id = ?')
+      .run(JSON.stringify(owned), accountId)
+    expect(archivist().progress).toBe(starter + 8)
+
+    // Breaking the collection back down must not claw back chain progress —
+    // a milestone you reached stays reached.
+    db.default
+      .prepare('UPDATE player_profiles SET owned_cards = ? WHERE account_id = ?')
+      .run(JSON.stringify({ [CARD_LIBRARY[0].id]: 1 }), accountId)
+    expect(archivist().progress).toBe(starter + 8)
+  })
+
+  it('credits shard spend and pack tier when a pack is actually opened', () => {
+    const accountId = makeAccount('questpackopen')
+    db.getQuestOverview(accountId)
+    db.default.prepare('UPDATE player_profiles SET shards = 500 WHERE account_id = ?').run(accountId)
+    forceSlot(accountId, 'daily', 1, 'daily-shardflow', 100)
+    forceSlot(accountId, 'daily', 2, 'daily-premium-seal', 1)
+
+    expect(db.openPack(accountId, 'premium').ok).toBe(true)
+
+    expect(progressOf(accountId, 'daily-shardflow').progress).toBe(100)
+    expect(progressOf(accountId, 'daily-premium-seal').completed).toBe(true)
   })
 })
 

@@ -33,7 +33,9 @@ import {
   selectTheme,
   claimDailyReward,
   claimQuestReward,
+  claimQuestRewards,
   getQuestOverview,
+  rerollQuest,
   purchaseTheme,
   settleAuthoritativeMatch,
   getMatchSettlementForAccount,
@@ -2018,6 +2020,50 @@ app.post('/api/me/daily', requireAuth, requireAccountReady, (request, response) 
 
 app.get('/api/me/quests', requireAuth, requireAccountReady, (request, response) => {
   const result = getQuestOverview(request.accountId)
+  if (!result.ok) {
+    response.status(400).json(result)
+    return
+  }
+  response.json(result)
+})
+
+app.post('/api/me/quests/:questId/reroll', requireAuth, requireAccountReady, (request, response) => {
+  const rl = checkRateLimit(`quest:reroll:${request.accountId}`, 20)
+  if (!rl.allowed) {
+    response.status(429).json({ ok: false, error: 'Too many quest reroll requests. Slow down.' })
+    return
+  }
+  const result = rerollQuest(request.accountId, String(request.params.questId ?? ''))
+  if (!result.ok) {
+    response.status(400).json(result)
+    return
+  }
+  response.json(result)
+})
+
+// Batch claim. The client's "Claim Ready Rewards" button used to fan out one
+// request per quest, racing shard balances against each other; this settles
+// every ready reward in one transaction and returns one authoritative balance.
+// An empty/absent questIds claims everything currently ready.
+app.post('/api/me/quests/claim', requireAuth, requireAccountReady, (request, response) => {
+  const rl = checkRateLimit(`quest:claim:${request.accountId}`, 30)
+  if (!rl.allowed) {
+    response.status(429).json({ ok: false, error: 'Too many quest claim requests. Slow down.' })
+    return
+  }
+
+  const raw = request.body?.questIds
+  if (raw !== undefined && !Array.isArray(raw)) {
+    response.status(400).json({ ok: false, error: 'questIds must be an array.' })
+    return
+  }
+  if (Array.isArray(raw) && raw.length > 32) {
+    response.status(400).json({ ok: false, error: 'Too many quests in one claim.' })
+    return
+  }
+
+  const questIds = Array.isArray(raw) ? raw.map((id) => String(id ?? '')) : null
+  const result = claimQuestRewards(request.accountId, questIds)
   if (!result.ok) {
     response.status(400).json(result)
     return

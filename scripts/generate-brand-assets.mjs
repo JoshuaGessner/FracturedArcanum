@@ -742,6 +742,29 @@ const backgrounds = {
 // Navigation tile illustrations (240×320)
 const tileBg = (defs, accent) => `<defs>${defs}</defs><rect width="240" height="320" rx="20" fill="#181230"/><rect x="8" y="8" width="224" height="304" rx="14" fill="url(#tile-grad)" stroke="${accent}" stroke-width="2"/>`
 
+// Nav glyphs are stroked with `currentColor` and no fill, so a single asset
+// serves both the rest and active states — CSS supplies the tint.
+const navGlyph = (id, label, body) => [`nav-${id}.svg`, svg('0 0 24 24',
+  `<g fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">${body}</g>`,
+  label)]
+
+const navGlyphs = Object.fromEntries([
+  // Home — a keep/gate silhouette, echoing the arena crest.
+  navGlyph('home', 'Home', '<path d="M3.5 10.5 12 3.5l8.5 7"/><path d="M5.5 9.5V20h13V9.5"/><path d="M9.5 20v-5.5h5V20"/>'),
+  // Collection — overlapping cards, the deck-forge metaphor.
+  navGlyph('collection', 'Collection', '<rect x="7.5" y="4.5" width="11" height="15" rx="2"/><path d="M4.5 7v11.5a2 2 0 0 0 2 2H15"/>'),
+  // Shop — an awning over a stall, matching the existing shop tile.
+  navGlyph('shop', 'Shop', '<path d="M4 9.5h16V19a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 19Z"/><path d="M4 9.5 5.8 4.2A1 1 0 0 1 6.75 3.5h10.5a1 1 0 0 1 .95.7L20 9.5"/><path d="M9.5 13.5h5"/>'),
+  // Social — two figures, the clan/friends surface.
+  navGlyph('social', 'Social', '<circle cx="9" cy="8" r="3"/><path d="M3.5 20.5a5.5 5.5 0 0 1 11 0"/><path d="M16 5.5a3 3 0 0 1 0 5.8"/><path d="M17.5 15.2a5.5 5.5 0 0 1 3 5.3"/>'),
+  // Battle — crossed blades for the primary call to action.
+  navGlyph('battle', 'Battle', '<path d="M4.5 3.5h3l10 13.5-1.5 1.5-1.5 1.5L4.5 9.5Z"/><path d="M19.5 3.5h-3l-4 5.4"/><path d="M9.5 13.4 5.5 19l1.5 1.5"/>'),
+  // Settings — gear, used by the top-bar account menu.
+  // Settings — a cogged gear. Radial tick marks read as a sun/brightness
+  // control at 22px, so the teeth are drawn as a closed outline instead.
+  navGlyph('settings', 'Settings', '<circle cx="12" cy="12" r="3.1"/><path d="M19.05 14.6a1.55 1.55 0 0 0 .31 1.71l.06.06a1.88 1.88 0 1 1-2.66 2.66l-.06-.06a1.55 1.55 0 0 0-1.71-.31 1.55 1.55 0 0 0-.94 1.42v.16a1.88 1.88 0 1 1-3.76 0v-.08a1.55 1.55 0 0 0-1.01-1.42 1.55 1.55 0 0 0-1.71.31l-.06.06a1.88 1.88 0 1 1-2.66-2.66l.06-.06a1.55 1.55 0 0 0 .31-1.71 1.55 1.55 0 0 0-1.42-.94h-.16a1.88 1.88 0 1 1 0-3.76h.08a1.55 1.55 0 0 0 1.42-1.01 1.55 1.55 0 0 0-.31-1.71l-.06-.06a1.88 1.88 0 1 1 2.66-2.66l.06.06a1.55 1.55 0 0 0 1.71.31h.07a1.55 1.55 0 0 0 .94-1.42v-.16a1.88 1.88 0 1 1 3.76 0v.08a1.55 1.55 0 0 0 .94 1.42 1.55 1.55 0 0 0 1.71-.31l.06-.06a1.88 1.88 0 1 1 2.66 2.66l-.06.06a1.55 1.55 0 0 0-.31 1.71v.07a1.55 1.55 0 0 0 1.42.94h.16a1.88 1.88 0 1 1 0 3.76h-.08a1.55 1.55 0 0 0-1.42.94Z"/>'),
+])
+
 const tiles = {
   'tile-play.svg': svg('0 0 240 320',
     `${tileBg('<linearGradient id="tile-grad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#3d1a2f"/><stop offset="100%" stop-color="#1a0a18"/></linearGradient>', '#fbbf24')}<circle cx="120" cy="170" r="70" fill="none" stroke="#fbbf24" stroke-width="4"/><path d="M75 130 L165 220 M165 130 L75 220" stroke="#e2e8f0" stroke-width="10" stroke-linecap="round"/><path d="M120 80 L130 110 L160 115 L138 134 L144 164 L120 150 L96 164 L102 134 L80 115 L110 110 Z" fill="#fbbf24" opacity="0.5"/>`,
@@ -761,6 +784,14 @@ const tiles = {
   'tile-battle.svg': svg('0 0 240 320',
     `${tileBg('<linearGradient id="tile-grad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#3d1010"/><stop offset="100%" stop-color="#180505"/></linearGradient>', '#ef4444')}<path d="M60 80 L180 80 L200 240 L120 280 L40 240 Z" fill="#7c1d1d" stroke="#fbbf24" stroke-width="4"/><path d="M120 100 L130 130 L160 134 L138 152 L146 184 L120 168 L94 184 L102 152 L80 134 L110 130 Z" fill="#fbbf24"/>`,
     'Battle tile'),
+
+  // ── Navigation glyphs (24×24) ──────────────────────────────────────
+  // The nav bar used to reuse the 240×320 `tile-*` card art, scaled down to a
+  // 16px square. At that size the tile frame, gradient, and inner artwork all
+  // collapse into an unreadable smudge. These are drawn at the size they are
+  // actually used: single-weight strokes on a 24px grid, `currentColor` so the
+  // active/inactive tint comes from CSS rather than a second asset.
+  ...navGlyphs,
 }
 
 // Rank insignia (120×120)
@@ -959,6 +990,7 @@ const allCards = [...cardBlueprints, ...extendedBlueprints]
 const uiAssetType = (id) => {
   if (id.startsWith('bg-')) return 'ui-background'
   if (id.startsWith('tile-')) return 'ui-nav-tile'
+  if (id.startsWith('nav-')) return 'ui-nav-glyph'
   if (id.startsWith('rank-')) return 'ui-rank'
   if (id === 'pack-burst.svg' || id === 'ribbon-new.svg') return 'ui-overlay'
   if (id.startsWith('pack-')) return 'ui-pack'

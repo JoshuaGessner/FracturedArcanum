@@ -150,13 +150,32 @@ export type QuestClaimInput = {
 }
 
 export function buildQuestClaimSequence(input: QuestClaimInput): RewardBeat[] {
+  return buildQuestClaimBatchSequence([input])
+}
+
+/**
+ * One cinema for a whole batch of claims.
+ *
+ * Claiming several rewards used to present one sequence per quest, and because
+ * presenting replaces the active sequence rather than queueing it, every
+ * cinema but the last was discarded. A batch gets one banner naming the haul
+ * and one payout beat for the combined total.
+ */
+export function buildQuestClaimBatchSequence(claims: QuestClaimInput[]): RewardBeat[] {
+  if (claims.length === 0) return []
+
+  const totalShards = claims.reduce((sum, claim) => sum + Math.max(0, claim.shards), 0)
+  const caption = claims.length === 1
+    ? claims[0].title
+    : `${claims[0].title} +${claims.length - 1} more`
+
   return [
     {
       id: 'quest-banner',
       kind: 'banner',
       iconAsset: UI_ASSETS.overlays.ribbonNew,
-      label: 'Quest Reward Claimed',
-      caption: input.title,
+      label: claims.length === 1 ? 'Quest Reward Claimed' : `${claims.length} Quest Rewards Claimed`,
+      caption,
       sound: 'questComplete',
     },
     {
@@ -164,7 +183,7 @@ export function buildQuestClaimSequence(input: QuestClaimInput): RewardBeat[] {
       kind: 'count',
       iconAsset: UI_ASSETS.tiles.shop,
       label: 'Ledger Payout',
-      value: Math.max(0, input.shards),
+      value: totalShards,
       valueLabel: 'Shards',
       sound: 'win',
     },

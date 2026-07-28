@@ -8,17 +8,17 @@ import {
 } from '../utils/sceneSwipe'
 import type { AppScreen } from '../types'
 
-const NAV_ORDER: AppScreen[] = ['home', 'play', 'collection', 'social', 'shop', 'settings']
+const NAV_ORDER: AppScreen[] = ['home', 'collection', 'shop', 'social', 'settings']
 
 describe('getNeighborScreen', () => {
   it('returns the next screen in the rail', () => {
-    expect(getNeighborScreen('home', 1, NAV_ORDER)).toBe('play')
-    expect(getNeighborScreen('collection', 1, NAV_ORDER)).toBe('social')
+    expect(getNeighborScreen('home', 1, NAV_ORDER)).toBe('collection')
+    expect(getNeighborScreen('shop', 1, NAV_ORDER)).toBe('social')
   })
 
   it('returns the previous screen in the rail', () => {
-    expect(getNeighborScreen('settings', -1, NAV_ORDER)).toBe('shop')
-    expect(getNeighborScreen('play', -1, NAV_ORDER)).toBe('home')
+    expect(getNeighborScreen('settings', -1, NAV_ORDER)).toBe('social')
+    expect(getNeighborScreen('collection', -1, NAV_ORDER)).toBe('home')
   })
 
   it('clamps at both ends', () => {

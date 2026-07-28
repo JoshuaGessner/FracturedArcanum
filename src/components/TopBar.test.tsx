@@ -12,6 +12,8 @@ describe('TopBar mobile variants', () => {
     render(
       <TopBar
         screenTitle="Arena Home"
+        shards={180}
+        onOpenSettings={() => {}}
         serverProfile={{
           username: 'josh',
           shards: 180,
@@ -34,13 +36,17 @@ describe('TopBar mobile variants', () => {
     expect(screen.queryByText('Arena Home')).toBeNull()
     expect(screen.getByText('Fractured Arcanum')).toBeTruthy()
     expect(screen.getByText('@josh')).toBeTruthy()
-    expect(screen.queryByRole('button')).toBeNull()
+    // The only button in the home header is the settings/account entry point.
+    expect(screen.getAllByRole('button')).toHaveLength(1)
+    expect(screen.getByRole('button', { name: /settings and account/i })).toBeTruthy()
   })
 
   it('renders a compact header without home action buttons on inner screens', () => {
     render(
       <TopBar
         screenTitle="Collection"
+        shards={180}
+        onOpenSettings={() => {}}
         serverProfile={{
           username: 'josh',
           shards: 180,
@@ -59,7 +65,8 @@ describe('TopBar mobile variants', () => {
       />,
     )
 
-    expect(screen.queryByRole('button')).toBeNull()
+    // Settings is a top-bar affordance on every screen, not a nav tab.
+    expect(screen.getByRole('button', { name: /settings and account/i })).toBeTruthy()
     expect(screen.queryByText('Fractured Arcanum')).toBeNull()
     expect(screen.getByText('Collection')).toBeTruthy()
   })

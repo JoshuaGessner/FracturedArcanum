@@ -12,10 +12,14 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* The document itself never scrolls or clips — the shell owns both.
+   `html, body { height: 100%; overflow: hidden }` used to fight the shell's
+   `100dvh`: when the iOS toolbar retracted, dvh grew past the initial
+   containing block and body clipped the overflow, taking the bottom nav with
+   it. Sizing is delegated entirely to .app-shell / --app-h now. */
 html, body {
   background: #0b1020;
-  height: 100%;
-  overflow: hidden;
+  min-height: 100%;
   overscroll-behavior: none;
 }
 
@@ -24,10 +28,10 @@ body {
   min-width: 320px;
 }
 
+/* #root is a passive wrapper. Centering and max-width belong to .app-shell,
+   which is the element that actually knows the usable viewport. */
 #root {
-  max-width: 1200px;
-  margin: 0 auto;
-  height: 100%;
+  isolation: isolate;
 }
 
 h1,

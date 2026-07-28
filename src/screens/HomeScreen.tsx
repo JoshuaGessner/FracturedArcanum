@@ -1,24 +1,43 @@
 import { useEffect, useState } from 'react'
+import { BattleLaunchSheet } from '../components/BattleLaunchSheet'
 import { HomeQuestBoard } from '../components/HomeQuestBoard'
 import { HomeStatusRibbon } from '../components/HomeStatusRibbon'
 import { QuestLedgerPanel } from '../components/QuestLedgerPanel'
-import { useAppShell, useGame, useProfile } from '../contexts'
+import { useAppShell, useGame, useProfile, useQueue } from '../contexts'
 import { getStreakTier } from '../utils'
 
 const HOME_DECK_GOAL = 14
 
+/**
+ * The single hub.
+ *
+ * Home and Play used to be two destinations showing much the same data, with
+ * the resume-battle block duplicated across both and no dominant call to
+ * action anywhere — the thing players open the app to do was one of six
+ * equal-weight tabs. Mode selection now lives in a sheet layered over this
+ * screen, and the Battle CTA is the largest, lowest element on the page,
+ * inside the natural thumb arc.
+ */
 export function HomeScreen() {
   const { activeScreen, dailyQuest, seasonName, seasonEnd } = useAppShell()
   const { gameInProgress, game, handleResumeBattle, handleAbandonBattle, isRankedBattle } = useGame()
+  const { queueState, queueSeconds } = useQueue()
   const {
     record, winRate, selectedDeckSize, serverProfile, rankLabel, shards,
     canClaimDailyReward, nextRewardLabel, seasonRating, rankProgress, nextRankTarget,
-    questOverview, handleClaimQuestReward,
+    questOverview, handleClaimQuestReward, handleClaimQuestRewards, deckReady,
   } = useProfile()
 
   const streakTier = getStreakTier(record.streak)
   const [seasonCountdown, setSeasonCountdown] = useState<string | null>(null)
   const [homeSubview, setHomeSubview] = useState<'command' | 'quests'>('command')
+  const [launchOpen, setLaunchOpen] = useState(false)
+
+  // Matchmaking runs whether or not the sheet is on screen, so a found match
+  // forces it open — the player never misses the versus moment because they
+  // happened to close the sheet while queued. Derived rather than synced via
+  // an effect: there is no second copy of the state to fall out of step.
+  const sheetOpen = launchOpen || queueState === 'found'
 
   useEffect(() => {
     const updateCountdown = () => {
@@ -96,53 +115,76 @@ export function HomeScreen() {
     },
   ]
 
+  // The CTA reports the single most useful next action, so the player never
+  // has to open the sheet just to find out what state they are in.
+  const battleCta = gameInProgress
+    ? {
+        label: isRankedBattle ? 'Rejoin Battle' : 'Resume Battle',
+        note: `vs ${game.enemy.name} · Turn ${game.turnNumber}`,
+        tone: 'resume' as const,
+      }
+    : queueState === 'searching'
+      ? { label: 'Searching…', note: `In queue · ${queueSeconds}s`, tone: 'queued' as const }
+      : deckReady
+        ? { label: 'Battle', note: 'Ranked, solo, or pass & play', tone: 'ready' as const }
+        : { label: 'Battle', note: `Deck incomplete · ${selectedDeckSize}/${HOME_DECK_GOAL}`, tone: 'blocked' as const }
+
   return (
     <section className={`home-screen screen-panel ${activeScreen === 'home' ? 'active' : 'hidden'}`}>
       <article className={`section-card utility-card spotlight-card home-command-card home-final-card home-view-${homeSubview}`}>
-        {homeSubview === 'command' ? <>
-        <div className="home-command-layout">
-          <HomeStatusRibbon
-            profileName={profileName}
-            rankLabel={rankLabel}
-            seasonLabel={seasonLabel}
-            shards={shards}
-            streak={record.streak}
-            streakTier={streakTier}
-            seasonRating={seasonRating}
-            nextRankTarget={nextRankTarget}
-            rankProgress={clampedRankProgress}
-            ratingProgressLabel={ratingProgressLabel}
-            tiles={homeStatusCards}
-          />
+        {homeSubview === 'command' ? (
+          <div className="home-command-layout">
+            <HomeStatusRibbon
+              profileName={profileName}
+              rankLabel={rankLabel}
+              seasonLabel={seasonLabel}
+              shards={shards}
+              streak={record.streak}
+              streakTier={streakTier}
+              seasonRating={seasonRating}
+              nextRankTarget={nextRankTarget}
+              rankProgress={clampedRankProgress}
+              ratingProgressLabel={ratingProgressLabel}
+              tiles={homeStatusCards}
+            />
 
-          <HomeQuestBoard
-            overview={questOverview}
-            fallbackItems={questItems}
-            questsDone={questsDone}
-            questTotal={questTotal}
-            readyQuestRewards={readyQuestRewards}
-            questRewardLabel={questRewardLabel}
-            onOpenLedger={() => setHomeSubview('quests')}
-          />
+            <HomeQuestBoard
+              overview={questOverview}
+              fallbackItems={questItems}
+              questsDone={questsDone}
+              questTotal={questTotal}
+              readyQuestRewards={readyQuestRewards}
+              questRewardLabel={questRewardLabel}
+              onOpenLedger={() => setHomeSubview('quests')}
+            />
 
-          {gameInProgress && (
-            <div className="game-resume-block">
-              <p className="note">Battle in progress vs <strong>{game.enemy.name}</strong> · Turn {game.turnNumber}</p>
-              <div className="controls">
-                <button className="primary" onClick={handleResumeBattle}>{isRankedBattle ? 'Rejoin Battle' : 'Resume Battle'}</button>
-                <button className="ghost" onClick={handleAbandonBattle}>Abandon</button>
-              </div>
+            {/* Primary action: last in the flow, largest on the page, and
+                anchored to the bottom of the hub so it sits in the thumb arc. */}
+            <div className={`home-battle-dock tone-${battleCta.tone}`}>
+              <button
+                className="home-battle-cta"
+                onClick={gameInProgress ? handleResumeBattle : () => setLaunchOpen(true)}
+                data-tour-id="queue-button"
+              >
+                <span className="home-battle-cta-label">{battleCta.label}</span>
+                <span className="home-battle-cta-note">{battleCta.note}</span>
+              </button>
+              {gameInProgress && (
+                <button className="ghost home-battle-secondary" onClick={handleAbandonBattle}>Abandon</button>
+              )}
             </div>
-          )}
-        </div>
-        </> : (
+          </div>
+        ) : (
           <QuestLedgerPanel
             overview={questOverview}
             onBack={() => setHomeSubview('command')}
             onClaimQuest={handleClaimQuestReward}
+            onClaimQuests={handleClaimQuestRewards}
           />
         )}
       </article>
+
+      <BattleLaunchSheet open={sheetOpen} onClose={() => setLaunchOpen(false)} />
     </section>
   )
 }

@@ -268,7 +268,7 @@ export function getScreenTransitionClass(fromScreen: AppScreen, toScreen: AppScr
     return 'screen-enter-forward'
   }
 
-  const orderedScreens: AppScreen[] = ['home', 'play', 'collection', 'social', 'shop', 'settings']
+  const orderedScreens: AppScreen[] = ['home', 'collection', 'shop', 'social', 'settings']
   const fromIndex = orderedScreens.indexOf(fromScreen)
   const toIndex = orderedScreens.indexOf(toScreen)
 
@@ -306,7 +306,7 @@ export function shouldPresentScopedReward(scope: RewardScope, activeScreen: AppS
     case 'daily':
       return activeScreen === 'home' || activeScreen === 'shop'
     case 'rank':
-      return activeScreen === 'battle' || activeScreen === 'play' || activeScreen === 'home'
+      return activeScreen === 'battle' || activeScreen === 'home'
     case 'generic':
     default:
       return true

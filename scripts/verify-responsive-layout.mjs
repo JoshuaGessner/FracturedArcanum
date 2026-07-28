@@ -1,4 +1,12 @@
 import { spawn } from 'node:child_process'
+// Node 22+ strips TypeScript types natively, so the pure scaling helpers can
+// be shared with the unit tests instead of duplicated here.
+import {
+  SCALING_PROBE_WIDTHS,
+  SCALING_TARGETS,
+  findScalingInversions,
+  formatInversion,
+} from '../src/utils/layoutScaling.ts'
 import { createServer } from 'node:net'
 import { createHash, randomBytes } from 'node:crypto'
 import { mkdir, rm, writeFile } from 'node:fs/promises'
@@ -11,21 +19,66 @@ import { chromium } from 'playwright-core'
 const OUTPUT_DIR = path.resolve('.layout-qa')
 const QA_USERNAME = process.env.QA_USERNAME ?? 'qa_tester'
 const QA_PASSWORD = process.env.QA_PASSWORD ?? 'TestUser123'
+/**
+ * Device matrix.
+ *
+ * `chromeHeight` is how much vertical space the browser toolbar occupies when
+ * it is expanded. Every phone is exercised at BOTH heights, because the bugs
+ * that reached players only appear in one of the two states: with the toolbar
+ * expanded the app is short and the hand clips; with it retracted the layout
+ * grows past the initial containing block and the nav bar falls off the
+ * bottom. A single fixed viewport per device — what this harness used to do —
+ * cannot see either failure.
+ *
+ * `safeArea` is applied by overriding the --safe-* custom properties, since
+ * headless Chromium never reports real `env(safe-area-inset-*)` values. The
+ * zero case is not redundant: Safari reports 0 for the bottom inset whenever
+ * the toolbar is hidden, which is exactly when the nav bar needs the padding
+ * most.
+ */
 const VIEWPORTS = [
-  { name: 'phone-360x640', width: 360, height: 640 },
-  { name: 'iphone-se-375x667', width: 375, height: 667 },
-  { name: 'portrait-394x724', width: 394, height: 724 },
-  { name: 'iphone-15-393x852', width: 393, height: 852 },
-  { name: 'large-phone-430x932', width: 430, height: 932 },
-  { name: 'tablet-768x1024', width: 768, height: 1024 },
+  { name: 'phone-360x640', width: 360, height: 640, chromeHeight: 56, safeArea: { top: 24, bottom: 24 } },
+  { name: 'iphone-se-375x667', width: 375, height: 667, chromeHeight: 88, safeArea: { top: 20, bottom: 0 } },
+  { name: 'portrait-394x724', width: 394, height: 724, chromeHeight: 88, safeArea: { top: 44, bottom: 34 } },
+  { name: 'iphone-15-393x852', width: 393, height: 852, chromeHeight: 96, safeArea: { top: 59, bottom: 34 } },
+  { name: 'pixel-8-412x915', width: 412, height: 915, chromeHeight: 56, safeArea: { top: 24, bottom: 48 } },
+  { name: 'large-phone-430x932', width: 430, height: 932, chromeHeight: 96, safeArea: { top: 59, bottom: 34 } },
+  { name: 'tablet-768x1024', width: 768, height: 1024, safeArea: { top: 24, bottom: 20 } },
   { name: 'desktop-narrow-1024x768', width: 1024, height: 768 },
   { name: 'desktop-short-1366x768', width: 1366, height: 768 },
   { name: 'desktop-wide-1440x900', width: 1440, height: 900 },
 ]
 
+/**
+ * Expand each device into the browser-chrome states it actually ships in.
+ * Devices without a `chromeHeight` (tablet, desktop) have no retracting
+ * toolbar and yield a single case.
+ */
+function expandViewports(viewports) {
+  return viewports.flatMap((viewport) => {
+    const base = { ...viewport, safeArea: viewport.safeArea ?? { top: 0, bottom: 0 } }
+    if (!viewport.chromeHeight) return [base]
+
+    return [
+      // Toolbar expanded: the shortest the app ever gets.
+      {
+        ...base,
+        name: `${viewport.name}-toolbar`,
+        height: viewport.height - viewport.chromeHeight,
+      },
+      // Toolbar retracted: full height, and on iOS the bottom safe-area
+      // inset collapses to 0 in this state.
+      {
+        ...base,
+        name: `${viewport.name}-fullscreen`,
+        safeArea: { ...base.safeArea, bottom: 0 },
+      },
+    ]
+  })
+}
+
 const ROUTES = [
   { id: 'home', label: 'Home' },
-  { id: 'play', label: 'Play' },
   { id: 'collection', label: 'Collection' },
   { id: 'social', label: 'Social', subviews: ['Overview', 'Friends', 'Rankings', 'Clan', 'Trades'] },
   { id: 'shop', label: 'Shop', subviews: ['Overview', 'Vault', 'Packs', 'Themes', 'Borders', 'Breakdown'] },
@@ -397,6 +450,125 @@ async function clickSubview(page, label) {
   }
 }
 
+/* SCALING_PROBE_WIDTHS / SCALING_TARGETS are imported from
+   src/utils/layoutScaling.ts so the harness and the unit tests cannot drift. */
+
+/** Measure each target's box width and the font-size of its label. */
+async function collectComponentScaling(page) {
+  return page.evaluate(({ targets }) => {
+    const out = {}
+    for (const target of targets) {
+      const box = document.querySelector(target.box)
+      const text = document.querySelector(target.text)
+      if (!box || !text) continue
+      const rect = box.getBoundingClientRect()
+      if (rect.width < 1) continue
+      out[target.name] = {
+        width: Math.round(rect.width),
+        fontSize: Math.round(parseFloat(getComputedStyle(text).fontSize) * 100) / 100,
+      }
+    }
+    return out
+  }, { targets: SCALING_TARGETS })
+}
+
+/* findScalingInversions lives in src/utils/layoutScaling.ts — it is pure, so
+   it is unit-tested in `npm test` rather than only here. */
+
+/**
+ * The two failures players actually reported: "I can't see my hand" and
+ * "the bottom nav bar is missing".
+ *
+ * Both are measured against `window.visualViewport` rather than the layout
+ * viewport. That distinction is the whole point — when the iOS toolbar
+ * retracts, the layout viewport grows while the visible region does not, so a
+ * layout-viewport check reports a nav bar that no player can actually see as
+ * being perfectly in frame.
+ */
+async function collectDockVisibility(page, contextLabel) {
+  return page.evaluate(({ contextLabel: label }) => {
+    const vv = window.visualViewport
+    const view = {
+      width: Math.round(vv?.width ?? window.innerWidth),
+      height: Math.round(vv?.height ?? window.innerHeight),
+      offsetTop: Math.round(vv?.offsetTop ?? 0),
+    }
+
+    // Anything below this line is off the visible screen, whatever the layout
+    // viewport believes.
+    const visibleBottom = view.offsetTop + view.height
+    const issues = []
+
+    const check = (element, name, { requireFully = true } = {}) => {
+      if (!element) return null
+      const rect = element.getBoundingClientRect()
+      if (rect.width < 1 || rect.height < 1) return null
+
+      const overflowBottom = Math.round(rect.bottom - visibleBottom)
+      const overflowTop = Math.round(view.offsetTop - rect.top)
+      const record = {
+        name,
+        rect: {
+          x: Math.round(rect.x), y: Math.round(rect.y),
+          width: Math.round(rect.width), height: Math.round(rect.height),
+        },
+        overflowBottom,
+        overflowTop,
+      }
+
+      // 1px of tolerance absorbs subpixel rounding at fractional DPRs.
+      if (requireFully && overflowBottom > 1) {
+        issues.push({ ...record, kind: 'clipped-bottom' })
+      }
+      if (requireFully && overflowTop > 1) {
+        issues.push({ ...record, kind: 'clipped-top' })
+      }
+      return record
+    }
+
+    const navRect = check(document.querySelector('.scene-rail'), 'nav-bar')
+    check(document.querySelector('.topbar'), 'top-bar')
+
+    // Every hand card must be fully visible. The old layout clipped the
+    // bottom of all of them by a fixed number of pixels, so checking only
+    // the first or last card would have missed nothing — but checking all of
+    // them is what catches a partial overlap regression later.
+    const handCards = [...document.querySelectorAll('.battle-hand-rail .hand-card')]
+    handCards.forEach((card, index) => check(card, `hand-card-${index}`))
+
+    // A hand rail whose content is taller than its own box is clipping even
+    // if the rail itself sits inside the viewport.
+    const rail = document.querySelector('.battle-hand-rail')
+    if (rail && rail.scrollHeight > rail.clientHeight + 1) {
+      issues.push({
+        name: 'hand-rail',
+        kind: 'content-overflows-rail',
+        scrollHeight: rail.scrollHeight,
+        clientHeight: rail.clientHeight,
+      })
+    }
+
+    // Touch-target floor. 44px is the documented minimum; the old nav shrank
+    // to 40px on short screens specifically to fit six tabs.
+    const smallTargets = [...document.querySelectorAll('.scene-link, .topbar-settings-btn, .home-battle-cta')]
+      .map((element) => ({ element, rect: element.getBoundingClientRect() }))
+      .filter(({ rect }) => rect.height > 0 && rect.height < 44)
+      .map(({ element, rect }) => ({
+        name: element.className,
+        kind: 'target-below-44px',
+        height: Math.round(rect.height),
+      }))
+
+    return {
+      contextLabel: label,
+      visualViewport: view,
+      layoutViewport: { width: window.innerWidth, height: window.innerHeight },
+      navRect,
+      handCardCount: handCards.length,
+      issues: [...issues, ...smallTargets],
+    }
+  }, { contextLabel })
+}
 async function collectLayoutMetrics(page, contextLabel) {
   return page.evaluate(({ clippedSelector, textSelector, contextLabel: label }) => {
     const viewport = { width: window.innerWidth, height: window.innerHeight }
@@ -634,10 +806,21 @@ async function main() {
   const browser = await chromium.launch({ headless: true, executablePath })
   const page = await browser.newPage({ deviceScaleFactor: 1 })
   const results = []
+  /** {viewport, components:{name:{width,fontSize}}} — see findScalingInversions. */
+  const scalingSamples = []
 
   try {
-    for (const viewport of VIEWPORTS) {
+    for (const viewport of expandViewports(VIEWPORTS)) {
       await page.setViewportSize({ width: viewport.width, height: viewport.height })
+      // Headless Chromium never reports real safe-area insets, so drive the
+      // custom properties the layout actually consumes. This is what proves
+      // the nav bar clears an Android gesture bar or an iPhone home indicator.
+      await page.addStyleTag({
+        content: `:root {
+          --safe-top: ${viewport.safeArea.top}px;
+          --safe-bottom: ${viewport.safeArea.bottom}px;
+        }`,
+      })
       await ensureAuthenticated(page, server.url, server.apiOrigin)
 
       for (const route of ROUTES) {
@@ -648,11 +831,16 @@ async function main() {
           const label = `${viewport.name}-${route.id}-${subview.toLowerCase().replace(/\s+/g, '-')}`
           const metrics = await collectLayoutMetrics(page, label)
           await page.screenshot({ path: path.join(OUTPUT_DIR, `${label}.png`), fullPage: false })
-          results.push({ viewport: viewport.name, route: route.id, subview, failed: hasFailures(metrics), ...metrics })
+          const dock = await collectDockVisibility(page, label)
+          results.push({ viewport: viewport.name, route: route.id, subview, failed: hasFailures(metrics), dock, ...metrics })
         }
       }
 
-      await clickPrimaryScreen(page, 'Play')
+      // Battle now launches from the Home hub's sheet rather than a Play tab.
+      await clickPrimaryScreen(page, 'Home')
+      const battleCta = page.locator('.home-battle-cta').first()
+      if (await battleCta.count()) await battleCta.click()
+      await page.waitForTimeout(300)
       const aiButton = page.getByRole('button', { name: /AI Skirmish/i }).first()
       if (await aiButton.count()) {
         const disabled = await aiButton.evaluate((element) => element.hasAttribute('disabled') || element.getAttribute('aria-disabled') === 'true')
@@ -662,7 +850,8 @@ async function main() {
           const label = `${viewport.name}-battle-ai`
           const metrics = await collectLayoutMetrics(page, label)
           await page.screenshot({ path: path.join(OUTPUT_DIR, `${label}.png`), fullPage: false })
-          results.push({ viewport: viewport.name, route: 'battle', subview: 'AI Skirmish', failed: hasFailures(metrics), ...metrics })
+          const dock = await collectDockVisibility(page, label)
+          results.push({ viewport: viewport.name, route: 'battle', subview: 'AI Skirmish', failed: hasFailures(metrics), dock, ...metrics })
           if (viewport.width >= 768) {
             results.push(...await collectBattleHandHoverMetrics(page, viewport.name))
           }
@@ -671,20 +860,60 @@ async function main() {
         }
       }
     }
+
+    // ── Component-vs-viewport scaling sweep ─────────────────────────────
+    // Separate pass with its own width list: these are breakpoint-adjacent
+    // pairs rather than device sizes, and need only one screen each.
+    await page.setViewportSize({ width: 1180, height: 900 })
+    await ensureAuthenticated(page, server.url, server.apiOrigin)
+    for (const width of SCALING_PROBE_WIDTHS) {
+      await page.setViewportSize({ width, height: 900 })
+
+      await clickPrimaryScreen(page, 'Cards')
+      await page.waitForTimeout(180)
+      const cardSample = await collectComponentScaling(page)
+
+      await clickPrimaryScreen(page, 'Shop')
+      await page.waitForTimeout(180)
+      const shopSample = await collectComponentScaling(page)
+
+      scalingSamples.push({ viewport: width, components: { ...cardSample, ...shopSample } })
+    }
   } finally {
     await browser.close()
     await server.stop()
   }
 
-  const failures = results.filter((result) => result.failed)
+  const dockFailures = results.filter((result) => (result.dock?.issues?.length ?? 0) > 0)
+  const failures = results.filter((result) => result.failed || (result.dock?.issues?.length ?? 0) > 0)
   const warnings = results.filter((result) => result.smallTouchTargets.length > 0)
-  await writeFile(path.join(OUTPUT_DIR, 'responsive-layout-report.json'), JSON.stringify({ failures, warnings, results }, null, 2))
+  const inversions = findScalingInversions(scalingSamples)
+  await writeFile(
+    path.join(OUTPUT_DIR, 'responsive-layout-report.json'),
+    JSON.stringify({ failures, warnings, inversions, scalingSamples, results }, null, 2),
+  )
 
   console.log(`Responsive layout QA checked ${results.length} screen states.`)
+  console.log(`Component scaling sampled at ${scalingSamples.length} widths.`)
   console.log(`Screenshots and JSON report written to ${OUTPUT_DIR}`)
   if (warnings.length > 0) console.log(`Touch-target warnings: ${warnings.length}`)
+
+  if (inversions.length > 0) {
+    console.error(`Component scaling inversions: ${inversions.length}`)
+    for (const inversion of inversions) {
+      console.error(`- ${formatInversion(inversion)}`)
+    }
+    process.exitCode = 1
+  }
+
   if (failures.length > 0) {
     console.error(`Layout failures: ${failures.length}`)
+    // Dock failures get their own line — they are the regressions that
+    // reached players, and the generic overflow counters do not name them.
+    dockFailures.slice(0, 10).forEach((failure) => {
+      const kinds = failure.dock.issues.map((issue) => `${issue.name}:${issue.kind}`).join(', ')
+      console.error(`- ${failure.contextLabel}: visualViewport=${failure.dock.visualViewport.width}x${failure.dock.visualViewport.height} → ${kinds}`)
+    })
     failures.slice(0, 10).forEach((failure) => {
       console.error(`- ${failure.contextLabel}: overflowX=${failure.documentOverflowX}, clippedContainers=${failure.clippedContainers.length}, clippedText=${failure.clippedText.length}, offscreenInteractive=${failure.offscreenInteractive.length}, layoutConflicts=${failure.layoutConflicts.length}`)
     })

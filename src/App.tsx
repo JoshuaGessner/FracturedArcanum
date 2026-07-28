@@ -61,10 +61,11 @@ import { RewardCinemaOverlay } from './components/RewardCinemaOverlay'
 import { OnboardingTour } from './components/OnboardingTour'
 import { useSceneSwipe } from './hooks/useSceneSwipe'
 import { getNeighborScreen, NAV_ORDER } from './utils/sceneSwipe'
+import { useMeasuredHeightVar, useViewportMetrics } from './hooks/useViewportMetrics'
 import {
   buildBattleVictorySequence,
   buildDailyClaimSequence,
-  buildQuestClaimSequence,
+  buildQuestClaimBatchSequence,
   buildRankUpSequence,
   type RewardBeat,
 } from './components/RewardCinemaSequence'
@@ -72,7 +73,6 @@ import { SettingsScreen } from './screens/SettingsScreen'
 import { ShopScreen } from './screens/ShopScreen'
 import { CollectionScreen } from './screens/CollectionScreen'
 import { HomeScreen } from './screens/HomeScreen'
-import { PlayScreen } from './screens/PlayScreen'
 import { SocialScreen } from './screens/SocialScreen'
 import { BattleScreen } from './screens/BattleScreen'
 import { AppShellContext, type AppShellContextValue, type LongPressOptions } from './AppShellContext'
@@ -196,6 +196,33 @@ const AUTH_ROUTES: { screen: AuthScreen; prompt: string; label: string }[] = [
   { screen: 'legacy', prompt: 'Old password account?', label: 'Upgrade it' },
 ]
 
+/** Title shown in the top bar. Exhaustive over AppScreen by construction. */
+const SCREEN_TITLES: Record<AppScreen, string> = {
+  home: 'Arena Home',
+  collection: 'Collection',
+  social: 'Social',
+  battle: 'Battlefield',
+  shop: 'Shop',
+  settings: 'Settings',
+}
+
+/**
+ * Normalize a quest payload into a complete overview.
+ *
+ * Chains and reroll availability come from the server, but defaulting them
+ * keeps a cached service-worker response from an older build — or a server
+ * mid-deploy — from blanking the ledger instead of just omitting the new parts.
+ */
+function toQuestOverview(data: Partial<QuestOverview>): QuestOverview | null {
+  if (!data.quests || !data.summary) return null
+  return {
+    quests: data.quests,
+    chains: data.chains ?? [],
+    summary: data.summary,
+    rerolls: data.rerolls ?? { daily: false, weekly: false },
+  }
+}
+
 function AppShell() {
   // ─── Auth state ───────────────────────────────────────────────────────
   const [authToken, setAuthToken] = useState(() => readStoredValue(STORAGE_KEYS.authToken, ''))
@@ -278,6 +305,14 @@ function AppShell() {
   const activeScreenRef = useRef<AppScreen>('home')
   const [settingsSubview, setSettingsSubview] = useState<SettingsSubview>('preferences')
   const [screenTransitionClass, setScreenTransitionClass] = useState<'screen-enter-forward' | 'screen-enter-back' | 'screen-enter-lateral' | 'screen-enter-battle'>('screen-enter-lateral')
+
+  // ─── Layout runtime ───────────────────────────────────────────────────
+  // Publishes --app-h / --kb-inset from visualViewport, and mirrors the dock
+  // chrome heights so the scene stage can reserve exactly the right space
+  // instead of guessing at it with height media queries.
+  const topBarRef = useMeasuredHeightVar('--top-h')
+  const navBarRef = useMeasuredHeightVar('--nav-h')
+  useViewportMetrics()
 
   // ─── Phase 3W — Reward cinema sequence (battle / daily / pack / rank-up)
   const [cinemaSequence, setCinemaSequence] = useState<RewardBeat[] | null>(null)
@@ -426,8 +461,9 @@ function AppShell() {
     try {
       const response = await authFetch('/api/me/quests', authToken)
       const data = (await response.json()) as { ok?: boolean; error?: string } & Partial<QuestOverview>
-      if (data.ok && data.quests && data.summary) {
-        const overview = { quests: data.quests, summary: data.summary }
+      if (!data.ok) return null
+      const overview = toQuestOverview(data)
+      if (overview) {
         setQuestOverview(overview)
         return overview
       }
@@ -2108,7 +2144,7 @@ function AppShell() {
         setServerMatch({ phase: 'idle', matchId: null, revision: 0, kind: null, outcome: null })
         setBattleSessionActive(false)
         setBattleKind('ai')
-        transitionToScreen('play')
+        transitionToScreen('home')
         setToastMessage(payload?.error ?? 'Could not restore the live match. Returned to the arena gate.')
       }
     })
@@ -2243,8 +2279,9 @@ function AppShell() {
         setPackOffers(packData.packs ?? [])
         setFriends(socialData.friends ?? [])
         setClan(socialData.clan ?? null)
-        if (questData.ok && questData.quests && questData.summary) {
-          setQuestOverview({ quests: questData.quests, summary: questData.summary })
+        if (questData.ok) {
+          const overview = toQuestOverview(questData)
+          if (overview) setQuestOverview(overview)
         }
         if (!socialData.ok && socialData.error) {
           setSocialStatus(socialData.error)
@@ -2850,20 +2887,7 @@ function AppShell() {
   const todayKey = new Date().toISOString().slice(0, 10)
   const canClaimDailyReward = lastDailyClaim !== todayKey
 
-  const screenTitle =
-    activeScreen === 'home'
-      ? 'Arena Home'
-      : activeScreen === 'play'
-        ? 'Play'
-        : activeScreen === 'collection'
-          ? 'Collection'
-          : activeScreen === 'social'
-            ? 'Social'
-            : activeScreen === 'battle'
-              ? 'Battlefield'
-              : activeScreen === 'shop'
-                ? 'Shop'
-                : 'Settings'
+  const screenTitle = SCREEN_TITLES[activeScreen]
   const isBattleScreen = activeScreen === 'battle'
   const installState = createPwaInstallState({
     hasInstallPrompt: Boolean(installPromptEvent),
@@ -3134,40 +3158,72 @@ function AppShell() {
     void sendAnalytics('reward_claim', { amount: ECONOMY_REWARDS.dailyShards, currency: 'shards', screen: activeScreen, viewport: getScreenBucket() }, 'vault')
   }
 
-  function handleClaimQuestReward(questId: string) {
+  /**
+   * Claim one, several, or every ready quest reward.
+   *
+   * This is deliberately a single request even for many quests: the server
+   * settles them in one transaction and returns one authoritative shard
+   * balance, so there is no ordering race between responses and only one
+   * reward cinema to present.
+   *
+   * Pass no ids to claim everything currently ready.
+   */
+  function handleClaimQuestRewards(questIds?: string[]) {
     if (!authToken) {
       setToastMessage('Log in to claim quest rewards.')
       return
     }
 
-    void authFetch(`/api/me/quests/${questId}/claim`, authToken, { method: 'POST' })
+    void authFetch('/api/me/quests/claim', authToken, {
+      method: 'POST',
+      body: questIds && questIds.length > 0 ? { questIds } : {},
+    })
       .then((r) => r.json())
       .then((data: {
         ok?: boolean
         error?: string
         shards?: number
         totalEarned?: number
-        quest?: { id: string; title: string; reward: { shards: number } }
-        reward?: { shards: number }
+        totalShards?: number
+        claims?: { quest: { id: string; title: string }; reward: { shards: number } }[]
+        rejected?: { id: string; error: string }[]
         overview?: ({ ok?: boolean } & QuestOverview)
       }) => {
-        if (!data.ok || !data.quest) {
+        if (!data.ok) {
           setToastMessage(data.error ?? 'Could not claim quest reward.')
           return
         }
+
         setServerProfile((prev) => prev ? { ...prev, shards: data.shards ?? prev.shards, totalEarned: data.totalEarned ?? prev.totalEarned } : prev)
-        if (data.overview?.ok === true) {
-          setQuestOverview({ quests: data.overview.quests, summary: data.overview.summary })
+        const claimedOverview = data.overview?.ok === true ? toQuestOverview(data.overview) : null
+        if (claimedOverview) {
+          setQuestOverview(claimedOverview)
         } else {
           void refreshQuestOverview()
         }
-        setToastMessage(`${data.quest.title} claimed: +${data.reward?.shards ?? data.quest.reward.shards} Shards.`)
+
+        const claims = data.claims ?? []
+        if (claims.length === 0) {
+          setToastMessage(data.rejected?.[0]?.error ?? 'No quest rewards are ready to claim.')
+          return
+        }
+
+        const totalShards = data.totalShards ?? claims.reduce((sum, claim) => sum + claim.reward.shards, 0)
+        setToastMessage(
+          claims.length === 1
+            ? `${claims[0].quest.title} claimed: +${totalShards} Shards.`
+            : `${claims.length} quest rewards claimed: +${totalShards} Shards.`,
+        )
         presentRewardCinema(
-          buildQuestClaimSequence({ title: data.quest.title, shards: data.reward?.shards ?? data.quest.reward.shards }),
+          buildQuestClaimBatchSequence(claims.map((claim) => ({ title: claim.quest.title, shards: claim.reward.shards }))),
           'daily',
         )
       })
       .catch(() => setToastMessage('Network error claiming quest reward.'))
+  }
+
+  function handleClaimQuestReward(questId: string) {
+    handleClaimQuestRewards([questId])
   }
 
   function handleEquipTheme(themeId: CosmeticTheme, cost: number) {
@@ -3753,7 +3809,7 @@ function AppShell() {
       setEnemyTurnLabel('')
       prevBoardRef.current = null
       setDamagedSlots(new Set())
-      transitionToScreen('play', true)
+      transitionToScreen('home', true)
       setToastMessage(`Preparing a server-verified ${aiDifficulty} AI skirmish…`)
       socketClientRef.current.emit('game:ai_start', {
         difficulty: aiDifficulty,
@@ -4226,7 +4282,7 @@ function AppShell() {
       return
     }
 
-    transitionToScreen('play')
+    transitionToScreen('home')
     setQueueState('searching')
     setQueueSeconds(0)
     setQueuedOpponent(null)
@@ -4510,7 +4566,7 @@ function AppShell() {
     handleCreateDeck, handleRenameDeck, handleDeleteDeck, handleSelectDeck,
     handleBreakdownCard, handleDeckCount,
     // Cosmetics / shop handlers (state lives in ProfileProvider)
-    handleOpenPack, handlePurchaseBorder, handleSelectBorder, handleEquipTheme, handleClaimDailyReward, handleClaimQuestReward,
+    handleOpenPack, handlePurchaseBorder, handleSelectBorder, handleEquipTheme, handleClaimDailyReward, handleClaimQuestReward, handleClaimQuestRewards,
     // Navigation / UI shell
     activeScreen, openScreen, settingsSubview, openSettingsSubview, resetSettingsSubview, screenTitle,
     toastMessage, toastSeverity, toastStack, setToastMessage, inferToastSeverity,
@@ -4912,6 +4968,9 @@ function AppShell() {
         <TopBar
           screenTitle={screenTitle}
           serverProfile={serverProfile}
+          shards={shards}
+          onOpenSettings={() => openScreen('settings')}
+          ref={topBarRef}
         />
       )}
 
@@ -4940,9 +4999,6 @@ function AppShell() {
       {loggedIn && !forcedAccountGateActive && (<>
       <div className="scene-stage" {...sceneSwipeBind}>
         <HomeScreen />
-
-        <PlayScreen />
-
         <CollectionScreen />
 
         <SocialScreen />
@@ -4954,7 +5010,7 @@ function AppShell() {
         <SettingsScreen />
       </div>
 
-      {!isBattleScreen && <NavBar activeScreen={activeScreen} onNavigate={openScreen} />}
+      {!isBattleScreen && <NavBar activeScreen={activeScreen} onNavigate={openScreen} ref={navBarRef} />}
       </>)}
     </main>
     </AppShellContext.Provider>

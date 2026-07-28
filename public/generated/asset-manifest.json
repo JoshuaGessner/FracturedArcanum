@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-04-19T17:13:33.799Z",
+  "generatedAt": "2026-07-27T14:46:43.060Z",
   "provider": "local-svg",
   "apiReady": false,
   "commercialSafe": true,
@@ -141,6 +141,42 @@
       "id": "tile-battle.svg",
       "path": "/generated/ui/tile-battle.svg",
       "type": "ui-nav-tile",
+      "source": "local-generated"
+    },
+    {
+      "id": "nav-home.svg",
+      "path": "/generated/ui/nav-home.svg",
+      "type": "ui-nav-glyph",
+      "source": "local-generated"
+    },
+    {
+      "id": "nav-collection.svg",
+      "path": "/generated/ui/nav-collection.svg",
+      "type": "ui-nav-glyph",
+      "source": "local-generated"
+    },
+    {
+      "id": "nav-shop.svg",
+      "path": "/generated/ui/nav-shop.svg",
+      "type": "ui-nav-glyph",
+      "source": "local-generated"
+    },
+    {
+      "id": "nav-social.svg",
+      "path": "/generated/ui/nav-social.svg",
+      "type": "ui-nav-glyph",
+      "source": "local-generated"
+    },
+    {
+      "id": "nav-battle.svg",
+      "path": "/generated/ui/nav-battle.svg",
+      "type": "ui-nav-glyph",
+      "source": "local-generated"
+    },
+    {
+      "id": "nav-settings.svg",
+      "path": "/generated/ui/nav-settings.svg",
+      "type": "ui-nav-glyph",
       "source": "local-generated"
     },
     {

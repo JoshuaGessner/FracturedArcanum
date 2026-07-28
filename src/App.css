@@ -93,14 +93,9 @@
 }
 
 /* ─── Shared layout primitives ───────────────────────────────────── */
-
-.stack-1 { display: grid; gap: var(--space-1); }
 .stack-2 { display: grid; gap: var(--space-2); }
-.stack-3 { display: grid; gap: var(--space-3); }
-.stack-4 { display: grid; gap: var(--space-4); }
 
 .row-2   { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
-.row-3   { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; }
 
 /* Consistent keyboard-focus ring for interactive elements that opt in. */
 .focusable:focus-visible,
@@ -155,52 +150,66 @@ button:disabled {
 
 /* ─── App Shell ─────────────────────────────────────────────────── */
 
+/* The shell is pinned to the *visual* viewport, not the layout viewport.
+   --app-h is published by useViewportMetrics() from window.visualViewport,
+   which is the only measurement that accounts for the iOS toolbar retracting,
+   Android edge-to-edge insets, and the software keyboard all at once. The
+   `100svh` fallback covers first paint and any no-JS pass; it is short but
+   never clipped, which is the right way to be wrong. */
 .app-shell {
-  height: 100dvh;
-  min-height: 100svh;
+  position: fixed;
+  inset: 0;
+  height: 100svh;
+  height: var(--app-h, 100svh);
   width: 100%;
   max-width: 1180px;
-  margin: 0 auto;
+  margin-inline: auto;
   padding:
-    calc(12px + var(--safe-top))
-    calc(12px + var(--safe-right))
-    calc(8px + var(--safe-bottom))
-    calc(12px + var(--safe-left));
+    calc(var(--space-3) + var(--safe-top))
+    calc(var(--space-3) + var(--safe-right))
+    0
+    calc(var(--space-3) + var(--safe-left));
   display: flex;
   flex-direction: column;
   gap: var(--scene-gap);
-  position: relative;
   overflow: hidden;
 }
 
 .app-shell.battle-shell-active {
   max-width: 1320px;
-  gap: 8px;
-  padding:
-    calc(8px + var(--safe-top))
-    calc(8px + var(--safe-right))
-    calc(8px + var(--safe-bottom))
-    calc(8px + var(--safe-left));
+  gap: var(--space-2);
+  padding-inline: calc(var(--space-2) + var(--safe-right)) calc(var(--space-2) + var(--safe-left));
+  padding-top: calc(var(--space-2) + var(--safe-top));
 }
 
-/* Lock dock chrome to natural height; only the scene stage may grow. */
-.app-shell > .topbar,
-.app-shell > .nav-strip,
-.app-shell > .scene-rail,
-.app-shell > .update-banner,
-.app-shell > .challenge-banner {
+/* Dock chrome keeps its natural height; only the scene stage may grow or
+   shrink. `flex: 0 0 auto` on a wildcard rather than an allowlist — the old
+   allowlist named five classes (one of which, `.nav-strip`, matched nothing)
+   and every conditional banner rendered outside it competed for height and
+   pushed the nav bar out of the clipped shell. */
+.app-shell > * {
   flex: 0 0 auto;
 }
 
 /* The scene stage owns vertical scroll for the active screen. The shell
    itself never scrolls so dock chrome (TopBar, NavBar) stays pinned. */
-.scene-stage {
+.app-shell > .scene-stage {
   flex: 1 1 auto;
   min-height: 0;
   position: relative;
   display: flex;
   flex-direction: column;
 }
+
+/* ─── Overlay layer ─────────────────────────────────────────────────
+   Banners, gates, and account panels are *never* in the flex flow. In flow
+   they stole height from the scene stage and pushed the nav bar off-screen;
+   as fixed layers they can't affect the dock at all. */
+
+/* Banner-style overlays stack downward from under the top safe area. */
+
+/* Full-surface gates (auth, forced setup) get their own scroll context so a
+   tall form can never push the app chrome around. */
 
 .app-shell::before {
   content: '';
@@ -275,10 +284,8 @@ button:disabled {
    (.vault-grid, .ops-grid) keep their native CSS Grid layout. */
 .app-shell:not(.battle-shell-active) .scene-stage > .home-screen.screen-panel.active,
 .app-shell:not(.battle-shell-active) .scene-stage > .collection-screen.screen-panel.active,
-.app-shell:not(.battle-shell-active) .scene-stage > .vault-grid.shop-screen.screen-panel.active,
 .app-shell:not(.battle-shell-active) .scene-stage > .shop-market.shop-screen.screen-panel.active,
 .app-shell:not(.battle-shell-active) .scene-stage > .home-screen.social-screen.screen-panel.active,
-.app-shell:not(.battle-shell-active) .scene-stage > .ops-grid.settings-screen.screen-panel.active,
 .app-shell:not(.battle-shell-active) .scene-stage > .settings-screen.screen-panel.active {
   display: flex;
   flex-direction: column;
@@ -302,22 +309,9 @@ button:disabled {
   min-height: 0;
 }
 
-.home-screen.play-screen.screen-panel.active > .spotlight-card {
-  flex: 0 0 auto;
-  overflow: visible;
-}
-
-.home-screen.play-screen.screen-panel.active > .play-command-card {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow: hidden;
-}
-
 /* Shop / social / settings: first article fills when content is sparse. */
-.vault-grid.shop-screen.screen-panel.active > article:first-child,
 .shop-market.shop-screen.screen-panel.active > article:first-child,
 .home-screen.social-screen.screen-panel.active > .home-cards,
-.ops-grid.settings-screen.screen-panel.active > article:first-child,
 .settings-screen.screen-panel.active > article:first-child {
   flex: 1 1 auto;
   min-height: 0;
@@ -422,7 +416,6 @@ button:disabled {
    screen classes so BattleScreen's nested panels are not affected. */
 
 .home-screen.active,
-.play-screen.active,
 .social-screen.active,
 .collection-screen.active,
 .shop-screen.active,
@@ -433,7 +426,6 @@ button:disabled {
 }
 
 .home-screen.active::before,
-.play-screen.active::before,
 .social-screen.active::before,
 .collection-screen.active::before,
 .shop-screen.active::before,
@@ -454,7 +446,6 @@ button:disabled {
 
 @media (max-width: 640px) {
   .home-screen.active::before,
-  .play-screen.active::before,
   .social-screen.active::before,
   .collection-screen.active::before,
   .shop-screen.active::before,
@@ -466,7 +457,6 @@ button:disabled {
 
 .home-screen.active::before { background-image: url('/generated/ui/bg-main-menu.svg'); }
 .home-screen:not(.social-screen).active::before { inset: 0; }
-.play-screen.active::before { background-image: url('/generated/ui/bg-play.svg'); }
 .collection-screen.active::before { background-image: url('/generated/ui/bg-collection.svg'); }
 .social-screen.active::before { background-image: url('/generated/ui/bg-social.svg'); }
 .shop-screen.active::before { background-image: url('/generated/ui/bg-shop.svg'); }
@@ -475,14 +465,11 @@ button:disabled {
 
 /* PlayScreen reuses .home-screen as a layout class but should NOT show
    the main-menu backdrop — .play-screen rules above override. */
-.home-screen.play-screen.active::before,
 .home-screen.social-screen.active::before { background-image: none; }
-.play-screen.active::before { background-image: url('/generated/ui/bg-play.svg'); }
 .social-screen.active::before { background-image: url('/generated/ui/bg-social.svg'); }
 
 @media (prefers-reduced-motion: reduce) {
   .home-screen.active::before,
-  .play-screen.active::before,
   .social-screen.active::before,
   .collection-screen.active::before,
   .shop-screen.active::before,
@@ -500,7 +487,6 @@ button:disabled {
    ─────────────────────────────────────────────────────────────── */
 
 .home-screen.active::after,
-.play-screen.active::after,
 .social-screen.active::after,
 .collection-screen.active::after,
 .shop-screen.active::after,
@@ -528,17 +514,6 @@ button:disabled {
     radial-gradient(1.5px 1.5px at 45% 88%, rgba(251, 191, 36, 0.45), transparent),
     radial-gradient(1px 1px at 92% 76%, rgba(251, 191, 36, 0.25), transparent);
   animation: sceneFxFadeIn 1.2s ease 0.4s forwards, sceneFxDriftSlow 18s ease-in-out infinite;
-}
-
-.play-screen.active::after {
-  background:
-    radial-gradient(2px 2px at 15% 22%, rgba(124, 58, 237, 0.6), transparent),
-    radial-gradient(1.5px 1.5px at 38% 65%, rgba(124, 58, 237, 0.35), transparent),
-    radial-gradient(2.5px 2.5px at 70% 12%, rgba(167, 139, 250, 0.5), transparent),
-    radial-gradient(1px 1px at 85% 48%, rgba(124, 58, 237, 0.3), transparent),
-    radial-gradient(2px 2px at 50% 85%, rgba(167, 139, 250, 0.45), transparent),
-    radial-gradient(1.5px 1.5px at 8% 78%, rgba(124, 58, 237, 0.25), transparent);
-  animation: sceneFxFadeIn 1.2s ease 0.4s forwards, sceneFxPulse 14s ease-in-out infinite;
 }
 
 .collection-screen.active::after {
@@ -598,7 +573,6 @@ button:disabled {
 }
 
 /* Prevent PlayScreen/SocialScreen from doubling the home-screen ::after */
-.home-screen.play-screen.active::after { background: none; animation: none; }
 .home-screen.social-screen.active::after { background: none; animation: none; }
 
 @keyframes sceneFxFadeIn {
@@ -633,7 +607,6 @@ button:disabled {
 
 @media (prefers-reduced-motion: reduce) {
   .home-screen.active::after,
-  .play-screen.active::after,
   .social-screen.active::after,
   .collection-screen.active::after,
   .shop-screen.active::after,
@@ -646,17 +619,9 @@ button:disabled {
 
 /* ─── Layout Grids ──────────────────────────────────────────────── */
 
-.topbar, .home-screen, .battlefield, .vault-grid, .ops-grid {
+.topbar, .home-screen, .battlefield {
   display: grid;
   gap: var(--scene-gap);
-}
-
-.utility-grid { grid-template-columns: 1fr; }
-
-.vault-grid, .ops-grid {
-  grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
-  min-width: 0;
-  align-content: start;
 }
 
 .home-cards {
@@ -665,7 +630,7 @@ button:disabled {
   gap: var(--scene-gap);
 }
 
-.meta-grid, .footer-grid {
+.meta-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
@@ -692,73 +657,116 @@ button:disabled {
   gap: 8px;
 }
 
+/* ─── Bottom navigation ─────────────────────────────────────────────
+   Four destinations instead of six. The old bar split 360px into six columns
+   (~55px each) and shrank labels to 0.64rem and targets to 40px to make them
+   fit — both under the 44px touch floor. Settings moved to the top-bar account
+   menu, and Play was absorbed into the Home hub, which buys back the width.
+   The bar is `auto-fit` so adding a fifth destination degrades gracefully
+   instead of needing a new breakpoint. */
 .scene-rail {
   position: relative;
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 6px;
-  padding: 8px;
-  padding-inline-start: calc(8px + var(--safe-left));
-  padding-inline-end: calc(8px + var(--safe-right));
-  border-radius: 16px;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: var(--space-1);
+  padding: var(--space-2);
+  padding-inline-start: calc(var(--space-2) + var(--safe-left));
+  padding-inline-end: calc(var(--space-2) + var(--safe-right));
+  /* The shell no longer pads its own bottom, so the rail owns the gesture-bar
+     inset. `max()` is deliberate: Safari reports safe-area-inset-bottom as 0
+     whenever the toolbar is hidden, so a bare env() would leave the rail flush
+     against the home indicator. */
+  padding-bottom: calc(var(--space-2) + max(var(--safe-bottom), var(--space-1)));
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  margin-inline: calc(var(--space-3) * -1);
   z-index: 4;
   background: rgba(10, 14, 28, 0.92);
   backdrop-filter: blur(14px);
   border: 1px solid rgba(147, 197, 253, 0.12);
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.28);
-  padding-bottom: calc(8px + var(--safe-bottom));
+  border-bottom: 0;
+  box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.34);
 }
 
 .scene-link {
   position: relative;
-  min-height: 52px;
+  /* 48px of tappable height at every viewport — never traded away to fit. */
+  min-height: 48px;
   min-width: 0;
-  padding: 6px 4px;
-  border-radius: 12px;
-  color: #d8e1ff;
+  padding: var(--space-1) var(--space-1) 5px;
+  border-radius: var(--radius-md);
+  color: #9fb0d4;
   text-align: center;
   display: grid;
   align-content: center;
   justify-items: center;
-  gap: 4px;
-  background: rgba(255, 255, 255, 0.05);
-  transition: background 0.2s, color 0.2s, transform 0.15s;
+  gap: 3px;
+  background: transparent;
+  transition: color var(--motion-fast), background var(--motion-fast);
 }
 
+/* Glyphs are masked rather than used as background-image so `currentColor`
+   drives the tint — one asset covers both rest and active states. */
 .scene-link::before {
   content: '';
-  width: 16px;
-  height: 16px;
-  opacity: 0.88;
-  background-position: center;
-  background-repeat: no-repeat;
-  background-size: contain;
+  width: 24px;
+  height: 24px;
+  background-color: currentColor;
+  -webkit-mask: var(--nav-glyph) center / contain no-repeat;
+  mask: var(--nav-glyph) center / contain no-repeat;
+  transition: transform var(--motion-base);
 }
 
-.scene-link[data-nav='home']::before { background-image: url('/generated/ui/particle-rune.svg'); }
-.scene-link[data-nav='play']::before { background-image: url('/generated/ui/tile-play.svg'); }
-.scene-link[data-nav='collection']::before { background-image: url('/generated/ui/tile-collection.svg'); }
-.scene-link[data-nav='social']::before { background-image: url('/generated/ui/tile-social.svg'); }
-.scene-link[data-nav='shop']::before { background-image: url('/generated/ui/tile-shop.svg'); }
-.scene-link[data-nav='settings']::before { background-image: url('/generated/ui/tile-settings.svg'); }
+.scene-link[data-nav='home']       { --nav-glyph: url('/generated/ui/nav-home.svg'); }
+.scene-link[data-nav='collection'] { --nav-glyph: url('/generated/ui/nav-collection.svg'); }
+.scene-link[data-nav='social']     { --nav-glyph: url('/generated/ui/nav-social.svg'); }
+.scene-link[data-nav='shop']       { --nav-glyph: url('/generated/ui/nav-shop.svg'); }
+.scene-link[data-nav='settings']   { --nav-glyph: url('/generated/ui/nav-settings.svg'); }
+.scene-link[data-nav='play']       { --nav-glyph: url('/generated/ui/nav-battle.svg'); }
 
 .scene-link:hover,
 .scene-link:focus-visible {
-  background: rgba(255, 255, 255, 0.1);
+  color: #dbe6ff;
 }
 
+/* Active state reads from the glyph and label, not a filled pill. A solid
+   gradient block at this size crowds the icon and buries the label. */
 .scene-link.active {
-  background: linear-gradient(135deg, #7c3aed, #2563eb);
   color: #fff;
-  box-shadow: 0 4px 16px rgba(124, 58, 237, 0.32);
+}
+
+.scene-link.active::before {
+  transform: translateY(-1px) scale(1.06);
+}
+
+/* Indicator sits above the item, aligned to the icon rather than the label. */
+.scene-link.active::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  width: 22px;
+  height: 3px;
+  border-radius: 0 0 var(--radius-pill) var(--radius-pill);
+  background: linear-gradient(90deg, #38bdf8, #7c3aed);
+  box-shadow: 0 0 12px rgba(124, 58, 237, 0.6);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scene-link::before { transition: none; }
+  .scene-link.active::before { transform: none; }
 }
 
 .scene-link-label {
   max-width: 100%;
-  font-size: 0.72rem;
+  /* Fixed, readable size. The old rule scaled this down to 0.64rem on small
+     phones; the bar now has the width to keep it legible everywhere. */
+  font-size: var(--font-xs);
   font-weight: 700;
   line-height: 1.1;
-  overflow-wrap: anywhere;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* ─── Main-menu nav tiles ───────────────────────────────────────── */
@@ -849,13 +857,77 @@ button:disabled {
 
 /* ─── Topbar & Brand ────────────────────────────────────────────── */
 
+/* Top bar is a two-slot row: identity/title on the left, persistent
+   currency + settings on the right. */
 .topbar {
   display: grid;
-  gap: 8px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-2);
 }
 
+.topbar-trailing {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.topbar-currency {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px var(--space-3) 5px var(--space-2);
+  border-radius: var(--radius-pill);
+  border: 1px solid rgba(251, 191, 36, 0.28);
+  background: rgba(251, 191, 36, 0.12);
+  color: var(--gold-light);
+  font-size: var(--font-sm);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.topbar-currency-glyph {
+  width: 16px;
+  height: 16px;
+  background: url('/generated/ui/gem-rare.svg') center / contain no-repeat;
+}
+
+/* Settings is a 44px icon target rather than a nav tab. */
+.topbar-settings-btn {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 auto;
+  border-radius: var(--radius-md);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.03));
+  border: 1px solid rgba(147, 197, 253, 0.16);
+  color: #c3d2f2;
+  display: grid;
+  place-items: center;
+  transition: color var(--motion-fast), border-color var(--motion-fast);
+}
+
+.topbar-settings-btn::before {
+  content: '';
+  width: 22px;
+  height: 22px;
+  background-color: currentColor;
+  -webkit-mask: url('/generated/ui/nav-settings.svg') center / contain no-repeat;
+  mask: url('/generated/ui/nav-settings.svg') center / contain no-repeat;
+}
+
+.topbar-settings-btn:hover,
+.topbar-settings-btn:focus-visible {
+  color: #fff;
+  border-color: var(--border-bright);
+}
+
+/* Home keeps the same two-slot shape as every other screen — brand on the
+   left, currency + settings on the right. The single-column override here
+   pushed the trailing controls onto a second row and doubled the header's
+   height on phones. */
 .topbar-home {
-  grid-template-columns: minmax(0, 1fr);
   align-items: center;
 }
 
@@ -939,129 +1011,17 @@ button:disabled {
   50% { transform: translateY(-4px); }
 }
 
-.top-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
-  justify-content: flex-end;
-}
-
 .username-label {
   font-size: 0.78rem;
   color: #d6def7;
   white-space: nowrap;
 }
 
-.top-actions .ghost {
-  min-height: 40px;
-  padding: 8px 12px;
-}
-
-.top-action-toggle {
-  min-width: 92px;
-}
-
 /* ─── Season Progress ───────────────────────────────────────────── */
-
-.season-progress-block {
-  margin-top: 12px;
-  display: grid;
-  grid-template-columns: 1.2fr 1fr;
-  gap: 16px;
-  align-items: center;
-}
-
-.progress-column { display: grid; gap: 8px; }
-
-.progress-shell {
-  width: 100%;
-  height: 14px;
-  border-radius: 999px;
-  overflow: hidden;
-  background: rgba(255, 255, 255, 0.08);
-}
-
-.progress-fill {
-  height: 100%;
-  border-radius: inherit;
-  background: linear-gradient(135deg, #38bdf8, #7c3aed, #fbbf24);
-  transition: width 0.6s ease;
-}
-
-.season-progress-visual {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 14px;
-  align-items: center;
-}
-
-.season-progress-ring {
-  position: relative;
-  width: 100px;
-  height: 100px;
-  display: grid;
-  place-items: center;
-}
-
-.season-progress-svg {
-  width: 100px;
-  height: 100px;
-  transform: rotate(-90deg);
-}
-
-.season-progress-track,
-.season-progress-value {
-  fill: none;
-  stroke-width: 8;
-}
-
-.season-progress-track {
-  stroke: rgba(255, 255, 255, 0.1);
-}
-
-.season-progress-value {
-  stroke: url(#season-progress-gradient);
-  stroke: #fbbf24;
-  stroke-linecap: round;
-  transition: stroke-dashoffset 420ms ease;
-}
-
-.season-progress-core {
-  position: absolute;
-  inset: 10px;
-  display: grid;
-  place-items: center;
-  gap: 4px;
-  padding: 6px;
-  border-radius: 50%;
-  background: radial-gradient(circle at center, rgba(12, 18, 36, 0.96), rgba(23, 35, 71, 0.86));
-  text-align: center;
-}
-
-.season-progress-core strong {
-  font-size: 0.9rem;
-}
-
-.season-progress-core .rank-badge-art {
-  padding: 0;
-  background: transparent;
-  justify-content: center;
-}
-
-.season-progress-core .rank-badge-art span {
-  display: none;
-}
-
-.season-progress-core .rank-badge-art img {
-  width: 24px;
-  height: 24px;
-}
 
 /* ─── Generic Flex Rows ─────────────────────────────────────────── */
 
-.turn-bar, .section-head, .hero-header,
-.slot-head, .card-top, .card-stats, .stepper, .mode-switch {
+.section-head, .slot-head, .card-top, .card-stats, .stepper {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1088,7 +1048,7 @@ button:disabled {
    gradient. Surfaces own either SVG chrome or CSS edge treatment,
    never both — avoid stacking panel-frame.svg on top of a CSS border. */
 
-.section-card, .hero-card {
+.section-card {
   background: linear-gradient(135deg, rgba(14, 20, 38, 0.94), rgba(23, 35, 71, 0.86));
   border: 1px solid var(--border);
   border-radius: 18px;
@@ -1096,21 +1056,11 @@ button:disabled {
   box-shadow: 0 14px 38px rgba(10, 14, 30, 0.28);
 }
 
-.hero-card.enemy { border-color: rgba(248, 113, 113, 0.3); }
-
 .utility-card {
   background: linear-gradient(135deg, rgba(12, 18, 36, 0.94), rgba(23, 35, 71, 0.84));
 }
 
 .spotlight-card { overflow: clip; }
-
-.scene-status-panel {
-  margin-top: var(--panel-gap);
-  padding: var(--card-pad);
-  border-radius: 16px;
-  border: 1px solid rgba(147, 197, 253, 0.18);
-  background: linear-gradient(160deg, rgba(10, 16, 31, 0.86), rgba(26, 34, 64, 0.82));
-}
 
 .scene-header-panel {
   display: grid;
@@ -1189,7 +1139,6 @@ button:disabled {
 }
 
 .scene-status-grid-compact,
-.scene-header-subnav,
 .scene-header-shortcuts {
   margin-top: 0;
 }
@@ -1253,15 +1202,6 @@ button:disabled {
   color: #cbd5ff;
 }
 
-.spotlight-banner {
-  width: 100%;
-  height: auto;
-  display: block;
-  margin-bottom: 12px;
-  border-radius: 14px;
-  border: 1px solid rgba(96, 165, 250, 0.2);
-}
-
 /* ─── Home Command Panel ───────────────────────────────────────── */
 
 .home-command-card {
@@ -1289,10 +1229,112 @@ button:disabled {
   scrollbar-color: rgba(147, 197, 253, 0.35) transparent;
 }
 
+/* The hub scrolls; the primary action does not.
+
+   An earlier version made this a fixed three-row grid (status / quests /
+   action). That guaranteed the CTA stayed on screen, but on a 560px-tall
+   phone the status ribbon ate the middle row and the quest board was left
+   with a sliver. Letting the content scroll and sticking the action to the
+   bottom keeps the CTA permanently reachable *and* gives quests real height. */
 .home-command-layout {
   display: grid;
+  grid-template-rows: auto auto 1fr;
   gap: clamp(10px, 1.5svh, 16px);
   min-width: 0;
+  min-height: 100%;
+  align-content: start;
+}
+
+/* ─── Primary battle action ─────────────────────────────────────────
+   The single most important control in the app. Previously the launch
+   surface was a tab of equal weight to Settings; now it is the largest
+   element on the hub and sticks to the bottom of the scroll area, inside
+   the natural thumb arc for one-handed use. */
+.home-battle-dock {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  align-self: end;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-2);
+  align-items: center;
+  padding-top: var(--space-3);
+  /* Fades the scrolling content out behind the button rather than letting it
+     collide with the label. */
+  background: linear-gradient(to top, var(--surface-alt) 62%, transparent);
+}
+
+.home-battle-dock:has(.home-battle-secondary) {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.home-battle-cta {
+  min-height: clamp(56px, 9svh, 72px);
+  padding: var(--space-2) var(--space-5);
+  border-radius: var(--radius-lg);
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 2px;
+  color: #fff;
+  background: linear-gradient(135deg, #7c3aed, #2563eb);
+  border: 1px solid rgba(196, 181, 253, 0.35);
+  box-shadow: 0 10px 28px rgba(76, 29, 149, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  transition: transform var(--motion-fast), box-shadow var(--motion-fast), filter var(--motion-fast);
+}
+
+.home-battle-cta:active {
+  transform: translateY(1px) scale(0.995);
+  box-shadow: 0 4px 14px rgba(76, 29, 149, 0.4);
+}
+
+.home-battle-cta-label {
+  font-size: clamp(1.15rem, 4.6vw, 1.5rem);
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  line-height: 1.05;
+}
+
+.home-battle-cta-note {
+  font-size: var(--font-xs);
+  font-weight: 600;
+  color: rgba(233, 233, 255, 0.86);
+  line-height: 1.15;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+/* Tones carry state without changing the control's position or size, so the
+   CTA never moves under the player's thumb between renders. */
+.home-battle-dock.tone-resume .home-battle-cta {
+  background: linear-gradient(135deg, #b45309, #f59e0b);
+  border-color: rgba(253, 230, 138, 0.45);
+  box-shadow: 0 10px 28px rgba(180, 83, 9, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.home-battle-dock.tone-queued .home-battle-cta {
+  background: linear-gradient(135deg, #0e7490, #0891b2);
+  border-color: rgba(165, 243, 252, 0.35);
+}
+
+.home-battle-dock.tone-blocked .home-battle-cta {
+  background: linear-gradient(135deg, #4b5563, #374151);
+  border-color: rgba(203, 213, 225, 0.22);
+  box-shadow: var(--shadow-md);
+}
+
+.home-battle-secondary {
+  min-height: clamp(56px, 9svh, 72px);
+  padding-inline: var(--space-4);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-battle-cta { transition: none; }
+  .home-battle-cta:active { transform: none; }
 }
 
 .home-status-ribbon {
@@ -1404,10 +1446,15 @@ button:disabled {
   white-space: nowrap;
 }
 
+/* The quest board takes its natural height and lets the hub scroll around it.
+   It briefly owned an internal scroller, which produced the worst of both
+   worlds on short phones: a squeezed board with content hidden inside it and
+   no visible affordance saying so. */
 .home-quest-board {
   position: relative;
   overflow: hidden;
   display: grid;
+  align-content: start;
   gap: 12px;
   padding: clamp(14px, 2.2svh, 20px);
   border-radius: var(--radius-lg);
@@ -1647,8 +1694,11 @@ button:disabled {
 }
 
 @media (max-width: 640px) {
+  /* The rating label stays visible; it truncates instead of being removed. */
   .home-status-ribbon-meter span {
-    display: none;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 }
 
@@ -1708,8 +1758,12 @@ button:disabled {
     font-size: 0.78rem;
   }
 
+  /* Chip captions truncate rather than vanish — they carry the only
+     explanation of what each number means. */
   .home-status-chip small {
-    display: none;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .home-quest-board {
@@ -1754,8 +1808,12 @@ button:disabled {
     font-size: 0.98rem;
   }
 
+  /* Contract description clamps to one line rather than vanishing. */
   .home-featured-contract-copy p {
-    display: none;
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
   }
 
   .home-featured-contract-reward {
@@ -1779,11 +1837,22 @@ button:disabled {
     width: 100%;
   }
 
+  /* Contract previews stay; they scroll horizontally at this width. */
   .home-contract-preview-list {
-    display: none;
+    overflow-x: auto;
+    scrollbar-width: none;
   }
 }
 
+/* ─── Height-based queries stay media queries ────────────────────────
+   Container queries describe an element's *inline* size. There is no useful
+   container equivalent for "the window is short", and short-window density is
+   a real concern on landscape phones and small laptop windows.
+
+   These blocks were re-checked after the svh/clamp work: the fluid values
+   (`clamp(10px, 1.5svh, 16px)` and friends) already carry most of the load, so
+   what remains here is a final tightening rather than the primary mechanism.
+   They are deliberately kept. */
 @media (max-height: 780px) {
   .home-command-layout {
     gap: 8px;
@@ -1808,160 +1877,28 @@ button:disabled {
 }
 
 @media (max-width: 380px) and (max-height: 680px) {
+  /* The status rail stays. It used to be removed entirely below 380×680,
+     which silently shipped a different app to the smallest phones. Three
+     columns still fit here — the chips are narrow — and 3-up avoids the
+     lopsided 2+1 that a two-column grid produces with three tiles. */
   .home-status-rail {
-    display: none;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 4px;
   }
 
   .home-status-ribbon-badges .badge {
     min-height: 34px;
   }
 
-  .home-quest-board-footer > span {
-    display: none;
-  }
-}
-
-.home-final-main {
-  display: grid;
-  gap: clamp(8px, 1.2svh, 12px);
-  min-width: 0;
-}
-
-.home-final-topline {
-  display: grid;
-  grid-template-columns: auto minmax(112px, 0.42fr);
-  align-items: start;
-  justify-content: space-between;
-  gap: 12px;
+  /* Footer text truncates rather than disappearing (see base rule). */
 }
 
 .home-rank-badge.rank-badge-art {
   width: fit-content;
 }
 
-.home-final-intro {
-  display: grid;
-  gap: 5px;
-  min-width: 0;
-}
-
-.home-final-intro strong {
-  color: #f7faff;
-  font-size: clamp(1.18rem, 3.4vw, 1.55rem);
-  line-height: 1.05;
-}
-
-.home-final-intro span {
-  min-width: 0;
-  color: #dce6ff;
-  font-size: clamp(1rem, 2.8vw, 1.35rem);
-  line-height: 1.1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.home-final-badges {
-  margin-top: 0;
-}
-
-.home-status-list {
-  display: grid;
-  gap: clamp(8px, 1.1svh, 12px);
-}
-
 .home-status-card.scene-status-tile {
   padding: clamp(10px, 1.35svh, 14px) 12px;
-}
-
-.home-scene-header {
-  min-height: 0;
-  align-content: start;
-}
-
-.home-scene-header .scene-header-top.has-visual {
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 10px;
-}
-
-.home-scene-header .scene-header-visual .rank-badge-art {
-  padding: 5px 8px;
-}
-
-.home-scene-header .scene-header-visual .rank-badge-art img {
-  width: 24px;
-  height: 24px;
-}
-
-.home-scene-header .scene-header-visual .rank-badge-art span {
-  font-size: 0.78rem;
-}
-
-.home-scene-header .scene-status-grid {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: clamp(5px, 0.8svh, 10px);
-  margin-top: 0;
-}
-
-.home-scene-header .scene-status-tile {
-  gap: 3px;
-  padding: clamp(6px, 0.9svh, 10px) 8px;
-  align-content: start;
-}
-
-.home-scene-header .scene-status-tile strong {
-  font-size: clamp(0.82rem, 2.3vw, 0.98rem);
-  line-height: 1.05;
-}
-
-.home-scene-header .scene-status-tile .mini-text {
-  display: -webkit-box;
-  overflow: hidden;
-  line-height: 1.18;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-}
-
-.home-rating-meter {
-  display: grid;
-  gap: 8px;
-  align-items: start;
-  justify-self: end;
-  width: min(280px, 100%);
-  padding: 0;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-}
-
-.home-rating-meter strong {
-  padding: 0;
-  color: #f6f8ff;
-  font-size: clamp(0.88rem, 2.6vw, 1.05rem);
-  line-height: 1.08;
-  font-weight: 700;
-}
-
-.home-rating-meter > .mini-text {
-  display: none;
-}
-
-.home-rating-copy {
-  display: grid;
-  gap: 2px;
-  min-width: 0;
-}
-
-.home-rating-copy strong {
-  color: #f6f8ff;
-  font-size: 0.96rem;
-  line-height: 1.05;
-}
-
-.home-rating-copy .mini-text {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .home-rating-track {
@@ -1980,14 +1917,6 @@ button:disabled {
   transition: width 0.6s ease;
 }
 
-.home-rating-percent {
-  min-width: 42px;
-  color: #f8fbff;
-  font-size: 0.82rem;
-  font-weight: 800;
-  text-align: right;
-}
-
 @media (min-width: 721px) {
   .home-screen:not(.social-screen).screen-panel.active {
     align-items: start;
@@ -1998,44 +1927,9 @@ button:disabled {
     justify-self: center;
   }
 
-  .home-final-main {
-    grid-template-columns: minmax(0, 1.05fr) minmax(260px, 0.78fr);
-    grid-template-areas:
-      "topline status"
-      "intro status"
-      "badges status";
-    column-gap: clamp(16px, 3vw, 28px);
-    row-gap: clamp(12px, 1.8svh, 18px);
-    align-items: start;
-  }
-
-  .home-final-topline {
-    grid-area: topline;
-    grid-template-columns: auto minmax(180px, 1fr);
-    align-items: center;
-  }
-
-  .home-final-intro {
-    grid-area: intro;
-  }
-
-  .home-final-badges {
-    grid-area: badges;
-  }
-
-  .home-status-list {
-    grid-area: status;
-    gap: 10px;
-  }
-
   .home-status-card.scene-status-tile {
     min-height: 92px;
     padding: 14px 16px;
-  }
-
-  .home-rating-meter {
-    align-self: center;
-    width: min(300px, 100%);
   }
 
   .quest-summary {
@@ -2054,63 +1948,11 @@ button:disabled {
   color: #cbd5ff;
 }
 
-.subtitle {
-  margin: 0;
-  max-width: 62ch;
-  color: #d9d4ea;
-}
-
 /* ─── Hero Display ──────────────────────────────────────────────── */
-
-.hero-showcase { overflow: hidden; }
-
-.hero-showcase-head {
-  display: grid;
-  grid-template-columns: 88px 1fr;
-  gap: 14px;
-  align-items: center;
-}
-
-.hero-avatar {
-  width: 88px;
-  height: 88px;
-  border-radius: 20px;
-  border: 1px solid rgba(251, 191, 36, 0.35);
-  background: rgba(7, 12, 24, 0.44);
-}
 
 .hero-copy { min-width: 0; }
 
-.hero-label {
-  color: #c2b8df;
-  font-size: 0.85rem;
-}
-
-.hero-health, .stats { font-weight: 800; }
-.hero-health { font-size: 1.2rem; }
-
-.profile-showcase, .battle-hud-main, .battle-objective {
-  display: grid;
-  gap: 12px;
-}
-
-.profile-showcase, .battle-objective {
-  grid-template-columns: 72px 1fr;
-  align-items: center;
-}
-
-.battle-hud-main {
-  grid-template-columns: 1.3fr 1fr;
-  align-items: center;
-}
-
-.profile-medal, .battle-medal {
-  width: 72px;
-  height: 72px;
-  border-radius: 16px;
-  border: 1px solid rgba(251, 191, 36, 0.26);
-  background: rgba(7, 12, 24, 0.44);
-}
+.stats { font-weight: 800; }
 
 /* ─── Badges & Status ───────────────────────────────────────────── */
 
@@ -2127,38 +1969,6 @@ button:disabled {
   border-radius: 14px;
   background: rgba(37, 99, 235, 0.08);
   border: 1px solid rgba(147, 197, 253, 0.14);
-}
-
-.play-command-card {
-  display: flex;
-  flex-direction: column;
-  gap: clamp(7px, 1.1svh, 12px);
-  padding: clamp(8px, 1.2svh, 14px);
-}
-
-.play-command-card .play-readiness-panel-compact,
-.play-command-card .mode-card-grid,
-.play-command-card .difficulty-panel,
-.play-command-card .play-queue-stage,
-.play-command-card .play-live-strip {
-  flex: 0 0 auto;
-}
-
-.play-command-card .mode-card-grid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: clamp(6px, 1svh, 10px);
-  margin-top: 0;
-}
-
-.play-command-card .mode-card {
-  min-height: clamp(74px, 12svh, 104px);
-  padding: clamp(8px, 1.2svh, 12px);
-  gap: 4px;
-  align-content: end;
-}
-
-.play-command-card .mode-card .note {
-  display: none;
 }
 
 .play-ai-settings {
@@ -2186,47 +1996,6 @@ button:disabled {
 .play-ai-settings .difficulty-chip-row {
   justify-content: flex-end;
   margin-top: 0;
-}
-
-.difficulty-row {
-  gap: 6px;
-}
-
-.difficulty-codex-card {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 10px;
-  align-items: center;
-  padding: 10px;
-  border-radius: var(--radius-md);
-  border: 1px solid rgba(147, 197, 253, 0.14);
-  background: linear-gradient(135deg, rgba(8, 14, 30, 0.66), rgba(23, 31, 57, 0.5));
-}
-
-.difficulty-codex-card strong {
-  display: block;
-  color: #f8fafc;
-  font-size: var(--font-lg);
-  margin: 2px 0 4px;
-}
-
-.difficulty-trait-row {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 6px;
-  max-width: 280px;
-}
-
-.difficulty-trait-row span {
-  padding: 5px 7px;
-  border-radius: var(--radius-sm);
-  color: #dbeafe;
-  background: rgba(59, 130, 246, 0.14);
-  border: 1px solid rgba(147, 197, 253, 0.14);
-  font-size: var(--font-xs);
-  font-weight: 800;
-  text-transform: uppercase;
 }
 
 .mode-card-grid {
@@ -2347,67 +2116,6 @@ button:disabled {
 
 /* ─── Play Action Row & Live Strip ──────────────────────────────── */
 
-.play-entry-hint {
-  margin-top: 0;
-  padding: 8px 12px;
-  border-radius: 12px;
-  font-size: 0.88rem;
-  background: rgba(37, 99, 235, 0.08);
-  border: 1px solid rgba(147, 197, 253, 0.14);
-  color: #dbe7ff;
-}
-
-.play-queue-stage {
-  min-height: 0;
-}
-
-.play-queue-stage .play-entry-hint {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.play-entry-hint > div {
-  display: grid;
-  gap: 2px;
-  min-width: 0;
-}
-
-.play-entry-hint strong {
-  display: block;
-  color: #f8fafc;
-  line-height: 1.2;
-}
-
-.play-entry-hint .secondary.mini {
-  flex: 0 0 auto;
-  min-height: 34px;
-  padding: 6px 10px;
-}
-
-.play-entry-hint.ready {
-  background: rgba(34, 197, 94, 0.08);
-  border-color: rgba(74, 222, 128, 0.18);
-}
-
-.play-entry-hint.warning {
-  background: rgba(245, 158, 11, 0.08);
-  border-color: rgba(251, 191, 36, 0.2);
-}
-
-.play-action-row {
-  display: flex;
-  gap: 8px;
-  margin-top: 8px;
-}
-
-.play-action-row .primary,
-.play-action-row .secondary,
-.play-action-row .ghost {
-  flex: 1 1 0;
-}
-
 .play-live-strip {
   display: flex;
   align-items: center;
@@ -2527,34 +2235,6 @@ button:disabled {
   background: linear-gradient(135deg, rgba(251, 191, 36, 0.22), rgba(96, 165, 250, 0.16));
   border: 1px solid rgba(251, 191, 36, 0.36);
   color: #fff7d6;
-}
-
-.social-hero {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  padding: 8px 10px;
-  border-radius: var(--radius-md);
-  background: linear-gradient(160deg, rgba(10, 18, 36, 0.9), rgba(32, 24, 58, 0.8));
-  border: 1px solid var(--border);
-}
-
-.social-hero strong {
-  font-size: var(--font-md);
-}
-
-.collection-screen .scene-status-panel,
-.social-screen .scene-status-panel,
-.shop-screen .scene-status-panel,
-.settings-screen .scene-status-panel {
-  box-shadow: inset 0 1px 0 rgba(251, 191, 36, 0.06);
-}
-
-.social-primary-list,
-.shop-hub-grid,
-.social-hub-grid {
-  margin-top: 10px;
 }
 
 .badge, .deck-status {
@@ -2845,12 +2525,6 @@ button:disabled {
 
 /* ─── Pips (Mana / Momentum) ───────────────────────────────────── */
 
-.pip-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
 .pip {
   width: 16px;
   height: 16px;
@@ -3040,10 +2714,6 @@ button:disabled {
   min-height: 0;
 }
 
-.battle-side-head {
-  margin-bottom: 0;
-}
-
 .battle-centerline {
   display: flex;
   align-items: center;
@@ -3158,11 +2828,6 @@ button:disabled {
   border-radius: 0 0 10px 10px;
   gap: 3px;
   font-size: 0.6rem;
-}
-
-.battlefield-divider {
-  display: none;
-  margin: 2px 0;
 }
 
 .slot {
@@ -3294,15 +2959,6 @@ button:disabled {
   gap: 6px;
 }
 
-.tribe-badge {
-  font-size: 0.75rem;
-  padding: 2px 6px;
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.08);
-  color: #c0c8e0;
-  text-transform: capitalize;
-}
-
 .card-meta-row {
   display: flex;
   align-items: center;
@@ -3365,12 +3021,6 @@ button:disabled {
   z-index: 2;
 }
 
-.card-top-meta {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
 .battle-hand-effect {
   position: absolute;
   top: 6px;
@@ -3380,41 +3030,41 @@ button:disabled {
 
 /* ─── Hand Cards ────────────────────────────────────────────────── */
 
-.hand-section {
-  display: grid;
-  gap: 6px;
-  position: relative;
-  z-index: 2;
-  min-height: 0;
-  flex: 0 0 auto;
-  max-height: min(24svh, 172px);
-}
+/* `.hand-section` and `.hand-fan-stage` used to live here. No component has
+   rendered them since the hand moved into `.battle-hand-rail`, and their
+   `max-height: min(24svh, 172px)` was clipping the rail that replaced them. */
 
-.hand-fan-stage {
-  overflow: hidden;
-  height: 100%;
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
-  gap: 6px;
-}
+/* ─── Hand rail ──────────────────────────────────────────────────────
+   The hand used to be clipped on every device by fixed arithmetic: the rail
+   was `min(27svh, 198px)` tall while the card inside had `min-height: 142px`
+   plus 44px of combined clearance and padding — 194px of content in a box
+   that is 180px tall on a 667px phone. Because the card height was a hard
+   px minimum, it could not shrink; it just got cut off.
 
+   Cards now derive their height from the rail, not the other way round, and
+   their width follows from a real playing-card aspect ratio. The hand shrinks
+   gracefully instead of clipping, and never needs a height media query. */
 .battle-hand-rail {
-  --battle-hand-top-clearance: 20px;
-  --battle-hand-bottom-clearance: 12px;
+  /* Room above the rail for the hover/peek lift, and below for the tilt. */
+  --battle-hand-top-clearance: clamp(10px, 2svh, 20px);
+  --battle-hand-bottom-clearance: clamp(6px, 1.2svh, 12px);
+  /* The one number that governs hand size. Everything else is derived. */
+  --hand-card-h: clamp(96px, 19svh, 152px);
+
   display: grid;
   min-height: 0;
-  block-size: min(27svh, 198px);
-  max-height: none;
+  block-size: calc(
+    var(--hand-card-h)
+    + var(--battle-hand-top-clearance)
+    + var(--battle-hand-bottom-clearance)
+    + 12px /* rail padding: 4px top + 8px bottom */
+  );
   margin-top: -2px;
   padding: 4px 8px 8px;
   border-radius: 16px 16px 14px 14px;
   background: linear-gradient(180deg, rgba(9, 13, 24, 0.96), rgba(20, 30, 56, 0.94));
   border: 1px solid rgba(147, 197, 253, 0.12);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 -10px 24px rgba(8, 12, 24, 0.18);
-}
-
-.hand-rail-head {
-  display: none;
 }
 
 .hand-grid {
@@ -3426,7 +3076,11 @@ button:disabled {
 .hand-fan-grid {
   display: flex;
   align-items: end;
-  gap: 0;
+  /* Centred so a small hand sits under the thumb rather than hugging the
+     left edge, while a large hand still scrolls from the start. */
+  justify-content: safe center;
+  /* Enough room that the tilted corners of adjacent cards never collide. */
+  gap: clamp(4px, 1.4vw, 10px);
   overflow-x: auto;
   overflow-y: hidden;
   min-height: 0;
@@ -3448,8 +3102,11 @@ button:disabled {
 
 .hand-card {
   position: relative;
-  min-height: 142px;
-  padding: 8px 10px;
+  /* Height comes from the rail; width follows the standard 63×88mm card
+     ratio. No `min-height` — a hard px floor is what caused the clipping. */
+  block-size: var(--hand-card-h, 142px);
+  aspect-ratio: 63 / 88;
+  padding: clamp(5px, 1.1svh, 8px) clamp(6px, 1.4svh, 10px);
   background: linear-gradient(180deg, rgba(49, 42, 84, 0.96), rgba(22, 24, 46, 0.96));
   color: white;
   text-align: left;
@@ -3470,35 +3127,55 @@ button:disabled {
   z-index: var(--fan-order, 1);
 }
 
+/* Cards no longer overlap.
+
+   A fan looks good in a screenshot, but every card's attack/health sits in
+   its bottom-right corner — exactly the part an overlapping neighbour covers.
+   In a game where those two numbers decide every trade, legibility beats the
+   flourish. The per-card `--fan-tilt` rotation keeps the hand from reading as
+   a flat row, and a hand too wide to fit simply scrolls. */
 .hand-fan-grid .hand-card {
-  flex: 0 0 118px;
-  margin-left: -32px;
+  flex: 0 0 auto;
   scroll-snap-align: center;
 }
 
-.hand-fan-grid .hand-card:first-child {
-  margin-left: 0;
-}
+/* (the first-child margin reset is gone with the negative margins) */
 
 .battle-hand-rail .hand-card {
   transform: translateY(8px) rotate(var(--fan-tilt, 0deg));
 }
 
-.battle-hand-rail .hand-card:hover:not(:disabled) {
-  transform: translateY(6px) scale(1.03) rotate(0deg);
+/* Hover lift is gated behind a real pointer.
+   iOS Safari and Android Chrome apply `:hover` on tap and leave it applied
+   until the next tap elsewhere, so an unguarded hover rule leaves a card
+   stuck lifted and overlapping its neighbours after every play. Long-press
+   inspect (BATTLE_HAND_INSPECT_DELAY_MS) is the touch equivalent. */
+@media (hover: hover) and (pointer: fine) {
+  .battle-hand-rail .hand-card:hover:not(:disabled) {
+    transform: translateY(6px) scale(1.03) rotate(0deg);
+  }
+
+  .hand-card:hover:not(:disabled) {
+    /* Lift scales with the card so it clears the rail identically at every
+       size — a fixed -18px overshot the clearance on short screens. */
+    transform: translateY(calc(var(--hand-card-h, 142px) * -0.12)) rotate(0deg) scale(1.05);
+    box-shadow: 0 18px 40px rgba(6, 10, 22, 0.4), 0 0 16px var(--rarity-color, transparent);
+    z-index: 8;
+  }
 }
 
-/* Tactile press — card briefly compresses before commit. */
+/* Keyboard parity for the hover lift. */
+.hand-card:focus-visible:not(:disabled) {
+  transform: translateY(calc(var(--hand-card-h, 142px) * -0.12)) rotate(0deg) scale(1.05);
+  z-index: 8;
+}
+
+/* Tactile press — card briefly compresses before commit. This is the
+   affordance touch actually gets, so it is not hover-gated. */
 .battle-hand-rail .hand-card:active:not(:disabled):not(.is-dragging) {
   transform: translateY(6px) scale(0.97) rotate(0deg);
   box-shadow: 0 2px 8px rgba(6, 10, 22, 0.5);
   transition: transform 60ms ease-out, box-shadow 60ms ease-out;
-}
-
-.hand-card:hover:not(:disabled) {
-  transform: translateY(-18px) rotate(0deg) scale(1.05);
-  box-shadow: 0 18px 40px rgba(6, 10, 22, 0.4), 0 0 16px var(--rarity-color, transparent);
-  z-index: 8;
 }
 
 .hand-card.unplayable { opacity: 0.55; }
@@ -3546,7 +3223,6 @@ button:disabled {
 
 .card-stats span,
 .battle-stats-inline span,
-.hero-health,
 .rank-badge-art,
 .badge-with-art {
   display: inline-flex;
@@ -3966,6 +3642,9 @@ button:disabled {
 }
 
 .shop-hub-panels {
+  /* Container for the panels' own boxes — see @container shopgrid below. */
+  container-type: inline-size;
+  container-name: shopgrid;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   grid-auto-rows: minmax(108px, 1fr);
@@ -3980,6 +3659,13 @@ button:disabled {
 }
 
 .shop-hub-panel {
+  /* Container for its own contents. The panel's width does not track the
+     viewport: at ≥820px the hub splits into two columns and the panel lands
+     in the narrow one, so a desktop panel (340px) and a tablet panel (180px)
+     used to get the same styling while the tablet panel and the phone panel
+     (166px) — nearly the same size — got different styling. */
+  container-type: inline-size;
+  container-name: shoppanel;
   position: relative;
   overflow: hidden;
   display: grid;
@@ -4019,6 +3705,43 @@ button:disabled {
 .shop-hub-panel > * {
   position: relative;
   z-index: 1;
+}
+
+/* Panel density, keyed to the grid the panels sit in.
+   The panel's *own* box (min-height/padding/gap) cannot come from
+   `@container shoppanel` — an element cannot query itself — so it asks the
+   grid instead, which is the thing that actually decides how much room each
+   panel gets. Content-box threshold. */
+@container shopgrid (width < 400px) {
+  .shop-hub-panel {
+    min-height: 100px;
+    padding: 9px 10px;
+    gap: 5px;
+  }
+}
+
+/* Contents, keyed to the panel itself. */
+@container shoppanel (width < 190px) {
+  .shop-hub-panel::before {
+    width: 36px;
+    height: 36px;
+    inset: auto 10px 10px auto;
+    opacity: 0.16;
+  }
+
+  .shop-hub-panel-packs::before {
+    opacity: 0.28;
+  }
+
+  .shop-hub-panel > span:not(.shop-hub-panel-kicker) {
+    font-size: 0.76rem;
+  }
+
+  /* The supporting stat is the first thing to go when the panel is this
+     narrow; the kicker and title carry the meaning. */
+  .shop-hub-panel-stat {
+    display: none;
+  }
 }
 
 .shop-hub-panel:hover,
@@ -4107,27 +3830,6 @@ button:disabled {
 
 .shop-breakdown-list {
   margin-top: 0;
-}
-
-.shop-hero {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  padding: 8px 10px;
-  border-radius: var(--radius-md);
-  background: linear-gradient(160deg, rgba(10, 18, 36, 0.9), rgba(32, 24, 58, 0.8));
-  border: 1px solid var(--border);
-}
-
-.shop-hero strong {
-  font-size: var(--font-md);
-}
-
-.shop-hero .note {
-  flex: 1 1 100%;
-  margin: 0;
-  color: #cfd8ff;
 }
 
 .pack-offer-card::after {
@@ -4239,9 +3941,18 @@ button:disabled {
   transform: scale(1.08);
 }
 
-/* ─── Deck Builder ──────────────────────────────────────────────── */
+/* ─── Deck Builder ───────────────────────────────────────────────────
+   The grid and the cards in it are sized by their container, not the viewport.
+   Keying these off viewport width produced a measurable inversion: crossing
+   640px took each card from 190px wide to 294px wide while simultaneously
+   switching its contents to the compact treatment — 55% roomier box, 22%
+   smaller type, at the same moment. */
 
-.preset-row { margin-top: 12px; }
+/* The panel is what actually decides how many columns fit. */
+.collection-screen .section-card {
+  container-type: inline-size;
+  container-name: panel;
+}
 
 .builder-grid {
   margin-top: 6px;
@@ -4251,7 +3962,27 @@ button:disabled {
   min-width: 0;
 }
 
+/* Below ~420px of panel, `auto-fit minmax(180px, …)` collapses to a single
+   very wide card. Two columns is the better phone layout, and this asks the
+   panel — not the window — whether that is the situation we are in. */
+@container panel (width < 420px) {
+  .builder-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 .builder-card {
+  /* Container for its own contents. Safe here: the card is a grid item so its
+     width comes from the track and never from its contents, it is already
+     `position: relative` with `overflow: hidden`, and its one `position:
+     fixed` descendant (the drag ghost) is portalled out of the subtree.
+
+     Note the card's *own* box cannot use `cqw` — container units resolve
+     against the nearest *ancestor* container, so `cqw` here would mean "panel
+     width", i.e. the viewport again. Only the contents below may use them. */
+  container-type: inline-size;
+  container-name: card;
+
   position: relative;
   min-width: 0;
   min-height: 200px;
@@ -4267,6 +3998,120 @@ button:disabled {
   -webkit-touch-callout: none;
 }
 
+/* Compact treatment, keyed to the card's own width.
+
+   The threshold is in CONTENT-box pixels, which is what `@container` compares
+   against — not the border box you get from getBoundingClientRect(). The card
+   carries 8px padding each side plus a 2px border, so a 217px card queries as
+   197px. Getting this wrong fails silently: a first pass used 200px and the
+   roomy desktop card still matched the compact branch.
+
+   Measured content widths: 152px (phone, 2-up), 170px (3-up), 174px, 197px
+   (desktop, 5-up), 274px (2-up wide). 185px separates the crowded cases from
+   the roomy ones. */
+@container card (width < 185px) {
+  .builder-card .builder-card-preview,
+  .builder-card .builder-card-preview > *,
+  .builder-card .slot-head,
+  .builder-card .card-meta-row,
+  .builder-card .card-stats,
+  .builder-card .builder-card-footnote,
+  .builder-card .stepper {
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
+  }
+
+  .builder-card .card-art-shell {
+    height: 78px;
+    border-radius: 12px;
+  }
+
+  .builder-card .slot-head,
+  .builder-card .card-meta-row,
+  .builder-card .card-stats {
+    gap: 4px;
+  }
+
+  .builder-card .slot-head strong {
+    font-size: 0.78rem;
+    line-height: 1.15;
+  }
+
+  .builder-card .stats,
+  .builder-card .card-stats {
+    font-size: 0.8rem;
+  }
+
+  .builder-card .rarity-gem {
+    gap: 3px;
+    margin-bottom: 0;
+    flex: 0 1 auto;
+    min-width: 0;
+  }
+
+  /* Icon-only at this width; the label returns as soon as the card has room. */
+  .builder-card .rarity-gem span {
+    display: none;
+  }
+
+  .builder-card .rarity-gem-icon,
+  .builder-card .stat-icon,
+  .builder-card .effect-icon {
+    width: 12px;
+    height: 12px;
+  }
+
+  .builder-card .builder-card-meta-full {
+    display: none;
+  }
+
+  /* Descendant form, not the bare class: the base `.builder-card-meta-compact
+     { display: none }` sits later in the file at equal specificity and would
+     otherwise win, silently keeping the compact label hidden. */
+  .builder-card .builder-card-meta-compact {
+    display: inline-block;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.72rem;
+  }
+
+  .builder-card .effect-badge {
+    display: inline-grid;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    border-radius: 999px;
+  }
+
+  .builder-card .effect-badge span {
+    display: none;
+  }
+
+  .builder-card .stepper {
+    justify-content: space-between;
+    gap: 3px;
+  }
+
+  /* Stays at 34px — a narrow card is exactly where the +/- controls must not
+     shrink further. */
+  .builder-card .stepper .ghost.mini {
+    width: 34px;
+    min-width: 34px;
+    height: 34px;
+    padding: 0;
+    border-radius: 10px;
+  }
+
+  .builder-card .count-chip {
+    min-width: 24px;
+    font-size: 0.86rem;
+  }
+}
 .builder-card-preview {
   width: 100%;
   max-width: 100%;
@@ -4356,137 +4201,7 @@ button:disabled {
 
 /* ─── Summary / Victory ──────────────────────────────────────── */
 
-.summary-card {
-  position: relative;
-  overflow: hidden;
-  background: linear-gradient(135deg, rgba(16, 21, 38, 0.96), rgba(38, 49, 92, 0.88));
-}
-
-.battle-result-card::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  opacity: 0.18;
-  background-position: right center;
-  background-repeat: no-repeat;
-  background-size: 220px auto;
-}
-
-.battle-result-card.result-victory {
-  border-color: rgba(34, 197, 94, 0.24);
-}
-
-.battle-result-card.result-victory::before {
-  background-image: url('/generated/ui/overlay-victory.svg');
-}
-
-.battle-result-card.result-defeat {
-  border-color: rgba(248, 113, 113, 0.24);
-}
-
-.battle-result-card.result-defeat::before {
-  background-image: url('/generated/ui/overlay-defeat.svg');
-}
-
-.battle-result-card.result-draw {
-  border-color: rgba(148, 163, 184, 0.24);
-}
-
-.battle-result-card.result-draw::before {
-  background-image: url('/generated/ui/overlay-draw.svg');
-}
-
-.battle-result-card .section-head,
-.battle-result-card .summary-grid {
-  position: relative;
-  z-index: 1;
-}
-
-.summary-grid {
-  display: grid;
-  grid-template-columns: 1.2fr auto;
-  gap: 14px;
-  align-items: center;
-  margin-top: 10px;
-}
-
-.reward-summary-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-  margin-top: 12px;
-}
-
-.reward-summary-tile {
-  padding: 10px 12px;
-  border-radius: 12px;
-  border: 1px solid rgba(251, 191, 36, 0.16);
-  background: rgba(45, 30, 10, 0.36);
-  display: grid;
-  gap: 4px;
-}
-
-.reward-streak-ember {
-  box-shadow: 0 22px 60px rgba(245, 158, 11, 0.16);
-}
-
-.reward-streak-inferno {
-  box-shadow: 0 22px 60px rgba(245, 158, 11, 0.26);
-}
-
-.season-framing {
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: #fcd34d;
-}
-
-.season-countdown {
-  font-size: var(--font-xs);
-  color: rgba(252, 211, 77, 0.7);
-  font-weight: 400;
-  text-transform: none;
-  letter-spacing: normal;
-}
-
 .log-heading { margin-top: 16px; }
-.log-list li { color: #edf3ff; }
-
-.quest-list, .log-list {
-  margin: 10px 0 0;
-  padding-left: 18px;
-  display: grid;
-  gap: 8px;
-}
-
-.quest-list {
-  list-style: none;
-  padding-left: 0;
-}
-
-.quest-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.quest-check {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  flex: 0 0 auto;
-  border: 1px solid rgba(147, 197, 253, 0.22);
-  background: rgba(30, 41, 59, 0.7);
-}
-
-.quest-check.complete {
-  background: radial-gradient(circle, #86efac 0%, #22c55e 60%, #166534 100%);
-  box-shadow: 0 0 10px rgba(34, 197, 94, 0.28);
-}
-
-.quest-check.pending {
-  background: rgba(71, 85, 105, 0.7);
-}
 
 /* ─── Quest Summary Strip (Home density) ─────────────────────── */
 
@@ -4521,86 +4236,12 @@ button.quest-summary:focus-visible {
   background: rgba(60, 50, 20, 0.25);
 }
 
-.quest-summary.just-claimed {
-  position: relative;
-}
-
-.quest-summary.just-claimed::before {
-  content: '✓';
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.6rem;
-  font-weight: 700;
-  color: rgba(34, 197, 94, 0.9);
-  background: rgba(10, 16, 31, 0.75);
-  border-radius: inherit;
-  z-index: 2;
-  animation: claimCheck 1.8s ease-out forwards;
-  pointer-events: none;
-}
-
 @keyframes claimCheck {
   0% { transform: scale(0); opacity: 0; }
   20% { transform: scale(1.2); opacity: 1; }
   30% { transform: scale(1); }
   70% { opacity: 1; }
   100% { opacity: 0; }
-}
-
-.quest-pips {
-  display: flex;
-  gap: 5px;
-  flex: 0 0 auto;
-}
-
-.quest-pip {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  border: 1px solid rgba(147, 197, 253, 0.22);
-  background: rgba(71, 85, 105, 0.7);
-  transition: background 0.2s, box-shadow 0.2s;
-}
-
-.quest-pip.complete {
-  background: radial-gradient(circle, #86efac 0%, #22c55e 60%, #166534 100%);
-  box-shadow: 0 0 6px rgba(34, 197, 94, 0.3);
-  border-color: rgba(34, 197, 94, 0.3);
-}
-
-.quest-count {
-  flex: 1 1 auto;
-  font-size: 0.82rem;
-  color: #b9c2dd;
-  white-space: nowrap;
-}
-
-.quest-next {
-  min-width: 0;
-  color: #d7def7;
-  font-size: 0.78rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.quest-reward-hint {
-  flex: 0 0 auto;
-  padding: 4px 8px;
-  border-radius: 999px;
-  font-size: 0.72rem;
-  color: #d6def7;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(147, 197, 253, 0.14);
-}
-
-.quest-reward-hint.ready {
-  color: #fef3c7;
-  border-color: rgba(251, 191, 36, 0.28);
-  background: rgba(120, 90, 18, 0.24);
 }
 
 /* ─── Quest Ledger Menu ─────────────────────────────────────── */
@@ -4847,15 +4488,6 @@ button.quest-summary:focus-visible {
   border-radius: var(--radius-md);
 }
 
-.home-focus-strip {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 12px;
-}
-
-.log-panel { min-width: 0; }
-
 /* ─── Queue / Modal Overlays ────────────────────────────────────── */
 
 .queue-overlay {
@@ -4870,7 +4502,6 @@ button.quest-summary:focus-visible {
 }
 
 .intro-overlay { background: rgba(7, 10, 20, 0.62); }
-.reward-overlay { background: rgba(16, 12, 4, 0.68); }
 
 .intro-versus-grid {
   display: grid;
@@ -4904,13 +4535,6 @@ button.quest-summary:focus-visible {
   animation: vsSlam 320ms ease-out;
 }
 
-.reward-banner-art {
-  width: min(240px, 82%);
-  margin: 0 auto;
-  display: block;
-  filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.28));
-}
-
 @keyframes vsSlam {
   from { transform: scale(1.18); opacity: 0; }
   to { transform: scale(1); opacity: 1; }
@@ -4930,56 +4554,15 @@ button.quest-summary:focus-visible {
   border-color: rgba(96, 165, 250, 0.28);
 }
 
-.reward-modal {
-  text-align: center;
-  border-color: rgba(251, 191, 36, 0.36);
-  background: linear-gradient(135deg, rgba(36, 24, 8, 0.98), rgba(88, 58, 18, 0.9));
-}
-
-.reward-art {
-  width: min(180px, 60%);
-  margin: 0 auto;
-  display: block;
-  filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.28));
-}
-
-.vault-hero { width: min(220px, 70%); }
-
 @keyframes modalPop {
   from { opacity: 0; transform: scale(0.96) translateY(10px); }
   to { opacity: 1; transform: scale(1) translateY(0); }
 }
 
-.queue-spinner {
-  width: 62px;
-  height: 62px;
-  margin: 4px auto;
-  border-radius: 50%;
-  border: 4px solid rgba(255, 255, 255, 0.12);
-  border-top-color: #38bdf8;
-  border-right-color: #7c3aed;
-  animation: spin 0.9s linear infinite;
-}
-
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes spinCounter { to { transform: rotate(-360deg); } }
 
-.overlay-preview {
-  padding: 12px;
-  border-radius: 14px;
-  border: 1px solid rgba(96, 165, 250, 0.18);
-  background: rgba(7, 12, 24, 0.44);
-}
-
 /* ─── Matchmaking ───────────────────────────────────────────────── */
-
-.matchmaking-card {
-  margin-top: 12px;
-  padding: 12px;
-  border-radius: 16px;
-  border: 1px solid rgba(147, 197, 253, 0.18);
-  background: rgba(10, 16, 31, 0.42);
-}
 
 .queue-pill {
   padding: 6px 10px;
@@ -4991,8 +4574,6 @@ button.quest-summary:focus-visible {
 .queue-pill.idle { background: rgba(148, 163, 184, 0.24); }
 .queue-pill.searching { background: rgba(56, 189, 248, 0.22); }
 .queue-pill.found { background: rgba(34, 197, 94, 0.22); }
-
-.opponent-preview { display: grid; gap: 4px; margin: 10px 0; }
 
 /* ─── Vault Themes ──────────────────────────────────────────────── */
 
@@ -5024,31 +4605,7 @@ button.quest-summary:focus-visible {
 .theme-swatch.ember { background: linear-gradient(135deg, #ef4444, #f97316); }
 .theme-swatch.moon { background: linear-gradient(135deg, #38bdf8, #a78bfa); }
 
-.shop-plan-list {
-  margin: 8px 0 0;
-  padding-left: 18px;
-  display: grid;
-  gap: 10px;
-  color: #edf3ff;
-}
-
 /* ─── Asset Preview ─────────────────────────────────────────────── */
-
-.asset-preview-row {
-  margin-top: 12px;
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.asset-preview-thumb {
-  width: 100%;
-  aspect-ratio: 1 / 1;
-  border-radius: 12px;
-  border: 1px solid rgba(251, 191, 36, 0.22);
-  object-fit: cover;
-  background: rgba(7, 12, 26, 0.6);
-}
 
 .settings-screen.screen-panel.active {
   display: flex;
@@ -5245,34 +4802,6 @@ button.quest-summary:focus-visible {
   background: transparent;
 }
 
-.settings-section-toolbar {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: 10px;
-  align-items: center;
-  min-height: 42px;
-  padding: 8px 10px;
-  border-radius: var(--radius-md);
-  border: 1px solid rgba(147, 197, 253, 0.16);
-  background: rgba(7, 12, 26, 0.48);
-}
-
-.settings-section-toolbar > div {
-  display: grid;
-  gap: 1px;
-  min-width: 0;
-}
-
-.settings-section-toolbar strong {
-  color: #f8fbff;
-  font-size: 0.96rem;
-}
-
-.settings-section-toolbar span:not(.badge):not(.support-seal) {
-  color: #a8b7d8;
-  font-size: 0.78rem;
-}
-
 .settings-toggle-list {
   display: grid;
   gap: 8px;
@@ -5380,11 +4909,6 @@ button.quest-summary:focus-visible {
 .settings-toggle-row-danger .settings-toggle-action .ghost.mini:hover:not(:disabled) {
   border-color: rgba(248, 113, 113, 0.54);
   box-shadow: 0 6px 18px rgba(127, 29, 29, 0.18);
-}
-
-.auth-install-hint {
-  margin-top: 10px;
-  text-align: center;
 }
 
 .settings-toggle-row .muted,
@@ -5497,47 +5021,8 @@ button.quest-summary:focus-visible {
   background: linear-gradient(135deg, #0b1020, #11182c);
 }
 
-.settings-subnav {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin: 10px 0;
-}
-
-.settings-subnav .badge {
-  min-width: 0;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.settings-subnav button {
-  flex: 0 0 auto;
-  margin-left: auto;
-}
-
 .settings-view-note {
   margin: 0;
-}
-
-.preference-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-  margin: 12px 0;
-}
-
-.preference-tile {
-  display: grid;
-  gap: 10px;
-  padding: 12px;
-  border-radius: 16px;
-  border: 1px solid rgba(147, 197, 253, 0.18);
-  background: linear-gradient(135deg, rgba(10, 16, 31, 0.9), rgba(33, 36, 70, 0.76));
-  box-shadow: inset 0 1px 0 rgba(251, 191, 36, 0.06);
 }
 
 .settings-support-panel .complaint-form {
@@ -5550,43 +5035,6 @@ button.quest-summary:focus-visible {
 .settings-support-panel .text-input {
   background: linear-gradient(135deg, rgba(33, 24, 14, 0.82), rgba(60, 42, 18, 0.6));
   border-color: rgba(251, 191, 36, 0.22);
-}
-
-.support-seal {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 76px;
-  padding: 6px 10px;
-  border-radius: 999px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  font-size: 0.72rem;
-  font-weight: 800;
-}
-
-.support-seal.severity-low {
-  background: rgba(148, 163, 184, 0.2);
-  color: #e2e8f0;
-  border: 1px solid rgba(148, 163, 184, 0.35);
-}
-
-.support-seal.severity-normal {
-  background: rgba(96, 165, 250, 0.2);
-  color: #dbeafe;
-  border: 1px solid rgba(96, 165, 250, 0.35);
-}
-
-.support-seal.severity-high {
-  background: rgba(251, 191, 36, 0.2);
-  color: #fde68a;
-  border: 1px solid rgba(251, 191, 36, 0.38);
-}
-
-.support-seal.severity-urgent {
-  background: rgba(248, 113, 113, 0.22);
-  color: #fee2e2;
-  border: 1px solid rgba(248, 113, 113, 0.4);
 }
 
 .scribe-console {
@@ -5686,9 +5134,9 @@ button.quest-summary:focus-visible {
   text-transform: uppercase;
 }
 
-.form-row, .admin-columns, .admin-auth-row, .insight-grid { display: grid; gap: 10px; }
+.form-row, .admin-auth-row, .insight-grid { display: grid; gap: 10px; }
 
-.split-fields, .admin-columns { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.split-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
 .admin-auth-row { grid-template-columns: 1fr auto; align-items: center; }
 
@@ -5733,14 +5181,6 @@ button.quest-summary:focus-visible {
   max-width: 100%;
   min-width: 0;
   overflow: hidden;
-}
-
-.admin-banner-art {
-  width: 100%;
-  height: auto;
-  border-radius: 16px;
-  border: 1px solid rgba(96, 165, 250, 0.22);
-  background: rgba(8, 14, 30, 0.6);
 }
 
 .admin-panel-block {
@@ -6109,35 +5549,8 @@ button.danger:hover { filter: brightness(1.08); }
 /* ─── Responsive ────────────────────────────────────────────────── */
 
 @media (max-width: 900px) {
-  .vault-grid, .ops-grid, .meta-grid, .footer-grid,
-  .season-progress-block, .summary-grid, .split-fields, .preference-grid,
-  .admin-columns, .admin-auth-row, .insight-grid, .reward-summary-grid,
-  .battle-hud-main, .profile-showcase, .battle-objective,
-  .battle-action-row, .scene-status-grid {
+  .meta-grid, .split-fields, .admin-auth-row, .insight-grid, .scene-status-grid {
     grid-template-columns: 1fr;
-  }
-
-  .battle-topbar {
-    position: relative;
-    top: auto;
-  }
-
-  .battle-heroes-compact {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-    align-items: stretch;
-    gap: 8px;
-  }
-
-  .battle-heroes-compact .hero-compact {
-    flex: 0 0 auto;
-    padding: 8px 10px;
-  }
-
-  .battle-turn-label {
-    order: 0;
-    align-content: center;
-    padding: 4px 0;
   }
 
   .battle-action-dock {
@@ -6146,21 +5559,14 @@ button.danger:hover { filter: brightness(1.08); }
 
   .admin-console { grid-column: span 1; }
 
-  .asset-preview-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-
   .section-head {
     flex-direction: column;
     align-items: stretch;
   }
 
-  .topbar-home {
-    grid-template-columns: 1fr;
-    align-items: stretch;
-  }
-
-  .top-actions {
-    justify-content: flex-start;
-  }
+  /* The two-slot header shape is kept on phones. Collapsing it to one column
+     pushed the currency + settings controls onto a second row, which is where
+     the home header's 108px height on a 393px phone came from. */
 }
 
 @media (max-width: 640px) {
@@ -6170,7 +5576,8 @@ button.danger:hover { filter: brightness(1.08); }
     --panel-gap: clamp(4px, 0.8svh, 10px);
   }
   .app-shell {
-    padding: 10px 10px calc(10px + env(safe-area-inset-bottom, 0px));
+    /* Bottom padding stays 0 — the nav rail owns the safe-area inset. */
+    padding: 10px 10px 0;
   }
   .topbar-home {
     gap: 6px;
@@ -6179,17 +5586,12 @@ button.danger:hover { filter: brightness(1.08); }
     font-size: clamp(1.35rem, 6.2vw, 1.8rem);
     line-height: 1;
   }
-  .top-actions {
-    gap: 6px;
-  }
-  .top-actions .ghost {
-    padding: 7px 10px;
-    min-height: 38px;
-  }
   .username-label {
     display: none;
   }
-  .subtitle { display: none; }
+  /* `.subtitle` is no longer hidden here — it wraps instead. Removing the
+     sentence that explains a screen is the worst thing to cut on the
+     smallest screen, where context is hardest to infer from layout. */
   .brand-block-home {
     gap: 9px;
     min-height: 62px;
@@ -6202,117 +5604,18 @@ button.danger:hover { filter: brightness(1.08); }
     border-color: transparent;
     box-shadow: none;
   }
-  .section-card, .hero-card {
+  .section-card {
     border-radius: 14px;
     box-shadow: 0 10px 26px rgba(10, 14, 30, 0.22);
   }
-  .section-head, .hero-header { gap: 6px; }
+  .section-head { gap: 6px; }
   .nav-strip { padding: 10px; }
-  .season-progress-block {
-    grid-template-columns: 1fr auto;
-    gap: 10px;
-    margin-top: 8px;
-  }
-  .season-progress-visual { gap: 10px; }
-  .season-progress-ring,
-  .season-progress-svg { width: 72px; height: 72px; }
-  .season-progress-core { inset: 8px; }
-  .season-progress-core strong { font-size: 0.75rem; }
-  .season-progress-block > div:first-child .note { display: none; }
-  .progress-shell { height: 10px; }
   .play-live-strip { flex-wrap: wrap; gap: 6px; padding: 4px 6px; margin-top: 6px; font-size: 0.72rem; }
   .play-live-stat { margin-left: 0; }
 
-  .play-readiness-head {
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-    gap: 6px;
-  }
-
-  .play-readiness-panel-compact {
-    margin-top: 6px;
-    padding: 8px;
-  }
-
-  .play-readiness-panel-compact .scene-header-top.has-visual {
-    grid-template-columns: auto minmax(0, 1fr);
-    gap: 8px;
-  }
-
-  .play-readiness-panel-compact .scene-header-copy {
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .play-readiness-panel-compact .scene-header-copy-main strong {
-    font-size: clamp(1rem, 4.2vw, 1.18rem);
-  }
-
-  .play-readiness-panel-compact .scene-header-copy-main .note {
-    font-size: 0.88rem;
-  }
-
-  .play-readiness-panel-compact .scene-header-badges {
-    justify-self: end;
-  }
-
-  .play-readiness-panel-compact .scene-status-grid,
-  .play-status-grid-compact {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 6px;
-    margin-top: 6px;
-  }
-
-  .play-readiness-panel-compact .scene-status-tile,
-  .play-status-grid-compact .scene-status-tile {
-    padding: 6px 7px;
-    gap: 2px;
-  }
-
-  .play-readiness-panel-compact .scene-status-kicker,
-  .play-status-grid-compact .scene-status-kicker {
-    font-size: 0.56rem;
-    letter-spacing: 0.08em;
-  }
-
-  .play-readiness-panel-compact .scene-status-tile strong,
-  .play-status-grid-compact .scene-status-tile strong {
-    font-size: 0.84rem;
-    line-height: 1.05;
-  }
-
-  .play-readiness-panel-compact .scene-status-tile .mini-text,
-  .play-status-grid-compact .mini-text {
-    font-size: 0.62rem;
-    line-height: 1.15;
-  }
-
-  .scene-rail {
-    gap: 4px;
-    padding: 6px 6px calc(6px + env(safe-area-inset-bottom, 0px));
-  }
-
-  .scene-link {
-    min-height: 48px;
-    padding: 5px 2px;
-  }
-
-  .scene-link-label {
-    font-size: 0.68rem;
-  }
+  /* (nav sizing intentionally not overridden — see .scene-link) */
 
   /* Home density — reference-style command panel */
-  .home-focus-strip {
-    gap: 6px;
-    margin-top: 8px;
-  }
-
-  .scene-status-panel {
-    margin-top: 8px;
-    padding: 10px;
-  }
 
   .scene-status-grid {
     gap: 8px;
@@ -6328,15 +5631,6 @@ button.danger:hover { filter: brightness(1.08); }
     padding: clamp(9px, 1.2svh, 12px);
   }
 
-  .home-final-main {
-    gap: 9px;
-  }
-
-  .home-final-topline {
-    grid-template-columns: auto minmax(126px, 35vw);
-    gap: 10px;
-  }
-
   .home-rank-badge.rank-badge-art {
     padding: 7px 12px;
     border-radius: 999px;
@@ -6345,32 +5639,6 @@ button.danger:hover { filter: brightness(1.08); }
   .home-rank-badge.rank-badge-art img {
     width: 24px;
     height: 24px;
-  }
-
-  .home-final-intro {
-    gap: 4px;
-  }
-
-  .home-final-intro strong {
-    font-size: clamp(1.08rem, 5.2vw, 1.35rem);
-  }
-
-  .home-final-intro span {
-    font-size: clamp(0.94rem, 4.6vw, 1.18rem);
-  }
-
-  .home-final-badges {
-    gap: 10px;
-  }
-
-  .home-final-badges .badge {
-    padding: 7px 13px;
-    border-radius: 999px;
-    font-size: clamp(0.84rem, 3.8vw, 1rem);
-  }
-
-  .home-status-list {
-    gap: 9px;
   }
 
   .home-status-card.scene-status-tile {
@@ -6395,18 +5663,8 @@ button.danger:hover { filter: brightness(1.08); }
     line-height: 1.18;
   }
 
-  .home-rating-meter {
-    width: min(246px, 100%);
-  }
-
   .home-rating-track {
     height: 8px;
-  }
-
-  .home-rating-meter strong {
-    padding: 0;
-    font-size: clamp(0.82rem, 3.5vw, 1rem);
-    white-space: nowrap;
   }
 
   .nav-tile-row {
@@ -6422,11 +5680,6 @@ button.danger:hover { filter: brightness(1.08); }
   .nav-tile-label { font-size: 0.88rem; }
   .nav-tile-description { display: none; }
 
-  .game-resume-block {
-    padding: 10px;
-    margin: 6px 0;
-  }
-
   .quest-summary {
     grid-template-columns: 1fr;
     align-items: start;
@@ -6434,32 +5687,6 @@ button.danger:hover { filter: brightness(1.08); }
     padding: 9px 12px 10px;
     margin-top: 4px;
     border-radius: 12px;
-  }
-
-  .quest-pips {
-    gap: 6px;
-  }
-
-  .quest-pip {
-    width: 11px;
-    height: 11px;
-  }
-
-  .quest-count {
-    font-size: clamp(0.9rem, 3.8vw, 1.04rem);
-  }
-
-  .quest-next {
-    display: none;
-  }
-
-  .quest-reward-hint {
-    justify-self: stretch;
-    width: 100%;
-    padding: 7px 12px;
-    border-radius: 999px;
-    font-size: clamp(0.84rem, 3.7vw, 1rem);
-    text-align: left;
   }
 
   .quest-ledger-toolbar,
@@ -6502,33 +5729,15 @@ button.danger:hover { filter: brightness(1.08); }
   }
 
   /* Play density — single-screen arena gate */
-  .play-command-card {
-    gap: 6px;
-    padding: 7px;
-  }
   .mode-card {
     min-height: 76px;
     padding: 8px 6px;
     gap: 3px;
   }
-  .mode-card .note { display: none; }
-  .play-mode-grid-compact {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 6px;
-    margin-top: 0;
-  }
-  .play-mode-grid-compact .mode-card-eyebrow {
-    font-size: 0.56rem;
-    letter-spacing: 0.08em;
-  }
-  .play-mode-grid-compact .mode-card strong {
-    font-size: 0.9rem;
-    line-height: 1.05;
-  }
+  /* `.mode-card .note` is no longer hidden here. The mode cards moved into a
+     bottom sheet where they stack full-width, so the description fits. */
   .difficulty-panel { margin-top: 0; padding: 6px 8px; }
   .difficulty-panel .note { font-size: 0.76rem; }
-  .difficulty-codex-card { grid-template-columns: 1fr; }
-  .difficulty-trait-row { justify-content: flex-start; max-width: none; }
   .play-ai-settings {
     grid-template-columns: 1fr;
     gap: 5px;
@@ -6544,18 +5753,10 @@ button.danger:hover { filter: brightness(1.08); }
     gap: 5px;
   }
   .difficulty-chip { min-height: 34px; padding: 6px 5px; font-size: 0.68rem; border-radius: var(--radius-sm); }
-  .play-entry-hint { display: flex; padding: 7px 9px; font-size: 0.76rem; }
   .play-live-strip { display: flex; flex-wrap: nowrap; gap: 5px; padding: 4px 6px; font-size: 0.68rem; }
   .play-live-label,
   .play-live-stat { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .play-live-stat { margin-left: auto; }
-  .play-action-row { margin-top: 6px; }
-  .play-action-row button,
-  .play-entry-hint .secondary.mini {
-    min-height: 32px;
-    padding: 5px 8px;
-    font-size: 0.72rem;
-  }
   .queue-search-portal { margin-top: 0; padding: 8px; gap: 8px; }
   .queue-portal-ring { width: 72px; height: 72px; }
   .queue-portal-core { font-size: 0.8rem; }
@@ -6566,7 +5767,7 @@ button.danger:hover { filter: brightness(1.08); }
   .live-status-grid .note { margin: 0; font-size: 0.66rem; }
   .queue-leave-btn { min-height: 32px; padding: 5px 10px; font-size: 0.72rem; }
 
-  .mode-switch, .stepper { flex-wrap: wrap; }
+  .stepper { flex-wrap: wrap; }
   .slot { min-height: 88px; padding: 7px; }
   .battle-arena-frame {
     padding: 8px;
@@ -6639,23 +5840,19 @@ button.danger:hover { filter: brightness(1.08); }
     font-size: 0.74rem;
   }
   .queue-modal { width: 100%; }
+  /* Small screens tune the one variable the hand derives from. Everything
+     else — rail height, card width, fan overlap, padding — follows. The old
+     block here re-declared block-size, min-height, flex-basis, and margins
+     independently, which is how the rail and its cards drifted out of sync
+     and started clipping. */
   .battle-hand-rail {
-    --battle-hand-top-clearance: 16px;
-    --battle-hand-bottom-clearance: 8px;
-    block-size: min(22svh, 154px);
-    max-height: none;
+    --battle-hand-top-clearance: clamp(8px, 1.6svh, 16px);
+    --battle-hand-bottom-clearance: clamp(4px, 1svh, 8px);
+    --hand-card-h: clamp(88px, 17svh, 128px);
     margin-top: -4px;
     padding: 2px 6px 6px;
   }
-  .hand-rail-head .mini-text {
-    font-size: 0.68rem;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
   .hand-card {
-    min-height: 108px;
-    padding: 6px 8px;
     gap: 3px;
   }
   .hand-card .card-name {
@@ -6673,128 +5870,17 @@ button.danger:hover { filter: brightness(1.08); }
     height: 26px;
     font-size: 0.8rem;
   }
-  .hand-card .card-stats {
-    font-size: 0.78rem;
-  }
-  .hand-fan-grid .hand-card {
-    flex-basis: 102px;
-    margin-left: 0;
-  }
+  /* (stat sizing is derived from --hand-card-h; see .hand-card .card-stats) */
 
-  .builder-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .collection-screen .builder-card {
-    min-height: 184px;
-    padding: 6px;
-    border-radius: 14px;
-  }
-
-  .collection-screen .builder-card-preview,
-  .collection-screen .builder-card-preview > *,
-  .collection-screen .builder-card .slot-head,
-  .collection-screen .builder-card .card-meta-row,
-  .collection-screen .builder-card .card-stats,
-  .collection-screen .builder-card .builder-card-footnote,
-  .collection-screen .builder-card .stepper {
-    min-width: 0;
-    max-width: 100%;
-    box-sizing: border-box;
-    overflow: hidden;
-  }
-
-  .collection-screen .builder-card .card-art-shell {
-    height: 78px;
-    border-radius: 12px;
-  }
-
-  .collection-screen .builder-card .slot-head,
-  .collection-screen .builder-card .card-meta-row,
-  .collection-screen .builder-card .card-stats {
-    gap: 4px;
-  }
-
-  .collection-screen .builder-card .slot-head strong {
-    font-size: 0.78rem;
-    line-height: 1.15;
-  }
-
-  .collection-screen .builder-card .stats,
-  .collection-screen .builder-card .card-stats {
-    font-size: 0.8rem;
-  }
-
-  .collection-screen .builder-card .rarity-gem {
-    gap: 3px;
-    margin-bottom: 0;
-    flex: 0 1 auto;
-    min-width: 0;
-  }
-
-  .collection-screen .builder-card .rarity-gem span {
-    display: none;
-  }
-
-  .collection-screen .builder-card .rarity-gem-icon,
-  .collection-screen .builder-card .stat-icon,
-  .collection-screen .builder-card .effect-icon {
-    width: 12px;
-    height: 12px;
-  }
-
-  .collection-screen .builder-card-meta-full {
-    display: none;
-  }
-
-  .collection-screen .builder-card-meta-compact {
-    display: inline-block;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-size: 0.72rem;
-  }
-
-  .collection-screen .builder-card .effect-badge {
-    display: inline-grid;
-    place-items: center;
-    width: 22px;
-    height: 22px;
-    padding: 0;
-    border-radius: 999px;
-  }
-
-  .collection-screen .builder-card .effect-badge span {
-    display: none;
-  }
-
-  .collection-screen .builder-card .stepper {
-    justify-content: space-between;
-    gap: 3px;
-  }
-
-  .collection-screen .builder-card .stepper .ghost.mini {
-    width: 34px;
-    min-width: 34px;
-    height: 34px;
-    padding: 0;
-    border-radius: 10px;
-  }
-
-  .collection-screen .builder-card .count-chip {
-    min-width: 24px;
-    font-size: 0.86rem;
-  }
+  /* Deck-builder card sizing moved to `@container card` — see the Deck
+     Builder section. Card width and viewport width are not the same number,
+     and this block used to assert that they were. */
 
   /* Collection density — compact roster, tighter hero */
-  .collection-hero { padding: 6px 8px; gap: 8px; }
   .collection-progress-ring,
   .collection-progress-svg { width: 40px; height: 40px; }
   .collection-progress-core { inset: 4px; }
   .collection-progress-core strong { font-size: 0.6rem; }
-  .collection-hero-stats { gap: 6px; font-size: var(--font-xs); }
-  .collection-rarity-chips { gap: 4px; }
   .deck-roster {
     padding: 6px 8px;
     max-height: none;
@@ -6808,8 +5894,6 @@ button.danger:hover { filter: brightness(1.08); }
   .collection-quick-strip { padding: 4px 8px; }
 
   /* Social density — compact hero, segmented scroll areas */
-  .social-hero { padding: 6px 8px; gap: 6px; }
-  .social-hero strong { font-size: var(--font-sm); }
   .leaderboard-list,
   .social-list {
     margin-top: 6px;
@@ -6937,30 +6021,9 @@ button.danger:hover { filter: brightness(1.08); }
     gap: 8px;
   }
 
-  .shop-hub-panel {
-    min-height: 100px;
-    padding: 9px 10px;
-    gap: 5px;
-  }
-
-  .shop-hub-panel::before {
-    width: 36px;
-    height: 36px;
-    inset: auto 10px 10px auto;
-    opacity: 0.16;
-  }
-
-  .shop-hub-panel-packs::before {
-    opacity: 0.28;
-  }
-
-  .shop-hub-panel > span:not(.shop-hub-panel-kicker) {
-    font-size: 0.76rem;
-  }
-
-  .shop-hub-panel-stat {
-    display: none;
-  }
+  /* Shop hub panel density moved to `@container shoppanel` — the panel is
+     166px wide on a phone, 180px on a tablet, and 340px in the desktop
+     two-column split, so viewport width does not describe it. */
 
   .shop-section-panel {
     gap: 8px;
@@ -7087,9 +6150,6 @@ button.danger:hover { filter: brightness(1.08); }
     padding: 5px 8px;
     font-size: 0.74rem;
   }
-
-  .shop-hero { padding: 6px 8px; gap: 6px; }
-  .shop-hero strong { font-size: var(--font-sm); }
   .theme-grid-shop-fit {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(min(100%, 148px), 1fr));
@@ -7161,22 +6221,6 @@ button.danger:hover { filter: brightness(1.08); }
     overflow-y: auto;
     gap: 8px;
     padding-bottom: 18px;
-  }
-
-  .settings-section-toolbar {
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    gap: 6px;
-    min-height: 36px;
-    padding: 6px 8px;
-  }
-
-  .settings-section-toolbar strong {
-    font-size: var(--font-sm);
-  }
-
-  .shop-hub-grid,
-  .social-hub-grid {
-    margin-top: 6px;
   }
 
   .settings-toggle-list {
@@ -7260,40 +6304,24 @@ button.danger:hover { filter: brightness(1.08); }
     --card-pad: clamp(8px, 1.2svh, 14px);
     --panel-gap: clamp(4px, 0.6svh, 8px);
   }
-  .app-shell { padding: 8px 8px calc(8px + env(safe-area-inset-bottom, 0px)); }
-  .scene-rail { gap: 3px; }
-  .scene-link { min-height: 44px; padding: 4px 2px; }
-  .scene-link::before { width: 14px; height: 14px; }
-  .scene-link-label { font-size: 0.64rem; }
+  /* Nav sizing is deliberately absent here. These overrides used to shrink
+     targets to 44px/40px, glyphs to 14px, and labels to 0.64rem to fit six
+     tabs into 360px. With four tabs the default sizing fits, and touch
+     targets are no longer something small screens pay for. */
   .brand-logo-home { width: clamp(44px, 13vw, 54px); }
   .brand-block-home { min-height: 58px; }
   .brand-wordmark { font-size: clamp(1.28rem, 6vw, 1.58rem); }
   .home-status-card.scene-status-tile { padding: 9px 11px; }
   .home-status-card strong { font-size: 0.96rem; }
   .home-status-card .mini-text { font-size: 0.82rem; }
-  .home-rating-meter strong { font-size: 0.82rem; }
-  .play-readiness-panel-compact .scene-status-grid,
-  .play-status-grid-compact {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-  .play-mode-grid-compact {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-  .play-status-grid-compact .mini-text {
-    display: none;
-  }
-  .play-mode-grid-compact .mode-card strong {
-    font-size: 0.82rem;
-  }
   .theme-grid-shop-fit,
   .pack-reveal-grid {
     grid-template-columns: 1fr;
   }
   .hand-grid { grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); }
-  .builder-grid { grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); }
+  /* .builder-grid columns are decided by `@container panel`, not by viewport
+     width — a second viewport-keyed override here would race it. */
   .auth-card { padding: 24px 16px; }
-  .hero-avatar { width: 64px; height: 64px; }
-  .profile-medal { width: 56px; height: 56px; }
 }
 
 @media (max-width: 720px) and (max-height: 760px) {
@@ -7317,35 +6345,6 @@ button.danger:hover { filter: brightness(1.08); }
     font-size: clamp(1.34rem, 5.6vw, 1.72rem);
   }
 
-  .home-final-main {
-    gap: 6px;
-  }
-
-  .home-final-topline {
-    grid-template-columns: auto minmax(112px, 34vw);
-  }
-
-  .home-final-intro {
-    gap: 4px;
-  }
-
-  .home-final-intro strong {
-    font-size: 1rem;
-  }
-
-  .home-final-intro span {
-    font-size: 0.88rem;
-  }
-
-  .home-final-badges .badge {
-    padding: 5px 10px;
-    font-size: 0.8rem;
-  }
-
-  .home-status-list {
-    gap: 6px;
-  }
-
   .home-status-card.scene-status-tile {
     gap: 2px;
     padding: 7px 10px;
@@ -7367,46 +6366,9 @@ button.danger:hover { filter: brightness(1.08); }
     height: 8px;
   }
 
-  .home-rating-meter strong {
-    font-size: 0.7rem;
-  }
-
-  .home-rating-meter {
-    gap: 5px;
-  }
-
   .home-command-card {
     gap: 6px;
     padding: 7px;
-  }
-
-  .home-scene-header {
-    gap: 5px;
-  }
-
-  .home-scene-header .scene-header-top.has-visual {
-    gap: 7px;
-  }
-
-  .home-scene-header .scene-header-badges {
-    gap: 5px;
-  }
-
-  .home-scene-header .scene-header-badges .badge {
-    padding: 4px 7px;
-    font-size: 0.72rem;
-  }
-
-  .home-scene-header .scene-status-grid {
-    gap: 5px;
-  }
-
-  .home-scene-header .scene-status-tile {
-    padding: 5px 7px;
-  }
-
-  .home-rating-meter {
-    padding: 0;
   }
 
   .quest-summary {
@@ -7414,69 +6376,41 @@ button.danger:hover { filter: brightness(1.08); }
     padding: 6px 8px;
   }
 
-  .quest-pips {
-    gap: 5px;
-  }
+  /* (nav padding intentionally not overridden — the rail owns its safe-area
+     inset and must not be compressed on short screens) */
 
-  .quest-pip {
-    width: 10px;
-    height: 10px;
-  }
-
-  .quest-count {
-    font-size: 0.82rem;
-  }
-
-  .quest-reward-hint {
-    padding: 6px 10px;
-    font-size: 0.82rem;
-  }
-
-  .scene-rail {
-    padding-top: 5px;
-    padding-bottom: calc(5px + var(--safe-bottom));
-  }
-
-  .scene-link {
-    min-height: 42px;
-  }
-}
-
-@media (max-width: 720px) and (max-height: 680px) {
-  .home-scene-header .scene-status-tile .mini-text {
-    -webkit-line-clamp: 1;
-  }
-
-  .home-rating-copy .mini-text,
-  .quest-next {
-    display: none;
-  }
-
-  .quest-count,
-  .quest-reward-hint {
-    font-size: 0.7rem;
-  }
-
-  .scene-link {
-    min-height: 40px;
-  }
+  /* (nav target sizing intentionally not overridden — see .scene-link) */
 }
 
 /* ─── Auth Gate ──────────────────────────────────────────────────── */
 
+/* Auth gates are full-surface overlays, not shell children.
+   As in-flow flex items they competed with the scene stage for height inside
+   an `overflow: hidden` shell, which pushed the bottom nav out of view — the
+   "I can't see the nav bar" report. Fixed positioning removes them from the
+   flow entirely, and they scroll internally so a tall form (recovery codes,
+   account setup) can never resize the app chrome. */
 .auth-gate {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 80svh;
-  padding: 24px 16px;
+  height: 100svh;
+  height: var(--app-h, 100svh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: var(--bg);
+  padding:
+    calc(var(--space-6) + var(--safe-top))
+    calc(var(--space-4) + var(--safe-right))
+    calc(var(--space-6) + max(var(--safe-bottom), var(--kb-inset, 0px)))
+    calc(var(--space-4) + var(--safe-left));
 }
 
 .forced-setup-gate {
   align-items: flex-start;
-  min-height: 100dvh;
-  padding: max(20px, env(safe-area-inset-top)) 16px max(28px, env(safe-area-inset-bottom));
-  overflow-y: auto;
 }
 
 .auth-card {
@@ -7744,120 +6678,11 @@ button.danger:hover { filter: brightness(1.08); }
   white-space: nowrap;
 }
 
-.setup-complete-block {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  text-align: center;
-}
-
-.admin-key-display {
-  display: block;
-  padding: 12px 14px;
-  background: var(--bg);
-  border: 1px solid var(--accent);
-  border-radius: 8px;
-  font-family: monospace;
-  font-size: 0.72rem;
-  word-break: break-all;
-  color: var(--accent);
-  user-select: all;
-}
-
 /* ─── Card Pack System ──────────────────────────────────────────── */
 
-.pack-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 12px;
-  margin-top: 12px;
-}
-
-.pack-card {
-  padding: 16px;
-  border-radius: 18px;
-  border: 2px solid var(--border);
-  background: linear-gradient(180deg, rgba(30, 24, 60, 0.98), rgba(14, 18, 36, 0.98));
-  text-align: center;
-  display: grid;
-  gap: 10px;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.pack-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 32px rgba(124, 58, 237, 0.3);
-}
-
-.pack-card.premium { border-color: rgba(168, 85, 247, 0.5); }
-.pack-card.legendary-pack { border-color: rgba(251, 191, 36, 0.5); }
-
-.pack-icon {
-  font-size: 3rem;
-  line-height: 1;
-}
-
-.pack-contents {
-  font-size: 0.82rem;
-  color: var(--muted);
-}
-
 /* ─── Turn HUD (battle) ─── */
-.battle-hud { background: linear-gradient(135deg, rgba(14, 21, 41, 0.96), rgba(28, 44, 88, 0.88)); }
-
-.turn-bar {
-  position: sticky;
-  top: 0px;
-  z-index: 5;
-  background: linear-gradient(135deg, rgba(10, 16, 31, 0.96), rgba(31, 45, 88, 0.92));
-}
 
 /* ─── Arena Title Block ─── */
-.arena-title-block {
-  text-align: center;
-  padding: 12px 0 8px;
-}
-
-.arena-title-block.home-hero {
-  padding: 6px 0 4px;
-}
-
-.arena-title-block.home-hero h2 {
-  font-size: 1.25rem;
-}
-
-.arena-title-block.home-hero .badges {
-  margin-top: 8px;
-}
-
-.arena-title-block.play-hero {
-  padding: 6px 0 4px;
-}
-
-.arena-title-block.play-hero h2 {
-  font-size: 1.25rem;
-}
-
-.arena-title-block .eyebrow {
-  text-transform: uppercase;
-  font-size: 0.7rem;
-  letter-spacing: 2px;
-  color: #9bb3e8;
-  margin-bottom: 4px;
-}
-
-.arena-title-block h2 {
-  font-size: 1.5rem;
-  margin: 0;
-  background: linear-gradient(135deg, #e8d5a3, #f4e7c3);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.arena-title-block .note {
-  margin-top: 4px;
-}
 
 /* ─── Card Inspect Overlay ─── */
 .card-inspect-overlay {
@@ -7947,29 +6772,8 @@ button.danger:hover { filter: brightness(1.08); }
 }
 
 /* ─── Game Resume Block ─── */
-.game-resume-block {
-  padding: 14px;
-  margin: 8px 0;
-  background: rgba(200, 180, 100, 0.08);
-  border: 1px solid rgba(200, 180, 100, 0.25);
-  border-radius: 12px;
-  text-align: center;
-}
-
-.game-resume-block .controls {
-  margin-top: 8px;
-  gap: 8px;
-}
 
 /* ─── Queue Searching Block ─── */
-.queue-searching-block {
-  text-align: center;
-  padding: 12px 0;
-}
-
-.queue-searching-block .note {
-  margin: 6px 0 10px;
-}
 
 .queue-search-portal {
   margin-top: 0;
@@ -8074,6 +6878,30 @@ button.danger:hover { filter: brightness(1.08); }
   gap: 10px;
   font-size: 0.85rem;
   font-weight: 700;
+}
+
+/* Attack and health decide every trade, so they are the last thing allowed to
+   clip. On a 360px phone a four-card hand leaves ~92px per card, which the
+   fixed 10px gap and 0.85rem type overflowed — the health value was cut off by
+   the card's own `overflow: hidden`. Both now scale with the card. */
+.hand-card .card-stats {
+  gap: clamp(2px, 0.8vw, 8px);
+  font-size: clamp(0.68rem, calc(var(--hand-card-h, 142px) * 0.075), 0.86rem);
+  min-width: 0;
+}
+
+.hand-card .card-stats span {
+  gap: 2px;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+/* Stat icons shrink with the row rather than holding a fixed box. */
+.hand-card .card-stats span > img,
+.hand-card .card-stats span > svg {
+  width: 1em;
+  height: 1em;
+  flex: 0 0 auto;
 }
 
 
@@ -8272,15 +7100,6 @@ button.danger:hover:not(:disabled) {
 .btn-danger:disabled,
 button.danger:disabled { opacity: 0.55; transform: none; box-shadow: none; }
 
-.btn-success {
-  background: linear-gradient(135deg, var(--color-success-strong), var(--color-success));
-  color: #f0fff4;
-  font-weight: 700;
-  padding: 10px 18px;
-  border-radius: var(--radius-md);
-  box-shadow: 0 8px 18px rgba(34, 197, 94, 0.28);
-}
-
 /* ─── Toast (auto-fading inline status) ─────────────────────────── */
 .toast {
   display: inline-flex;
@@ -8319,14 +7138,26 @@ button.danger:disabled { opacity: 0.55; transform: none; box-shadow: none; }
 @keyframes toast-in  { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes toast-out { to   { opacity: 0; transform: translateY(-4px); } }
 
+/* Toasts sit in the gap between the two docks: below the top bar rather than
+   on top of it, and never taller than the space above the nav. Both offsets
+   come from the measured chrome heights (useMeasuredHeightVar), so they stay
+   correct when a title wraps or a safe-area inset appears — the cases that
+   made the old hard-coded 16px offset overlap the header. */
 .toast-stack {
   position: fixed;
-  top: calc(env(safe-area-inset-top, 0px) + 16px);
-  right: 16px;
+  top: calc(var(--safe-top, 0px) + var(--top-h, 0px) + var(--space-4));
+  right: calc(var(--safe-right, 0px) + var(--space-4));
   z-index: 200;
   display: grid;
   gap: var(--space-2);
-  max-width: min(380px, calc(100vw - 32px));
+  max-width: min(380px, calc(var(--app-w, 100vw) - var(--space-8)));
+  max-height: calc(
+    var(--app-h, 100svh)
+    - var(--top-h, 0px)
+    - var(--nav-h, 0px)
+    - var(--space-8)
+  );
+  overflow: hidden;
   pointer-events: none;
 }
 .toast-stack .toast { pointer-events: auto; box-shadow: var(--shadow-lg); }
@@ -8342,7 +7173,6 @@ button.danger:disabled { opacity: 0.55; transform: none; box-shadow: none; }
   animation: spinner-rot 0.85s linear infinite;
   vertical-align: -2px;
 }
-.spinner.spinner-lg { width: 22px; height: 22px; border-width: 3px; }
 .spinner.spinner-inline { margin-right: var(--space-2); }
 @keyframes spinner-rot { to { transform: rotate(360deg); } }
 
@@ -8543,27 +7373,17 @@ button.danger:disabled { opacity: 0.55; transform: none; box-shadow: none; }
 }
 
 /* ─── Queue searching: spinner-driven panel ─────────────────────── */
-.queue-searching-block .queue-spinner-row {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  margin-bottom: var(--space-3);
-}
 
 @media (max-width: 720px) {
-  .season-progress-visual,
   .queue-search-portal,
   .versus-grid,
-  .intro-versus-grid,
-  .collection-hero {
+  .intro-versus-grid {
     grid-template-columns: 1fr;
   }
 
-  .season-progress-visual,
   .queue-search-portal,
   .versus-side,
-  .intro-side,
-  .collection-hero {
+  .intro-side {
     justify-items: center;
     text-align: center;
   }
@@ -8911,7 +7731,6 @@ button.danger:disabled { opacity: 0.55; transform: none; box-shadow: none; }
   .streak-badge::after,
   .streak-badge::before,
   .streak-badge.streak-inferno,
-  .quest-summary.just-claimed::before,
   .rarity-chip.rarity-celebrate { animation: none !important; }
   .hand-card.unplayable::after,
   .mode-card,
@@ -8948,11 +7767,7 @@ input, textarea, p, .card-text, .note, .mini-text {
 
 /* But inside long-press surfaces (cards, slots, hand) keep selection
    off so iOS does not fire the system text-callout on inspect. */
-.slot p, .slot .note, .slot .card-text,
-.hand-card p, .hand-card .note, .hand-card .card-text,
-.battle-card p, .battle-card .note, .battle-card .card-text,
-.collection-card p, .collection-card .note, .collection-card .card-text,
-.builder-card p, .builder-card .note, .builder-card .card-text {
+.slot p, .slot .note, .slot .card-text, .hand-card p, .hand-card .note, .hand-card .card-text, .builder-card p, .builder-card .note, .builder-card .card-text {
   -webkit-user-select: none;
   user-select: none;
   -webkit-touch-callout: none;
@@ -9089,43 +7904,6 @@ input[type="checkbox"]:hover {
 
 /* ─── Collection overview + rune dividers ────────────────────────── */
 
-.collection-hero {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin: 0 0 8px;
-  padding: 8px 10px;
-  border-radius: var(--radius-md);
-  background: linear-gradient(160deg, rgba(10, 18, 36, 0.9), rgba(32, 24, 58, 0.8));
-  border: 1px solid var(--border);
-}
-
-.collection-hero-stats {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  font-size: var(--font-sm);
-}
-
-.collection-hero-stats strong {
-  font-size: 1rem;
-  color: #f6f8ff;
-}
-
-.collection-hero-stats .note {
-  flex: 1 1 100%;
-  margin: 0;
-  color: #cfd8ff;
-}
-
-.collection-rarity-chips {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-  font-size: var(--font-xs);
-}
-
 .rarity-chip {
   display: inline-flex;
   align-items: center;
@@ -9195,14 +7973,6 @@ input[type="checkbox"]:hover {
 .collection-progress-core strong {
   font-size: 0.7rem;
   color: var(--text);
-}
-
-.rune-divider {
-  width: 100%;
-  height: 20px;
-  margin: 8px 0 12px;
-  background: url('/generated/ui/divider-rune.svg') center / contain no-repeat;
-  opacity: 0.72;
 }
 
 /* ─── Multi-deck roster ───────────────────────────────────────────── */
@@ -10377,7 +9147,6 @@ button.icon-only {
   .brand-logo { animation: none !important; }
 
   /* Collection card selection ring and social challenge banner pulses. */
-  .card-tile.selected,
   .challenge-banner.incoming { animation: none !important; }
 
   /* Streak badge decorative loops (emberFloat, fireGlow, rewardSweep). */
@@ -10415,3 +9184,187 @@ button.icon-only {
 /* 3Y — Swipe gestures: scene-change commits inherit the curtain transition
    system whose reduced-motion collapse is handled above. The gesture itself
    adds no animated CSS affordance, so no additional rule is needed. */
+
+/* ═══════════════════════════════════════════════════════════════════
+   Bottom sheets
+   ═══════════════════════════════════════════════════════════════════
+   Transient decisions layered over a screen rather than routed to their
+   own destination. Used by the battle launcher, which replaced the Play
+   screen when Home became the single hub.
+
+   Dismissal is deliberately redundant — scrim tap, drag handle, and Escape
+   all close it. Riot shipped an LoR mobile bug where a panel could only be
+   closed from the control that opened it; sheets make that easy to
+   reproduce, so every exit is wired up front. */
+
+.sheet-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 55;
+  display: grid;
+  align-items: end;
+  justify-items: center;
+  background: var(--backdrop);
+  backdrop-filter: blur(6px);
+  animation: sheetScrimIn var(--motion-base);
+}
+
+.sheet-panel {
+  /* Container for its contents: the sheet is capped well below the viewport,
+     so its children must ask the sheet how much room they have, not the
+     window. */
+  container-type: inline-size;
+  container-name: sheet;
+  width: min(100%, 560px);
+  /* Never taller than the visible viewport, and scrolls internally. Sized
+     from --app-h so the iOS toolbar and the keyboard both shrink it. */
+  max-height: calc(var(--app-h, 100svh) - var(--space-6));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: grid;
+  gap: var(--space-3);
+  align-content: start;
+  padding:
+    var(--space-2)
+    calc(var(--space-4) + var(--safe-right))
+    calc(var(--space-5) + max(var(--safe-bottom), var(--space-2)))
+    calc(var(--space-4) + var(--safe-left));
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  background: var(--modal-bg);
+  border: 1px solid var(--border);
+  border-bottom: 0;
+  box-shadow: 0 -18px 50px rgba(0, 0, 0, 0.5);
+  animation: sheetPanelIn var(--motion-slow);
+}
+
+/* The handle is a real button, not decoration — it is the most discoverable
+   dismiss target on a touch device. */
+.sheet-handle {
+  justify-self: center;
+  width: 56px;
+  height: 24px;
+  padding: 0;
+  background: transparent;
+  display: grid;
+  place-items: center;
+}
+
+.sheet-handle::before {
+  content: '';
+  width: 44px;
+  height: 4px;
+  border-radius: var(--radius-pill);
+  background: rgba(203, 213, 255, 0.35);
+  transition: background var(--motion-fast);
+}
+
+.sheet-handle:hover::before,
+.sheet-handle:focus-visible::before {
+  background: rgba(203, 213, 255, 0.6);
+}
+
+.sheet-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.sheet-head-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.sheet-head-copy strong {
+  font-size: var(--font-xl);
+  line-height: 1.1;
+  color: var(--text);
+}
+
+.sheet-head-copy .eyebrow {
+  margin: 0;
+}
+
+.sheet-notice {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  font-size: var(--font-sm);
+}
+
+.sheet-notice.warning {
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  background: rgba(245, 158, 11, 0.12);
+  color: #fde68a;
+}
+
+/* Modes stack vertically in the sheet. The old Play screen squeezed them
+   into three columns, which at 360px left ~110px per card and forced the
+   descriptions to be hidden by a media query. */
+.mode-card-grid-sheet {
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-2);
+}
+
+.mode-card-grid-sheet .mode-card {
+  grid-template-columns: minmax(0, 1fr);
+  min-height: 64px;
+  text-align: left;
+  align-content: center;
+  isolation: isolate;
+}
+
+/* The mode-card art is sized `cover` for the old three-across grid. Stretched
+   to full sheet width it sits directly behind the label and swamps it, so
+   here it becomes a contained motif tucked against the trailing edge. */
+.mode-card-grid-sheet .mode-card::before {
+  inset: 0 0 0 auto;
+  width: 38%;
+  background-size: contain;
+  background-position: right center;
+  opacity: 0.16;
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 55%);
+  mask-image: linear-gradient(to right, transparent, #000 55%);
+}
+
+.mode-card-grid-sheet .mode-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Three-across only once the SHEET is wide enough, not the window.
+   This was `@media (min-width: 560px)`, which is the wrong measurement: the
+   panel is capped at `min(100%, 560px)` and carries 16px of padding each side,
+   so at a 560px viewport its content box is ~528px. The old query switched to
+   three columns while the sheet still had 528px, giving each mode card 32px
+   less width than the layout assumed. */
+@container sheet (width >= 480px) {
+  .mode-card-grid-sheet {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .mode-card-grid-sheet .mode-card {
+    text-align: center;
+  }
+}
+
+@keyframes sheetScrimIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes sheetPanelIn {
+  from { transform: translateY(14px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sheet-scrim,
+  .sheet-panel {
+    animation: none;
+  }
+}

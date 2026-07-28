@@ -7,6 +7,7 @@ type QuestLedgerPanelProps = {
   overview: QuestOverview | null
   onBack: () => void
   onClaimQuest: (questId: string) => void
+  onClaimQuests: (questIds: string[]) => void
 }
 
 const QUEST_TABS: QuestCadence[] = ['daily', 'weekly', 'milestone', 'skirmish']
@@ -51,7 +52,7 @@ function QuestCard({ quest, onClaimQuest }: { quest: QuestProgress; onClaimQuest
   )
 }
 
-export function QuestLedgerPanel({ overview, onBack, onClaimQuest }: QuestLedgerPanelProps) {
+export function QuestLedgerPanel({ overview, onBack, onClaimQuest, onClaimQuests }: QuestLedgerPanelProps) {
   const [activeTab, setActiveTab] = useState<QuestCadence>('daily')
   const quests = overview?.quests ?? []
   const visibleQuests = quests.filter((quest) => quest.cadence === activeTab)
@@ -96,7 +97,7 @@ export function QuestLedgerPanel({ overview, onBack, onClaimQuest }: QuestLedger
 
       {claimable.length > 1 && (
         <div className="quest-claim-all-row">
-          <button className="primary" onClick={() => claimable.forEach((quest) => onClaimQuest(quest.id))}>
+          <button className="primary" onClick={() => onClaimQuests(claimable.map((quest) => quest.id))}>
             Claim Ready Rewards
           </button>
         </div>

@@ -1,7 +1,7 @@
 import type { AIDifficulty, GameState, DeckConfig } from './game'
 
 export type QueueState = 'idle' | 'searching' | 'found'
-export type AppScreen = 'home' | 'play' | 'collection' | 'battle' | 'social' | 'shop' | 'settings'
+export type AppScreen = 'home' | 'collection' | 'battle' | 'social' | 'shop' | 'settings'
 export type SettingsSubview = 'preferences' | 'account' | 'support' | 'admin'
 export type CosmeticTheme = 'royal' | 'ember' | 'moon'
 export type AuthScreen = 'login' | 'signup' | 'recover' | 'grant' | 'legacy'
@@ -31,25 +31,37 @@ export type ServerMatchLifecycle =
   | { phase: 'terminal'; matchId: string; revision: number; kind: ServerBattleKind; outcome: MatchSettlement }
 export type ToastSeverity = 'info' | 'success' | 'warning' | 'error'
 export type QuestCadence = 'daily' | 'weekly' | 'milestone' | 'skirmish'
-export type QuestObjectiveType = 'win_any_match' | 'win_ai' | 'win_ai_difficulty' | 'play_matches' | 'open_packs' | 'breakdown_cards' | 'claim_daily' | 'build_deck'
+export type QuestObjectiveType =
+  | 'win_any_match' | 'win_ai' | 'win_ai_difficulty' | 'play_matches'
+  | 'open_packs' | 'open_pack_type' | 'breakdown_cards' | 'spend_shards'
+  | 'reach_streak' | 'claim_daily' | 'build_deck' | 'collect_cards'
+/** Which slot on a board a rotating quest can occupy — one of each per board. */
+export type QuestTier = 'light' | 'standard' | 'hard'
+export type QuestIcon = 'battle' | 'skirmish' | 'momentum' | 'pack' | 'shards' | 'deck'
 
 export type QuestDefinition = {
   id: string
   cadence: QuestCadence
+  tier: QuestTier
   title: string
   description: string
   category: string
   objective: {
     type: QuestObjectiveType
-    target: number
     difficulty?: AIDifficulty
+    packTier?: string
+    mode?: 'high_water' | 'derived'
   }
   reward: {
     shards: number
   }
-  icon: 'battle' | 'skirmish' | 'momentum' | 'pack' | 'shards' | 'deck'
+  icon: QuestIcon
 }
 
+/**
+ * A live quest. Target and reward reflect the variant actually rolled for this
+ * assignment (or the chain's current tier), not the catalog default.
+ */
 export type QuestProgress = QuestDefinition & {
   progress: number
   target: number
@@ -57,10 +69,37 @@ export type QuestProgress = QuestDefinition & {
   claimed: boolean
   periodKey: string
   expiresAt: string | null
+  /** Board position for rotating cadences; `null` for chains. */
+  slotIndex: number | null
+  rerolled: boolean
+  /** Ladder position for chains; `null` for rotating quests. */
+  tierIndex: number | null
+  tierLabel: string | null
+}
+
+/** A permanent tiered ladder. Most keep generating tiers indefinitely. */
+export type QuestChain = {
+  id: string
+  cadence: QuestCadence
+  title: string
+  description: string
+  category: string
+  icon: QuestIcon
+  tierIndex: number
+  tierLabel: string
+  progress: number
+  target: number
+  reward: { shards: number }
+  completed: boolean
+  /** Finite chain with every tier claimed — the only way a chain ends. */
+  exhausted: boolean
+  endless: boolean
+  ladder: { label: string; target: number; shards: number; claimed: boolean }[]
 }
 
 export type QuestOverview = {
   quests: QuestProgress[]
+  chains: QuestChain[]
   summary: {
     total: number
     completed: number
@@ -71,6 +110,8 @@ export type QuestOverview = {
     milestoneClaimable: number
     skirmishClaimable: number
   }
+  /** Whether the one free reroll per cadence is still available today. */
+  rerolls: { daily: boolean; weekly: boolean }
 }
 
 export type OpponentProfile = {

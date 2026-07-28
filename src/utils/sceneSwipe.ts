@@ -24,9 +24,10 @@ export const SCENE_SWIPE_OPT_OUT_ATTR = 'data-scene-swipe-opt-out'
  * Canonical primary-scene order — mirrors `NAV_ITEMS` in
  * `src/components/NavBar.tsx`. The bottom nav and the swipe gesture
  * MUST share this order. Battle is intentionally excluded — it opts out
- * of the swipe layer entirely.
+ * of the swipe layer entirely. Settings has no nav slot (it opens from the
+ * top bar) but stays on the rail so swipe still reaches it from Social.
  */
-export const NAV_ORDER: AppScreen[] = ['home', 'play', 'collection', 'social', 'shop', 'settings']
+export const NAV_ORDER: AppScreen[] = ['home', 'collection', 'shop', 'social', 'settings']
 
 /** Distance threshold expressed as a fraction of viewport width. */
 const DISTANCE_THRESHOLD_RATIO = 0.25

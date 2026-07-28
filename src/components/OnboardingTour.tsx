@@ -38,9 +38,9 @@ type TourStep = {
 const STEPS: TourStep[] = [
   {
     id: 'home-tiles',
-    selector: '[data-tour-id="home-tiles"]',
+    selector: '.scene-rail',
     title: 'Welcome to the Arcanum',
-    body: 'These tiles are your way into every scene — Play, Collection, Social, Shop, and Settings. Tap one any time to switch.',
+    body: 'These four tabs are your way around — Home, Cards, Shop, and Social. Settings lives behind the gear in the top bar.',
   },
   {
     id: 'collection',
@@ -52,7 +52,7 @@ const STEPS: TourStep[] = [
     id: 'queue',
     selector: '[data-tour-id="queue-button"]',
     title: 'Battle live or solo',
-    body: 'On the Play scene, “Enter Arena” drops you into an instant AI duel. “Play Online (Ranked)” queues you for a live opponent.',
+    body: 'The Battle button opens your mode picker: Ranked Queue for a live opponent, AI Skirmish for an instant solo duel, or Pass & Play to share the device.',
   },
   {
     id: 'battle-hand',
@@ -62,9 +62,9 @@ const STEPS: TourStep[] = [
   },
   {
     id: 'settings',
-    selector: '[data-nav="settings"]',
+    selector: '.topbar-settings-btn',
     title: 'Tune the experience',
-    body: 'Settings hosts sound, ambient loops, accessibility, and the “Replay tour” button. You can revisit this walkthrough whenever you like.',
+    body: 'The gear in the top bar hosts sound, ambient loops, accessibility, and the “Replay tour” button. You can revisit this walkthrough whenever you like.',
   },
 ]
 

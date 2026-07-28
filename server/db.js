@@ -1,10 +1,24 @@
 import Database from 'better-sqlite3'
-import { createHash, randomBytes, scryptSync, timingSafeEqual } from 'node:crypto'
+import { createHash, randomBytes, randomInt, scryptSync, timingSafeEqual } from 'node:crypto'
 import { existsSync, mkdirSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { CARD_LIBRARY, DEFAULT_DECK_CONFIG, MAX_COPIES as GAME_MAX_COPIES, MAX_LEGENDARY_COPIES } from './game.js'
-import { QUEST_DEFINITIONS, difficultyMeets } from './quest-definitions.js'
+import {
+  QUEST_DEFINITIONS,
+  QUEST_TIERS,
+  difficultyMeets,
+  getQuestDefinition,
+  renderQuestDescription,
+} from './quest-definitions.js'
+import {
+  QUEST_CHAINS,
+  chainTier,
+  chainTierLabel,
+  getQuestChain,
+  isChainExhausted,
+  legacyChainMigrations,
+} from './quest-chains.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const DATA_DIR = path.resolve(process.env.DATA_DIR ?? path.resolve(__dirname, '../data'))
@@ -155,6 +169,41 @@ db.exec(`
     PRIMARY KEY (account_id, quest_id, period_key)
   );
 
+  -- Rotating (daily/weekly) quests live in fixed slots rather than being
+  -- re-derived from a hash of the current period. Storing the assignment is
+  -- what makes carryover, reroll, and "never assign a duplicate of an active
+  -- quest" possible — none of which a stateless derivation can express.
+  -- Permanent cadences (milestone/skirmish) stay in player_quests.
+  CREATE TABLE IF NOT EXISTS player_quest_slots (
+    account_id   TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    cadence      TEXT NOT NULL,
+    slot_index   INTEGER NOT NULL,
+    quest_id      TEXT NOT NULL,
+    target        INTEGER NOT NULL,
+    reward_shards INTEGER NOT NULL DEFAULT 0,
+    progress     INTEGER NOT NULL DEFAULT 0,
+    claimed      INTEGER NOT NULL DEFAULT 0,
+    rerolled     INTEGER NOT NULL DEFAULT 0,
+    assigned_key TEXT NOT NULL,
+    assigned_at  TEXT NOT NULL DEFAULT (datetime('now')),
+    expires_at   TEXT NOT NULL,
+    completed_at TEXT,
+    updated_at   TEXT NOT NULL DEFAULT (datetime('now')),
+    PRIMARY KEY (account_id, cadence, slot_index)
+  );
+
+  -- Permanent progression. Progress is a lifetime total and is never reset;
+  -- claimed_tier is how far up the ladder the player has collected, so a
+  -- returning player with a large total simply has several tiers waiting.
+  CREATE TABLE IF NOT EXISTS player_quest_chains (
+    account_id   TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    chain_id     TEXT NOT NULL,
+    progress     INTEGER NOT NULL DEFAULT 0,
+    claimed_tier INTEGER NOT NULL DEFAULT 0,
+    updated_at   TEXT NOT NULL DEFAULT (datetime('now')),
+    PRIMARY KEY (account_id, chain_id)
+  );
+
   CREATE INDEX IF NOT EXISTS idx_sessions_account ON sessions(account_id);
   CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires_at);
   CREATE INDEX IF NOT EXISTS idx_match_log_account ON match_log(account_id);
@@ -164,6 +213,8 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_accounts_device_fp ON accounts(device_fp);
   CREATE INDEX IF NOT EXISTS idx_player_decks_account ON player_decks(account_id);
   CREATE INDEX IF NOT EXISTS idx_player_quests_account ON player_quests(account_id);
+  CREATE INDEX IF NOT EXISTS idx_player_quest_slots_account ON player_quest_slots(account_id);
+  CREATE INDEX IF NOT EXISTS idx_player_quest_chains_account ON player_quest_chains(account_id);
   CREATE UNIQUE INDEX IF NOT EXISTS idx_player_decks_active
     ON player_decks(account_id) WHERE is_active = 1;
 
@@ -290,6 +341,14 @@ ensureColumns('player_profiles', [
   ['owned_cards', "TEXT NOT NULL DEFAULT '{}'"],
   ['owned_card_borders', "TEXT NOT NULL DEFAULT '[\"default\"]'"],
   ['selected_card_border', "TEXT NOT NULL DEFAULT 'default'"],
+  // Day key of the last free reroll spent, per cadence.
+  ['quest_reroll_daily_key', "TEXT NOT NULL DEFAULT ''"],
+  ['quest_reroll_weekly_key', "TEXT NOT NULL DEFAULT ''"],
+])
+
+// Slot rows predate variant targets, which introduced a per-assignment payout.
+ensureColumns('player_quest_slots', [
+  ['reward_shards', 'INTEGER NOT NULL DEFAULT 0'],
 ])
 
 ensureColumns('match_log', [
@@ -2591,104 +2650,297 @@ const _insertMatch = db.prepare(`
   VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 `)
 
-const _insertQuest = db.prepare(`
-  INSERT OR IGNORE INTO player_quests (account_id, quest_id, cadence, period_key)
-  VALUES (?, ?, ?, ?)
+const _insertQuestChain = db.prepare(`
+  INSERT OR IGNORE INTO player_quest_chains (account_id, chain_id) VALUES (?, ?)
 `)
 
-const _listQuestRows = db.prepare(`
-  SELECT * FROM player_quests WHERE account_id = ?
+const _listQuestChains = db.prepare(`
+  SELECT * FROM player_quest_chains WHERE account_id = ?
 `)
 
-const _getQuestRow = db.prepare(`
-  SELECT * FROM player_quests WHERE account_id = ? AND quest_id = ? AND period_key = ?
+const _setQuestChainProgress = db.prepare(`
+  UPDATE player_quest_chains
+  SET progress = ?, updated_at = datetime('now')
+  WHERE account_id = ? AND chain_id = ?
 `)
 
-const _setQuestProgress = db.prepare(`
-  UPDATE player_quests
+// Guarding on the tier the caller believed was current makes a double claim a
+// no-op rather than a double payout.
+const _claimQuestChainTier = db.prepare(`
+  UPDATE player_quest_chains
+  SET claimed_tier = claimed_tier + 1, updated_at = datetime('now')
+  WHERE account_id = ? AND chain_id = ? AND claimed_tier = ?
+`)
+
+const _seedQuestChain = db.prepare(`
+  UPDATE player_quest_chains
+  SET progress = MAX(progress, ?), claimed_tier = MAX(claimed_tier, ?), updated_at = datetime('now')
+  WHERE account_id = ? AND chain_id = ?
+`)
+
+const _getLegacyPermanentQuest = db.prepare(`
+  SELECT * FROM player_quests WHERE account_id = ? AND quest_id = ? AND period_key = 'ever'
+`)
+
+const _listLegacyRotatingQuests = db.prepare(`
+  SELECT * FROM player_quests WHERE account_id = ? AND period_key = ?
+`)
+
+const _deleteLegacyRotatingQuests = db.prepare(`
+  DELETE FROM player_quests WHERE account_id = ? AND period_key <> 'ever'
+`)
+
+const _listQuestSlots = db.prepare(`
+  SELECT * FROM player_quest_slots WHERE account_id = ?
+`)
+
+const _assignQuestSlot = db.prepare(`
+  INSERT INTO player_quest_slots
+    (account_id, cadence, slot_index, quest_id, target, reward_shards, progress, rerolled, assigned_key, expires_at)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  ON CONFLICT(account_id, cadence, slot_index) DO UPDATE SET
+    quest_id      = excluded.quest_id,
+    target        = excluded.target,
+    reward_shards = excluded.reward_shards,
+    progress      = excluded.progress,
+    claimed       = 0,
+    rerolled      = excluded.rerolled,
+    assigned_key  = excluded.assigned_key,
+    assigned_at   = datetime('now'),
+    expires_at    = excluded.expires_at,
+    completed_at  = NULL,
+    updated_at    = datetime('now')
+`)
+
+const _setQuestSlotProgress = db.prepare(`
+  UPDATE player_quest_slots
   SET progress = ?, completed_at = COALESCE(completed_at, ?), updated_at = datetime('now')
-  WHERE account_id = ? AND quest_id = ? AND period_key = ?
+  WHERE account_id = ? AND cadence = ? AND slot_index = ?
 `)
 
-const _claimQuest = db.prepare(`
-  UPDATE player_quests
+const _claimQuestSlot = db.prepare(`
+  UPDATE player_quest_slots
   SET claimed = 1, updated_at = datetime('now')
-  WHERE account_id = ? AND quest_id = ? AND period_key = ? AND claimed = 0
+  WHERE account_id = ? AND cadence = ? AND slot_index = ? AND claimed = 0
 `)
+
+// The guard in the WHERE clause is what makes the free reroll single-use: a
+// second attempt on the same day changes zero rows.
+const _spendDailyReroll = db.prepare(`
+  UPDATE player_profiles SET quest_reroll_daily_key = ?, updated_at = datetime('now')
+  WHERE account_id = ? AND quest_reroll_daily_key <> ?
+`)
+
+const _spendWeeklyReroll = db.prepare(`
+  UPDATE player_profiles SET quest_reroll_weekly_key = ?, updated_at = datetime('now')
+  WHERE account_id = ? AND quest_reroll_weekly_key <> ?
+`)
+
+const ROTATING_CADENCES = ['daily', 'weekly']
+const QUEST_SLOT_COUNT = { daily: 3, weekly: 3 }
+
+// A daily quest outlives its own day so a skipped evening does not erase
+// partial progress. Slots still refill at most once per period, so the extra
+// lifetime buys forgiveness, not extra income.
+const DAILY_QUEST_LIFETIME_DAYS = 3
+
+const MS_PER_DAY = 86_400_000
+
+// Epoch day 4 (1970-01-05) was the first Monday, so anchoring week buckets
+// there yields Monday-aligned weeks that stay monotonic across year ends. The
+// previous floor(dayOfYear / 7) scheme restarted at January 1 and produced a
+// one-or-two day "week 53" every December.
+const FIRST_MONDAY_EPOCH_DAY = 4
+
+function epochDay(date = new Date()) {
+  return Math.floor(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()) / MS_PER_DAY)
+}
 
 function dayKey(date = new Date()) {
   return date.toISOString().slice(0, 10)
 }
 
-function weekKey(date = new Date()) {
-  const start = new Date(Date.UTC(date.getUTCFullYear(), 0, 1))
-  const dayIndex = Math.floor((Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()) - start.getTime()) / 86_400_000)
-  const week = Math.floor(dayIndex / 7) + 1
-  return `${date.getUTCFullYear()}-W${String(week).padStart(2, '0')}`
+function weekStartEpochDay(date = new Date()) {
+  return Math.floor((epochDay(date) - FIRST_MONDAY_EPOCH_DAY) / 7) * 7 + FIRST_MONDAY_EPOCH_DAY
 }
 
-function questPeriodKey(cadence, date = new Date()) {
+function weekKey(date = new Date()) {
+  return `w${new Date(weekStartEpochDay(date) * MS_PER_DAY).toISOString().slice(0, 10)}`
+}
+
+export function questPeriodKey(cadence, date = new Date()) {
   if (cadence === 'daily') return dayKey(date)
   if (cadence === 'weekly') return weekKey(date)
   return 'ever'
 }
 
-function questExpiresAt(cadence, date = new Date()) {
+// When a quest assigned right now stops being claimable. Weeklies run to the
+// Monday boundary; dailies get the forgiveness window above.
+export function questExpiresAt(cadence, date = new Date()) {
   if (cadence === 'daily') {
-    return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate() + 1)).toISOString()
+    return new Date((epochDay(date) + DAILY_QUEST_LIFETIME_DAYS) * MS_PER_DAY).toISOString()
   }
   if (cadence === 'weekly') {
-    return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate() + 7)).toISOString()
+    return new Date((weekStartEpochDay(date) + 7) * MS_PER_DAY).toISOString()
   }
   return null
 }
 
-function stableQuestSample(accountId, periodKey, cadence, pool, count) {
-  return [...pool]
-    .sort((left, right) => {
-      const leftHash = createHash('sha256').update(`${accountId}:${periodKey}:${cadence}:${left.id}`).digest('hex')
-      const rightHash = createHash('sha256').update(`${accountId}:${periodKey}:${cadence}:${right.id}`).digest('hex')
-      return leftHash.localeCompare(rightHash)
-    })
-    .slice(0, count)
+function questPool(cadence, tier = null) {
+  return QUEST_DEFINITIONS.filter(
+    (quest) => quest.cadence === cadence && (tier === null || quest.tier === tier),
+  )
 }
 
-function getAssignedQuestDefinitions(accountId, date = new Date()) {
-  const daily = stableQuestSample(
-    accountId,
-    questPeriodKey('daily', date),
-    'daily',
-    QUEST_DEFINITIONS.filter((quest) => quest.cadence === 'daily'),
-    3,
-  )
-  const weekly = stableQuestSample(
-    accountId,
-    questPeriodKey('weekly', date),
-    'weekly',
-    QUEST_DEFINITIONS.filter((quest) => quest.cadence === 'weekly'),
-    3,
-  )
-  const permanent = QUEST_DEFINITIONS.filter((quest) => quest.cadence === 'milestone' || quest.cadence === 'skirmish')
-  return [...daily, ...weekly, ...permanent]
+// Slot 0 draws a light objective, slot 1 a standard one, slot 2 a hard one, so
+// every board offers something finishable in one sitting alongside something
+// worth chasing. Marvel Snap's normal/hard pairing, spread across three slots.
+function tierForSlot(slotIndex) {
+  return QUEST_TIERS[slotIndex % QUEST_TIERS.length]
+}
+
+function rollVariant(quest) {
+  return quest.variants[randomInt(quest.variants.length)]
 }
 
 function deckSize(deckConfig) {
   return Object.values(deckConfig ?? {}).reduce((sum, count) => sum + Number(count ?? 0), 0)
 }
 
-function ensureQuestRows(accountId, date = new Date()) {
-  for (const quest of getAssignedQuestDefinitions(accountId, date)) {
-    _insertQuest.run(accountId, quest.id, quest.cadence, questPeriodKey(quest.cadence, date))
-  }
+/**
+ * Progress for objectives that describe a state rather than a tally.
+ *
+ * "Own 30 distinct cards" cannot be derived from an event stream — breaking a
+ * card down would have to decrement it — so these read the profile directly.
+ * Returns null for ordinary counting objectives.
+ */
+function derivedQuestProgress(objectiveType, profile) {
+  if (objectiveType === 'build_deck') return deckSize(profile.deck_config)
+  if (objectiveType === 'collect_cards') return Object.keys(profile.owned_cards ?? {}).length
+  return null
 }
 
-function completeIfReady(accountId, quest, row, nextProgress) {
-  const target = quest.objective.target
-  const progress = Math.max(0, Math.min(target, nextProgress))
-  const completedAt = progress >= target ? new Date().toISOString() : null
-  if (progress !== row.progress || (completedAt && !row.completed_at)) {
-    _setQuestProgress.run(progress, completedAt, accountId, quest.id, row.period_key)
+// A slot still belongs to the player while it is unclaimed and unexpired —
+// including once it is complete, so a finished quest waits to be collected
+// instead of being recycled out from under them.
+function isSlotHeld(row, nowIso) {
+  return !row.claimed && row.expires_at > nowIso
+}
+
+// Refills draw from the rest of the tier's pool so a board never shows the
+// same objective twice. Falling back to the whole cadence keeps a small tier
+// from wedging assignment.
+function pickSlotQuest(cadence, tier, excludeIds) {
+  const tiered = questPool(cadence, tier).filter((quest) => !excludeIds.has(quest.id))
+  if (tiered.length > 0) return tiered[randomInt(tiered.length)]
+
+  const anyTier = questPool(cadence).filter((quest) => !excludeIds.has(quest.id))
+  if (anyTier.length > 0) return anyTier[randomInt(anyTier.length)]
+
+  const pool = questPool(cadence)
+  return pool.length > 0 ? pool[randomInt(pool.length)] : null
+}
+
+/**
+ * Bring an account's rotating quest board up to date.
+ *
+ * A slot refills only when it is free (claimed or expired) *and* has not
+ * already been refilled this period. That single rule is what caps income:
+ * without it, claiming a daily would immediately hand out another one and the
+ * daily faucet would become unbounded.
+ */
+function ensureQuestSlots(accountId, date = new Date()) {
+  const rows = _listQuestSlots.all(accountId)
+  const nowIso = date.toISOString()
+  const pending = []
+
+  for (const cadence of ROTATING_CADENCES) {
+    const periodKey = questPeriodKey(cadence, date)
+    const expiresAt = questExpiresAt(cadence, date)
+    const bySlot = new Map(
+      rows.filter((row) => row.cadence === cadence).map((row) => [row.slot_index, row]),
+    )
+
+    // Accounts created before the slot table carry in-flight progress in the
+    // old period-keyed rows. Seed from them once so nobody loses a quest they
+    // were part-way through at deploy time.
+    const legacy = bySlot.size === 0
+      ? _listLegacyRotatingQuests.all(accountId, periodKey).filter((row) => row.cadence === cadence)
+      : []
+
+    const held = new Set()
+    for (const row of bySlot.values()) {
+      if (isSlotHeld(row, nowIso)) held.add(row.quest_id)
+    }
+
+    for (let slotIndex = 0; slotIndex < QUEST_SLOT_COUNT[cadence]; slotIndex += 1) {
+      const row = bySlot.get(slotIndex)
+      if (row && isSlotHeld(row, nowIso)) continue
+      if (row && row.assigned_key === periodKey) continue
+
+      const carried = legacy[slotIndex]
+      const definition = (carried && getQuestDefinition(carried.quest_id))
+        || pickSlotQuest(cadence, tierForSlot(slotIndex), held)
+      if (!definition) continue
+
+      const variant = rollVariant(definition)
+      const carriedProgress = carried && carried.quest_id === definition.id
+        ? Math.min(carried.progress, variant.target)
+        : 0
+
+      held.add(definition.id)
+      pending.push([
+        accountId,
+        cadence,
+        slotIndex,
+        definition.id,
+        variant.target,
+        variant.shards,
+        carriedProgress,
+        0,
+        periodKey,
+        expiresAt,
+      ])
+    }
   }
+
+  if (pending.length === 0) return
+  const assign = db.transaction(() => {
+    for (const args of pending) _assignQuestSlot.run(...args)
+    _deleteLegacyRotatingQuests.run(accountId)
+  })
+  assign()
+}
+
+/**
+ * Make sure every chain has a row, and credit players who already finished the
+ * one-shot quests chains replaced.
+ *
+ * The legacy credit runs only when an account has no chain rows at all, so it
+ * happens exactly once per player rather than on every request.
+ */
+function ensureQuestChains(accountId) {
+  const firstRun = _listQuestChains.all(accountId).length === 0
+
+  const seed = db.transaction(() => {
+    for (const chain of QUEST_CHAINS) _insertQuestChain.run(accountId, chain.id)
+    if (!firstRun) return
+
+    for (const { questId, chainId } of legacyChainMigrations()) {
+      const legacy = _getLegacyPermanentQuest.get(accountId, questId)
+      if (!legacy?.claimed) continue
+      _seedQuestChain.run(getQuestChain(chainId).tiers[0].target, 1, accountId, chainId)
+    }
+  })
+  seed()
+}
+
+const PACK_TIER_ORDER = ['basic', 'premium', 'legendary']
+
+function packTierMeets(actual, required) {
+  const actualIndex = PACK_TIER_ORDER.indexOf(actual)
+  const requiredIndex = PACK_TIER_ORDER.indexOf(required)
+  return actualIndex !== -1 && requiredIndex !== -1 && actualIndex >= requiredIndex
 }
 
 function questMatchesEvent(quest, eventType, payload) {
@@ -2697,28 +2949,172 @@ function questMatchesEvent(quest, eventType, payload) {
   if (objective.type === 'win_ai_difficulty') {
     return difficultyMeets(payload.aiDifficulty, objective.difficulty)
   }
+  if (objective.type === 'open_pack_type') {
+    return packTierMeets(payload.packTier, objective.packTier)
+  }
   return true
 }
 
-export function recordQuestEvent(accountId, eventType, payload = {}) {
+/**
+ * How much an event moves an objective.
+ *
+ * Counting objectives accumulate; "reach a streak of N" objectives keep the
+ * best single value seen, because a streak that breaks should not erase the
+ * peak the player already hit.
+ */
+function nextQuestProgress(entry, event) {
+  const amount = Math.max(1, Number(event.amount ?? 1))
+  const cap = (value) => (entry.uncapped ? value : Math.min(entry.target, value))
+  if (entry.definition.objective.mode === 'high_water') {
+    return cap(Math.max(entry.progress, amount))
+  }
+  return cap(entry.progress + amount)
+}
+
+// Slot rows and permanent rows differ in storage but not in how progress
+// advances, so events are applied against one normalized list and flushed back
+// to whichever table each entry came from.
+function collectQuestEntries(accountId) {
+  const entries = []
+
+  for (const row of _listQuestSlots.all(accountId)) {
+    const definition = getQuestDefinition(row.quest_id)
+    if (!definition) continue
+    entries.push({
+      kind: 'slot',
+      definition,
+      cadence: row.cadence,
+      slotIndex: row.slot_index,
+      target: row.target,
+      rewardShards: row.reward_shards,
+      progress: row.progress,
+      claimed: Boolean(row.claimed),
+      completedAt: row.completed_at,
+      expiresAt: row.expires_at,
+      periodKey: row.assigned_key,
+      rerolled: Boolean(row.rerolled),
+    })
+  }
+
+  for (const row of _listQuestChains.all(accountId)) {
+    const chain = getQuestChain(row.chain_id)
+    if (!chain) continue
+
+    const exhausted = isChainExhausted(chain, row.claimed_tier)
+    // An exhausted chain has no next tier; pin it to its final one so the
+    // ledger can still render a finished ladder.
+    const tier = chainTier(chain, exhausted ? chain.tiers.length - 1 : row.claimed_tier)
+
+    entries.push({
+      kind: 'chain',
+      definition: chain,
+      cadence: chain.cadence,
+      slotIndex: null,
+      tierIndex: row.claimed_tier,
+      target: tier.target,
+      rewardShards: tier.shards,
+      progress: row.progress,
+      // A chain is never "claimed" while tiers remain; only a finite chain that
+      // has run out reads as done.
+      claimed: exhausted,
+      exhausted,
+      completedAt: null,
+      expiresAt: null,
+      periodKey: 'ever',
+      rerolled: false,
+      // Lifetime totals must not be clamped to the current tier, or a batch
+      // that overshoots would silently lose the excess.
+      uncapped: true,
+    })
+  }
+
+  return entries
+}
+
+function flushQuestEntries(accountId, entries) {
+  const dirty = entries.filter((entry) => entry.dirty)
+  if (dirty.length === 0) return
+  const write = db.transaction(() => {
+    for (const entry of dirty) {
+      if (entry.kind === 'slot') {
+        _setQuestSlotProgress.run(entry.progress, entry.completedAt, accountId, entry.cadence, entry.slotIndex)
+      } else {
+        _setQuestChainProgress.run(entry.progress, accountId, entry.definition.id)
+      }
+    }
+  })
+  write()
+}
+
+/**
+ * Apply a batch of quest events in one pass.
+ *
+ * A single AI win fires four events. Applying them one at a time meant four
+ * ensure-rows passes and four full table scans per match; batching collapses
+ * that to one read and one write transaction.
+ */
+export function recordQuestEvents(accountId, events) {
   if (!accountId) return { ok: false, error: 'Missing account.' }
-  ensureQuestRows(accountId)
-  const assigned = getAssignedQuestDefinitions(accountId)
-  const rows = _listQuestRows.all(accountId)
+  const batch = (Array.isArray(events) ? events : [events]).filter(Boolean)
+  if (batch.length === 0) return { ok: true, completed: [] }
+
+  ensureQuestSlots(accountId)
+  ensureQuestChains(accountId)
+
+  const entries = collectQuestEntries(accountId)
+  const nowIso = new Date().toISOString()
   const completed = []
-  for (const quest of assigned) {
-    if (!questMatchesEvent(quest, eventType, payload)) continue
-    const periodKey = questPeriodKey(quest.cadence)
-    const row = rows.find((entry) => entry.quest_id === quest.id && entry.period_key === periodKey)
-    if (!row || row.claimed) continue
-    const amount = Math.max(1, Number(payload.amount ?? 1))
-    const before = Math.min(quest.objective.target, row.progress)
-    completeIfReady(accountId, quest, row, before + amount)
-    if (before < quest.objective.target && before + amount >= quest.objective.target) {
-      completed.push(quest.id)
+
+  for (const event of batch) {
+    const eventType = String(event.type ?? '')
+    for (const entry of entries) {
+      if (entry.claimed) continue
+      if (entry.expiresAt && entry.expiresAt <= nowIso) continue
+      // Chains keep counting past the current tier — the excess rolls into the
+      // next one. Only capped quests stop at their target.
+      if (!entry.uncapped && entry.progress >= entry.target) continue
+      if (!questMatchesEvent(entry.definition, eventType, event)) continue
+
+      const next = nextQuestProgress(entry, event)
+      if (next === entry.progress) continue
+
+      const wasComplete = entry.progress >= entry.target
+      entry.progress = next
+      entry.dirty = true
+      if (!wasComplete && entry.progress >= entry.target) {
+        if (!entry.uncapped) entry.completedAt = nowIso
+        completed.push({
+          id: entry.definition.id,
+          title: entry.definition.title,
+          cadence: entry.cadence,
+          shards: entry.rewardShards,
+        })
+      }
     }
   }
+
+  flushQuestEntries(accountId, entries)
   return { ok: true, completed }
+}
+
+export function recordQuestEvent(accountId, eventType, payload = {}) {
+  return recordQuestEvents(accountId, [{ ...payload, type: eventType }])
+}
+
+// A settled match feeds several objectives at once. Building the list up front
+// keeps both settlement paths to a single batched write.
+function buildMatchQuestEvents(mode, result, aiDifficulty, streak = 0) {
+  const events = [{ type: 'play_matches' }]
+  if (result !== 'win') return events
+
+  events.push({ type: 'win_any_match' })
+  // Reported as the streak's current height, not an increment — `reach_streak`
+  // is a high-water objective.
+  if (streak > 0) events.push({ type: 'reach_streak', amount: streak })
+  if (mode === 'ai') {
+    events.push({ type: 'win_ai' }, { type: 'win_ai_difficulty', aiDifficulty })
+  }
+  return events
 }
 
 function buildQuestSummary(quests) {
@@ -2734,62 +3130,256 @@ function buildQuestSummary(quests) {
   }
 }
 
+// Cadence order drives the ledger tabs, so keep it stable regardless of the
+// order rows come back from SQLite in.
+const QUEST_CADENCE_ORDER = ['daily', 'weekly', 'milestone', 'skirmish']
+
+function compareQuests(left, right) {
+  const cadenceDelta = QUEST_CADENCE_ORDER.indexOf(left.cadence) - QUEST_CADENCE_ORDER.indexOf(right.cadence)
+  if (cadenceDelta !== 0) return cadenceDelta
+  if (left.slotIndex !== null && right.slotIndex !== null) return left.slotIndex - right.slotIndex
+  return left.id.localeCompare(right.id)
+}
+
 export function getQuestOverview(accountId) {
   const profile = getProfile(accountId)
   if (!profile) return { ok: false, error: 'Profile not found.' }
-  ensureQuestRows(accountId)
 
-  const assigned = getAssignedQuestDefinitions(accountId)
-  const rows = _listQuestRows.all(accountId)
-  const quests = assigned.map((quest) => {
-    const periodKey = questPeriodKey(quest.cadence)
-    const row = rows.find((entry) => entry.quest_id === quest.id && entry.period_key === periodKey)
-      ?? _getQuestRow.get(accountId, quest.id, periodKey)
-    const dynamicProgress = quest.objective.type === 'build_deck'
-      ? Math.max(row?.progress ?? 0, deckSize(profile.deck_config))
-      : row?.progress ?? 0
-    if (row && dynamicProgress !== row.progress) {
-      completeIfReady(accountId, quest, row, dynamicProgress)
-    }
-    const progress = Math.min(quest.objective.target, dynamicProgress)
-    return {
-      ...quest,
-      progress,
-      target: quest.objective.target,
-      completed: progress >= quest.objective.target,
-      claimed: Boolean(row?.claimed),
-      periodKey,
-      expiresAt: questExpiresAt(quest.cadence),
-    }
-  })
+  ensureQuestSlots(accountId)
+  ensureQuestChains(accountId)
 
-  return { ok: true, quests, summary: buildQuestSummary(quests) }
+  const entries = collectQuestEntries(accountId)
+
+  // Some objectives read live account state rather than counting events, so
+  // they are reconciled on read instead of being advanced by recordQuestEvents.
+  const nowIso = new Date().toISOString()
+  for (const entry of entries) {
+    if (entry.claimed) continue
+    const derived = derivedQuestProgress(entry.definition.objective.type, profile)
+    if (derived === null) continue
+
+    const next = entry.uncapped
+      ? Math.max(entry.progress, derived)
+      : Math.min(entry.target, Math.max(entry.progress, derived))
+    if (next === entry.progress) continue
+
+    entry.progress = next
+    entry.dirty = true
+    if (!entry.uncapped && next >= entry.target && !entry.completedAt) entry.completedAt = nowIso
+  }
+  flushQuestEntries(accountId, entries)
+
+  const quests = entries.map(hydrateQuestEntry).sort(compareQuests)
+
+  return {
+    ok: true,
+    quests,
+    // The richer ladder view. `quests` still carries each chain's current tier
+    // in quest shape so anything rendering a flat list keeps working.
+    chains: entries.filter((entry) => entry.kind === 'chain').map(hydrateChainEntry),
+    summary: buildQuestSummary(quests),
+    rerolls: {
+      daily: profile.quest_reroll_daily_key !== dayKey(),
+      weekly: profile.quest_reroll_weekly_key !== dayKey(),
+    },
+  }
 }
 
-export function claimQuestReward(accountId, questId) {
+/**
+ * Flatten an entry into the quest shape the ledger renders.
+ *
+ * A chain surfaces as its current tier — "Riftbreaker III", 12/25 — so the
+ * permanent tabs always show a live objective instead of a wall of finished
+ * one-shots.
+ */
+function hydrateQuestEntry(entry) {
+  const { variants: _variants, tiers: _tiers, endless: _endless, legacyQuestIds: _legacy, ...definition } = entry.definition
+  const isChain = entry.kind === 'chain'
+  const tierLabel = isChain ? chainTierLabel(Math.min(entry.tierIndex, entry.definition.tiers.length - 1)) : null
+
+  return {
+    ...definition,
+    title: isChain ? `${definition.title} ${tierLabel}` : definition.title,
+    // Target and payout come from the rolled variant (or current tier) on the
+    // row, not the definition, so a "win 3" assignment never renders as "win 2".
+    description: renderQuestDescription(definition, entry.target),
+    reward: { shards: entry.rewardShards },
+    progress: Math.min(entry.progress, entry.target),
+    target: entry.target,
+    completed: entry.progress >= entry.target,
+    claimed: entry.claimed,
+    periodKey: entry.periodKey,
+    expiresAt: entry.expiresAt,
+    slotIndex: entry.slotIndex,
+    rerolled: entry.rerolled,
+    tierIndex: isChain ? entry.tierIndex : null,
+    tierLabel,
+  }
+}
+
+function hydrateChainEntry(entry) {
+  const chain = entry.definition
+  return {
+    id: chain.id,
+    cadence: chain.cadence,
+    title: chain.title,
+    category: chain.category,
+    icon: chain.icon,
+    tierIndex: entry.tierIndex,
+    tierLabel: chainTierLabel(Math.min(entry.tierIndex, chain.tiers.length - 1)),
+    progress: entry.progress,
+    target: entry.target,
+    reward: { shards: entry.rewardShards },
+    description: renderQuestDescription(chain, entry.target),
+    completed: entry.progress >= entry.target,
+    exhausted: entry.exhausted,
+    endless: Boolean(chain.endless),
+    // The full ladder, so the UI can show where this tier sits and what is next.
+    ladder: chain.tiers.map((tier, index) => ({
+      label: chainTierLabel(index),
+      target: tier.target,
+      shards: tier.shards,
+      claimed: index < entry.tierIndex,
+    })),
+  }
+}
+
+/**
+ * Claim one or many quest rewards inside a single transaction.
+ *
+ * Claiming used to be one request per quest, which meant the "Claim Ready
+ * Rewards" button fired N parallel POSTs that each returned an absolute shard
+ * balance — so an out-of-order response could leave a stale total on screen,
+ * and each response stomped the previous reward cinema. One call, one balance,
+ * one cinema.
+ *
+ * Passing no ids claims everything currently ready.
+ */
+export function claimQuestRewards(accountId, questIds = null) {
   const overview = getQuestOverview(accountId)
   if (!overview.ok) return overview
-  const quest = overview.quests.find((entry) => entry.id === questId)
-  if (!quest) return { ok: false, error: 'Quest is not active.' }
-  if (!quest.completed) return { ok: false, error: 'Quest is not complete yet.' }
-  if (quest.claimed) return { ok: false, error: 'Quest reward already claimed.' }
 
-  const tx = db.transaction(() => {
-    const claimed = _claimQuest.run(accountId, quest.id, quest.periodKey)
-    if (claimed.changes !== 1) return false
-    _grantShards.run(quest.reward.shards, quest.reward.shards, accountId)
-    return true
-  })
-  if (!tx()) return { ok: false, error: 'Quest reward already claimed.' }
+  const explicit = Array.isArray(questIds) && questIds.length > 0
+  const requested = explicit
+    ? questIds.map((id) => overview.quests.find((quest) => quest.id === id) ?? { id, missing: true })
+    : overview.quests.filter((quest) => quest.completed && !quest.claimed)
+
+  const claimable = []
+  const rejected = []
+  for (const quest of requested) {
+    if (quest.missing) rejected.push({ id: quest.id, error: 'Quest is not active.' })
+    else if (!quest.completed) rejected.push({ id: quest.id, error: 'Quest is not complete yet.' })
+    else if (quest.claimed) rejected.push({ id: quest.id, error: 'Quest reward already claimed.' })
+    else claimable.push(quest)
+  }
+
+  const claims = []
+  if (claimable.length > 0) {
+    const tx = db.transaction(() => {
+      for (const quest of claimable) {
+        // Claiming a chain tier advances the ladder instead of retiring the
+        // row, so the next objective is live the moment this one is collected.
+        const changes = quest.slotIndex === null
+          ? _claimQuestChainTier.run(accountId, quest.id, quest.tierIndex).changes
+          : _claimQuestSlot.run(accountId, quest.cadence, quest.slotIndex).changes
+        if (changes !== 1) {
+          rejected.push({ id: quest.id, error: 'Quest reward already claimed.' })
+          continue
+        }
+        _grantShards.run(quest.reward.shards, quest.reward.shards, accountId)
+        claims.push({ quest: { ...quest, claimed: true }, reward: quest.reward })
+      }
+    })
+    tx()
+  }
 
   const refreshed = getProfile(accountId)
   return {
     ok: true,
-    quest: { ...quest, claimed: true },
-    reward: quest.reward,
+    claims,
+    rejected,
+    totalShards: claims.reduce((sum, entry) => sum + entry.reward.shards, 0),
     shards: refreshed.shards,
     totalEarned: refreshed.total_earned,
     overview: getQuestOverview(accountId),
+  }
+}
+
+export function claimQuestReward(accountId, questId) {
+  const result = claimQuestRewards(accountId, [String(questId ?? '')])
+  if (!result.ok) return result
+
+  const claim = result.claims[0]
+  if (!claim) return { ok: false, error: result.rejected[0]?.error ?? 'Quest is not active.' }
+
+  return {
+    ok: true,
+    quest: claim.quest,
+    reward: claim.reward,
+    shards: result.shards,
+    totalEarned: result.totalEarned,
+    overview: result.overview,
+  }
+}
+
+/**
+ * Swap one rotating quest for a different objective in the same tier.
+ *
+ * One free reroll per cadence per day, refreshing at the daily reset — the
+ * weekly reroll refreshes daily too, so a bad weekly is never a week-long
+ * sentence. Progress does not carry across a reroll, and a completed quest
+ * must be claimed rather than rerolled so the reward cannot be discarded by
+ * accident.
+ */
+export function rerollQuest(accountId, questId) {
+  const overview = getQuestOverview(accountId)
+  if (!overview.ok) return overview
+
+  const quest = overview.quests.find((entry) => entry.id === questId)
+  if (!quest) return { ok: false, error: 'Quest is not active.' }
+  if (quest.slotIndex === null) return { ok: false, error: 'Only daily and weekly quests can be rerolled.' }
+  if (quest.claimed) return { ok: false, error: 'Quest reward already claimed.' }
+  if (quest.completed) return { ok: false, error: 'This quest is ready to claim. Collect it instead of rerolling.' }
+
+  const held = new Set(
+    overview.quests
+      .filter((entry) => entry.cadence === quest.cadence && entry.slotIndex !== null)
+      .map((entry) => entry.id),
+  )
+  const replacement = pickSlotQuest(quest.cadence, tierForSlot(quest.slotIndex), held)
+  if (!replacement) return { ok: false, error: 'No replacement quest is available.' }
+
+  const todayKey = dayKey()
+  const spendReroll = quest.cadence === 'daily' ? _spendDailyReroll : _spendWeeklyReroll
+  const variant = rollVariant(replacement)
+
+  const tx = db.transaction(() => {
+    if (spendReroll.run(todayKey, accountId, todayKey).changes !== 1) return false
+    _assignQuestSlot.run(
+      accountId,
+      quest.cadence,
+      quest.slotIndex,
+      replacement.id,
+      variant.target,
+      variant.shards,
+      0,
+      1,
+      questPeriodKey(quest.cadence),
+      questExpiresAt(quest.cadence),
+    )
+    return true
+  })
+
+  if (!tx()) {
+    return { ok: false, error: `Free ${quest.cadence} reroll already used. It refreshes at the next daily reset.` }
+  }
+
+  const refreshed = getQuestOverview(accountId)
+  return {
+    ok: true,
+    replaced: quest.id,
+    quest: refreshed.quests.find((entry) => entry.cadence === quest.cadence && entry.slotIndex === quest.slotIndex),
+    overview: refreshed,
   }
 }
 
@@ -2843,6 +3433,7 @@ export function purchaseTheme(accountId, themeId) {
   })
 
   if (!tx()) return { ok: false, error: 'Not enough Shards.' }
+  if (cost > 0) recordQuestEvent(accountId, 'spend_shards', { amount: cost })
   const refreshed = getProfile(accountId)
   return { ok: true, shards: refreshed.shards, ownedThemes: refreshed.owned_themes }
 }
@@ -2901,6 +3492,7 @@ export function purchaseCardBorder(accountId, borderId) {
     return true
   })
   if (!tx()) return { ok: false, error: 'Not enough Shards.' }
+  if (entry.cost > 0) recordQuestEvent(accountId, 'spend_shards', { amount: entry.cost })
 
   const refreshed = getProfile(accountId)
   return {
@@ -3268,16 +3860,12 @@ const _settleAuthoritativeMatch = db.transaction((settlement) => {
     )
 
     if (questEligible) {
-      recordQuestEvent(participant.accountId, 'play_matches')
-      if (participant.result === 'win') {
-        recordQuestEvent(participant.accountId, 'win_any_match')
-        if (settlement.mode === 'ai') {
-          recordQuestEvent(participant.accountId, 'win_ai')
-          recordQuestEvent(participant.accountId, 'win_ai_difficulty', {
-            aiDifficulty: settlement.metadata.aiDifficulty,
-          })
-        }
-      }
+      recordQuestEvents(participant.accountId, buildMatchQuestEvents(
+        settlement.mode,
+        participant.result,
+        settlement.metadata.aiDifficulty,
+        refreshed.streak,
+      ))
     }
   }
 
@@ -3343,14 +3931,7 @@ export function resolveMatchResult(accountId, opponent, mode, result, turns, met
   })
 
   tx()
-  recordQuestEvent(accountId, 'play_matches')
-  if (result === 'win') {
-    recordQuestEvent(accountId, 'win_any_match')
-    if (mode === 'ai') {
-      recordQuestEvent(accountId, 'win_ai')
-      recordQuestEvent(accountId, 'win_ai_difficulty', { aiDifficulty: metadata.aiDifficulty ?? 'adept' })
-    }
-  }
+  recordQuestEvents(accountId, buildMatchQuestEvents(mode, result, metadata.aiDifficulty ?? 'adept', newStreak))
   const refreshed = getProfile(accountId)
   return {
     ok: true,
@@ -3785,7 +4366,13 @@ export function openPack(accountId, packType) {
     return true
   })
   if (!tx()) return { ok: false, error: 'Not enough Shards.' }
-  recordQuestEvent(accountId, 'open_packs')
+  // Spend is the gross pack cost; the duplicate refund is separate income and
+  // should not net against a "spend N Shards" objective.
+  recordQuestEvents(accountId, [
+    { type: 'open_packs' },
+    { type: 'open_pack_type', packTier: packType },
+    { type: 'spend_shards', amount: packDef.cost },
+  ])
 
   const refreshed = getProfile(accountId)
   return {

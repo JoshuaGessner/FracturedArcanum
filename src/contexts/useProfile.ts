@@ -48,6 +48,7 @@ export type ProfileContextValue = ProfileStateValue &
     | 'handleEquipTheme'
     | 'handleClaimDailyReward'
     | 'handleClaimQuestReward'
+    | 'handleClaimQuestRewards'
   >
 
 export function useProfile(): ProfileContextValue {
@@ -93,5 +94,6 @@ export function useProfile(): ProfileContextValue {
     handleEquipTheme: shell.handleEquipTheme,
     handleClaimDailyReward: shell.handleClaimDailyReward,
     handleClaimQuestReward: shell.handleClaimQuestReward,
+    handleClaimQuestRewards: shell.handleClaimQuestRewards,
   }
 }

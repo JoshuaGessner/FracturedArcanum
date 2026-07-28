@@ -134,6 +134,8 @@ export type AppShellContextValue = {
   handleEquipTheme: (themeId: CosmeticTheme, cost: number) => void
   handleClaimDailyReward: () => void
   handleClaimQuestReward: (questId: string) => void
+  /** Omit `questIds` to claim every reward currently ready. */
+  handleClaimQuestRewards: (questIds?: string[]) => void
 
   // ─── Navigation / UI shell ────────────────────────────────────────────
   activeScreen: AppScreen
