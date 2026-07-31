@@ -16,8 +16,10 @@
 export {
   LEGACY_MIGRATION_WINDOW_DAYS,
   db,
+  defaultDataDir,
   getCurrentLegalVersions,
   openDatabase,
+  resolveDataDir,
 } from './db/connection.js'
 
 export {

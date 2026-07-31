@@ -96,6 +96,7 @@ import {
   deleteAccountPasskey,
   exportAccountData,
   deleteAccount,
+  resolveDataDir,
 } from './db.js'
 import {
   createPasskeyLoginOptions,
@@ -124,7 +125,11 @@ import {
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const DIST_DIR = path.resolve(__dirname, '../dist')
-const DATA_DIR = path.resolve(__dirname, '../data')
+// Shared with the database rather than computed again here. The old local
+// `path.resolve(__dirname, '../data')` ignored DATA_DIR, so a custom data
+// directory moved the database but left the admin store and server config
+// behind — splitting server state across two directories.
+const DATA_DIR = resolveDataDir()
 const ADMIN_STORE_PATH = path.join(DATA_DIR, 'arena-admin-store.json')
 const SERVER_CONFIG_PATH = path.join(DATA_DIR, 'server-config.json')
 const CLIENT_ORIGINS = process.env.CLIENT_ORIGIN?.split(',').map((value) => value.trim()).filter(Boolean) ?? []

@@ -20,12 +20,17 @@
  *   node scripts/prune-dead-css.mjs           # dry run, prints a report
  *   node scripts/prune-dead-css.mjs --write   # applies the edit
  */
-import { readFileSync, writeFileSync } from 'node:fs'
+import { readFileSync, writeFileSync, readdirSync } from 'node:fs'
 import { execFileSync } from 'node:child_process'
 import path from 'node:path'
 import postcss from 'postcss'
 
-const CSS_PATH = path.resolve('src/App.css')
+// src/styles/*.css, not src/App.css — that file is an @import index now.
+const STYLES_DIR = path.resolve('src/styles')
+const CSS_FILES = readdirSync(STYLES_DIR)
+  .filter((name) => name.endsWith('.css'))
+  .sort()
+  .map((name) => path.join(STYLES_DIR, name))
 const WRITE = process.argv.includes('--write')
 
 // Reuse the audit as the single source of truth for what is dead, via its
@@ -35,9 +40,6 @@ const audit = JSON.parse(
   execFileSync('node', [path.resolve('scripts/audit-css-usage.mjs'), '--json'], { encoding: 'utf8' }),
 )
 const dead = new Set(audit.dead)
-
-const css = readFileSync(CSS_PATH, 'utf8')
-const root = postcss.parse(css, { from: CSS_PATH })
 
 /** Class tokens in one comma-free selector. */
 const classesIn = (selector) => [...selector.matchAll(/\.(-?[a-zA-Z_][\w-]*)/g)].map((m) => m[1])
@@ -77,6 +79,15 @@ function isDeadSelector(selector) {
 
 const removed = { rules: 0, selectors: 0, atRules: 0, declarations: 0 }
 const removedNames = new Set()
+let linesBefore = 0
+let linesAfter = 0
+
+// One module at a time. Parsing `src/App.css` would parse an @import index and
+// silently rewrite the load-bearing import order rather than any real rules.
+for (const cssPath of CSS_FILES) {
+  const css = readFileSync(cssPath, 'utf8')
+  const root = postcss.parse(css, { from: cssPath })
+  linesBefore += css.split('\n').length
 
 root.walkRules((rule) => {
   // Skip keyframe steps (`from`, `to`, `50%`) — not selectors in this sense.
@@ -116,20 +127,21 @@ while (pruning) {
   })
 }
 
-const output = root.toString()
-const before = css.split('\n').length
-const after = output.split('\n').length
+  const output = root.toString()
+  linesAfter += output.split('\n').length
+  if (WRITE) writeFileSync(cssPath, output, 'utf8')
+}
 
+console.log(`stylesheets:             ${CSS_FILES.length} files in src/styles/`)
 console.log(`dead classes from audit: ${dead.size}`)
 console.log(`selectors dropped:       ${removed.selectors}`)
 console.log(`rules removed:           ${removed.rules}`)
 console.log(`declarations removed:    ${removed.declarations}`)
 console.log(`empty at-rules removed:  ${removed.atRules}`)
-console.log(`lines:                   ${before} -> ${after}  (-${before - after})`)
+console.log(`lines:                   ${linesBefore} -> ${linesAfter}  (-${linesBefore - linesAfter})`)
 console.log(`classes actually hit:    ${removedNames.size}`)
 
 if (WRITE) {
-  writeFileSync(CSS_PATH, output, 'utf8')
   console.log('\nwritten.')
 } else {
   console.log('\ndry run — pass --write to apply')

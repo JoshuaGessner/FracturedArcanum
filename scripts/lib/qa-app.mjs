@@ -34,6 +34,7 @@ import { existsSync } from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
 import Database from 'better-sqlite3'
+import { resolveDataDir } from '../../server/db/connection.js'
 
 export const QA_USERNAME = process.env.QA_USERNAME ?? 'uxqa'
 /**
@@ -53,9 +54,17 @@ export function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
+/**
+ * The database this harness signs into.
+ *
+ * Delegates to the server's own resolver rather than recomputing the path. A
+ * local `path.resolve(process.env.DATA_DIR ?? 'data')` worked only because npm
+ * runs scripts from the package root, and it was a third independent
+ * definition of where the data lives — the second one is exactly how the server
+ * came to open an empty database at server/data after the db split.
+ */
 function databasePath() {
-  const dataDir = path.resolve(process.env.DATA_DIR ?? 'data')
-  return path.join(dataDir, 'fractured-arcanum.db')
+  return path.join(resolveDataDir(), 'fractured-arcanum.db')
 }
 
 function hashIp(ip) {

@@ -246,6 +246,33 @@ describe('production upgrade safety', () => {
     expect(resolved).not.toContain(`${path.sep}server${path.sep}data`)
   })
 
+  /**
+   * Server state must live in ONE directory.
+   *
+   * server.js used to compute its own data directory and ignore DATA_DIR, so
+   * the database honoured the variable and the admin store did not. Isolated
+   * test runs wrote to the real data directory, and a deploy with a mounted
+   * data volume would have kept admin settings on ephemeral container disk.
+   */
+  it('resolves one data directory for the database and the server state', async () => {
+    const { resolveDataDir } = await import('./db/connection.js')
+    const previous = process.env.DATA_DIR
+    try {
+      process.env.DATA_DIR = workDir
+      expect(resolveDataDir()).toBe(path.resolve(workDir))
+    } finally {
+      if (previous === undefined) delete process.env.DATA_DIR
+      else process.env.DATA_DIR = previous
+    }
+  })
+
+  it('server.js does not compute its own data directory', async () => {
+    // A second definition is how the two drifted apart in the first place.
+    const source = await readFile(path.resolve('server/server.js'), 'utf8')
+    expect(source).toMatch(/const DATA_DIR = resolveDataDir\(\)/)
+    expect(source).not.toMatch(/const DATA_DIR = path\.resolve\(__dirname/)
+  })
+
   it('issues no destructive DDL during startup', async () => {
     // The schema lives in the connection module; db.js is a re-export barrel.
     const source = await readFile(path.resolve('server/db/connection.js'), 'utf8')

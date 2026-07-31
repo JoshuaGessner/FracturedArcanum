@@ -21,7 +21,19 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import path from 'node:path'
 
-const CSS_PATH = path.resolve('src/App.css')
+/**
+ * The stylesheet is `src/styles/*.css`, not `src/App.css`.
+ *
+ * App.css became an ordered list of `@import`s when the CSS was split into 24
+ * modules. Pointing at it did not fail — the audit simply found one class name
+ * across an 88-line file and cheerfully reported zero dead rules, which is the
+ * worst possible outcome for a tool whose whole job is finding dead rules.
+ */
+const STYLES_DIR = path.resolve('src/styles')
+const CSS_FILES = readdirSync(STYLES_DIR)
+  .filter((name) => name.endsWith('.css'))
+  .sort()
+  .map((name) => path.join(STYLES_DIR, name))
 const SCAN_DIRS = [path.resolve('src'), path.resolve('scripts')]
 const SCAN_FILES = [path.resolve('index.html')]
 
@@ -93,7 +105,7 @@ for (const match of haystack.matchAll(/'([^'\\]*(?:\\.[^'\\]*)*)'|"([^"\\]*(?:\\
 }
 
 // ── the stylesheet's class inventory ────────────────────────────────────────
-const css = readFileSync(CSS_PATH, 'utf8')
+const css = CSS_FILES.map((file) => readFileSync(file, 'utf8')).join('\n')
 // Strip comments so prose like "the .foo rule" is not mistaken for a selector.
 const cssNoComments = css.replace(/\/\*[\s\S]*?\*\//g, '')
 const classes = new Set()
@@ -124,7 +136,7 @@ for (const cls of [...classes].sort()) {
 if (process.argv.includes('--json')) {
   console.log(JSON.stringify({ dead, dynamicPrefixes: [...dynamicPrefixes], live: live.length }, null, 2))
 } else {
-  console.log(`stylesheet:        ${path.relative(process.cwd(), CSS_PATH)}`)
+  console.log(`stylesheets:       ${CSS_FILES.length} files in src/styles/`)
   console.log(`sources scanned:   ${sourceFiles.length} files`)
   console.log('')
   console.log(`class names:       ${classes.size}`)

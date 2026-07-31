@@ -52,6 +52,24 @@ export function defaultDataDir() {
   return path.resolve(__dirname, '../../data')
 }
 
+/**
+ * The data directory in effect, honouring DATA_DIR.
+ *
+ * The single source of truth for where server state lives. server.js used to
+ * compute its own `path.resolve(__dirname, '../data')` for the admin store and
+ * server config, ignoring DATA_DIR entirely — so running with a custom data
+ * directory put the database in one place and the JSON state in another. Under
+ * test that quietly wrote to the real data directory instead of the temp one;
+ * on a container deploy it would drop admin settings on every redeploy.
+ */
+export function resolveDataDir() {
+  const dataDir = path.resolve(process.env.DATA_DIR ?? defaultDataDir())
+  if (!existsSync(dataDir)) {
+    mkdirSync(dataDir, { recursive: true })
+  }
+  return dataDir
+}
+
 /** Resolved fresh on each open so DATA_DIR can change between opens. */
 function resolveDbPath() {
   // `../../data`, not `../data`. This file lives at server/db/, one level
@@ -59,7 +77,7 @@ function resolveDbPath() {
   // path silently pointed at server/data — a brand-new empty database. Any
   // deploy that does not set DATA_DIR would have come up with every account
   // missing. `defaultDataDir()` is exported so a test can pin this.
-  const dataDir = path.resolve(process.env.DATA_DIR ?? defaultDataDir())
+  const dataDir = resolveDataDir()
   if (!existsSync(dataDir)) {
     mkdirSync(dataDir, { recursive: true })
   }
