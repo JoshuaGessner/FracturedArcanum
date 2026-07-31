@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { act, cleanup, render } from '@testing-library/react'
 import { GameProvider, useGameState, type GameStateValue } from './GameProvider'
 import { STORAGE_KEYS } from '../constants'
-import type { ServerMatchLifecycle } from '../types'
+import type { InspectedCard, ServerMatchLifecycle } from '../types'
 
 /**
  * Characterization tests for GameProvider.
@@ -95,20 +95,52 @@ describe('GameProvider initial state', () => {
 describe('GameProvider serverBattleActive', () => {
   // The derivation AppShell's leave/abandon branch depends on: a "live" match
   // is not just `active`, it also covers the two transitional phases.
-  const cases: Array<[ServerMatchLifecycle['phase'], boolean]> = [
-    ['idle', false],
-    ['queued', false],
-    ['active', true],
-    ['reconnecting', true],
-    ['leaving', true],
-    ['complete', false],
+  //
+  // ServerMatchLifecycle is a discriminated union, so each phase is built as a
+  // whole valid state rather than by spreading a phase over the previous one.
+  // An earlier version of this test spread `{ ...current, phase }` and asserted
+  // on 'queued' and 'complete' — neither of which exists in the union. It
+  // passed because the derivation is a string comparison, which is exactly the
+  // kind of false confidence a characterization test must not give.
+  const IDLE: ServerMatchLifecycle = {
+    phase: 'idle', matchId: null, revision: 0, kind: null, outcome: null,
+  }
+  const live = (phase: 'active' | 'reconnecting' | 'leaving'): ServerMatchLifecycle => ({
+    phase, matchId: 'match-1', revision: 3, kind: 'ranked', outcome: null,
+  })
+  const TERMINAL: ServerMatchLifecycle = {
+    phase: 'terminal',
+    matchId: 'match-1',
+    revision: 4,
+    kind: 'ranked',
+    outcome: {
+      matchId: 'match-1',
+      kind: 'ranked',
+      result: 'win',
+      reason: 'completed',
+      shardsEarned: 10,
+      ratingDelta: 12,
+      shards: 200,
+      seasonRating: 1222,
+      wins: 4,
+      losses: 2,
+      streak: 2,
+    },
+  }
+
+  const cases: Array<[string, ServerMatchLifecycle, boolean]> = [
+    ['idle', IDLE, false],
+    ['active', live('active'), true],
+    ['reconnecting', live('reconnecting'), true],
+    ['leaving', live('leaving'), true],
+    ['terminal', TERMINAL, false],
   ]
 
-  for (const [phase, expected] of cases) {
-    it(`is ${expected} while the match phase is "${phase}"`, () => {
+  for (const [label, value, expected] of cases) {
+    it(`is ${expected} while the match phase is "${label}"`, () => {
       const { state } = mountProvider()
       act(() => {
-        state().setServerMatch((current) => ({ ...current, phase }))
+        state().setServerMatch(value)
       })
       expect(state().serverBattleActive).toBe(expected)
     })
@@ -135,10 +167,25 @@ describe('GameProvider setters', () => {
 
   it('carries the inspected card through unchanged', () => {
     const { state } = mountProvider()
+    // InspectedCard is a flattened presentation shape, not a wrapper around a
+    // engine card — it carries no `source`, so the modal cannot tell hand from
+    // board. Recorded because it constrains what the inspect modal can show.
+    const inspected: InspectedCard = {
+      id: 'spark-imp',
+      name: 'Spark Imp',
+      icon: 'imp',
+      cost: 1,
+      attack: 2,
+      health: 1,
+      rarity: 'common',
+      tribe: 'imp',
+      text: 'A quick striker.',
+      effect: null,
+    }
     act(() => {
-      state().setInspectedCard({ card: state().game.player.hand[0], source: 'hand' })
+      state().setInspectedCard(inspected)
     })
-    expect(state().inspectedCard?.source).toBe('hand')
+    expect(state().inspectedCard).toEqual(inspected)
   })
 })
 

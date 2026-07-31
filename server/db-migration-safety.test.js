@@ -228,13 +228,13 @@ describe('production upgrade safety', () => {
   })
 
   it('issues no destructive DDL during startup', async () => {
-    const source = await readFile(path.resolve('server/db.js'), 'utf8')
-    const marker = '// ─── Password hashing'
+    // The schema lives in the connection module; db.js is a re-export barrel.
+    const source = await readFile(path.resolve('server/db/connection.js'), 'utf8')
+    const marker = 'function applySchema() {'
     const cut = source.indexOf(marker)
-    // Guard the slice: a missed marker would silently scan the whole file and
-    // pick up runtime DELETE statements that never run at startup.
-    expect(cut, 'schema-region marker not found in db.js').toBeGreaterThan(0)
-    const schemaRegion = source.slice(0, cut)
+    // Guard the slice: a missed marker would silently scan nothing and pass.
+    expect(cut, 'applySchema not found in server/db/connection.js').toBeGreaterThan(0)
+    const schemaRegion = source.slice(cut)
 
     expect(schemaRegion).not.toMatch(/\bDROP\s+TABLE\b/i)
     expect(schemaRegion).not.toMatch(/\bDROP\s+COLUMN\b/i)
