@@ -1,8 +1,8 @@
 # Layout QA
 
-Three tools cover UI layout. They differ in cost and in the kind of question
-they can answer, so reach for the cheapest one that settles the question in
-front of you.
+Four tools cover UI layout. They differ in cost and in the kind of question they
+can answer, so reach for the cheapest one that settles the question in front of
+you.
 
 | Tool | Question it answers | Cost |
 |------|--------------------|------|
@@ -105,8 +105,8 @@ unchanged.
 ## Shared definitions
 
 `scripts/lib/appStates.mjs` holds the viewports, the states, and the navigation
-to reach them. Both tools import it, so a new screen is added once and both pick
-it up. It also carries the navigation details that were expensive to learn:
+to reach them. Both browser-driven tools import it, so a new screen is added once
+and both pick it up. It also carries the navigation details that were expensive to learn:
 
 - The shell's `screen-enter-*` class is **not** a transition marker — App.tsx
   only ever reassigns it, never clears it, so waiting for it to disappear waits
@@ -132,10 +132,12 @@ shared with hand testing. The harness treats it as read-mostly:
   `failed_login_count` / `locked_until`, so guessing a password on every run is
   the one thing that could lock it out. A session row is minted directly
   instead. Set `QA_PASSWORD` to opt into the real login path.
-- Cleanup is limited to *expired* sessions the harness itself created,
-  identified by a marker user-agent hash. Hand-made browser sessions are never
-  touched, and a concurrent run cannot delete a live session out from under
-  another process.
+- Cleanup is limited to sessions the harness itself created, identified by a
+  marker user-agent hash, and only once they are over an hour old. Hand-made
+  browser sessions are never touched, and a concurrent run cannot delete a live
+  session out from under another process — without that guard two overlapping
+  runs log each other out mid-run and both wedge. (Waiting for the full 7-day
+  expiry instead let ~90 rows pile up over one afternoon of iteration.)
 
 Point any tool at an already-running app with `QA_URL=http://…` to skip the
 boot cost during a tight loop.

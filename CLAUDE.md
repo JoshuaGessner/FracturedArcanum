@@ -277,7 +277,7 @@ The bottom nav has four destinations: Home, Cards, Shop, Social.
 
 ### Layout QA
 
-Three tools, in increasing cost. Pick the cheapest that answers the question.
+Four tools, in increasing cost. Pick the cheapest that answers the question.
 
 | Command | Use when |
 |---------|----------|
