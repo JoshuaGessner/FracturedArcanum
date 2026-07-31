@@ -51,29 +51,22 @@ function snapshot(dbPath) {
 }
 
 /**
- * Import db.js against a specific DATA_DIR so schema and migrations run there.
+ * Point the data layer at a specific DATA_DIR and run schema + migrations.
  *
- * Each entry needs a *literal* specifier: the bundler cannot statically analyse
- * a templated dynamic import, and a repeated specifier would be served from the
- * module cache instead of re-running the schema.
+ * `openDatabase()` re-reads DATA_DIR, closes the previous handle, and re-applies
+ * the schema. The shared connection is restored afterwards so the rest of the
+ * suite keeps working.
  */
-const IMPORTERS = {
-  liveCopy: () => import('./db.js?migration-safety-live-copy'),
-  idempotentA: () => import('./db.js?migration-safety-idempotent-a'),
-  idempotentB: () => import('./db.js?migration-safety-idempotent-b'),
-  legacySeed: () => import('./db.js?migration-safety-legacy-seed'),
-  backfill: () => import('./db.js?migration-safety-backfill'),
-}
-
-async function migrateAgainst(dataDir, importerKey) {
+async function migrateAgainst(dataDir) {
+  const db = await import('./db.js')
   const previous = process.env.DATA_DIR
   process.env.DATA_DIR = dataDir
   try {
-    const mod = await IMPORTERS[importerKey]()
-    mod.default.close()
+    db.openDatabase()
   } finally {
     if (previous === undefined) delete process.env.DATA_DIR
     else process.env.DATA_DIR = previous
+    db.openDatabase()
   }
 }
 
@@ -99,7 +92,7 @@ describe('production upgrade safety', () => {
       copyFileSync(LIVE_DB, target)
 
       const before = snapshot(target)
-      await migrateAgainst(workDir, 'liveCopy')
+      await migrateAgainst(workDir)
       const after = snapshot(target)
 
       for (const [table, prev] of Object.entries(before)) {
@@ -116,9 +109,9 @@ describe('production upgrade safety', () => {
     const target = path.join(workDir, 'fractured-arcanum.db')
     if (existsSync(LIVE_DB)) copyFileSync(LIVE_DB, target)
 
-    await migrateAgainst(workDir, 'idempotentA')
+    await migrateAgainst(workDir)
     const first = snapshot(target)
-    await migrateAgainst(workDir, 'idempotentB')
+    await migrateAgainst(workDir)
     const second = snapshot(target)
 
     expect(Object.keys(second).sort()).toEqual(Object.keys(first).sort())
@@ -157,7 +150,7 @@ describe('production upgrade safety', () => {
     insert.run('acct-blank', 'blank_player', 'hash-b', '')
     seed.close()
 
-    await migrateAgainst(workDir, 'backfill')
+    await migrateAgainst(workDir)
 
     const after = new Database(target, { readonly: true })
     try {
@@ -208,7 +201,7 @@ describe('production upgrade safety', () => {
     ).run('acct-legacy-safety', JSON.stringify({ 'spark-imp': 2 }), 1234, 7, 3)
     legacy.close()
 
-    await migrateAgainst(workDir, 'legacySeed')
+    await migrateAgainst(workDir)
 
     const after = new Database(target, { readonly: true })
     try {

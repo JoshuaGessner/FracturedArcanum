@@ -21,22 +21,99 @@ import {
 } from './quest-chains.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const DATA_DIR = path.resolve(process.env.DATA_DIR ?? path.resolve(__dirname, '../data'))
-const DB_PATH = path.join(DATA_DIR, 'fractured-arcanum.db')
 
-if (!existsSync(DATA_DIR)) {
-  mkdirSync(DATA_DIR, { recursive: true })
+/**
+ * The live connection. Reassigned by `openDatabase()`, never by anything else.
+ *
+ * Declared with `let` so ESM live bindings propagate a reopen to every importer.
+ */
+export let db
+
+/** Resolved fresh on each open so DATA_DIR can change between opens. */
+function resolveDbPath() {
+  const dataDir = path.resolve(process.env.DATA_DIR ?? path.resolve(__dirname, '../data'))
+  if (!existsSync(dataDir)) {
+    mkdirSync(dataDir, { recursive: true })
+  }
+  return path.join(dataDir, 'fractured-arcanum.db')
 }
 
-let db
-try {
-  db = new Database(DB_PATH, { fileMustExist: false })
-} catch (error) {
-  console.error(`Failed to open SQLite database at ${DB_PATH}. Ensure the data directory exists and is writable.`)
-  throw error
+/**
+ * Lazily prepared statement, rebound automatically when the connection changes.
+ *
+ * The 134 module-scope statements in this file used to be prepared at import
+ * time against whichever connection existed then. That made the connection
+ * effectively permanent: reopening the database left every statement pointing
+ * at a closed handle, which is why the test suite could only get a fresh
+ * database by busting the ESM module cache with `import('./db.js?tag')`.
+ *
+ * Preparing on first use — and re-preparing whenever `db` is a different
+ * object — makes `openDatabase()` genuinely re-runnable. better-sqlite3 caches
+ * nothing across connections, so the re-prepare is required, not merely tidy.
+ *
+ * Only `.run`, `.get` and `.all` are forwarded because those are the only
+ * methods this file uses on a prepared statement.
+ */
+function prepare(sql) {
+  let cached = null
+  let cachedFor = null
+  const statement = () => {
+    if (cachedFor !== db) {
+      cached = db.prepare(sql)
+      cachedFor = db
+    }
+    return cached
+  }
+  return {
+    run: (...args) => statement().run(...args),
+    get: (...args) => statement().get(...args),
+    all: (...args) => statement().all(...args),
+  }
 }
-db.pragma('journal_mode = WAL')
-db.pragma('foreign_keys = ON')
+
+/**
+ * Deferred transaction, for the same reason as `prepare()`.
+ *
+ * `db.transaction()` binds to a connection at call time, so it cannot be built
+ * at import time either.
+ */
+function transaction(fn) {
+  let cached = null
+  let cachedFor = null
+  return (...args) => {
+    if (cachedFor !== db) {
+      cached = db.transaction(fn)
+      cachedFor = db
+    }
+    return cached(...args)
+  }
+}
+
+/**
+ * Open (or reopen) the database and bring its schema up to date.
+ *
+ * Safe to call against an existing production database: every CREATE is
+ * guarded by IF NOT EXISTS, columns are added only when PRAGMA table_info says
+ * they are missing, and the backfill UPDATEs are written so they can only fill
+ * a blank. `server/db-migration-safety.test.js` asserts all of that against a
+ * copy of the real database.
+ */
+export function openDatabase() {
+  const dbPath = resolveDbPath()
+  if (db) {
+    try { db.close() } catch { /* already closed */ }
+  }
+  try {
+    db = new Database(dbPath, { fileMustExist: false })
+  } catch (error) {
+    console.error(`Failed to open SQLite database at ${dbPath}. Ensure the data directory exists and is writable.`)
+    throw error
+  }
+  db.pragma('journal_mode = WAL')
+  db.pragma('foreign_keys = ON')
+  applySchema()
+  return db
+}
 
 const CURRENT_ACCOUNT_STANDARD_VERSION = 1
 const CURRENT_TERMS_VERSION = 'terms-2026-05-17'
@@ -68,496 +145,526 @@ export function getCurrentLegalVersions() {
 
 // ─── Schema ───────────────────────────────────────────────────────────────────
 
-db.exec(`
-  CREATE TABLE IF NOT EXISTS accounts (
-    id            TEXT PRIMARY KEY,
-    username      TEXT UNIQUE NOT NULL COLLATE NOCASE,
-    password_hash TEXT NOT NULL,
-    display_name  TEXT NOT NULL,
-    created_at    TEXT NOT NULL DEFAULT (datetime('now')),
-    last_login    TEXT,
-    device_fp     TEXT,
-    created_ip_hash TEXT,
-    created_ua_hash TEXT,
-    flags         TEXT NOT NULL DEFAULT ''
-  );
+/**
+ * Create or migrate every table, index and column, then run the backfills.
+ *
+ * Called by `openDatabase()`, so it runs on import and again on any reopen.
+ * Every statement is written to be safe to re-run against a database that is
+ * already up to date — see the header on `openDatabase()`.
+ */
+function applySchema() {
 
-  CREATE TABLE IF NOT EXISTS sessions (
-    token      TEXT PRIMARY KEY,
-    account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
-    created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    expires_at TEXT NOT NULL,
-    ip_hash    TEXT
-  );
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS accounts (
+      id            TEXT PRIMARY KEY,
+      username      TEXT UNIQUE NOT NULL COLLATE NOCASE,
+      password_hash TEXT NOT NULL,
+      display_name  TEXT NOT NULL,
+      created_at    TEXT NOT NULL DEFAULT (datetime('now')),
+      last_login    TEXT,
+      device_fp     TEXT,
+      created_ip_hash TEXT,
+      created_ua_hash TEXT,
+      flags         TEXT NOT NULL DEFAULT ''
+    );
 
-  CREATE TABLE IF NOT EXISTS player_profiles (
-    account_id     TEXT PRIMARY KEY REFERENCES accounts(id) ON DELETE CASCADE,
-    shards         INTEGER NOT NULL DEFAULT 120,
-    season_rating  INTEGER NOT NULL DEFAULT 1200,
-    wins           INTEGER NOT NULL DEFAULT 0,
-    losses         INTEGER NOT NULL DEFAULT 0,
-    streak         INTEGER NOT NULL DEFAULT 0,
-    deck_config    TEXT NOT NULL DEFAULT '{}',
-    owned_themes   TEXT NOT NULL DEFAULT '["royal"]',
-    selected_theme TEXT NOT NULL DEFAULT 'royal',
-    last_daily     TEXT NOT NULL DEFAULT '',
-    total_earned   INTEGER NOT NULL DEFAULT 120,
-    updated_at     TEXT NOT NULL DEFAULT (datetime('now'))
-  );
+    CREATE TABLE IF NOT EXISTS sessions (
+      token      TEXT PRIMARY KEY,
+      account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      expires_at TEXT NOT NULL,
+      ip_hash    TEXT
+    );
 
-  CREATE TABLE IF NOT EXISTS match_log (
-    id         TEXT PRIMARY KEY,
-    account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
-    opponent   TEXT NOT NULL,
-    mode       TEXT NOT NULL,
-    result     TEXT NOT NULL,
-    turns      INTEGER NOT NULL DEFAULT 0,
-    shards_earned INTEGER NOT NULL DEFAULT 0,
-    rating_delta INTEGER NOT NULL DEFAULT 0,
-    played_at  TEXT NOT NULL DEFAULT (datetime('now'))
-  );
+    CREATE TABLE IF NOT EXISTS player_profiles (
+      account_id     TEXT PRIMARY KEY REFERENCES accounts(id) ON DELETE CASCADE,
+      shards         INTEGER NOT NULL DEFAULT 120,
+      season_rating  INTEGER NOT NULL DEFAULT 1200,
+      wins           INTEGER NOT NULL DEFAULT 0,
+      losses         INTEGER NOT NULL DEFAULT 0,
+      streak         INTEGER NOT NULL DEFAULT 0,
+      deck_config    TEXT NOT NULL DEFAULT '{}',
+      owned_themes   TEXT NOT NULL DEFAULT '["royal"]',
+      selected_theme TEXT NOT NULL DEFAULT 'royal',
+      last_daily     TEXT NOT NULL DEFAULT '',
+      total_earned   INTEGER NOT NULL DEFAULT 120,
+      updated_at     TEXT NOT NULL DEFAULT (datetime('now'))
+    );
 
-  CREATE TABLE IF NOT EXISTS social_friends (
-    account_id       TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
-    friend_account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
-    created_at       TEXT NOT NULL DEFAULT (datetime('now')),
-    PRIMARY KEY (account_id, friend_account_id),
-    CHECK (account_id <> friend_account_id)
-  );
+    CREATE TABLE IF NOT EXISTS match_log (
+      id         TEXT PRIMARY KEY,
+      account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+      opponent   TEXT NOT NULL,
+      mode       TEXT NOT NULL,
+      result     TEXT NOT NULL,
+      turns      INTEGER NOT NULL DEFAULT 0,
+      shards_earned INTEGER NOT NULL DEFAULT 0,
+      rating_delta INTEGER NOT NULL DEFAULT 0,
+      played_at  TEXT NOT NULL DEFAULT (datetime('now'))
+    );
 
-  CREATE TABLE IF NOT EXISTS clans (
-    id               TEXT PRIMARY KEY,
-    name             TEXT NOT NULL UNIQUE COLLATE NOCASE,
-    tag              TEXT NOT NULL UNIQUE COLLATE NOCASE,
-    invite_code      TEXT NOT NULL UNIQUE,
-    owner_account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
-    created_at       TEXT NOT NULL DEFAULT (datetime('now'))
-  );
+    CREATE TABLE IF NOT EXISTS social_friends (
+      account_id       TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+      friend_account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+      created_at       TEXT NOT NULL DEFAULT (datetime('now')),
+      PRIMARY KEY (account_id, friend_account_id),
+      CHECK (account_id <> friend_account_id)
+    );
 
-  CREATE TABLE IF NOT EXISTS clan_members (
-    clan_id     TEXT NOT NULL REFERENCES clans(id) ON DELETE CASCADE,
-    account_id  TEXT NOT NULL PRIMARY KEY REFERENCES accounts(id) ON DELETE CASCADE,
-    role        TEXT NOT NULL DEFAULT 'member',
-    joined_at   TEXT NOT NULL DEFAULT (datetime('now'))
-  );
+    CREATE TABLE IF NOT EXISTS clans (
+      id               TEXT PRIMARY KEY,
+      name             TEXT NOT NULL UNIQUE COLLATE NOCASE,
+      tag              TEXT NOT NULL UNIQUE COLLATE NOCASE,
+      invite_code      TEXT NOT NULL UNIQUE,
+      owner_account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+      created_at       TEXT NOT NULL DEFAULT (datetime('now'))
+    );
 
-  CREATE TABLE IF NOT EXISTS rate_limits (
-    key        TEXT PRIMARY KEY,
-    count      INTEGER NOT NULL DEFAULT 1,
-    window_start TEXT NOT NULL DEFAULT (datetime('now'))
-  );
+    CREATE TABLE IF NOT EXISTS clan_members (
+      clan_id     TEXT NOT NULL REFERENCES clans(id) ON DELETE CASCADE,
+      account_id  TEXT NOT NULL PRIMARY KEY REFERENCES accounts(id) ON DELETE CASCADE,
+      role        TEXT NOT NULL DEFAULT 'member',
+      joined_at   TEXT NOT NULL DEFAULT (datetime('now'))
+    );
 
-  CREATE TABLE IF NOT EXISTS player_decks (
-    id           TEXT PRIMARY KEY,
-    account_id   TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
-    name         TEXT NOT NULL,
-    deck_config  TEXT NOT NULL DEFAULT '{}',
-    is_active    INTEGER NOT NULL DEFAULT 0,
-    created_at   TEXT NOT NULL DEFAULT (datetime('now')),
-    updated_at   TEXT NOT NULL DEFAULT (datetime('now'))
-  );
+    CREATE TABLE IF NOT EXISTS rate_limits (
+      key        TEXT PRIMARY KEY,
+      count      INTEGER NOT NULL DEFAULT 1,
+      window_start TEXT NOT NULL DEFAULT (datetime('now'))
+    );
 
-  CREATE TABLE IF NOT EXISTS player_quests (
-    account_id   TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
-    quest_id     TEXT NOT NULL,
-    cadence      TEXT NOT NULL,
-    period_key   TEXT NOT NULL,
-    progress     INTEGER NOT NULL DEFAULT 0,
-    claimed      INTEGER NOT NULL DEFAULT 0,
-    completed_at TEXT,
-    updated_at   TEXT NOT NULL DEFAULT (datetime('now')),
-    PRIMARY KEY (account_id, quest_id, period_key)
-  );
+    CREATE TABLE IF NOT EXISTS player_decks (
+      id           TEXT PRIMARY KEY,
+      account_id   TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+      name         TEXT NOT NULL,
+      deck_config  TEXT NOT NULL DEFAULT '{}',
+      is_active    INTEGER NOT NULL DEFAULT 0,
+      created_at   TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at   TEXT NOT NULL DEFAULT (datetime('now'))
+    );
 
-  -- Rotating (daily/weekly) quests live in fixed slots rather than being
-  -- re-derived from a hash of the current period. Storing the assignment is
-  -- what makes carryover, reroll, and "never assign a duplicate of an active
-  -- quest" possible — none of which a stateless derivation can express.
-  -- Permanent cadences (milestone/skirmish) stay in player_quests.
-  CREATE TABLE IF NOT EXISTS player_quest_slots (
-    account_id   TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
-    cadence      TEXT NOT NULL,
-    slot_index   INTEGER NOT NULL,
-    quest_id      TEXT NOT NULL,
-    target        INTEGER NOT NULL,
-    reward_shards INTEGER NOT NULL DEFAULT 0,
-    progress     INTEGER NOT NULL DEFAULT 0,
-    claimed      INTEGER NOT NULL DEFAULT 0,
-    rerolled     INTEGER NOT NULL DEFAULT 0,
-    assigned_key TEXT NOT NULL,
-    assigned_at  TEXT NOT NULL DEFAULT (datetime('now')),
-    expires_at   TEXT NOT NULL,
-    completed_at TEXT,
-    updated_at   TEXT NOT NULL DEFAULT (datetime('now')),
-    PRIMARY KEY (account_id, cadence, slot_index)
-  );
+    CREATE TABLE IF NOT EXISTS player_quests (
+      account_id   TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+      quest_id     TEXT NOT NULL,
+      cadence      TEXT NOT NULL,
+      period_key   TEXT NOT NULL,
+      progress     INTEGER NOT NULL DEFAULT 0,
+      claimed      INTEGER NOT NULL DEFAULT 0,
+      completed_at TEXT,
+      updated_at   TEXT NOT NULL DEFAULT (datetime('now')),
+      PRIMARY KEY (account_id, quest_id, period_key)
+    );
 
-  -- Permanent progression. Progress is a lifetime total and is never reset;
-  -- claimed_tier is how far up the ladder the player has collected, so a
-  -- returning player with a large total simply has several tiers waiting.
-  CREATE TABLE IF NOT EXISTS player_quest_chains (
-    account_id   TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
-    chain_id     TEXT NOT NULL,
-    progress     INTEGER NOT NULL DEFAULT 0,
-    claimed_tier INTEGER NOT NULL DEFAULT 0,
-    updated_at   TEXT NOT NULL DEFAULT (datetime('now')),
-    PRIMARY KEY (account_id, chain_id)
-  );
+    -- Rotating (daily/weekly) quests live in fixed slots rather than being
+    -- re-derived from a hash of the current period. Storing the assignment is
+    -- what makes carryover, reroll, and "never assign a duplicate of an active
+    -- quest" possible — none of which a stateless derivation can express.
+    -- Permanent cadences (milestone/skirmish) stay in player_quests.
+    CREATE TABLE IF NOT EXISTS player_quest_slots (
+      account_id   TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+      cadence      TEXT NOT NULL,
+      slot_index   INTEGER NOT NULL,
+      quest_id      TEXT NOT NULL,
+      target        INTEGER NOT NULL,
+      reward_shards INTEGER NOT NULL DEFAULT 0,
+      progress     INTEGER NOT NULL DEFAULT 0,
+      claimed      INTEGER NOT NULL DEFAULT 0,
+      rerolled     INTEGER NOT NULL DEFAULT 0,
+      assigned_key TEXT NOT NULL,
+      assigned_at  TEXT NOT NULL DEFAULT (datetime('now')),
+      expires_at   TEXT NOT NULL,
+      completed_at TEXT,
+      updated_at   TEXT NOT NULL DEFAULT (datetime('now')),
+      PRIMARY KEY (account_id, cadence, slot_index)
+    );
 
-  CREATE INDEX IF NOT EXISTS idx_sessions_account ON sessions(account_id);
-  CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires_at);
-  CREATE INDEX IF NOT EXISTS idx_match_log_account ON match_log(account_id);
-  CREATE INDEX IF NOT EXISTS idx_social_friends_friend ON social_friends(friend_account_id);
-  CREATE INDEX IF NOT EXISTS idx_clan_members_clan ON clan_members(clan_id);
-  CREATE INDEX IF NOT EXISTS idx_rate_limits_window ON rate_limits(window_start);
-  CREATE INDEX IF NOT EXISTS idx_accounts_device_fp ON accounts(device_fp);
-  CREATE INDEX IF NOT EXISTS idx_player_decks_account ON player_decks(account_id);
-  CREATE INDEX IF NOT EXISTS idx_player_quests_account ON player_quests(account_id);
-  CREATE INDEX IF NOT EXISTS idx_player_quest_slots_account ON player_quest_slots(account_id);
-  CREATE INDEX IF NOT EXISTS idx_player_quest_chains_account ON player_quest_chains(account_id);
-  CREATE UNIQUE INDEX IF NOT EXISTS idx_player_decks_active
-    ON player_decks(account_id) WHERE is_active = 1;
+    -- Permanent progression. Progress is a lifetime total and is never reset;
+    -- claimed_tier is how far up the ladder the player has collected, so a
+    -- returning player with a large total simply has several tiers waiting.
+    CREATE TABLE IF NOT EXISTS player_quest_chains (
+      account_id   TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+      chain_id     TEXT NOT NULL,
+      progress     INTEGER NOT NULL DEFAULT 0,
+      claimed_tier INTEGER NOT NULL DEFAULT 0,
+      updated_at   TEXT NOT NULL DEFAULT (datetime('now')),
+      PRIMARY KEY (account_id, chain_id)
+    );
 
-  CREATE TABLE IF NOT EXISTS authoritative_matches (
-    match_id      TEXT PRIMARY KEY,
-    mode          TEXT NOT NULL,
-    reason        TEXT NOT NULL,
-    turns         INTEGER NOT NULL DEFAULT 0,
-    metadata      TEXT NOT NULL DEFAULT '{}',
-    settled_at    TEXT NOT NULL DEFAULT (datetime('now'))
-  );
+    CREATE INDEX IF NOT EXISTS idx_sessions_account ON sessions(account_id);
+    CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires_at);
+    CREATE INDEX IF NOT EXISTS idx_match_log_account ON match_log(account_id);
+    CREATE INDEX IF NOT EXISTS idx_social_friends_friend ON social_friends(friend_account_id);
+    CREATE INDEX IF NOT EXISTS idx_clan_members_clan ON clan_members(clan_id);
+    CREATE INDEX IF NOT EXISTS idx_rate_limits_window ON rate_limits(window_start);
+    CREATE INDEX IF NOT EXISTS idx_accounts_device_fp ON accounts(device_fp);
+    CREATE INDEX IF NOT EXISTS idx_player_decks_account ON player_decks(account_id);
+    CREATE INDEX IF NOT EXISTS idx_player_quests_account ON player_quests(account_id);
+    CREATE INDEX IF NOT EXISTS idx_player_quest_slots_account ON player_quest_slots(account_id);
+    CREATE INDEX IF NOT EXISTS idx_player_quest_chains_account ON player_quest_chains(account_id);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_player_decks_active
+      ON player_decks(account_id) WHERE is_active = 1;
 
-  CREATE TABLE IF NOT EXISTS authoritative_match_participants (
-    match_id            TEXT NOT NULL REFERENCES authoritative_matches(match_id) ON DELETE CASCADE,
-    account_id          TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
-    opponent_account_id TEXT REFERENCES accounts(id) ON DELETE SET NULL,
-    opponent_name       TEXT NOT NULL DEFAULT '',
-    result              TEXT NOT NULL,
-    shards_earned       INTEGER NOT NULL DEFAULT 0,
-    rating_delta        INTEGER NOT NULL DEFAULT 0,
-    streak_after        INTEGER NOT NULL DEFAULT 0,
-    balance_after       INTEGER NOT NULL DEFAULT 0,
-    rating_after        INTEGER NOT NULL DEFAULT 0,
-    wins_after          INTEGER NOT NULL DEFAULT 0,
-    losses_after        INTEGER NOT NULL DEFAULT 0,
-    match_log_id        TEXT NOT NULL,
-    acknowledged_at     TEXT,
-    PRIMARY KEY (match_id, account_id)
-  );
+    CREATE TABLE IF NOT EXISTS authoritative_matches (
+      match_id      TEXT PRIMARY KEY,
+      mode          TEXT NOT NULL,
+      reason        TEXT NOT NULL,
+      turns         INTEGER NOT NULL DEFAULT 0,
+      metadata      TEXT NOT NULL DEFAULT '{}',
+      settled_at    TEXT NOT NULL DEFAULT (datetime('now'))
+    );
 
-  CREATE TABLE IF NOT EXISTS economy_ledger (
-    id              TEXT PRIMARY KEY,
-    account_id      TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
-    idempotency_key TEXT NOT NULL UNIQUE,
-    source          TEXT NOT NULL,
-    amount          INTEGER NOT NULL,
-    balance_after   INTEGER NOT NULL,
-    match_id        TEXT REFERENCES authoritative_matches(match_id) ON DELETE SET NULL,
-    metadata        TEXT NOT NULL DEFAULT '{}',
-    created_at      TEXT NOT NULL DEFAULT (datetime('now'))
-  );
+    CREATE TABLE IF NOT EXISTS authoritative_match_participants (
+      match_id            TEXT NOT NULL REFERENCES authoritative_matches(match_id) ON DELETE CASCADE,
+      account_id          TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+      opponent_account_id TEXT REFERENCES accounts(id) ON DELETE SET NULL,
+      opponent_name       TEXT NOT NULL DEFAULT '',
+      result              TEXT NOT NULL,
+      shards_earned       INTEGER NOT NULL DEFAULT 0,
+      rating_delta        INTEGER NOT NULL DEFAULT 0,
+      streak_after        INTEGER NOT NULL DEFAULT 0,
+      balance_after       INTEGER NOT NULL DEFAULT 0,
+      rating_after        INTEGER NOT NULL DEFAULT 0,
+      wins_after          INTEGER NOT NULL DEFAULT 0,
+      losses_after        INTEGER NOT NULL DEFAULT 0,
+      match_log_id        TEXT NOT NULL,
+      acknowledged_at     TEXT,
+      PRIMARY KEY (match_id, account_id)
+    );
 
-  CREATE INDEX IF NOT EXISTS idx_authoritative_match_participants_account
-    ON authoritative_match_participants(account_id, match_id);
-  CREATE INDEX IF NOT EXISTS idx_economy_ledger_account_created
-    ON economy_ledger(account_id, created_at DESC);
-  CREATE INDEX IF NOT EXISTS idx_economy_ledger_match
-    ON economy_ledger(match_id);
-`)
+    CREATE TABLE IF NOT EXISTS economy_ledger (
+      id              TEXT PRIMARY KEY,
+      account_id      TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+      idempotency_key TEXT NOT NULL UNIQUE,
+      source          TEXT NOT NULL,
+      amount          INTEGER NOT NULL,
+      balance_after   INTEGER NOT NULL,
+      match_id        TEXT REFERENCES authoritative_matches(match_id) ON DELETE SET NULL,
+      metadata        TEXT NOT NULL DEFAULT '{}',
+      created_at      TEXT NOT NULL DEFAULT (datetime('now'))
+    );
 
-function ensureColumn(tableName, columnName, definition) {
-  const columns = db.prepare(`PRAGMA table_info(${tableName})`).all()
-  if (columns.some((column) => column.name === columnName)) {
-    return
+    CREATE INDEX IF NOT EXISTS idx_authoritative_match_participants_account
+      ON authoritative_match_participants(account_id, match_id);
+    CREATE INDEX IF NOT EXISTS idx_economy_ledger_account_created
+      ON economy_ledger(account_id, created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_economy_ledger_match
+      ON economy_ledger(match_id);
+  `)
+
+  function ensureColumn(tableName, columnName, definition) {
+    const columns = db.prepare(`PRAGMA table_info(${tableName})`).all()
+    if (columns.some((column) => column.name === columnName)) {
+      return
+    }
+
+    db.exec(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${definition}`)
   }
 
-  db.exec(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${definition}`)
-}
-
-function ensureColumns(tableName, columnDefinitions) {
-  for (const [columnName, definition] of columnDefinitions) {
-    ensureColumn(tableName, columnName, definition)
+  function ensureColumns(tableName, columnDefinitions) {
+    for (const [columnName, definition] of columnDefinitions) {
+      ensureColumn(tableName, columnName, definition)
+    }
   }
+
+  ensureColumns('accounts', [
+    ['created_ip_hash', 'TEXT'],
+    ['created_ua_hash', 'TEXT'],
+    ['role', "TEXT NOT NULL DEFAULT 'user'"],
+    ['email', 'TEXT'],
+    ['email_normalized', 'TEXT'],
+    ['email_verified_at', 'TEXT'],
+    ['email_verification_required', 'INTEGER NOT NULL DEFAULT 1'],
+    ['account_status', "TEXT NOT NULL DEFAULT 'active'"],
+    ['account_standard_version', 'INTEGER NOT NULL DEFAULT 0'],
+    ['account_setup_required', 'INTEGER NOT NULL DEFAULT 1'],
+    ['terms_version', "TEXT NOT NULL DEFAULT ''"],
+    ['terms_accepted_at', 'TEXT'],
+    ['terms_accepted_ip_hash', 'TEXT'],
+    ['terms_accepted_ua_hash', 'TEXT'],
+    ['privacy_version', "TEXT NOT NULL DEFAULT ''"],
+    ['privacy_accepted_at', 'TEXT'],
+    ['privacy_accepted_ip_hash', 'TEXT'],
+    ['privacy_accepted_ua_hash', 'TEXT'],
+    ['age_gate_version', "TEXT NOT NULL DEFAULT ''"],
+    ['age_attested_at', 'TEXT'],
+    ['age_attestation', "TEXT NOT NULL DEFAULT ''"],
+    ['password_hash_algorithm', "TEXT NOT NULL DEFAULT 'scrypt-v1'"],
+    ['password_updated_at', 'TEXT'],
+    ['password_reset_required', 'INTEGER NOT NULL DEFAULT 0'],
+    ['last_security_event_at', 'TEXT'],
+    ['failed_login_count', 'INTEGER NOT NULL DEFAULT 0'],
+    ['locked_until', 'TEXT'],
+    ['deleted_at', 'TEXT'],
+    ['legacy_migration_started_at', 'TEXT'],
+    ['legacy_migration_deadline_at', 'TEXT'],
+    ['legacy_migration_completed_at', 'TEXT'],
+    ['recovery_codes_acknowledged_at', 'TEXT'],
+  ])
+
+  ensureColumns('sessions', [
+    ['ip_hash', 'TEXT'],
+    ['token_hash', 'TEXT'],
+    ['family_id', 'TEXT'],
+    ['user_agent_hash', 'TEXT'],
+    ['last_seen_at', 'TEXT'],
+    ['revoked_at', 'TEXT'],
+    ['auth_method', "TEXT NOT NULL DEFAULT 'password'"],
+    ['last_passkey_reauth_at', 'TEXT'],
+  ])
+
+  ensureColumns('player_profiles', [
+    ['shards', 'INTEGER NOT NULL DEFAULT 120'],
+    ['season_rating', 'INTEGER NOT NULL DEFAULT 1200'],
+    ['wins', 'INTEGER NOT NULL DEFAULT 0'],
+    ['losses', 'INTEGER NOT NULL DEFAULT 0'],
+    ['streak', 'INTEGER NOT NULL DEFAULT 0'],
+    ['deck_config', "TEXT NOT NULL DEFAULT '{}'"],
+    ['owned_themes', "TEXT NOT NULL DEFAULT '[\"royal\"]'"],
+    ['selected_theme', "TEXT NOT NULL DEFAULT 'royal'"],
+    ['last_daily', "TEXT NOT NULL DEFAULT ''"],
+    ['total_earned', 'INTEGER NOT NULL DEFAULT 120'],
+    ['updated_at', "TEXT NOT NULL DEFAULT ''"],
+    ['owned_cards', "TEXT NOT NULL DEFAULT '{}'"],
+    ['owned_card_borders', "TEXT NOT NULL DEFAULT '[\"default\"]'"],
+    ['selected_card_border', "TEXT NOT NULL DEFAULT 'default'"],
+    // Day key of the last free reroll spent, per cadence.
+    ['quest_reroll_daily_key', "TEXT NOT NULL DEFAULT ''"],
+    ['quest_reroll_weekly_key', "TEXT NOT NULL DEFAULT ''"],
+  ])
+
+  // Slot rows predate variant targets, which introduced a per-assignment payout.
+  ensureColumns('player_quest_slots', [
+    ['reward_shards', 'INTEGER NOT NULL DEFAULT 0'],
+  ])
+
+  ensureColumns('match_log', [
+    ['mode', "TEXT NOT NULL DEFAULT 'ai'"],
+    ['turns', 'INTEGER NOT NULL DEFAULT 0'],
+    ['shards_earned', 'INTEGER NOT NULL DEFAULT 0'],
+    ['rating_delta', 'INTEGER NOT NULL DEFAULT 0'],
+    ['played_at', "TEXT NOT NULL DEFAULT ''"],
+  ])
+
+  db.exec(`
+    UPDATE player_profiles
+    SET updated_at = datetime('now')
+    WHERE TRIM(COALESCE(updated_at, '')) = '';
+
+    UPDATE match_log
+    SET played_at = datetime('now')
+    WHERE TRIM(COALESCE(played_at, '')) = '';
+
+    UPDATE accounts
+    SET account_setup_required = 1
+    WHERE account_standard_version < ${CURRENT_ACCOUNT_STANDARD_VERSION}
+      OR TRIM(COALESCE(terms_version, '')) <> '${CURRENT_TERMS_VERSION}'
+      OR TRIM(COALESCE(privacy_version, '')) <> '${CURRENT_PRIVACY_VERSION}'
+      OR TRIM(COALESCE(age_gate_version, '')) <> '${CURRENT_AGE_GATE_VERSION}';
+  `)
+
+  // Backward-safe naming migration: older or manually edited rows may have a
+  // blank display_name. Normalize those rows to the username so account labels
+  // remain stable without breaking existing logins or profile data.
+  db.exec(`
+    UPDATE accounts
+    SET display_name = username
+    WHERE TRIM(COALESCE(display_name, '')) = ''
+  `)
+
+  // Create indexes that depend on migrated columns only after the ALTER TABLE
+  // compatibility pass above. This keeps startup safe for older databases whose
+  // existing `accounts` table predates the anti-abuse fields.
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_accounts_created_ip ON accounts(created_ip_hash);
+    CREATE INDEX IF NOT EXISTS idx_accounts_created_ip_ua_created_at ON accounts(created_ip_hash, created_ua_hash, created_at);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_accounts_email_normalized
+      ON accounts(email_normalized)
+      WHERE email_normalized IS NOT NULL AND email_normalized <> '';
+    CREATE INDEX IF NOT EXISTS idx_accounts_setup_required
+      ON accounts(account_setup_required, account_status);
+  `)
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS account_authenticators (
+      id TEXT PRIMARY KEY,
+      account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+      credential_id TEXT NOT NULL UNIQUE,
+      credential_public_key BLOB NOT NULL,
+      counter INTEGER NOT NULL DEFAULT 0,
+      transports TEXT NOT NULL DEFAULT '[]',
+      backed_up INTEGER NOT NULL DEFAULT 0,
+      device_type TEXT NOT NULL DEFAULT '',
+      name TEXT NOT NULL DEFAULT '',
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      last_used_at TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS auth_challenges (
+      id TEXT PRIMARY KEY,
+      account_id TEXT REFERENCES accounts(id) ON DELETE CASCADE,
+      purpose TEXT NOT NULL,
+      challenge TEXT NOT NULL,
+      metadata TEXT NOT NULL DEFAULT '{}',
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      expires_at TEXT NOT NULL,
+      consumed_at TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS passkey_device_links (
+      id TEXT PRIMARY KEY,
+      account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+      secret_hash TEXT NOT NULL,
+      created_by_session TEXT,
+      status TEXT NOT NULL DEFAULT 'pending',
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      expires_at TEXT NOT NULL,
+      consumed_at TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS email_tokens (
+      id TEXT PRIMARY KEY,
+      account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+      purpose TEXT NOT NULL,
+      token_hash TEXT NOT NULL UNIQUE,
+      email_normalized TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      expires_at TEXT NOT NULL,
+      consumed_at TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS account_consents (
+      id TEXT PRIMARY KEY,
+      account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+      document_type TEXT NOT NULL,
+      document_version TEXT NOT NULL,
+      accepted_at TEXT NOT NULL DEFAULT (datetime('now')),
+      ip_hash TEXT,
+      ua_hash TEXT,
+      locale TEXT NOT NULL DEFAULT '',
+      source TEXT NOT NULL DEFAULT 'auth_gate'
+    );
+
+    CREATE TABLE IF NOT EXISTS account_recovery_codes (
+      id TEXT PRIMARY KEY,
+      account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+      code_hash TEXT NOT NULL,
+      code_prefix TEXT NOT NULL,
+      batch_id TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      used_at TEXT,
+      revoked_at TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS security_events (
+      id TEXT PRIMARY KEY,
+      account_id TEXT REFERENCES accounts(id) ON DELETE SET NULL,
+      event_type TEXT NOT NULL,
+      ip_hash TEXT,
+      ua_hash TEXT,
+      metadata TEXT NOT NULL DEFAULT '{}',
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS session_families (
+      id TEXT PRIMARY KEY,
+      account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      revoked_at TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS account_recovery_grants (
+      id                   TEXT PRIMARY KEY,
+      account_id           TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+      token_hash           TEXT NOT NULL UNIQUE,
+      token_prefix         TEXT NOT NULL,
+      channel              TEXT NOT NULL DEFAULT 'manual',
+      purpose              TEXT NOT NULL DEFAULT 'account_recovery',
+      issued_by_account_id TEXT REFERENCES accounts(id) ON DELETE SET NULL,
+      delivery_hint        TEXT NOT NULL DEFAULT '',
+      note                 TEXT NOT NULL DEFAULT '',
+      created_at           TEXT NOT NULL DEFAULT (datetime('now')),
+      expires_at           TEXT NOT NULL,
+      consumed_at          TEXT,
+      revoked_at           TEXT
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_recovery_grants_account
+      ON account_recovery_grants(account_id, consumed_at, revoked_at, expires_at);
+    CREATE INDEX IF NOT EXISTS idx_recovery_grants_prefix
+      ON account_recovery_grants(token_prefix);
+
+    CREATE INDEX IF NOT EXISTS idx_account_authenticators_account ON account_authenticators(account_id);
+    CREATE INDEX IF NOT EXISTS idx_auth_challenges_account ON auth_challenges(account_id, purpose, expires_at);
+    CREATE INDEX IF NOT EXISTS idx_passkey_device_links_account ON passkey_device_links(account_id, status, expires_at);
+    CREATE INDEX IF NOT EXISTS idx_passkey_device_links_secret ON passkey_device_links(id, secret_hash, status, expires_at);
+    CREATE INDEX IF NOT EXISTS idx_email_tokens_account ON email_tokens(account_id, purpose, expires_at);
+    CREATE INDEX IF NOT EXISTS idx_account_consents_account ON account_consents(account_id, document_type, document_version);
+    CREATE INDEX IF NOT EXISTS idx_account_recovery_codes_account ON account_recovery_codes(account_id, revoked_at, used_at);
+    CREATE INDEX IF NOT EXISTS idx_account_recovery_codes_prefix ON account_recovery_codes(account_id, code_prefix);
+    CREATE INDEX IF NOT EXISTS idx_security_events_account ON security_events(account_id, created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_session_families_account ON session_families(account_id);
+  `)
+
+  db.exec(`
+    UPDATE accounts
+    SET legacy_migration_started_at = COALESCE(legacy_migration_started_at, datetime('now')),
+        legacy_migration_deadline_at = COALESCE(legacy_migration_deadline_at, datetime('now', '+${LEGACY_MIGRATION_WINDOW_DAYS} days'))
+    WHERE account_status = 'active'
+      AND legacy_migration_completed_at IS NULL
+      AND id NOT IN (SELECT DISTINCT account_id FROM account_authenticators);
+
+    UPDATE accounts
+    SET legacy_migration_completed_at = COALESCE(legacy_migration_completed_at, datetime('now'))
+    WHERE account_status = 'active'
+      AND legacy_migration_completed_at IS NULL
+      AND id IN (SELECT DISTINCT account_id FROM account_authenticators);
+  `)
+
+  // ─── Admin role schema ───────────────────────────────────────────────────────
+  // Exactly one account may have role='owner'. Enforced at the DB layer via a
+  // partial unique index, and at the application layer via setAccountRole /
+  // transferOwnership. Roles are re-read from the DB on every privileged request
+  // so that demotion takes effect immediately without session invalidation.
+
+  db.exec(`
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_accounts_single_owner
+      ON accounts(role) WHERE role = 'owner';
+
+    CREATE TABLE IF NOT EXISTS admin_audit (
+      id                 TEXT PRIMARY KEY,
+      actor_account_id   TEXT REFERENCES accounts(id) ON DELETE SET NULL,
+      target_account_id  TEXT REFERENCES accounts(id) ON DELETE SET NULL,
+      action             TEXT NOT NULL,
+      metadata           TEXT NOT NULL DEFAULT '{}',
+      ip_hash            TEXT,
+      created_at         TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_admin_audit_created_at ON admin_audit(created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_admin_audit_actor ON admin_audit(actor_account_id);
+    CREATE INDEX IF NOT EXISTS idx_admin_audit_target ON admin_audit(target_account_id);
+  `)
+
+
+  // Card trading. Declared here rather than beside the trading helpers so
+  // every CREATE lives in one re-runnable place.
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS trades (
+      id                 TEXT PRIMARY KEY,
+      from_account_id    TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+      to_account_id      TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+      status             TEXT NOT NULL CHECK(status IN ('pending','accepted','rejected','cancelled','expired')),
+      offer              TEXT NOT NULL DEFAULT '[]',
+      request            TEXT NOT NULL DEFAULT '[]',
+      created_at         TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at         TEXT NOT NULL DEFAULT (datetime('now')),
+      expires_at         TEXT NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_trades_from ON trades(from_account_id, status, created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_trades_to   ON trades(to_account_id, status, created_at DESC);
+  `)
 }
-
-ensureColumns('accounts', [
-  ['created_ip_hash', 'TEXT'],
-  ['created_ua_hash', 'TEXT'],
-  ['role', "TEXT NOT NULL DEFAULT 'user'"],
-  ['email', 'TEXT'],
-  ['email_normalized', 'TEXT'],
-  ['email_verified_at', 'TEXT'],
-  ['email_verification_required', 'INTEGER NOT NULL DEFAULT 1'],
-  ['account_status', "TEXT NOT NULL DEFAULT 'active'"],
-  ['account_standard_version', 'INTEGER NOT NULL DEFAULT 0'],
-  ['account_setup_required', 'INTEGER NOT NULL DEFAULT 1'],
-  ['terms_version', "TEXT NOT NULL DEFAULT ''"],
-  ['terms_accepted_at', 'TEXT'],
-  ['terms_accepted_ip_hash', 'TEXT'],
-  ['terms_accepted_ua_hash', 'TEXT'],
-  ['privacy_version', "TEXT NOT NULL DEFAULT ''"],
-  ['privacy_accepted_at', 'TEXT'],
-  ['privacy_accepted_ip_hash', 'TEXT'],
-  ['privacy_accepted_ua_hash', 'TEXT'],
-  ['age_gate_version', "TEXT NOT NULL DEFAULT ''"],
-  ['age_attested_at', 'TEXT'],
-  ['age_attestation', "TEXT NOT NULL DEFAULT ''"],
-  ['password_hash_algorithm', "TEXT NOT NULL DEFAULT 'scrypt-v1'"],
-  ['password_updated_at', 'TEXT'],
-  ['password_reset_required', 'INTEGER NOT NULL DEFAULT 0'],
-  ['last_security_event_at', 'TEXT'],
-  ['failed_login_count', 'INTEGER NOT NULL DEFAULT 0'],
-  ['locked_until', 'TEXT'],
-  ['deleted_at', 'TEXT'],
-  ['legacy_migration_started_at', 'TEXT'],
-  ['legacy_migration_deadline_at', 'TEXT'],
-  ['legacy_migration_completed_at', 'TEXT'],
-  ['recovery_codes_acknowledged_at', 'TEXT'],
-])
-
-ensureColumns('sessions', [
-  ['ip_hash', 'TEXT'],
-  ['token_hash', 'TEXT'],
-  ['family_id', 'TEXT'],
-  ['user_agent_hash', 'TEXT'],
-  ['last_seen_at', 'TEXT'],
-  ['revoked_at', 'TEXT'],
-  ['auth_method', "TEXT NOT NULL DEFAULT 'password'"],
-  ['last_passkey_reauth_at', 'TEXT'],
-])
-
-ensureColumns('player_profiles', [
-  ['shards', 'INTEGER NOT NULL DEFAULT 120'],
-  ['season_rating', 'INTEGER NOT NULL DEFAULT 1200'],
-  ['wins', 'INTEGER NOT NULL DEFAULT 0'],
-  ['losses', 'INTEGER NOT NULL DEFAULT 0'],
-  ['streak', 'INTEGER NOT NULL DEFAULT 0'],
-  ['deck_config', "TEXT NOT NULL DEFAULT '{}'"],
-  ['owned_themes', "TEXT NOT NULL DEFAULT '[\"royal\"]'"],
-  ['selected_theme', "TEXT NOT NULL DEFAULT 'royal'"],
-  ['last_daily', "TEXT NOT NULL DEFAULT ''"],
-  ['total_earned', 'INTEGER NOT NULL DEFAULT 120'],
-  ['updated_at', "TEXT NOT NULL DEFAULT ''"],
-  ['owned_cards', "TEXT NOT NULL DEFAULT '{}'"],
-  ['owned_card_borders', "TEXT NOT NULL DEFAULT '[\"default\"]'"],
-  ['selected_card_border', "TEXT NOT NULL DEFAULT 'default'"],
-  // Day key of the last free reroll spent, per cadence.
-  ['quest_reroll_daily_key', "TEXT NOT NULL DEFAULT ''"],
-  ['quest_reroll_weekly_key', "TEXT NOT NULL DEFAULT ''"],
-])
-
-// Slot rows predate variant targets, which introduced a per-assignment payout.
-ensureColumns('player_quest_slots', [
-  ['reward_shards', 'INTEGER NOT NULL DEFAULT 0'],
-])
-
-ensureColumns('match_log', [
-  ['mode', "TEXT NOT NULL DEFAULT 'ai'"],
-  ['turns', 'INTEGER NOT NULL DEFAULT 0'],
-  ['shards_earned', 'INTEGER NOT NULL DEFAULT 0'],
-  ['rating_delta', 'INTEGER NOT NULL DEFAULT 0'],
-  ['played_at', "TEXT NOT NULL DEFAULT ''"],
-])
-
-db.exec(`
-  UPDATE player_profiles
-  SET updated_at = datetime('now')
-  WHERE TRIM(COALESCE(updated_at, '')) = '';
-
-  UPDATE match_log
-  SET played_at = datetime('now')
-  WHERE TRIM(COALESCE(played_at, '')) = '';
-
-  UPDATE accounts
-  SET account_setup_required = 1
-  WHERE account_standard_version < ${CURRENT_ACCOUNT_STANDARD_VERSION}
-    OR TRIM(COALESCE(terms_version, '')) <> '${CURRENT_TERMS_VERSION}'
-    OR TRIM(COALESCE(privacy_version, '')) <> '${CURRENT_PRIVACY_VERSION}'
-    OR TRIM(COALESCE(age_gate_version, '')) <> '${CURRENT_AGE_GATE_VERSION}';
-`)
-
-// Backward-safe naming migration: older or manually edited rows may have a
-// blank display_name. Normalize those rows to the username so account labels
-// remain stable without breaking existing logins or profile data.
-db.exec(`
-  UPDATE accounts
-  SET display_name = username
-  WHERE TRIM(COALESCE(display_name, '')) = ''
-`)
-
-// Create indexes that depend on migrated columns only after the ALTER TABLE
-// compatibility pass above. This keeps startup safe for older databases whose
-// existing `accounts` table predates the anti-abuse fields.
-db.exec(`
-  CREATE INDEX IF NOT EXISTS idx_accounts_created_ip ON accounts(created_ip_hash);
-  CREATE INDEX IF NOT EXISTS idx_accounts_created_ip_ua_created_at ON accounts(created_ip_hash, created_ua_hash, created_at);
-  CREATE UNIQUE INDEX IF NOT EXISTS idx_accounts_email_normalized
-    ON accounts(email_normalized)
-    WHERE email_normalized IS NOT NULL AND email_normalized <> '';
-  CREATE INDEX IF NOT EXISTS idx_accounts_setup_required
-    ON accounts(account_setup_required, account_status);
-`)
-
-db.exec(`
-  CREATE TABLE IF NOT EXISTS account_authenticators (
-    id TEXT PRIMARY KEY,
-    account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
-    credential_id TEXT NOT NULL UNIQUE,
-    credential_public_key BLOB NOT NULL,
-    counter INTEGER NOT NULL DEFAULT 0,
-    transports TEXT NOT NULL DEFAULT '[]',
-    backed_up INTEGER NOT NULL DEFAULT 0,
-    device_type TEXT NOT NULL DEFAULT '',
-    name TEXT NOT NULL DEFAULT '',
-    created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    last_used_at TEXT
-  );
-
-  CREATE TABLE IF NOT EXISTS auth_challenges (
-    id TEXT PRIMARY KEY,
-    account_id TEXT REFERENCES accounts(id) ON DELETE CASCADE,
-    purpose TEXT NOT NULL,
-    challenge TEXT NOT NULL,
-    metadata TEXT NOT NULL DEFAULT '{}',
-    created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    expires_at TEXT NOT NULL,
-    consumed_at TEXT
-  );
-
-  CREATE TABLE IF NOT EXISTS passkey_device_links (
-    id TEXT PRIMARY KEY,
-    account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
-    secret_hash TEXT NOT NULL,
-    created_by_session TEXT,
-    status TEXT NOT NULL DEFAULT 'pending',
-    created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    expires_at TEXT NOT NULL,
-    consumed_at TEXT
-  );
-
-  CREATE TABLE IF NOT EXISTS email_tokens (
-    id TEXT PRIMARY KEY,
-    account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
-    purpose TEXT NOT NULL,
-    token_hash TEXT NOT NULL UNIQUE,
-    email_normalized TEXT NOT NULL,
-    created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    expires_at TEXT NOT NULL,
-    consumed_at TEXT
-  );
-
-  CREATE TABLE IF NOT EXISTS account_consents (
-    id TEXT PRIMARY KEY,
-    account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
-    document_type TEXT NOT NULL,
-    document_version TEXT NOT NULL,
-    accepted_at TEXT NOT NULL DEFAULT (datetime('now')),
-    ip_hash TEXT,
-    ua_hash TEXT,
-    locale TEXT NOT NULL DEFAULT '',
-    source TEXT NOT NULL DEFAULT 'auth_gate'
-  );
-
-  CREATE TABLE IF NOT EXISTS account_recovery_codes (
-    id TEXT PRIMARY KEY,
-    account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
-    code_hash TEXT NOT NULL,
-    code_prefix TEXT NOT NULL,
-    batch_id TEXT NOT NULL,
-    created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    used_at TEXT,
-    revoked_at TEXT
-  );
-
-  CREATE TABLE IF NOT EXISTS security_events (
-    id TEXT PRIMARY KEY,
-    account_id TEXT REFERENCES accounts(id) ON DELETE SET NULL,
-    event_type TEXT NOT NULL,
-    ip_hash TEXT,
-    ua_hash TEXT,
-    metadata TEXT NOT NULL DEFAULT '{}',
-    created_at TEXT NOT NULL DEFAULT (datetime('now'))
-  );
-
-  CREATE TABLE IF NOT EXISTS session_families (
-    id TEXT PRIMARY KEY,
-    account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
-    created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    revoked_at TEXT
-  );
-
-  CREATE TABLE IF NOT EXISTS account_recovery_grants (
-    id                   TEXT PRIMARY KEY,
-    account_id           TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
-    token_hash           TEXT NOT NULL UNIQUE,
-    token_prefix         TEXT NOT NULL,
-    channel              TEXT NOT NULL DEFAULT 'manual',
-    purpose              TEXT NOT NULL DEFAULT 'account_recovery',
-    issued_by_account_id TEXT REFERENCES accounts(id) ON DELETE SET NULL,
-    delivery_hint        TEXT NOT NULL DEFAULT '',
-    note                 TEXT NOT NULL DEFAULT '',
-    created_at           TEXT NOT NULL DEFAULT (datetime('now')),
-    expires_at           TEXT NOT NULL,
-    consumed_at          TEXT,
-    revoked_at           TEXT
-  );
-
-  CREATE INDEX IF NOT EXISTS idx_recovery_grants_account
-    ON account_recovery_grants(account_id, consumed_at, revoked_at, expires_at);
-  CREATE INDEX IF NOT EXISTS idx_recovery_grants_prefix
-    ON account_recovery_grants(token_prefix);
-
-  CREATE INDEX IF NOT EXISTS idx_account_authenticators_account ON account_authenticators(account_id);
-  CREATE INDEX IF NOT EXISTS idx_auth_challenges_account ON auth_challenges(account_id, purpose, expires_at);
-  CREATE INDEX IF NOT EXISTS idx_passkey_device_links_account ON passkey_device_links(account_id, status, expires_at);
-  CREATE INDEX IF NOT EXISTS idx_passkey_device_links_secret ON passkey_device_links(id, secret_hash, status, expires_at);
-  CREATE INDEX IF NOT EXISTS idx_email_tokens_account ON email_tokens(account_id, purpose, expires_at);
-  CREATE INDEX IF NOT EXISTS idx_account_consents_account ON account_consents(account_id, document_type, document_version);
-  CREATE INDEX IF NOT EXISTS idx_account_recovery_codes_account ON account_recovery_codes(account_id, revoked_at, used_at);
-  CREATE INDEX IF NOT EXISTS idx_account_recovery_codes_prefix ON account_recovery_codes(account_id, code_prefix);
-  CREATE INDEX IF NOT EXISTS idx_security_events_account ON security_events(account_id, created_at DESC);
-  CREATE INDEX IF NOT EXISTS idx_session_families_account ON session_families(account_id);
-`)
-
-db.exec(`
-  UPDATE accounts
-  SET legacy_migration_started_at = COALESCE(legacy_migration_started_at, datetime('now')),
-      legacy_migration_deadline_at = COALESCE(legacy_migration_deadline_at, datetime('now', '+${LEGACY_MIGRATION_WINDOW_DAYS} days'))
-  WHERE account_status = 'active'
-    AND legacy_migration_completed_at IS NULL
-    AND id NOT IN (SELECT DISTINCT account_id FROM account_authenticators);
-
-  UPDATE accounts
-  SET legacy_migration_completed_at = COALESCE(legacy_migration_completed_at, datetime('now'))
-  WHERE account_status = 'active'
-    AND legacy_migration_completed_at IS NULL
-    AND id IN (SELECT DISTINCT account_id FROM account_authenticators);
-`)
-
-// ─── Admin role schema ───────────────────────────────────────────────────────
-// Exactly one account may have role='owner'. Enforced at the DB layer via a
-// partial unique index, and at the application layer via setAccountRole /
-// transferOwnership. Roles are re-read from the DB on every privileged request
-// so that demotion takes effect immediately without session invalidation.
-
-db.exec(`
-  CREATE UNIQUE INDEX IF NOT EXISTS idx_accounts_single_owner
-    ON accounts(role) WHERE role = 'owner';
-
-  CREATE TABLE IF NOT EXISTS admin_audit (
-    id                 TEXT PRIMARY KEY,
-    actor_account_id   TEXT REFERENCES accounts(id) ON DELETE SET NULL,
-    target_account_id  TEXT REFERENCES accounts(id) ON DELETE SET NULL,
-    action             TEXT NOT NULL,
-    metadata           TEXT NOT NULL DEFAULT '{}',
-    ip_hash            TEXT,
-    created_at         TEXT NOT NULL DEFAULT (datetime('now'))
-  );
-
-  CREATE INDEX IF NOT EXISTS idx_admin_audit_created_at ON admin_audit(created_at DESC);
-  CREATE INDEX IF NOT EXISTS idx_admin_audit_actor ON admin_audit(actor_account_id);
-  CREATE INDEX IF NOT EXISTS idx_admin_audit_target ON admin_audit(target_account_id);
-`)
 
 // ─── Password hashing (scrypt — no native addon needed) ──────────────────────
 
@@ -595,12 +702,12 @@ export function hashUserAgent(userAgent) {
 
 const RATE_WINDOW_MS = 15 * 60 * 1000 // 15 minutes
 
-const _rlCheck = db.prepare(`SELECT count, window_start FROM rate_limits WHERE key = ?`)
-const _rlUpsert = db.prepare(`
+const _rlCheck = prepare(`SELECT count, window_start FROM rate_limits WHERE key = ?`)
+const _rlUpsert = prepare(`
   INSERT INTO rate_limits (key, count, window_start) VALUES (?, 1, datetime('now'))
   ON CONFLICT(key) DO UPDATE SET count = count + 1
 `)
-const _rlReset = db.prepare(`
+const _rlReset = prepare(`
   UPDATE rate_limits SET count = 1, window_start = datetime('now') WHERE key = ?
 `)
 
@@ -636,71 +743,71 @@ const MAX_ACCOUNTS_PER_IP_PER_DAY = 2
 const MAX_ACCOUNTS_PER_IP_AND_AGENT_PER_WEEK = 3
 const AUTH_CHALLENGE_TTL_MS = 5 * 60 * 1000
 
-const _insertAccount = db.prepare(`
+const _insertAccount = prepare(`
   INSERT INTO accounts (id, username, password_hash, display_name, device_fp, created_ip_hash, created_ua_hash, flags)
   VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 `)
 
-const _insertProfile = db.prepare(`
+const _insertProfile = prepare(`
   INSERT INTO player_profiles (account_id, deck_config, owned_cards)
   VALUES (?, ?, ?)
 `)
 
-const _getByUsername = db.prepare(`SELECT * FROM accounts WHERE username = ?`)
-const _getById = db.prepare(`SELECT * FROM accounts WHERE id = ?`)
-const _countAuthenticatorsByAccount = db.prepare(`SELECT COUNT(*) as cnt FROM account_authenticators WHERE account_id = ?`)
-const _listAuthenticatorsByAccount = db.prepare(`
+const _getByUsername = prepare(`SELECT * FROM accounts WHERE username = ?`)
+const _getById = prepare(`SELECT * FROM accounts WHERE id = ?`)
+const _countAuthenticatorsByAccount = prepare(`SELECT COUNT(*) as cnt FROM account_authenticators WHERE account_id = ?`)
+const _listAuthenticatorsByAccount = prepare(`
   SELECT id, credential_id, transports, backed_up, device_type, name, created_at, last_used_at
   FROM account_authenticators
   WHERE account_id = ?
   ORDER BY created_at DESC
 `)
-const _listAuthenticatorCredentialsByAccount = db.prepare(`
+const _listAuthenticatorCredentialsByAccount = prepare(`
   SELECT id, credential_id, transports, counter
   FROM account_authenticators
   WHERE account_id = ?
   ORDER BY created_at DESC
 `)
-const _getAuthenticatorByCredentialId = db.prepare(`
+const _getAuthenticatorByCredentialId = prepare(`
   SELECT a.*, acct.username, acct.display_name, acct.role
   FROM account_authenticators a
   JOIN accounts acct ON acct.id = a.account_id
   WHERE a.credential_id = ?
 `)
-const _insertAuthenticator = db.prepare(`
+const _insertAuthenticator = prepare(`
   INSERT INTO account_authenticators (
     id, account_id, credential_id, credential_public_key, counter, transports, backed_up, device_type, name
   ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 `)
-const _updateAuthenticatorCounter = db.prepare(`
+const _updateAuthenticatorCounter = prepare(`
   UPDATE account_authenticators
   SET counter = ?, backed_up = ?, device_type = ?, last_used_at = datetime('now')
   WHERE id = ?
 `)
-const _deleteAuthenticator = db.prepare(`DELETE FROM account_authenticators WHERE id = ? AND account_id = ?`)
-const _deleteOtherAuthenticatorsByAccount = db.prepare(`DELETE FROM account_authenticators WHERE account_id = ? AND id <> ?`)
-const _consumeOutstandingAuthChallenges = db.prepare(`
+const _deleteAuthenticator = prepare(`DELETE FROM account_authenticators WHERE id = ? AND account_id = ?`)
+const _deleteOtherAuthenticatorsByAccount = prepare(`DELETE FROM account_authenticators WHERE account_id = ? AND id <> ?`)
+const _consumeOutstandingAuthChallenges = prepare(`
   UPDATE auth_challenges
   SET consumed_at = datetime('now')
   WHERE account_id = ? AND purpose = ? AND consumed_at IS NULL
 `)
-const _insertAuthChallenge = db.prepare(`
+const _insertAuthChallenge = prepare(`
   INSERT INTO auth_challenges (id, account_id, purpose, challenge, metadata, expires_at)
   VALUES (?, ?, ?, ?, ?, ?)
 `)
-const _getActiveAuthChallenge = db.prepare(`
+const _getActiveAuthChallenge = prepare(`
   SELECT * FROM auth_challenges
   WHERE id = ?
     AND purpose = ?
     AND consumed_at IS NULL
     AND expires_at > datetime('now')
 `)
-const _consumeAuthChallenge = db.prepare(`UPDATE auth_challenges SET consumed_at = datetime('now') WHERE id = ?`)
-const _insertPasskeyDeviceLink = db.prepare(`
+const _consumeAuthChallenge = prepare(`UPDATE auth_challenges SET consumed_at = datetime('now') WHERE id = ?`)
+const _insertPasskeyDeviceLink = prepare(`
   INSERT INTO passkey_device_links (id, account_id, secret_hash, created_by_session, expires_at)
   VALUES (?, ?, ?, ?, ?)
 `)
-const _getPendingPasskeyDeviceLink = db.prepare(`
+const _getPendingPasskeyDeviceLink = prepare(`
   SELECT link.*, acct.username, acct.display_name, acct.role, acct.account_status, acct.deleted_at
   FROM passkey_device_links link
   JOIN accounts acct ON acct.id = link.account_id
@@ -710,76 +817,76 @@ const _getPendingPasskeyDeviceLink = db.prepare(`
     AND link.consumed_at IS NULL
     AND link.expires_at > datetime('now')
 `)
-const _consumePasskeyDeviceLink = db.prepare(`
+const _consumePasskeyDeviceLink = prepare(`
   UPDATE passkey_device_links
   SET status = 'consumed', consumed_at = datetime('now')
   WHERE id = ? AND account_id = ? AND status = 'pending' AND consumed_at IS NULL AND expires_at > datetime('now')
 `)
-const _expirePasskeyDeviceLinks = db.prepare(`
+const _expirePasskeyDeviceLinks = prepare(`
   UPDATE passkey_device_links
   SET status = 'expired'
   WHERE status = 'pending' AND expires_at <= datetime('now')
 `)
-const _insertAccountConsent = db.prepare(`
+const _insertAccountConsent = prepare(`
   INSERT INTO account_consents (id, account_id, document_type, document_version, ip_hash, ua_hash, locale, source)
   VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 `)
-const _countActiveRecoveryCodes = db.prepare(`
+const _countActiveRecoveryCodes = prepare(`
   SELECT COUNT(*) as cnt
   FROM account_recovery_codes
   WHERE account_id = ? AND used_at IS NULL AND revoked_at IS NULL
 `)
-const _listActiveRecoveryCodes = db.prepare(`
+const _listActiveRecoveryCodes = prepare(`
   SELECT id, code_hash, code_prefix, batch_id, created_at
   FROM account_recovery_codes
   WHERE account_id = ? AND used_at IS NULL AND revoked_at IS NULL
   ORDER BY created_at DESC
 `)
-const _revokeRecoveryCodesByAccount = db.prepare(`
+const _revokeRecoveryCodesByAccount = prepare(`
   UPDATE account_recovery_codes
   SET revoked_at = datetime('now')
   WHERE account_id = ? AND used_at IS NULL AND revoked_at IS NULL
 `)
-const _insertRecoveryCode = db.prepare(`
+const _insertRecoveryCode = prepare(`
   INSERT INTO account_recovery_codes (id, account_id, code_hash, code_prefix, batch_id)
   VALUES (?, ?, ?, ?, ?)
 `)
-const _consumeRecoveryCode = db.prepare(`
+const _consumeRecoveryCode = prepare(`
   UPDATE account_recovery_codes
   SET used_at = datetime('now')
   WHERE id = ? AND account_id = ? AND used_at IS NULL AND revoked_at IS NULL
 `)
-const _acknowledgeRecoveryCodes = db.prepare(`
+const _acknowledgeRecoveryCodes = prepare(`
   UPDATE accounts
   SET recovery_codes_acknowledged_at = datetime('now'), last_security_event_at = datetime('now')
   WHERE id = ?
 `)
-const _insertSecurityEvent = db.prepare(`
+const _insertSecurityEvent = prepare(`
   INSERT INTO security_events (id, account_id, event_type, ip_hash, ua_hash, metadata)
   VALUES (?, ?, ?, ?, ?, ?)
 `)
-const _markAccountDeleted = db.prepare(`
+const _markAccountDeleted = prepare(`
   UPDATE accounts
   SET account_status = 'deleted', deleted_at = datetime('now'), last_security_event_at = datetime('now')
   WHERE id = ?
 `)
-const _markAccountPendingPasskeySignup = db.prepare(`
+const _markAccountPendingPasskeySignup = prepare(`
   UPDATE accounts
   SET account_status = 'pending_passkey', account_setup_required = 1, last_security_event_at = datetime('now')
   WHERE id = ?
 `)
-const _startLegacyMigrationWindow = db.prepare(`
+const _startLegacyMigrationWindow = prepare(`
   UPDATE accounts
   SET legacy_migration_started_at = COALESCE(legacy_migration_started_at, datetime('now')),
       legacy_migration_deadline_at = COALESCE(legacy_migration_deadline_at, datetime('now', '+${LEGACY_MIGRATION_WINDOW_DAYS} days'))
   WHERE id = ? AND legacy_migration_completed_at IS NULL
 `)
-const _deleteAuthenticatorsByAccount = db.prepare(`DELETE FROM account_authenticators WHERE account_id = ?`)
-const _deleteEmailTokensByAccount = db.prepare(`DELETE FROM email_tokens WHERE account_id = ?`)
-const _deleteAuthChallengesByAccount = db.prepare(`DELETE FROM auth_challenges WHERE account_id = ?`)
-const _deleteFriendEdgesByAccount = db.prepare(`DELETE FROM social_friends WHERE account_id = ? OR friend_account_id = ?`)
-const _deleteClanMembershipByAccount = db.prepare(`DELETE FROM clan_members WHERE account_id = ?`)
-const _completeAccountStandards = db.prepare(`
+const _deleteAuthenticatorsByAccount = prepare(`DELETE FROM account_authenticators WHERE account_id = ?`)
+const _deleteEmailTokensByAccount = prepare(`DELETE FROM email_tokens WHERE account_id = ?`)
+const _deleteAuthChallengesByAccount = prepare(`DELETE FROM auth_challenges WHERE account_id = ?`)
+const _deleteFriendEdgesByAccount = prepare(`DELETE FROM social_friends WHERE account_id = ? OR friend_account_id = ?`)
+const _deleteClanMembershipByAccount = prepare(`DELETE FROM clan_members WHERE account_id = ?`)
+const _completeAccountStandards = prepare(`
   UPDATE accounts
   SET account_status = 'active',
       terms_version = ?,
@@ -805,17 +912,17 @@ const _completeAccountStandards = db.prepare(`
 // would let a cancelled Touch ID prompt burn a player's device quota for good.
 const NOT_ABANDONED_SIGNUP = `account_status <> 'pending_passkey'`
 
-const _countByFp = db.prepare(`
+const _countByFp = prepare(`
   SELECT COUNT(*) as cnt FROM accounts
   WHERE device_fp = ? AND device_fp IS NOT NULL AND ${NOT_ABANDONED_SIGNUP}
 `)
 
-const _countByCreatedIp = db.prepare(`
+const _countByCreatedIp = prepare(`
   SELECT COUNT(*) as cnt FROM accounts
   WHERE created_ip_hash = ? AND created_ip_hash IS NOT NULL AND ${NOT_ABANDONED_SIGNUP}
 `)
 
-const _countByCreatedIpPerDay = db.prepare(`
+const _countByCreatedIpPerDay = prepare(`
   SELECT COUNT(*) as cnt
   FROM accounts
   WHERE created_ip_hash = ?
@@ -824,7 +931,7 @@ const _countByCreatedIpPerDay = db.prepare(`
     AND created_at >= datetime('now', '-1 day')
 `)
 
-const _countByCreatedIpAndAgentPerWeek = db.prepare(`
+const _countByCreatedIpAndAgentPerWeek = prepare(`
   SELECT COUNT(*) as cnt
   FROM accounts
   WHERE created_ip_hash = ?
@@ -985,30 +1092,30 @@ export function generateAccountRecoveryCodes(accountId, details = {}) {
 const RECOVERY_GRANT_TTL_MS = 60 * 60 * 1000
 const RECOVERY_GRANT_CHANNELS = new Set(['manual', 'email'])
 
-const _insertRecoveryGrant = db.prepare(`
+const _insertRecoveryGrant = prepare(`
   INSERT INTO account_recovery_grants (
     id, account_id, token_hash, token_prefix, channel, purpose,
     issued_by_account_id, delivery_hint, note, expires_at
   ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `)
-const _revokeRecoveryGrantsByAccount = db.prepare(`
+const _revokeRecoveryGrantsByAccount = prepare(`
   UPDATE account_recovery_grants
   SET revoked_at = datetime('now')
   WHERE account_id = ? AND consumed_at IS NULL AND revoked_at IS NULL
 `)
-const _findRecoveryGrantsByPrefix = db.prepare(`
+const _findRecoveryGrantsByPrefix = prepare(`
   SELECT * FROM account_recovery_grants
   WHERE token_prefix = ?
     AND consumed_at IS NULL
     AND revoked_at IS NULL
     AND expires_at > datetime('now')
 `)
-const _consumeRecoveryGrant = db.prepare(`
+const _consumeRecoveryGrant = prepare(`
   UPDATE account_recovery_grants
   SET consumed_at = datetime('now')
   WHERE id = ? AND consumed_at IS NULL AND revoked_at IS NULL AND expires_at > datetime('now')
 `)
-const _listRecoveryGrantsByAccount = db.prepare(`
+const _listRecoveryGrantsByAccount = prepare(`
   SELECT id, channel, purpose, issued_by_account_id, delivery_hint, note,
          created_at, expires_at, consumed_at, revoked_at
   FROM account_recovery_grants
@@ -1768,39 +1875,39 @@ export function authenticateAccount(username, password) {
 
 const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000 // 7 days
 
-const _insertSessionFamily = db.prepare(`INSERT INTO session_families (id, account_id) VALUES (?, ?)`)
+const _insertSessionFamily = prepare(`INSERT INTO session_families (id, account_id) VALUES (?, ?)`)
 
-const _insertSession = db.prepare(`
+const _insertSession = prepare(`
   INSERT INTO sessions (token, account_id, expires_at, ip_hash, token_hash, family_id, user_agent_hash, last_seen_at, auth_method, last_passkey_reauth_at)
   VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), ?, CASE WHEN ? = 'passkey' THEN datetime('now') ELSE NULL END)
 `)
 
-const _getSessionByRawToken = db.prepare(`
+const _getSessionByRawToken = prepare(`
   SELECT s.*, a.username, COALESCE(NULLIF(TRIM(a.display_name), ''), a.username) as display_name FROM sessions s
   JOIN accounts a ON a.id = s.account_id
   WHERE s.token = ? AND s.expires_at > datetime('now') AND s.revoked_at IS NULL
 `)
 
-const _getSessionByHash = db.prepare(`
+const _getSessionByHash = prepare(`
   SELECT s.*, a.username, COALESCE(NULLIF(TRIM(a.display_name), ''), a.username) as display_name FROM sessions s
   JOIN accounts a ON a.id = s.account_id
   WHERE s.token_hash = ? AND s.expires_at > datetime('now') AND s.revoked_at IS NULL
 `)
 
-const _touchSession = db.prepare(`UPDATE sessions SET last_seen_at = datetime('now') WHERE token = ?`)
-const _markSessionPasskeyReauthenticated = db.prepare(`
+const _touchSession = prepare(`UPDATE sessions SET last_seen_at = datetime('now') WHERE token = ?`)
+const _markSessionPasskeyReauthenticated = prepare(`
   UPDATE sessions
   SET last_passkey_reauth_at = datetime('now'), last_seen_at = datetime('now')
   WHERE (token = ? OR token_hash = ?) AND revoked_at IS NULL AND expires_at > datetime('now')
 `)
 
-const _revokeSession = db.prepare(`UPDATE sessions SET revoked_at = datetime('now') WHERE token = ? OR token_hash = ?`)
+const _revokeSession = prepare(`UPDATE sessions SET revoked_at = datetime('now') WHERE token = ? OR token_hash = ?`)
 
-const _revokeSessionsByAccount = db.prepare(`UPDATE sessions SET revoked_at = datetime('now') WHERE account_id = ? AND revoked_at IS NULL`)
+const _revokeSessionsByAccount = prepare(`UPDATE sessions SET revoked_at = datetime('now') WHERE account_id = ? AND revoked_at IS NULL`)
 
-const _cleanExpiredSessions = db.prepare(`DELETE FROM sessions WHERE expires_at <= datetime('now') OR revoked_at IS NOT NULL`)
+const _cleanExpiredSessions = prepare(`DELETE FROM sessions WHERE expires_at <= datetime('now') OR revoked_at IS NOT NULL`)
 
-const _updateLastLogin = db.prepare(`UPDATE accounts SET last_login = datetime('now') WHERE id = ?`)
+const _updateLastLogin = prepare(`UPDATE accounts SET last_login = datetime('now') WHERE id = ?`)
 
 export function hashIp(ip) {
   if (!ip) return null
@@ -2139,7 +2246,7 @@ setInterval(cleanupSessions, 60 * 60 * 1000).unref?.()
 
 // ─── Player profile operations ───────────────────────────────────────────────
 
-const _getProfile = db.prepare(`SELECT * FROM player_profiles WHERE account_id = ?`)
+const _getProfile = prepare(`SELECT * FROM player_profiles WHERE account_id = ?`)
 
 function buildStarterCollection() {
   const starter = {}
@@ -2165,11 +2272,11 @@ function normalizeOwnedCards(rawValue) {
   return buildStarterCollection()
 }
 
-const _updateDeck = db.prepare(`
+const _updateDeck = prepare(`
   UPDATE player_profiles SET deck_config = ?, updated_at = datetime('now') WHERE account_id = ?
 `)
 
-const _updateTheme = db.prepare(`
+const _updateTheme = prepare(`
   UPDATE player_profiles SET selected_theme = ?, updated_at = datetime('now') WHERE account_id = ?
 `)
 
@@ -2249,33 +2356,33 @@ function validateOwnership(profile, deckConfig) {
 
 // ─── Multi-deck CRUD ─────────────────────────────────────────────────
 
-const _listDecks = db.prepare(`
+const _listDecks = prepare(`
   SELECT id, name, deck_config, is_active, created_at, updated_at
   FROM player_decks WHERE account_id = ?
   ORDER BY is_active DESC, created_at ASC
 `)
-const _getDeckById = db.prepare(`
+const _getDeckById = prepare(`
   SELECT id, account_id, name, deck_config, is_active, created_at, updated_at
   FROM player_decks WHERE id = ? AND account_id = ?
 `)
-const _countDecks = db.prepare(`SELECT COUNT(*) as cnt FROM player_decks WHERE account_id = ?`)
-const _insertDeck = db.prepare(`
+const _countDecks = prepare(`SELECT COUNT(*) as cnt FROM player_decks WHERE account_id = ?`)
+const _insertDeck = prepare(`
   INSERT INTO player_decks (id, account_id, name, deck_config, is_active)
   VALUES (?, ?, ?, ?, ?)
 `)
-const _updateDeckRow = db.prepare(`
+const _updateDeckRow = prepare(`
   UPDATE player_decks SET name = ?, deck_config = ?, updated_at = datetime('now')
   WHERE id = ? AND account_id = ?
 `)
-const _renameDeckRow = db.prepare(`
+const _renameDeckRow = prepare(`
   UPDATE player_decks SET name = ?, updated_at = datetime('now') WHERE id = ? AND account_id = ?
 `)
-const _deleteDeckRow = db.prepare(`DELETE FROM player_decks WHERE id = ? AND account_id = ?`)
-const _deactivateDecks = db.prepare(`UPDATE player_decks SET is_active = 0 WHERE account_id = ?`)
-const _activateDeckRow = db.prepare(`
+const _deleteDeckRow = prepare(`DELETE FROM player_decks WHERE id = ? AND account_id = ?`)
+const _deactivateDecks = prepare(`UPDATE player_decks SET is_active = 0 WHERE account_id = ?`)
+const _activateDeckRow = prepare(`
   UPDATE player_decks SET is_active = 1, updated_at = datetime('now') WHERE id = ? AND account_id = ?
 `)
-const _getActiveDeckRow = db.prepare(`
+const _getActiveDeckRow = prepare(`
   SELECT id, name, deck_config, created_at, updated_at FROM player_decks
   WHERE account_id = ? AND is_active = 1 LIMIT 1
 `)
@@ -2609,56 +2716,56 @@ function calculateAuthoritativeMatchEconomy(profile, mode, result, reason, turns
   }
 }
 
-const _grantShards = db.prepare(`
+const _grantShards = prepare(`
   UPDATE player_profiles
   SET shards = shards + ?, total_earned = total_earned + MAX(0, ?), updated_at = datetime('now')
   WHERE account_id = ?
 `)
 
-const _deductShards = db.prepare(`
+const _deductShards = prepare(`
   UPDATE player_profiles
   SET shards = shards - ?, updated_at = datetime('now')
   WHERE account_id = ? AND shards >= ?
 `)
 
-const _addOwnedTheme = db.prepare(`
+const _addOwnedTheme = prepare(`
   UPDATE player_profiles
   SET owned_themes = ?, updated_at = datetime('now')
   WHERE account_id = ?
 `)
 
-const _setDailyClaim = db.prepare(`
+const _setDailyClaim = prepare(`
   UPDATE player_profiles
   SET last_daily = ?, shards = shards + ?, total_earned = total_earned + ?, updated_at = datetime('now')
   WHERE account_id = ? AND COALESCE(last_daily, '') <> ?
 `)
 
-const _updateRating = db.prepare(`
+const _updateRating = prepare(`
   UPDATE player_profiles
   SET season_rating = MAX(?, season_rating + ?), updated_at = datetime('now')
   WHERE account_id = ?
 `)
 
-const _updateRecord = db.prepare(`
+const _updateRecord = prepare(`
   UPDATE player_profiles
   SET wins = wins + ?, losses = losses + ?, streak = ?, updated_at = datetime('now')
   WHERE account_id = ?
 `)
 
-const _insertMatch = db.prepare(`
+const _insertMatch = prepare(`
   INSERT INTO match_log (id, account_id, opponent, mode, result, turns, shards_earned, rating_delta)
   VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 `)
 
-const _insertQuestChain = db.prepare(`
+const _insertQuestChain = prepare(`
   INSERT OR IGNORE INTO player_quest_chains (account_id, chain_id) VALUES (?, ?)
 `)
 
-const _listQuestChains = db.prepare(`
+const _listQuestChains = prepare(`
   SELECT * FROM player_quest_chains WHERE account_id = ?
 `)
 
-const _setQuestChainProgress = db.prepare(`
+const _setQuestChainProgress = prepare(`
   UPDATE player_quest_chains
   SET progress = ?, updated_at = datetime('now')
   WHERE account_id = ? AND chain_id = ?
@@ -2666,35 +2773,35 @@ const _setQuestChainProgress = db.prepare(`
 
 // Guarding on the tier the caller believed was current makes a double claim a
 // no-op rather than a double payout.
-const _claimQuestChainTier = db.prepare(`
+const _claimQuestChainTier = prepare(`
   UPDATE player_quest_chains
   SET claimed_tier = claimed_tier + 1, updated_at = datetime('now')
   WHERE account_id = ? AND chain_id = ? AND claimed_tier = ?
 `)
 
-const _seedQuestChain = db.prepare(`
+const _seedQuestChain = prepare(`
   UPDATE player_quest_chains
   SET progress = MAX(progress, ?), claimed_tier = MAX(claimed_tier, ?), updated_at = datetime('now')
   WHERE account_id = ? AND chain_id = ?
 `)
 
-const _getLegacyPermanentQuest = db.prepare(`
+const _getLegacyPermanentQuest = prepare(`
   SELECT * FROM player_quests WHERE account_id = ? AND quest_id = ? AND period_key = 'ever'
 `)
 
-const _listLegacyRotatingQuests = db.prepare(`
+const _listLegacyRotatingQuests = prepare(`
   SELECT * FROM player_quests WHERE account_id = ? AND period_key = ?
 `)
 
-const _deleteLegacyRotatingQuests = db.prepare(`
+const _deleteLegacyRotatingQuests = prepare(`
   DELETE FROM player_quests WHERE account_id = ? AND period_key <> 'ever'
 `)
 
-const _listQuestSlots = db.prepare(`
+const _listQuestSlots = prepare(`
   SELECT * FROM player_quest_slots WHERE account_id = ?
 `)
 
-const _assignQuestSlot = db.prepare(`
+const _assignQuestSlot = prepare(`
   INSERT INTO player_quest_slots
     (account_id, cadence, slot_index, quest_id, target, reward_shards, progress, rerolled, assigned_key, expires_at)
   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -2712,13 +2819,13 @@ const _assignQuestSlot = db.prepare(`
     updated_at    = datetime('now')
 `)
 
-const _setQuestSlotProgress = db.prepare(`
+const _setQuestSlotProgress = prepare(`
   UPDATE player_quest_slots
   SET progress = ?, completed_at = COALESCE(completed_at, ?), updated_at = datetime('now')
   WHERE account_id = ? AND cadence = ? AND slot_index = ?
 `)
 
-const _claimQuestSlot = db.prepare(`
+const _claimQuestSlot = prepare(`
   UPDATE player_quest_slots
   SET claimed = 1, updated_at = datetime('now')
   WHERE account_id = ? AND cadence = ? AND slot_index = ? AND claimed = 0
@@ -2726,12 +2833,12 @@ const _claimQuestSlot = db.prepare(`
 
 // The guard in the WHERE clause is what makes the free reroll single-use: a
 // second attempt on the same day changes zero rows.
-const _spendDailyReroll = db.prepare(`
+const _spendDailyReroll = prepare(`
   UPDATE player_profiles SET quest_reroll_daily_key = ?, updated_at = datetime('now')
   WHERE account_id = ? AND quest_reroll_daily_key <> ?
 `)
 
-const _spendWeeklyReroll = db.prepare(`
+const _spendWeeklyReroll = prepare(`
   UPDATE player_profiles SET quest_reroll_weekly_key = ?, updated_at = datetime('now')
   WHERE account_id = ? AND quest_reroll_weekly_key <> ?
 `)
@@ -3459,12 +3566,12 @@ export function listCardBorders() {
   return CARD_BORDER_CATALOG.map((entry) => ({ ...entry }))
 }
 
-const _setCardBorder = db.prepare(`
+const _setCardBorder = prepare(`
   UPDATE player_profiles
   SET selected_card_border = ?, updated_at = datetime('now')
   WHERE account_id = ?
 `)
-const _setOwnedCardBorders = db.prepare(`
+const _setOwnedCardBorders = prepare(`
   UPDATE player_profiles
   SET owned_card_borders = ?, updated_at = datetime('now')
   WHERE account_id = ?
@@ -3594,31 +3701,31 @@ export function breakdownCard(accountId, cardId, qty) {
   }
 }
 
-const _insertAuthoritativeMatch = db.prepare(`
+const _insertAuthoritativeMatch = prepare(`
   INSERT INTO authoritative_matches (match_id, mode, reason, turns, metadata)
   VALUES (?, ?, ?, ?, ?)
 `)
-const _getAuthoritativeMatch = db.prepare(`
+const _getAuthoritativeMatch = prepare(`
   SELECT * FROM authoritative_matches WHERE match_id = ?
 `)
-const _insertAuthoritativeParticipant = db.prepare(`
+const _insertAuthoritativeParticipant = prepare(`
   INSERT INTO authoritative_match_participants (
     match_id, account_id, opponent_account_id, opponent_name, result,
     shards_earned, rating_delta, streak_after, balance_after, rating_after,
     wins_after, losses_after, match_log_id
   ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `)
-const _listAuthoritativeParticipants = db.prepare(`
+const _listAuthoritativeParticipants = prepare(`
   SELECT * FROM authoritative_match_participants
   WHERE match_id = ? ORDER BY account_id ASC
 `)
-const _getAuthoritativeParticipantForAccount = db.prepare(`
+const _getAuthoritativeParticipantForAccount = prepare(`
   SELECT p.*, m.mode, m.reason, m.turns, m.metadata, m.settled_at
   FROM authoritative_match_participants p
   JOIN authoritative_matches m ON m.match_id = p.match_id
   WHERE p.match_id = ? AND p.account_id = ?
 `)
-const _getLatestAuthoritativeParticipant = db.prepare(`
+const _getLatestAuthoritativeParticipant = prepare(`
   SELECT p.*, m.mode, m.reason, m.turns, m.metadata, m.settled_at
   FROM authoritative_match_participants p
   JOIN authoritative_matches m ON m.match_id = p.match_id
@@ -3626,12 +3733,12 @@ const _getLatestAuthoritativeParticipant = db.prepare(`
   ORDER BY m.settled_at DESC, m.rowid DESC
   LIMIT 1
 `)
-const _acknowledgeAuthoritativeParticipant = db.prepare(`
+const _acknowledgeAuthoritativeParticipant = prepare(`
   UPDATE authoritative_match_participants
   SET acknowledged_at = COALESCE(acknowledged_at, datetime('now'))
   WHERE match_id = ? AND account_id = ?
 `)
-const _insertEconomyLedger = db.prepare(`
+const _insertEconomyLedger = prepare(`
   INSERT INTO economy_ledger (
     id, account_id, idempotency_key, source, amount, balance_after, match_id, metadata
   ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -3767,7 +3874,7 @@ function normalizeAuthoritativeSettlement(input) {
   return { ok: true, matchId, mode, reason, turns, participants, metadata, metadataJson }
 }
 
-const _settleAuthoritativeMatch = db.transaction((settlement) => {
+const _settleAuthoritativeMatch = transaction((settlement) => {
   const existing = hydrateAuthoritativeMatch(settlement.matchId)
   if (existing) return { settlement: existing, replayed: true }
 
@@ -3951,7 +4058,7 @@ export function resolveMatchResult(accountId, opponent, mode, result, turns, met
 
 // ─── Match history ───────────────────────────────────────────────────────────
 
-const _getRecentMatches = db.prepare(`
+const _getRecentMatches = prepare(`
   SELECT * FROM match_log WHERE account_id = ? ORDER BY played_at DESC LIMIT 20
 `)
 
@@ -3961,7 +4068,7 @@ export function getRecentMatches(accountId) {
 
 // ─── Leaderboard ─────────────────────────────────────────────────────────────
 
-const _getLeaderboard = db.prepare(`
+const _getLeaderboard = prepare(`
   SELECT p.account_id, a.display_name, p.season_rating, p.wins, p.losses, p.updated_at
   FROM player_profiles p JOIN accounts a ON a.id = p.account_id
   ORDER BY p.season_rating DESC, p.wins DESC, p.losses ASC, p.updated_at DESC
@@ -3977,7 +4084,7 @@ export function getLeaderboard() {
 const CLAN_NAME_RE = /^[a-zA-Z0-9][a-zA-Z0-9 '\-]{2,31}$/
 const CLAN_TAG_RE = /^[A-Z0-9]{2,6}$/
 
-const _getFriends = db.prepare(`
+const _getFriends = prepare(`
   SELECT linked.friend_account_id as accountId, a.username, a.display_name as displayName, MIN(linked.created_at) as since
   FROM (
     SELECT friend_account_id, created_at
@@ -3994,11 +4101,11 @@ const _getFriends = db.prepare(`
   ORDER BY a.display_name COLLATE NOCASE ASC
 `)
 
-const _hasFriendEdge = db.prepare(`
+const _hasFriendEdge = prepare(`
   SELECT 1 as linked FROM social_friends WHERE account_id = ? AND friend_account_id = ? LIMIT 1
 `)
 
-const _hasAnyFriendEdge = db.prepare(`
+const _hasAnyFriendEdge = prepare(`
   SELECT 1 as linked
   FROM social_friends
   WHERE (account_id = ? AND friend_account_id = ?) OR (account_id = ? AND friend_account_id = ?)
@@ -4011,22 +4118,22 @@ export function isFriendOf(accountId, otherAccountId) {
   return Boolean(row?.linked)
 }
 
-const _insertFriendEdge = db.prepare(`
+const _insertFriendEdge = prepare(`
   INSERT OR IGNORE INTO social_friends (account_id, friend_account_id) VALUES (?, ?)
 `)
 
-const _deleteFriendEdge = db.prepare(`
+const _deleteFriendEdge = prepare(`
   DELETE FROM social_friends WHERE account_id = ? AND friend_account_id = ?
 `)
 
-const _getClanMembership = db.prepare(`
+const _getClanMembership = prepare(`
   SELECT cm.clan_id as clanId, cm.role, c.name, c.tag, c.invite_code as inviteCode, c.owner_account_id as ownerAccountId, c.created_at as createdAt
   FROM clan_members cm
   JOIN clans c ON c.id = cm.clan_id
   WHERE cm.account_id = ?
 `)
 
-const _getClanMembers = db.prepare(`
+const _getClanMembers = prepare(`
   SELECT
     cm.account_id as accountId,
     cm.role,
@@ -4041,38 +4148,38 @@ const _getClanMembers = db.prepare(`
     a.display_name COLLATE NOCASE ASC
 `)
 
-const _createClan = db.prepare(`
+const _createClan = prepare(`
   INSERT INTO clans (id, name, tag, invite_code, owner_account_id)
   VALUES (?, ?, ?, ?, ?)
 `)
 
-const _addClanMember = db.prepare(`
+const _addClanMember = prepare(`
   INSERT INTO clan_members (clan_id, account_id, role) VALUES (?, ?, ?)
 `)
 
-const _removeClanMember = db.prepare(`
+const _removeClanMember = prepare(`
   DELETE FROM clan_members WHERE clan_id = ? AND account_id = ?
 `)
 
-const _setClanOwner = db.prepare(`
+const _setClanOwner = prepare(`
   UPDATE clans SET owner_account_id = ? WHERE id = ?
 `)
 
-const _setClanMemberRole = db.prepare(`
+const _setClanMemberRole = prepare(`
   UPDATE clan_members SET role = ? WHERE clan_id = ? AND account_id = ?
 `)
 
-const _deleteClan = db.prepare(`
+const _deleteClan = prepare(`
   DELETE FROM clans WHERE id = ?
 `)
 
-const _findClanByInvite = db.prepare(`
+const _findClanByInvite = prepare(`
   SELECT id, name, tag, invite_code as inviteCode, owner_account_id as ownerAccountId, created_at as createdAt
   FROM clans
   WHERE invite_code = ?
 `)
 
-const _findFallbackOwner = db.prepare(`
+const _findFallbackOwner = prepare(`
   SELECT account_id as accountId
   FROM clan_members
   WHERE clan_id = ? AND account_id != ?
@@ -4308,9 +4415,9 @@ function pickCard(rarity) {
   return pool[Math.floor(Math.random() * pool.length)]
 }
 
-const _getOwnedCards = db.prepare(`SELECT owned_cards FROM player_profiles WHERE account_id = ?`)
+const _getOwnedCards = prepare(`SELECT owned_cards FROM player_profiles WHERE account_id = ?`)
 
-const _setOwnedCards = db.prepare(`
+const _setOwnedCards = prepare(`
   UPDATE player_profiles SET owned_cards = ?, updated_at = datetime('now') WHERE account_id = ?
 `)
 
@@ -4397,10 +4504,10 @@ export { PACK_DEFS, ALL_CARDS }
 const ROLE_VALUES = new Set(['user', 'admin', 'owner'])
 const ROLE_RANK = { user: 0, admin: 1, owner: 2 }
 
-const _getRole = db.prepare(`SELECT role FROM accounts WHERE id = ?`)
-const _setRole = db.prepare(`UPDATE accounts SET role = ? WHERE id = ?`)
-const _findOwnerId = db.prepare(`SELECT id FROM accounts WHERE role = 'owner' LIMIT 1`)
-const _searchAccounts = db.prepare(`
+const _getRole = prepare(`SELECT role FROM accounts WHERE id = ?`)
+const _setRole = prepare(`UPDATE accounts SET role = ? WHERE id = ?`)
+const _findOwnerId = prepare(`SELECT id FROM accounts WHERE role = 'owner' LIMIT 1`)
+const _searchAccounts = prepare(`
   SELECT a.id, a.username, a.display_name as displayName, a.role,
          a.created_at as createdAt, a.last_login as lastLogin,
          a.account_status as accountStatus, a.deleted_at as deletedAt,
@@ -4419,12 +4526,12 @@ const _searchAccounts = db.prepare(`
   LIMIT ? OFFSET ?
 `)
 
-const _insertAudit = db.prepare(`
+const _insertAudit = prepare(`
   INSERT INTO admin_audit (id, actor_account_id, target_account_id, action, metadata, ip_hash)
   VALUES (?, ?, ?, ?, ?, ?)
 `)
 
-const _listAudit = db.prepare(`
+const _listAudit = prepare(`
   SELECT
     a.id,
     a.actor_account_id   as actorAccountId,
@@ -4927,7 +5034,7 @@ export function listAudit({ limit = 50 } = {}) {
 // columns, used by the password-confirmation flow for ownership transfer.
 // We intentionally avoid `SELECT *` to ensure the password hash is only
 // surfaced through this named accessor.
-const _getAccountFull = db.prepare(
+const _getAccountFull = prepare(
   `SELECT id, username, display_name, password_hash, role FROM accounts WHERE id = ?`,
 )
 export function getAccountById(accountId) {
@@ -4940,42 +5047,28 @@ export function getAccountById(accountId) {
 // return. On accept, both owned_cards blobs are mutated atomically in a
 // single transaction so there is no "half-traded" state.
 
-db.exec(`
-  CREATE TABLE IF NOT EXISTS trades (
-    id                 TEXT PRIMARY KEY,
-    from_account_id    TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
-    to_account_id      TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
-    status             TEXT NOT NULL CHECK(status IN ('pending','accepted','rejected','cancelled','expired')),
-    offer              TEXT NOT NULL DEFAULT '[]',
-    request            TEXT NOT NULL DEFAULT '[]',
-    created_at         TEXT NOT NULL DEFAULT (datetime('now')),
-    updated_at         TEXT NOT NULL DEFAULT (datetime('now')),
-    expires_at         TEXT NOT NULL
-  );
-
-  CREATE INDEX IF NOT EXISTS idx_trades_from ON trades(from_account_id, status, created_at DESC);
-  CREATE INDEX IF NOT EXISTS idx_trades_to   ON trades(to_account_id, status, created_at DESC);
-`)
+// The `trades` table is created in applySchema() with the rest of the
+// schema, so a reopen recreates it alongside everything else.
 
 const TRADE_TTL_DAYS = 7
 const MAX_TRADE_ITEMS_PER_SIDE = 6
 
-const _insertTrade = db.prepare(`
+const _insertTrade = prepare(`
   INSERT INTO trades (id, from_account_id, to_account_id, status, offer, request, expires_at)
   VALUES (?, ?, ?, 'pending', ?, ?, datetime('now', ?))
 `)
-const _getTradeById = db.prepare(`SELECT * FROM trades WHERE id = ?`)
-const _updateTradeStatus = db.prepare(
+const _getTradeById = prepare(`SELECT * FROM trades WHERE id = ?`)
+const _updateTradeStatus = prepare(
   `UPDATE trades SET status = ?, updated_at = datetime('now') WHERE id = ? AND status = 'pending'`,
 )
-const _listTradesForAccount = db.prepare(`
+const _listTradesForAccount = prepare(`
   SELECT * FROM trades
   WHERE (from_account_id = ? OR to_account_id = ?)
     AND (status = 'pending' OR updated_at > datetime('now', '-3 days'))
   ORDER BY created_at DESC
   LIMIT 50
 `)
-const _expireStaleTrades = db.prepare(
+const _expireStaleTrades = prepare(
   `UPDATE trades SET status = 'expired', updated_at = datetime('now')
    WHERE status = 'pending' AND expires_at < datetime('now')`,
 )
@@ -5195,4 +5288,14 @@ export function cancelTrade(accountId, tradeId, reason = 'cancelled') {
   return { ok: true, tradeId, status: reason }
 }
 
-export default db
+// Open once at import time. This is what makes importing this module enough
+// to have a migrated database, which server.js and passkey-service.js rely on.
+openDatabase()
+
+// `export { db as default }`, not `export default db`.
+//
+// `export default <identifier>` exports the *value* the identifier held at
+// evaluation time, so it would stay pinned to the first connection and go stale
+// the moment `openDatabase()` replaced it. The `as default` form creates a live
+// binding, so consumers of the default export follow a reopen.
+export { db as default }

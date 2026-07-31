@@ -173,9 +173,13 @@ describe('schema migration compatibility', () => {
       `)
       legacyDb.close()
 
+      // `db.openDatabase()` re-reads DATA_DIR and re-applies the schema against
+      // it. This used to be `import('./db.js?legacy-test')`, which got a fresh
+      // module only because db.js was a single file — a trick that breaks the
+      // moment the data layer is split across modules.
       process.env.DATA_DIR = legacyDir
-      const migrated = await import('./db.js?legacy-test')
-      const columns = migrated.default.prepare('PRAGMA table_info(accounts)').all()
+      db.openDatabase()
+      const columns = db.default.prepare('PRAGMA table_info(accounts)').all()
 
       expect(columns.some((column) => column.name === 'created_ip_hash')).toBe(true)
       expect(columns.some((column) => column.name === 'created_ua_hash')).toBe(true)
@@ -183,10 +187,11 @@ describe('schema migration compatibility', () => {
       expect(columns.some((column) => column.name === 'email_normalized')).toBe(true)
       expect(columns.some((column) => column.name === 'account_setup_required')).toBe(true)
       expect(columns.some((column) => column.name === 'terms_version')).toBe(true)
-
-      migrated.default.close()
     } finally {
+      // Point the shared connection back at the suite's own directory, or every
+      // later test in this file runs against a deleted database.
       process.env.DATA_DIR = previousDataDir
+      db.openDatabase()
       try { rmSync(legacyDir, { recursive: true, force: true }) } catch { /* ignore */ }
     }
   })
@@ -222,10 +227,14 @@ describe('schema migration compatibility', () => {
         .run('acct-legacy-profile', '{"spark-imp":2}')
       legacyDb.close()
 
+      // See the note on the previous test: an explicit reopen replaces the old
+      // `import('./db.js?tag')` module-cache trick. `getProfile` is read off the
+      // shared module here, and it now queries the reopened connection because
+      // its prepared statement rebinds.
       process.env.DATA_DIR = legacyDir
-      const migrated = await import('./db.js?legacy-profile-test')
-      const columns = migrated.default.prepare('PRAGMA table_info(player_profiles)').all()
-      const profile = migrated.getProfile('acct-legacy-profile')
+      db.openDatabase()
+      const columns = db.default.prepare('PRAGMA table_info(player_profiles)').all()
+      const profile = db.getProfile('acct-legacy-profile')
 
       expect(columns.some((column) => column.name === 'shards')).toBe(true)
       expect(columns.some((column) => column.name === 'total_earned')).toBe(true)
@@ -235,16 +244,15 @@ describe('schema migration compatibility', () => {
       expect(profile.shards).toBe(120)
       expect(profile.total_earned).toBe(120)
       expect(profile.owned_cards['spark-imp']).toBeGreaterThanOrEqual(2)
-      expect(migrated.default.prepare(
+      expect(db.default.prepare(
         "SELECT COUNT(*) AS count FROM sqlite_master WHERE type = 'table' AND name = 'authoritative_matches'",
       ).get().count).toBe(1)
-      expect(migrated.default.prepare(
+      expect(db.default.prepare(
         "SELECT COUNT(*) AS count FROM sqlite_master WHERE type = 'table' AND name = 'economy_ledger'",
       ).get().count).toBe(1)
-
-      migrated.default.close()
     } finally {
       process.env.DATA_DIR = previousDataDir
+      db.openDatabase()
       try { rmSync(legacyDir, { recursive: true, force: true }) } catch { /* ignore */ }
     }
   })
