@@ -1,4 +1,22 @@
-# Database Index — `server/db.js`
+# Database Index — `server/db/`
+
+> `server/db.js` is a re-export barrel. The implementation lives in nine domain
+> modules under `server/db/`, and the graph is acyclic:
+>
+> ```
+> connection  -> (none)                      schema, migrations, lazy prepare()
+> crypto      -> connection
+> matches     -> connection
+> profiles    -> connection
+> accounts    -> connection crypto profiles
+> economy     -> connection profiles
+> admin       -> accounts connection profiles
+> social      -> accounts connection economy profiles
+> account-export -> all of the above
+> ```
+>
+> Add a query to the module that owns the table. The section map below still
+> describes what lives where; each section now corresponds to a module.
 
 ## Setup & Schema (Lines 1–135)
 

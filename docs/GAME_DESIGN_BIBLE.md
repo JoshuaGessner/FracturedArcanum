@@ -234,7 +234,7 @@ See [`CARD_BALANCE_FRAMEWORK.md` §11](CARD_BALANCE_FRAMEWORK.md#11-five-year-se
 
 ### Cosmetic Themes
 
-Tracked in `THEME_COSTS` in `server/db.js` and `THEME_OFFERS` in `src/constants.ts`.
+Tracked in `THEME_COSTS` in `server/db/economy.js` and `THEME_OFFERS` in `src/constants.ts`.
 
 | Theme | Cost (Shards) | Thematic Note |
 |-------|-------------|---------------|
@@ -256,7 +256,8 @@ Tracked in `THEME_COSTS` in `server/db.js` and `THEME_OFFERS` in `src/constants.
 
 ### Card Borders
 
-Tracked in `CARD_BORDERS` in `server/db.js`.
+Tracked in `CARD_BORDER_CATALOG` in `server/db/economy.js`, with the storefront
+copy in `CARD_BORDER_OFFERS` in `src/constants.ts`.
 
 | Border | Cost (Shards) | Thematic Note |
 |--------|-------------|---------------|
@@ -325,7 +326,7 @@ Tracked in `CARD_BORDERS` in `server/db.js`.
 
 1. **Design** — define in this bible first with economy impact analysis
 2. **Economy check** — validate against [`docs/ECONOMY_BALANCE.md`](ECONOMY_BALANCE.md)
-3. **Implement** — server persistence in `server/db.js`, API in `server/server.js`, client display
+3. **Implement** — server persistence in the owning `server/db/*.js` module, API in `server/server.js`, client display
 4. **Update docs** — add to this bible's collectible registry
 
 ### Releasing a New Expansion

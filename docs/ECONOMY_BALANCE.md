@@ -40,9 +40,9 @@ The game uses a single soft currency called **Shards**. All code, UI, and docume
 | Card breakdown (Epic) | 25 shards | Per copy | Variable |
 | Card breakdown (Legendary) | 100 shards | Per copy | Variable |
 
-**Source constants:** `server/db.js` — `WIN_SHARDS = 30`, `LOSS_SHARDS = 10`, `DAILY_SHARDS = 25`
-**Breakdown values:** `server/db.js` — `RARITY_BREAKDOWN_VALUE` map
-**Streak bonus:** +5 shards per streak past 2 wins (capped at +20 extra). Source: `settleAuthoritativeMatch()` in `server/db.js`
+**Source constants:** `server/db/economy.js` — `WIN_SHARDS = 30`, `LOSS_SHARDS = 10`, `DAILY_SHARDS = 25`
+**Breakdown values:** `server/db/economy.js` — `RARITY_BREAKDOWN_VALUE` map
+**Streak bonus:** +5 shards per streak past 2 wins (capped at +20 extra). Source: `settleAuthoritativeMatch()` in `server/db/economy.js`
 **Match duration:** Matches typically last ~5 minutes, making shard income very fast per real-time minute of play.
 
 Authoritative AI and Ranked completions are reward-eligible. Friend matches are practice-only and grant no Shards, rating, streak, quest, or W/L progress. A Ranked surrender/disconnect before turn 2 still applies the competitive result and rating but grants no farmable Shards, streak, or quest progress. Maintenance and idle-timeout no-contests grant nothing and never deduct player resources.
@@ -97,7 +97,7 @@ That's ~2.9 Basic packs per day, or 1 Legendary pack every ~2.8 days.
 | Premium | 150 shards | 3 Common + 1 Rare + 1 Epic | Each slot can upgrade |
 | Legendary | 400 shards | 1 Common + 2 Rare + 1 Epic + 1 Legendary | Each slot can upgrade |
 
-**Source:** `server/db.js` — `PACK_DEFS`
+**Source:** `server/db/economy.js` — `PACK_DEFS`
 
 ### Rarity Weights (for upgrade rolls)
 
@@ -108,7 +108,7 @@ That's ~2.9 Basic packs per day, or 1 Legendary pack every ~2.8 days.
 | Epic | 8% |
 | Legendary | 2% |
 
-**Source:** `server/db.js` — `RARITY_WEIGHTS`
+**Source:** `server/db/economy.js` — `RARITY_WEIGHTS`
 
 ### Cosmetic Themes
 
@@ -118,7 +118,7 @@ That's ~2.9 Basic packs per day, or 1 Legendary pack every ~2.8 days.
 | Ember Court | 120 shards |
 | Moonwell Glow | 180 shards |
 
-**Source:** `server/db.js` — `THEME_COSTS`; `src/constants.ts` — `THEME_OFFERS`
+**Source:** `server/db/economy.js` — `THEME_COSTS`; `src/constants.ts` — `THEME_OFFERS`
 
 **Design note:** The theme catalog is intentionally small at launch. Additional themes (Crimson Sanctum, Verdant Hollow, Azure Depths, Golden Spire, Void Eclipse, Frost Tomb, Ember Forge at 150–400 shards) are planned for future seasonal releases. See the Seasonal Schedule in [`docs/CARD_BALANCE_FRAMEWORK.md` §10](CARD_BALANCE_FRAMEWORK.md#10-seasonal-expansion--rotation-system) for the cosmetic expansion roadmap.
 
@@ -216,7 +216,7 @@ When a set rotates out of Ranked:
 
 ### Starter Collection
 
-New players receive a starter collection via `buildStarterCollection()` in `server/db.js`. This provides a baseline set of common cards to build an initial deck.
+New players receive a starter collection via `buildStarterCollection()` in `server/db/economy.js`. This provides a baseline set of common cards to build an initial deck.
 
 ### Collection Completion Timeline
 
@@ -369,7 +369,7 @@ When releasing a new expansion (see the full 5-year seasonal schedule in [`CARD_
 
 ### Trading System Safeguards
 
-The existing trade system (`server/db.js` — `trades` table) includes:
+The existing trade system (`server/db/economy.js` — `trades` table) includes:
 - Friends-only trading (prevents anonymous market exploitation)
 - Trade expiry (7 days via `TRADE_TTL_DAYS`)
 - Maximum 6 items per side (`MAX_TRADE_ITEMS_PER_SIDE`)
@@ -390,5 +390,5 @@ When modifying any economy constant:
 3. **Validate against metrics** — will healthy ranges in Section 8 still hold?
 4. **Update this document** — change the relevant tables and recalculate derived values
 5. **Update the Game Design Bible** — if the change affects collectible pricing
-6. **Test** — verify the change works in `server/db.js` and passes existing tests
+6. **Test** — verify the change works in `server/db/economy.js` and passes existing tests
 7. **Monitor** — after deploy, watch economy health metrics for 1–2 weeks

@@ -73,7 +73,7 @@ If traffic grows beyond ~50k daily active sessions, upgrade to Google's Interact
 
 ---
 
-## Part 3 — Database Changes (`server/db.js`)
+## Part 3 — Database Changes (`server/db/economy.js`)
 
 ### Schema migration
 
@@ -426,7 +426,7 @@ Update the Helmet `contentSecurityPolicy` `directives` to allow AppLixir's CDN:
 
 Execute in this order within the implementation session:
 
-1. **DB** — Add migration columns and `recordAdWatch()` to `server/db.js`. Run `npm test` to verify existing tests pass.
+1. **DB** — Add migration columns and `recordAdWatch()` to `server/db/economy.js`. Run `npm test` to verify existing tests pass.
 2. **Server** — Add `POST /api/me/ad-reward` route and import to `server/server.js`. Smoke-test with curl.
 3. **Types** — Add `AdRewardState` and update `ServerProfile` in `src/types.ts`.
 4. **Ad Service** — Create `src/adService.ts` with AppLixir wrapper. Add `VITE_AD_*` vars to `.env.example`.

@@ -89,7 +89,8 @@
 | File | Role |
 |------|------|
 | `server/server.js` | Express API, Socket.IO events, matchmaking, auth, social, admin endpoints, and reconnect recovery |
-| `server/db.js` | SQLite persistence, economy, social, complaints, and admin data |
+| `server/db.js` | Re-export barrel only — no queries of its own |
+| `server/db/*.js` | SQLite persistence in nine acyclic domain modules: connection/schema, crypto, accounts, profiles, economy, matches, social, admin, account-export |
 | `server/game-room.js` | Server-authoritative duel lifecycle, validation, and reconnect grace handling |
 | `server/passkey-service.js` | WebAuthn registration and assertion |
 | `server/quest-definitions.js` | Quest catalogue |

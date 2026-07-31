@@ -18,7 +18,7 @@ scene-first direction.
 | `01-game-engine.md` | `src/game.ts` — types, cards, combat, AI, effects |
 | `02-client-ui.md` | `src/App.tsx` — state, handlers, screens, sockets |
 | `03-server-api.md` | `server/server.js` — routes, middleware, socket handlers |
-| `04-database.md` | `server/db.js` — tables, queries, economy, social |
+| `04-database.md` | `server/db/` — tables, queries, economy, social |
 | `05-game-room.md` | `server/game-room.js` — room lifecycle, action validation |
 | `06-styles.md` | `src/App.css` — section map, animations, breakpoints |
 | `07-supporting-files.md` | audio, tests, configs, deployment |
@@ -68,9 +68,11 @@ Every new card must pass the balance audit checklist before merging.
 6. **No monolithic growth.** Do not pile unrelated logic into already-large
    files. Extract helpers, components, hooks, providers, or server modules in
    the same pass.
-7. **Refactor before extending crowded files.** `src/App.tsx`, `server/db.js`,
-   `server/server.js`, and `src/App.css` are the hotspots — find the seam
-   instead of adding another long branch.
+7. **Refactor before extending crowded files.** `src/App.tsx` and
+   `server/server.js` are the remaining hotspots — find the seam instead of
+   adding another long branch. `src/App.css` (24 modules under `src/styles/`)
+   and `server/db.js` (nine modules under `server/db/`) are already split;
+   extend those in the module that owns the surface.
 
 ### TypeScript
 - Strict mode. No `any` unless interfacing with untyped libraries.
@@ -225,7 +227,9 @@ The bottom nav has four destinations: Home, Cards, Shop, Social.
 | Path | Role | Edit rules |
 |------|------|-----------|
 | `server/server.js` | Express API + Socket.IO + matchmaking | Rate-limit all new endpoints |
-| `server/db.js` | SQLite data layer | Parameterized queries only |
+| `server/db.js` | Re-export barrel over `server/db/*.js` | Add queries to the domain module, not here |
+| `server/db/connection.js` | Connection, schema, migrations, lazy `prepare()` | `openDatabase()` must stay re-runnable and additive |
+| `server/db/*.js` | Domain modules: crypto, accounts, profiles, economy, matches, social, admin, account-export | Parameterized queries only; keep the graph acyclic |
 | `server/game-room.js` | Room lifecycle, server-authoritative validation | |
 | `server/passkey-service.js` | WebAuthn registration and assertion | |
 | `server/quest-definitions.js` | Quest catalogue | |
@@ -237,8 +241,20 @@ The bottom nav has four destinations: Home, Cards, Shop, Social.
 > stale numbers teaches agents to trust stale numbers.
 
 ### Anti-monolith guardrails
-- Before adding to `src/App.tsx`, `server/server.js`, `server/db.js`, or
-  `src/App.css`, ask whether the work belongs in a smaller domain file.
+- Before adding to `src/App.tsx` or `server/server.js`, ask whether the work
+  belongs in a smaller domain file. For `server/db/*` and `src/styles/*`, add to
+  the module that owns the table or the surface.
+- **Keep `server/db/` acyclic.** Boundaries were chosen from the reference
+  graph, not taste. If a new query needs two domains, that is usually a sign it
+  belongs in a third module above both — as `account-export.js` does.
+- **`openDatabase()` must stay re-runnable and additive.** Startup applies the
+  schema against live player data, so every CREATE stays `IF NOT EXISTS`,
+  columns are added only when missing, and backfills may only fill a blank.
+  `server/db-migration-safety.test.js` enforces this against a copy of the real
+  database; do not weaken it.
+- Statements use the lazy `prepare()` / `transaction()` helpers in
+  `connection.js`, never `db.prepare` at module scope — the latter pins the
+  connection and breaks reopen.
 - New client behaviour splits between provider state, AppShell orchestration,
   and presentational screens.
 - New server behaviour prefers dedicated validation helpers, payload shapers,
