@@ -36,7 +36,7 @@ describe('admin store extraction', () => {
   it('server.js binds the live counts into the route context', async () => {
     const source = await readFile(path.resolve('server/server.js'), 'utf8')
     expect(source).toMatch(/buildAdminOverview:\s*\(\)\s*=>\s*buildAdminOverview\(\{/)
-    expect(source).toMatch(/queueSize:\s*waitingPlayers\.length/)
+    expect(source).toMatch(/queueSize:\s*getLiveArenaSnapshot\(\)\.queueSize/)
     expect(source).toMatch(/connectedPlayers:\s*io\.engine\.clientsCount/)
   })
 
