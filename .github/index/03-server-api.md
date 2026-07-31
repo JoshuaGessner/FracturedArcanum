@@ -1,4 +1,19 @@
-# Server Index — `server/server.js`
+# Server Index — `server/server.js` + `server/routes/`
+
+> **The route bodies moved.** `server/server.js` is now the bootstrap:
+> middleware, Socket.IO, matchmaking, presence, friend challenges, first-launch
+> setup, and route registration. The endpoints themselves live in
+> `server/routes/*.js`, one module per domain — account, profile, shop, trading,
+> admin — each exporting `register*(app, ctx)`.
+>
+> Shared helpers (auth middleware, request helpers, payload shapers, the admin
+> store, socket helpers) are passed in one `ctx` object at registration. Route
+> modules never import from `server.js`, so the graph stays one-way.
+>
+> `ADMIN_KEY` is exposed on `ctx` as a **getter** because first-launch setup
+> reassigns it; destructuring it would freeze the pre-setup value.
+>
+> The section map below still describes what lives where.
 
 ## Imports & Configuration (Lines 1–68)
 

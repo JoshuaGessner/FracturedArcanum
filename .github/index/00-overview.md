@@ -90,6 +90,7 @@
 
 | File | Role |
 |------|------|
+| `server/routes/*.js` | API routes by domain (account, profile, shop, trading, admin), registered with `register*(app, ctx)` |
 | `server/server.js` | Express API, Socket.IO events, matchmaking, auth, social, admin endpoints, and reconnect recovery |
 | `server/db.js` | Re-export barrel only — no queries of its own |
 | `server/db/*.js` | SQLite persistence in nine acyclic domain modules: connection/schema, crypto, accounts, profiles, economy, matches, social, admin, account-export |
