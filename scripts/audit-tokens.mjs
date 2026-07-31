@@ -139,6 +139,9 @@ function maskExemptRegions(text) {
   masked = maskBlocks(masked, /@keyframes\s+[\w-]+\s*(?=\{)/g)
   // var(...) contents, including fallbacks that legitimately contain lengths.
   masked = masked.replace(/var\([^)]*\)/g, (m) => m.replace(/[^\n]/g, ' '))
+  // Comments. Prose describing spacing reads exactly like a declaration —
+  // `/* rail padding: 4px top + 8px bottom */` was reported as drift twice.
+  masked = masked.replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ' '))
   return masked
 }
 
