@@ -78,6 +78,8 @@
 | `src/hooks/useViewportMetrics.ts` | Publishes `--app-h` / `--app-w` / `--kb-inset` from `visualViewport`; the only correct source of usable viewport height |
 | `src/hooks/useSceneSwipe.ts` | Horizontal scene-swipe gesture |
 | `src/hooks/useAdminConsole.tsx` | Owner/admin operations console: overview, roles, audit, account management, ownership transfer, issue reports. Owns its own state |
+| `src/contexts/AccountProvider.tsx` | Identity state: sign-in, first-launch setup, passkeys, device links, recovery codes, sessions |
+| `src/hooks/useAccountActions.tsx` | Every account action a player can take. Reads AccountProvider directly; takes 9 deps |
 | `src/hooks/useSocialActions.ts` | Friends, challenges, trading, clans. Reads SocialProvider directly rather than taking setters |
 | `src/utils/layoutScaling.ts` | Pure scaling probes shared by QA tooling and unit tests |
 | `src/utils/sceneSwipe.ts` | Pure swipe maths |
@@ -91,7 +93,9 @@
 | File | Role |
 |------|------|
 | `server/routes/*.js` | API routes by domain (account, profile, shop, trading, admin), registered with `register*(app, ctx)` |
-| `server/server.js` | Express API, Socket.IO events, matchmaking, auth, social, admin endpoints, and reconnect recovery |
+| `server/realtime.js` | Presence, challenges, matchmaking queue, reapers — a factory so the mutable state has one owner |
+| `server/admin-store.js` | Admin store and analytics; owns its own save debounce |
+| `server/server.js` | Bootstrap: middleware, auth middleware, first-launch setup, the socket connection handler, and route registration |
 | `server/db.js` | Re-export barrel only — no queries of its own |
 | `server/db/*.js` | SQLite persistence in nine acyclic domain modules: connection/schema, crypto, accounts, profiles, economy, matches, social, admin, account-export |
 | `server/game-room.js` | Server-authoritative duel lifecycle, validation, and reconnect grace handling |

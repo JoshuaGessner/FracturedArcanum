@@ -201,11 +201,11 @@ Read these before touching layout CSS — each cost real debugging time:
 |------|------|-----------|
 | `src/game.ts` | Game engine — single source of truth for mechanics | Pure functions only. After edit: `npm run build:engine` |
 | `src/App.tsx` | `App` (provider tree) + `AppShell` (effects, handlers, refs, builds `AppShellContextValue`) | AppShell-owned refs/handlers live here; domain state lives in providers |
-| `src/contexts/` | Providers + typed slice hooks: `useGame`, `useProfile`, `useSocial`, `useQueue`, `useAppShell` | Screens import slice hooks; AppShell uses the internal `use*State()` hooks for setters |
+| `src/contexts/` | Providers + typed slice hooks: `useGame`, `useProfile`, `useSocial`, `useQueue`, `useAppShell`, plus `AccountProvider` for identity | Screens import slice hooks; AppShell and the domain hooks use the internal `use*State()` hooks |
 | `src/AppShellContext.ts` | `AppShellContextValue` + context for auth/nav/toasts/admin | Update when adding shared AppShell-only state |
 | `src/screens/` | Presentational screens: Home, Collection, Battle, Social, Shop, Settings | Propless — read state via slice hooks |
 | `src/components/` | Shared UI primitives (modals, nav, overlays, badges, ceremonies) | Prop-driven only |
-| `src/hooks/` | `useViewportMetrics`, `useSceneSwipe` (reusable behaviour) plus AppShell domain hooks: `useAdminConsole`, `useSocialActions` | Domain hooks own their own state and read providers directly — do not pass setters in |
+| `src/hooks/` | `useViewportMetrics`, `useSceneSwipe` (reusable behaviour) plus AppShell domain hooks: `useAccountActions`, `useAdminConsole`, `useSocialActions` | Domain hooks own their own state or read a provider directly — do not pass setters in |
 | `src/utils/` | `layoutScaling`, `sceneSwipe` — pure, unit-tested helpers | No React |
 | `src/types.ts` | UI-only types | |
 | `src/constants.ts` | Static UI constants, theme offers, labels, semantic asset registry | Data only, no functions |
@@ -226,7 +226,9 @@ The bottom nav has four destinations: Home, Cards, Shop, Social.
 
 | Path | Role | Edit rules |
 |------|------|-----------|
-| `server/server.js` | Bootstrap: middleware, sockets, matchmaking, first-launch setup, route registration | Rate-limit all new endpoints |
+| `server/server.js` | Bootstrap: middleware, auth middleware, first-launch setup, socket connection handler, route registration | Rate-limit all new endpoints |
+| `server/realtime.js` | Presence, friend challenges, matchmaking queue, reapers. A factory — `createRealtime({ io })` | State is closure-owned; mutate the queue only through `enqueueWaitingPlayer` |
+| `server/admin-store.js` | Admin store, analytics, live-service settings. Owns its own save debounce | Shutdown calls `flushAdminStore()`; never reach for the timer |
 | `server/routes/*.js` | API routes by domain: account, profile, shop, trading, admin | `register*(app, ctx)`; shared helpers arrive via `ctx`, never imported back from server.js |
 | `server/db.js` | Re-export barrel over `server/db/*.js` | Add queries to the domain module, not here |
 | `server/db/connection.js` | Connection, schema, migrations, lazy `prepare()` | `openDatabase()` must stay re-runnable and additive |
@@ -259,12 +261,15 @@ The bottom nav has four destinations: Home, Cards, Shop, Social.
 - New client behaviour splits between provider state, AppShell orchestration,
   and presentational screens.
 - **Pull a cluster out of AppShell only when it needs few inputs.** Score a
-  candidate by how many identifiers it would take as parameters. `useAdminConsole`
-  (506 lines) and `useSocialActions` (325 lines) each needed under 15, because
-  they own their state or read a provider directly. The account/passkey/recovery
-  block is the largest remaining cluster at ~1,000 lines but needs **66** — a
-  hook with 66 parameters relocates coupling instead of reducing it. Decompose
-  that state first; the extraction is not the hard part.
+  candidate by how many identifiers it would take as parameters, not by how
+  many lines it would remove. `useAdminConsole` (506 lines) and
+  `useSocialActions` (325 lines) each needed under 15 because they own their
+  state or read a provider directly.
+- **If the count is high, move the state first.** The account block measured
+  **66** parameters with its state inline — `authToken` alone had 109
+  references. Giving it `AccountProvider` dropped the same measurement to 26,
+  and the finished `useAccountActions` takes 9. Extraction was never the hard
+  part; ownership was.
 - New server behaviour prefers dedicated validation helpers, payload shapers,
   and database functions over long route callbacks. A new endpoint goes in the
   `server/routes/*.js` module that owns its domain.
