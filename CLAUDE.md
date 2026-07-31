@@ -205,7 +205,7 @@ Read these before touching layout CSS — each cost real debugging time:
 | `src/AppShellContext.ts` | `AppShellContextValue` + context for auth/nav/toasts/admin | Update when adding shared AppShell-only state |
 | `src/screens/` | Presentational screens: Home, Collection, Battle, Social, Shop, Settings | Propless — read state via slice hooks |
 | `src/components/` | Shared UI primitives (modals, nav, overlays, badges, ceremonies) | Prop-driven only |
-| `src/hooks/` | `useViewportMetrics`, `useSceneSwipe` | Reusable behaviour, no app state |
+| `src/hooks/` | `useViewportMetrics`, `useSceneSwipe` (reusable behaviour) plus AppShell domain hooks: `useAdminConsole`, `useSocialActions` | Domain hooks own their own state and read providers directly — do not pass setters in |
 | `src/utils/` | `layoutScaling`, `sceneSwipe` — pure, unit-tested helpers | No React |
 | `src/types.ts` | UI-only types | |
 | `src/constants.ts` | Static UI constants, theme offers, labels, semantic asset registry | Data only, no functions |
@@ -257,6 +257,13 @@ The bottom nav has four destinations: Home, Cards, Shop, Social.
   connection and breaks reopen.
 - New client behaviour splits between provider state, AppShell orchestration,
   and presentational screens.
+- **Pull a cluster out of AppShell only when it needs few inputs.** Score a
+  candidate by how many identifiers it would take as parameters. `useAdminConsole`
+  (506 lines) and `useSocialActions` (325 lines) each needed under 15, because
+  they own their state or read a provider directly. The account/passkey/recovery
+  block is the largest remaining cluster at ~1,000 lines but needs **66** — a
+  hook with 66 parameters relocates coupling instead of reducing it. Decompose
+  that state first; the extraction is not the hard part.
 - New server behaviour prefers dedicated validation helpers, payload shapers,
   and database functions over long route callbacks.
 - If a diff adds another long conditional ladder, oversized JSX block, or

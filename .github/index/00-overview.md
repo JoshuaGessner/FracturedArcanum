@@ -77,6 +77,8 @@
 |------|------|
 | `src/hooks/useViewportMetrics.ts` | Publishes `--app-h` / `--app-w` / `--kb-inset` from `visualViewport`; the only correct source of usable viewport height |
 | `src/hooks/useSceneSwipe.ts` | Horizontal scene-swipe gesture |
+| `src/hooks/useAdminConsole.tsx` | Owner/admin operations console: overview, roles, audit, account management, ownership transfer, issue reports. Owns its own state |
+| `src/hooks/useSocialActions.ts` | Friends, challenges, trading, clans. Reads SocialProvider directly rather than taking setters |
 | `src/utils/layoutScaling.ts` | Pure scaling probes shared by QA tooling and unit tests |
 | `src/utils/sceneSwipe.ts` | Pure swipe maths |
 | `src/ambient.ts` | Ambient scene bed |
