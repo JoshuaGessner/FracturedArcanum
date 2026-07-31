@@ -43,7 +43,7 @@ effects, keywords, tribes, economy values, collectibles, or cosmetic pricing.
 | `docs/ACCOUNT_OPERATIONS.md` | Account lifecycle, support operations |
 | `docs/deployment-permissions.md` | Deploy and server-update permissions |
 | `docs/release-checklist.md` | Pre-release verification |
-| `docs/layout-qa.md` | The three layout-QA tools, their invariants, and the traps they encode |
+| `docs/layout-qa.md` | The four layout-QA tools, their invariants, and the traps they encode |
 
 **Game content workflow:** Design Bible → Balance Framework → implement in
 `src/game.ts` → update Card Catalog → verify economy impact → test → build.
@@ -293,7 +293,13 @@ npm run qa:probe -- --only=wheel --state=quests        # one check
 npm run qa:probe -- --all-viewports                    # 56 states
 npm run qa:snap -- --all-viewports                     # record baselines
 npm run qa:snap:check                                  # diff vs baselines
+npm run qa:viewport -- --vp=iphone-15-393x852          # one device
+npm run qa:viewport -- --route=shop,social             # one or more routes
 ```
+
+All four tools share `scripts/lib/qa-app.mjs` for server boot and sign-in.
+Do not add a second copy of that flow to a new script — the last duplicate
+silently kept pointing at an account that no longer exists.
 
 `qa:probe` checks three invariant families and, on failure, names the CSS
 declaration responsible plus the resolved value of any custom property it

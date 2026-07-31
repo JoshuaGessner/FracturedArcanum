@@ -24,12 +24,12 @@ App
 ### Core files
 
 | File | Lines | Purpose |
-|------|------:|---------|
-| `src/App.tsx` | 3,156 | Provider composition, AppShell state/effects, screen routing, reconnect recovery, and shared handler wiring |
-| `src/AppShellContext.ts` | 244 | Shared shell context type and access |
-| `src/constants.ts` | 284 | Static UI data and semantic asset registry |
-| `src/utils.ts` | 277 | Pure helpers for asset lookups, transitions, completion, severity, streaks, and hand fan tilt |
-| `src/audio.ts` | 338 | Synthesized sound library |
+|------|------|
+| `src/App.tsx` | Provider composition, AppShell state/effects, screen routing, reconnect recovery, and shared handler wiring |
+| `src/AppShellContext.ts` | Shared shell context type and access |
+| `src/constants.ts` | Static UI data and semantic asset registry |
+| `src/utils.ts` | Pure helpers for asset lookups, transitions, completion, severity, streaks, and hand fan tilt |
+| `src/audio.ts` | Synthesized sound library |
 
 ## Screen index
 
@@ -42,7 +42,7 @@ live in `src/components/BattleLaunchSheet.tsx`, opened from Home's battle CTA.
 > find the right file, then read the source.
 
 | Screen | Hooks used | Key visual elements |
-|--------|------------|---------------------|
+|------|------|
 | `HomeScreen.tsx` | `useAppShell`, `useGame`, `useProfile` | season framing, quest board, quest ledger subview, streak fire, primary battle CTA, Abandon control for a pending match |
 | `CollectionScreen.tsx` | `useAppShell`, `useGame`, `useProfile`, `useQueue` | collection ring, rarity completion chips, deck forge cards, breakdown flow |
 | `SocialScreen.tsx` | `useAppShell`, `useProfile`, `useQueue`, `useSocial` | command hero, leaderboard, friend challenge CTA, clan and trade surfaces |
@@ -53,22 +53,22 @@ live in `src/components/BattleLaunchSheet.tsx`, opened from Home's battle CTA.
 ## Shared components
 
 | Component | Lines | Purpose |
-|-----------|------:|---------|
-| `src/components/AssetBadge.tsx` | 66 | Shared effect, rarity, rank, stat, and pack visuals |
-| `src/components/BattleIntroOverlay.tsx` | 34 | Cinematic battle-entry overlay |
-| `src/components/RewardCinemaOverlay.tsx` | 238 | Unified reward presentation across battle, daily, pack, and rank-up moments |
-| `src/components/PackCeremonyOverlay.tsx` | 303 | Full-screen pack opening ceremony |
-| `src/components/OnboardingTour.tsx` | 303 | First-launch and replayable spotlight tour |
-| `src/components/TopBar.tsx` | 48 | Shell header and device actions |
-| `src/components/NavBar.tsx` | 33 | Bottom 6-tab navigation |
-| `src/components/CardInspectModal.tsx` | 62 | Long-press card inspect modal |
-| `src/components/ConfirmModal.tsx` | 79 | Shared confirmation surface |
-| `src/components/ToastStack.tsx` | 22 | Toast renderer |
+|------|------|
+| `src/components/AssetBadge.tsx` | Shared effect, rarity, rank, stat, and pack visuals |
+| `src/components/BattleIntroOverlay.tsx` | Cinematic battle-entry overlay |
+| `src/components/RewardCinemaOverlay.tsx` | Unified reward presentation across battle, daily, pack, and rank-up moments |
+| `src/components/PackCeremonyOverlay.tsx` | Full-screen pack opening ceremony |
+| `src/components/OnboardingTour.tsx` | First-launch and replayable spotlight tour |
+| `src/components/TopBar.tsx` | Shell header and device actions |
+| `src/components/NavBar.tsx` | Bottom 6-tab navigation |
+| `src/components/CardInspectModal.tsx` | Long-press card inspect modal |
+| `src/components/ConfirmModal.tsx` | Shared confirmation surface |
+| `src/components/ToastStack.tsx` | Toast renderer |
 
 ## Navigation flow map
 
 | From | To | Transition intent |
-|------|----|-------------------|
+|------|------|
 | Home | Play / Collection / Social / Shop / Settings | forward |
 | Any non-battle screen | Battle | battle entry |
 | Shop ↔ Social / Collection ↔ Social | lateral or sequential shell flow |

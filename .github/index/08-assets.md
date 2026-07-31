@@ -6,10 +6,10 @@ All shipped visual art is produced by [scripts/generate-brand-assets.mjs](../../
 
 | Category | Count |
 |---------|------:|
-| Root brand and shared art | 6 |
-| UI assets | 77 |
-| Card art files | 90 |
-| Manifest entries | 173 |
+| Root brand and shared art |
+| UI assets |
+| Card art files |
+| Manifest entries |
 
 ## Regeneration
 
@@ -27,7 +27,7 @@ All shipped visual art is produced by [scripts/generate-brand-assets.mjs](../../
 ## Naming conventions
 
 | Prefix | Meaning | Examples |
-|--------|---------|----------|
+|------|------|
 | `bg-` | full-screen backdrops | `bg-play.svg`, `bg-settings.svg` |
 | `tile-` | home and battle navigation art | `tile-shop.svg`, `tile-battle.svg` |
 | `rank-` | rank insignia crests | `rank-gold.svg` |
@@ -45,20 +45,20 @@ All shipped visual art is produced by [scripts/generate-brand-assets.mjs](../../
 ## UI asset groups
 
 | Group | Count | Notes |
-|-------|------:|------|
-| Backgrounds | 7 | One for each main screen surface |
-| Navigation tiles | 6 | Play, collection, social, shop, settings, battle |
-| Rank insignia | 4 | Bronze, silver, gold, diamond |
-| Pack and ceremony art | 4 | Standard, premium, legendary, burst |
-| Rarity gems | 4 | Common through legendary |
-| Button frames | 3 | Primary, ghost, danger |
-| Mana and momentum pips | 4 | Empty and filled variants |
-| Stat icons | 3 | Health, attack, guard |
-| Effect icons | 20 | Card-effect icon set |
-| Cinematic overlays | 7 | VS, victory, defeat, draw, arrow, hero crack, hero halo |
-| Rarity glow bursts | 4 | Common through legendary |
-| Particles | 4 | Rune, ember, dust, frost |
-| Reveal ribbons | 1 | New-card ribbon |
+|------|------|
+| Backgrounds | One for each main screen surface |
+| Navigation tiles | Play, collection, social, shop, settings, battle |
+| Rank insignia | Bronze, silver, gold, diamond |
+| Pack and ceremony art | Standard, premium, legendary, burst |
+| Rarity gems | Common through legendary |
+| Button frames | Primary, ghost, danger |
+| Mana and momentum pips | Empty and filled variants |
+| Stat icons | Health, attack, guard |
+| Effect icons | Card-effect icon set |
+| Cinematic overlays | VS, victory, defeat, draw, arrow, hero crack, hero halo |
+| Rarity glow bursts | Common through legendary |
+| Particles | Rune, ember, dust, frost |
+| Reveal ribbons | New-card ribbon |
 
 ## How the app consumes assets
 

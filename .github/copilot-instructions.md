@@ -17,7 +17,7 @@ Everything in `/CLAUDE.md` applies to Copilot equally:
   has actually hit), assets and audio.
 - **§3 Architecture** — client and server file roles, anti-monolith guardrails,
   multiplayer protocol.
-- **§4 Commands** — including which of the three layout-QA tools to reach for.
+- **§4 Commands** — including which of the four layout-QA tools to reach for.
 - **§5 Conventions** and **§6 Pre-commit checklist**.
 
 If you are editing agent guidance, edit `/CLAUDE.md`. Do not re-add rules here.

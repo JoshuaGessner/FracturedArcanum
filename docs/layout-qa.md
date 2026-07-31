@@ -102,6 +102,34 @@ was reaching for the scale is a judgement call. The first run applied 240
 substitutions across 17 files and `qa:snap:check` reported 48/48 states
 unchanged.
 
+## qa:viewport — the pre-release sweep
+
+```bash
+npm run qa:viewport                              # whole device matrix
+npm run qa:viewport -- --vp=iphone-15-393x852    # one device, both chrome states
+npm run qa:viewport -- --route=shop,social       # one or more routes
+npm run qa:viewport -- --full                    # every result in the JSON
+```
+
+The widest and slowest tool: every device at both browser-chrome heights, every
+subview, a screenshot each, plus a component-scaling sweep that catches a label
+growing while its container shrinks. Run it before a release, not in a loop —
+`qa:probe` answers the same layout questions in about a second per state.
+
+`--vp` matches a device name with or without the `-toolbar` / `-fullscreen`
+suffix, so naming the device selects both of its chrome states.
+
+Two things about this script are worth knowing:
+
+- **The JSON report is failures-only by default.** It used to inline all ~284
+  states with every measured rect, which made it too large to read — so nobody
+  read it. `--full` restores the complete record.
+- **Server boot and authentication come from `scripts/lib/qa-app.mjs`**, shared
+  with the probe. They were a second inline copy until recently, which is how
+  this script came to still reference a `qa_tester` account that does not
+  exist — every run would have failed at sign-in. Two copies of an auth flow
+  drift, and the drift is silent until the day you need the tool.
+
 ## Shared definitions
 
 `scripts/lib/appStates.mjs` holds the viewports, the states, and the navigation

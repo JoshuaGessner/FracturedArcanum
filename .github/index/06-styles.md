@@ -11,13 +11,14 @@
 > The section map below still describes what lives where; each heading now
 > corresponds to a file in `src/styles/`. Line numbers are historical.
 
-# Styles Index — `src/App.css` (5,440 lines)
+# Styles Index — `src/App.css`
 
 <!-- markdownlint-disable MD022 MD032 MD060 -->
 
 ## Overview
 
-`src/App.css` contains the finalized Phase 3 presentation layer:
+`src/styles/*.css`, loaded through the `src/App.css` index, contains the
+presentation layer:
 
 - one-scene app shell and viewport ownership rules
 - per-screen illustrated backdrops
@@ -30,16 +31,16 @@
 ## Major section map
 
 | Section | Approx. Range | Key Classes |
-|---------|---------------|-------------|
-| Root tokens | 1–90 | `:root`, spacing, palette, motion variables |
-| App shell and viewport ownership | 90–240 | `.app-shell`, `.scene-stage`, `.screen-panel.active`, shell motion |
-| Screen backdrops and transitions | 240–380 | scene `::before` backgrounds, transition classes, nav tile framing |
-| Brand, topbar, and season progress | 380–690 | `.topbar-art`, `.brand-logo`, `.season-progress-*`, hero strips |
-| Status, badges, buttons, and game chrome | 690–1120 | `.badge`, `.deck-status`, `.streak-badge`, `.primary`, `.ghost`, pips |
-| Battle HUD, board, hand, and reactions | 1120–1680 | duel ribbon, board slots, fixed drag ghost layer, drop targets, attack telegraph, hand fan |
-| Reward, queue, and ceremony surfaces | 1680–2120 | vault urgency, pack reveal, battle intro, reward cinema, banners |
-| Screen-specific density blocks | 2120–3200 | play, collection, social, shop, settings, admin surfaces |
-| Overlays, tours, and support systems | 3200–4080 | confirm modal, onboarding, pack ceremony, reward cinema, toast stack |
+|------|------|
+| Root tokens | `:root`, spacing, palette, motion variables |
+| App shell and viewport ownership | `.app-shell`, `.scene-stage`, `.screen-panel.active`, shell motion |
+| Screen backdrops and transitions | scene `::before` backgrounds, transition classes, nav tile framing |
+| Brand, topbar, and season progress | `.topbar-art`, `.brand-logo`, `.season-progress-*`, hero strips |
+| Status, badges, buttons, and game chrome | `.badge`, `.deck-status`, `.streak-badge`, `.primary`, `.ghost`, pips |
+| Battle HUD, board, hand, and reactions | duel ribbon, board slots, fixed drag ghost layer, drop targets, attack telegraph, hand fan |
+| Reward, queue, and ceremony surfaces | vault urgency, pack reveal, battle intro, reward cinema, banners |
+| Screen-specific density blocks | play, collection, social, shop, settings, admin surfaces |
+| Overlays, tours, and support systems | confirm modal, onboarding, pack ceremony, reward cinema, toast stack |
 | Reduced-motion and polish overrides | 4080–end | responsive breakpoints, reduced motion, final shell polish |
 
 ## Key visual systems

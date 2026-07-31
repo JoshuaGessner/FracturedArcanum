@@ -1,6 +1,6 @@
 # Supporting Files Index
 
-## Audio — `src/audio.ts` (160 lines)
+## Audio — `src/audio.ts`
 
 ### Exported sound set
 `src/audio.ts` exposes a `SoundName` union with 17 synthesized cues:
@@ -25,12 +25,12 @@
 
 All playback routes through `playSound(name, enabled)` and uses Web Audio API oscillators only — no downloaded sound files.
 
-## Entry point — `src/main.tsx` (55 lines)
+## Entry point — `src/main.tsx`
 - mounts the React 19 app under `#root`
 - registers the service worker
 - dispatches the update-available event used by the shell banner
 
-## Base styles — `src/index.css` (33 lines)
+## Base styles — `src/index.css`
 - root typography and background setup
 - touch-friendly defaults
 - font rendering and selection polish

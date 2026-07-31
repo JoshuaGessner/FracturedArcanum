@@ -23,42 +23,43 @@
 
 ### Client core
 
-| File | Lines | Role |
-|------|------:|------|
-| `src/App.tsx` | 3,156 | Provider composition plus the `AppShell` orchestration layer, shared effects, screen routing, and live-service recovery |
-| `src/AppShellContext.ts` | 244 | Slim shell contract for auth, nav, toasts, reward cinema, onboarding, and cross-provider handlers |
-| `src/contexts/*.ts(x)` | 16–190 each | Real provider modules and typed slice hooks for game, profile, social, queue, and shell access |
-| `src/game.ts` | 1,410 | Single source of truth for cards, combat, AI, and pure game rules |
-| `src/constants.ts` | 284 | Static UI data, theme offers, semantic asset registry, and labels |
-| `src/utils.ts` | 277 | Pure helpers for asset lookup, transitions, completion, streak tiers, and scene navigation |
-| `src/audio.ts` | 338 | Synthesized sound effects for UI, battle, transitions, packs, and reward moments |
-| `src/App.css` | 5,440 | The full visual system: scene shell, chrome, transitions, battle styling, ceremonies, and responsive overrides |
+| File | Role |
+|------|------|
+| `src/App.tsx` | Provider composition plus the `AppShell` orchestration layer, shared effects, screen routing, and live-service recovery |
+| `src/AppShellContext.ts` | Slim shell contract for auth, nav, toasts, reward cinema, onboarding, and cross-provider handlers |
+| `src/contexts/*.ts(x)` | Real provider modules and typed slice hooks for game, profile, social, queue, and shell access |
+| `src/game.ts` | Single source of truth for cards, combat, AI, and pure game rules |
+| `src/constants.ts` | Static UI data, theme offers, semantic asset registry, and labels |
+| `src/utils.ts` | Pure helpers for asset lookup, transitions, completion, streak tiers, and scene navigation |
+| `src/audio.ts` | Synthesized sound effects for UI, battle, transitions, packs, and reward moments |
+| `src/App.css` | Ordered `@import` index only — no rules of its own. **Import order is load-bearing.** |
+| `src/styles/*.css` | The visual system in 24 modules: scene shell, chrome, transitions, battle styling, ceremonies, responsive overrides |
 
 ### Screens
 
-| File | Lines | Role |
-|------|------:|------|
-| `src/screens/HomeScreen.tsx` | 190 | Hub: season framing, quest board, quest ledger subview, streak badge, and the primary battle CTA. Absorbed the former PlayScreen, whose mode cards now live in `BattleLaunchSheet`. |
-| `src/screens/CollectionScreen.tsx` | 329 | Deck forge, rarity filters, collection progress, and breakdown flow |
-| `src/screens/SocialScreen.tsx` | 391 | Profile hero, leaderboard, friends, clan, and trade surfaces |
-| `src/screens/ShopScreen.tsx` | 321 | Reward vault, themes, borders, pack offers, and reveal summary |
-| `src/screens/SettingsScreen.tsx` | 565 | Preference toggles, complaint desk, and role-gated admin console |
-| `src/screens/BattleScreen.tsx` | 780 | Slim duel ribbon, board-first arena, drag-to-play, attack telegraph, and hand fan |
+| File | Role |
+|------|------|
+| `src/screens/HomeScreen.tsx` | Hub: season framing, quest board, quest ledger subview, streak badge, and the primary battle CTA. Absorbed the former PlayScreen, whose mode cards now live in `BattleLaunchSheet`. |
+| `src/screens/CollectionScreen.tsx` | Deck forge, rarity filters, collection progress, and breakdown flow |
+| `src/screens/SocialScreen.tsx` | Profile hero, leaderboard, friends, clan, and trade surfaces |
+| `src/screens/ShopScreen.tsx` | Reward vault, themes, borders, pack offers, and reveal summary |
+| `src/screens/SettingsScreen.tsx` | Preference toggles, complaint desk, and role-gated admin console |
+| `src/screens/BattleScreen.tsx` | Slim duel ribbon, board-first arena, drag-to-play, attack telegraph, and hand fan |
 
 ### Shared components
 
-| File | Lines | Role |
-|------|------:|------|
-| `src/components/AssetBadge.tsx` | 66 | Shared rank, rarity, effect, stat, and pack visual primitives |
-| `src/components/BattleIntroOverlay.tsx` | 34 | Cinematic VS splash before battle start |
-| `src/components/RewardCinemaOverlay.tsx` | 238 | Unified reward presentation for battle, daily, pack, and rank-up beats |
-| `src/components/PackCeremonyOverlay.tsx` | 303 | Full pack-opening ceremony overlay with reveal flow |
-| `src/components/OnboardingTour.tsx` | 303 | First-launch spotlight tour and replayable guidance flow |
-| `src/components/NavBar.tsx` | 41 | Bottom 4-tab nav (Home, Cards, Shop, Social) using asset-backed status styling |
-| `src/components/TopBar.tsx` | 48 | Header shell with branding and device controls |
-| `src/components/CardInspectModal.tsx` | 62 | Long-press card detail view |
-| `src/components/ConfirmModal.tsx` | 79 | Shared confirmation modal |
-| `src/components/ToastStack.tsx` | 22 | Toast queue renderer |
+| File | Role |
+|------|------|
+| `src/components/AssetBadge.tsx` | Shared rank, rarity, effect, stat, and pack visual primitives |
+| `src/components/BattleIntroOverlay.tsx` | Cinematic VS splash before battle start |
+| `src/components/RewardCinemaOverlay.tsx` | Unified reward presentation for battle, daily, pack, and rank-up beats |
+| `src/components/PackCeremonyOverlay.tsx` | Full pack-opening ceremony overlay with reveal flow |
+| `src/components/OnboardingTour.tsx` | First-launch spotlight tour and replayable guidance flow |
+| `src/components/NavBar.tsx` | Bottom 4-tab nav (Home, Cards, Shop, Social) using asset-backed status styling |
+| `src/components/TopBar.tsx` | Header shell with branding and device controls |
+| `src/components/CardInspectModal.tsx` | Long-press card detail view |
+| `src/components/ConfirmModal.tsx` | Shared confirmation modal |
+| `src/components/ToastStack.tsx` | Toast queue renderer |
 | `src/components/BattleLaunchSheet.tsx` | — | Bottom sheet holding the battle modes; replaced the Play screen |
 | `src/components/HomeQuestBoard.tsx` | — | Quest summary on the Home hub |
 | `src/components/QuestLedgerPanel.tsx` | — | Full quest ledger subview |
