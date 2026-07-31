@@ -122,6 +122,19 @@ import {
   rooms,
   RECONNECT_GRACE_MS,
 } from './game-room.js'
+import {
+  adminStore,
+  anonymizeVisitorId,
+  buildAdminOverview,
+  debouncedSaveAdminStore,
+  ensureVisitor,
+  flushAdminStore,
+  getComplaintCounts,
+  pruneDailyTraffic,
+  pushActivity,
+  saveAdminStore,
+  trackAnalyticsEvent,
+} from './admin-store.js'
 import { registerAccountRoutes } from './routes/account.js'
 import { registerProfileRoutes } from './routes/profile.js'
 import { registerShopRoutes } from './routes/shop.js'
@@ -400,86 +413,6 @@ function runAbandonedSignupReaper() {
 runAbandonedSignupReaper()
 setInterval(runAbandonedSignupReaper, 5 * 60 * 1000).unref?.()
 
-function createDefaultAdminStore() {
-  return {
-    updatedAt: new Date().toISOString(),
-    settings: {
-      motd: 'Season of Shards is live. Queue up and climb the ladder.',
-      quest: 'Win 1 ranked arena match',
-      featuredMode: 'Ranked Blitz',
-      maintenanceMode: false,
-    },
-    totals: {
-      events: 0,
-      pageViews: 0,
-      uniqueVisitors: 0,
-      sessions: 0,
-      queueJoins: 0,
-      matchesStarted: 0,
-      matchesCompleted: 0,
-      installs: 0,
-    },
-    visitors: {},
-    pageViews: {},
-    deviceBuckets: {},
-    dailyTraffic: {},
-    complaints: [],
-    activity: [],
-  }
-}
-
-function loadAdminStore() {
-  const fallback = createDefaultAdminStore()
-
-  try {
-    ensureDataDir()
-
-    if (!existsSync(ADMIN_STORE_PATH)) {
-      return fallback
-    }
-
-    const stored = JSON.parse(readFileSync(ADMIN_STORE_PATH, 'utf8'))
-
-    return {
-      ...fallback,
-      ...stored,
-      settings: {
-        ...fallback.settings,
-        ...(stored.settings ?? {}),
-      },
-      totals: {
-        ...fallback.totals,
-        ...(stored.totals ?? {}),
-      },
-      visitors: stored.visitors ?? {},
-      pageViews: stored.pageViews ?? {},
-      deviceBuckets: stored.deviceBuckets ?? {},
-      dailyTraffic: stored.dailyTraffic ?? {},
-      complaints: stored.complaints ?? [],
-      activity: stored.activity ?? [],
-    }
-  } catch {
-    return fallback
-  }
-}
-
-const adminStore = loadAdminStore()
-
-function saveAdminStore() {
-  ensureDataDir()
-  adminStore.updatedAt = new Date().toISOString()
-  writeFileSync(ADMIN_STORE_PATH, JSON.stringify(adminStore, null, 2))
-}
-
-let _saveTimer = null
-function debouncedSaveAdminStore() {
-  if (_saveTimer) return
-  _saveTimer = setTimeout(() => {
-    _saveTimer = null
-    saveAdminStore()
-  }, 2000)
-}
-
 function getAllowedMatchDelta(queuedAt) {
   const waitSeconds = Math.max(0, Math.floor((Date.now() - queuedAt) / 1000))
   return Math.min(800, 150 + waitSeconds * 35)
@@ -755,191 +688,6 @@ function sweepWaitingPlayers() {
 setInterval(() => {
   sweepWaitingPlayers()
 }, 3000)
-
-function anonymizeVisitorId(visitorId = 'guest') {
-  return createHash('sha256').update(`fractured-arcanum:${visitorId}`).digest('hex').slice(0, 16)
-}
-
-function pushActivity(type, payload = {}) {
-  adminStore.activity = [
-    {
-      id: `evt-${randomUUID().slice(0, 8)}`,
-      type,
-      at: new Date().toISOString(),
-      ...payload,
-    },
-    ...adminStore.activity,
-  ].slice(0, 80)
-}
-
-function pruneDailyTraffic() {
-  const keys = Object.keys(adminStore.dailyTraffic).sort().reverse()
-  const keep = new Set(keys.slice(0, 30))
-
-  Object.keys(adminStore.dailyTraffic).forEach((key) => {
-    if (!keep.has(key)) {
-      delete adminStore.dailyTraffic[key]
-    }
-  })
-
-  // Prune visitors older than 30 days to prevent unbounded growth
-  const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
-  for (const [id, v] of Object.entries(adminStore.visitors)) {
-    if (v.lastSeen < cutoff) {
-      delete adminStore.visitors[id]
-    }
-  }
-}
-
-function ensureVisitor(visitorId, sessionId, route, screen) {
-  const anonymousUser = anonymizeVisitorId(visitorId)
-  const existing = adminStore.visitors[anonymousUser]
-
-  if (!existing) {
-    adminStore.visitors[anonymousUser] = {
-      anonymousUser,
-      firstSeen: new Date().toISOString(),
-      lastSeen: new Date().toISOString(),
-      lastRoute: route,
-      lastScreen: screen,
-      lastViewport: 'unknown',
-      sessions: 0,
-      events: 0,
-      matches: 0,
-      complaints: 0,
-      installs: 0,
-      lastSessionId: '',
-      pageViewWindow: {},
-    }
-  }
-
-  const visitor = adminStore.visitors[anonymousUser]
-  visitor.pageViewWindow = visitor.pageViewWindow ?? {}
-
-  if (sessionId && visitor.lastSessionId !== sessionId) {
-    visitor.sessions += 1
-    visitor.lastSessionId = sessionId
-    adminStore.totals.sessions += 1
-  }
-
-  visitor.lastSeen = new Date().toISOString()
-  visitor.lastRoute = route
-  visitor.lastScreen = screen
-  adminStore.totals.uniqueVisitors = Object.keys(adminStore.visitors).length
-
-  return { anonymousUser, visitor }
-}
-
-function trackAnalyticsEvent(payload = {}) {
-  const visitorId = String(payload.visitorId ?? 'guest')
-  const sessionId = String(payload.sessionId ?? '')
-  const type = String(payload.type ?? 'page_view')
-  const route = String(payload.route ?? 'home')
-  const meta = payload.meta && typeof payload.meta === 'object' ? payload.meta : {}
-  const rawScreen = String(meta.screen ?? route)
-  const screen = ['mobile', 'tablet', 'desktop', 'unknown'].includes(rawScreen) ? route : rawScreen
-  const viewport = String(meta.viewport ?? (['mobile', 'tablet', 'desktop'].includes(rawScreen) ? rawScreen : 'unknown'))
-  const dayKey = new Date().toISOString().slice(0, 10)
-  const { anonymousUser, visitor } = ensureVisitor(visitorId, sessionId, route, screen)
-
-  visitor.events += 1
-  visitor.lastViewport = viewport
-  adminStore.totals.events += 1
-
-  if (type === 'page_view') {
-    const pageKey = `${route}:${screen}`
-    const lastCountedAt = Number(visitor.pageViewWindow?.[pageKey] ?? 0)
-    const now = Date.now()
-    if (now - lastCountedAt >= 15000) {
-      adminStore.totals.pageViews += 1
-      adminStore.pageViews[route] = (adminStore.pageViews[route] ?? 0) + 1
-      adminStore.dailyTraffic[dayKey] = (adminStore.dailyTraffic[dayKey] ?? 0) + 1
-      adminStore.deviceBuckets[viewport] = (adminStore.deviceBuckets[viewport] ?? 0) + 1
-      visitor.pageViewWindow[pageKey] = now
-    }
-  }
-
-  if (type === 'queue_join') {
-    adminStore.totals.queueJoins += 1
-  }
-
-  if (type === 'match_start') {
-    adminStore.totals.matchesStarted += 1
-    visitor.matches += 1
-  }
-
-  if (type === 'match_complete') {
-    adminStore.totals.matchesCompleted += 1
-  }
-
-  if (type === 'install') {
-    adminStore.totals.installs += 1
-    visitor.installs += 1
-  }
-
-  pushActivity(type, {
-    route,
-    anonymousUser,
-    meta,
-  })
-
-  pruneDailyTraffic()
-  debouncedSaveAdminStore()
-
-  return anonymousUser
-}
-
-function getComplaintCounts() {
-  const resolved = adminStore.complaints.filter((complaint) => complaint.status === 'resolved').length
-  const open = adminStore.complaints.length - resolved
-
-  return { open, resolved }
-}
-
-function buildAdminOverview() {
-  const complaintCounts = getComplaintCounts()
-
-  return {
-    ok: true,
-    service: {
-      queueSize: waitingPlayers.length,
-      connectedPlayers: io.engine.clientsCount,
-      maintenanceMode: adminStore.settings.maintenanceMode,
-      port: PORT,
-    },
-    privacy: {
-      anonymousOnly: true,
-      fieldsTracked: [
-        'anonymous guest id',
-        'session count',
-        'page views',
-        'match and queue events',
-        'device size bucket',
-        'complaint reports submitted by the player',
-      ],
-    },
-    settings: adminStore.settings,
-    totals: {
-      ...adminStore.totals,
-      complaintsOpen: complaintCounts.open,
-      complaintsResolved: complaintCounts.resolved,
-      complaintsTotal: adminStore.complaints.length,
-    },
-    traffic: {
-      pages: Object.entries(adminStore.pageViews)
-        .sort((left, right) => right[1] - left[1])
-        .map(([route, views]) => ({ route, views })),
-      devices: Object.entries(adminStore.deviceBuckets)
-        .sort((left, right) => right[1] - left[1])
-        .map(([label, count]) => ({ label, count })),
-      daily: Object.entries(adminStore.dailyTraffic)
-        .sort((left, right) => left[0].localeCompare(right[0]))
-        .map(([day, views]) => ({ day, views })),
-    },
-    complaints: adminStore.complaints,
-    activity: adminStore.activity,
-  }
-}
 
 function requireRoleMiddleware(minRole) {
   return function requireRole(request, response, next) {
@@ -1228,7 +976,14 @@ const routeContext = {
   adminStore,
   allowLocalSignupClusterBypass,
   anonymizeVisitorId,
-  buildAdminOverview,
+  // Bound to the live counts here so route callers keep the behaviour they had
+  // when buildAdminOverview read the socket server and the queue directly.
+  // Passing the bare function would silently serve zeros for both.
+  buildAdminOverview: () => buildAdminOverview({
+    queueSize: waitingPlayers.length,
+    connectedPlayers: io.engine.clientsCount,
+    port: PORT,
+  }),
   clientIp,
   clientUserAgent,
   debouncedSaveAdminStore,
@@ -1880,12 +1635,9 @@ function shutdown(signal) {
   shutdownStarted = true
   console.log(`\n${signal} received. Shutting down gracefully...`)
 
-  // Flush any pending admin store writes
-  if (_saveTimer) {
-    clearTimeout(_saveTimer)
-    _saveTimer = null
-  }
-  saveAdminStore()
+  // Flush any pending admin store writes. The debounce handle lives inside
+  // admin-store.js, which owns it.
+  flushAdminStore()
 
   // Preserve a durable terminal record for every in-memory match before an
   // update closes sockets. No balances or ratings are deducted for this
