@@ -41,9 +41,25 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
  */
 export let db
 
+/**
+ * Where the database lives when DATA_DIR is unset — the repo-root `data/`.
+ *
+ * Exported so `db-migration-safety.test.js` can assert it, because getting it
+ * wrong does not fail loudly: the server starts happily against an empty
+ * database and every account simply appears to be gone.
+ */
+export function defaultDataDir() {
+  return path.resolve(__dirname, '../../data')
+}
+
 /** Resolved fresh on each open so DATA_DIR can change between opens. */
 function resolveDbPath() {
-  const dataDir = path.resolve(process.env.DATA_DIR ?? path.resolve(__dirname, '../data'))
+  // `../../data`, not `../data`. This file lives at server/db/, one level
+  // deeper than the single-file db.js it was split out of, so the old relative
+  // path silently pointed at server/data — a brand-new empty database. Any
+  // deploy that does not set DATA_DIR would have come up with every account
+  // missing. `defaultDataDir()` is exported so a test can pin this.
+  const dataDir = path.resolve(process.env.DATA_DIR ?? defaultDataDir())
   if (!existsSync(dataDir)) {
     mkdirSync(dataDir, { recursive: true })
   }

@@ -13,9 +13,14 @@ dist-ssr
 *.local
 
 # Database
-data/*.db
-data/*.db-wal
-data/*.db-shm
+#
+# Unanchored on purpose. `data/*.db` only matches the repo-root data/, so when
+# a refactor moved the connection module one directory deeper and it created
+# server/data/, a 425 KB SQLite file was committed without anything objecting.
+# A SQLite file should never be committed from anywhere in this tree.
+**/*.db
+**/*.db-wal
+**/*.db-shm
 
 # Admin store (runtime state)
 data/*.json

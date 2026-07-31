@@ -227,6 +227,25 @@ describe('production upgrade safety', () => {
     }
   })
 
+  /**
+   * The default data directory is load-bearing and fails silently.
+   *
+   * A deploy that does not set DATA_DIR relies on this path. If it is wrong the
+   * server does not crash — it creates an empty database and comes up with
+   * every account missing, which looks exactly like total data loss. Splitting
+   * db.js into server/db/ moved this file one directory deeper and broke it
+   * that way; every test set DATA_DIR explicitly, so nothing caught it.
+   */
+  it('defaults to the repo-root data directory, not one inside server/', async () => {
+    const { defaultDataDir } = await import('./db/connection.js')
+    const resolved = defaultDataDir()
+
+    expect(path.basename(resolved)).toBe('data')
+    expect(path.dirname(resolved)).toBe(path.resolve('.'))
+    // The specific mistake this guards against.
+    expect(resolved).not.toContain(`${path.sep}server${path.sep}data`)
+  })
+
   it('issues no destructive DDL during startup', async () => {
     // The schema lives in the connection module; db.js is a re-export barrel.
     const source = await readFile(path.resolve('server/db/connection.js'), 'utf8')
