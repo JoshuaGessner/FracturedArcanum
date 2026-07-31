@@ -35,15 +35,20 @@ App
 
 All screens are propless and read from the typed hooks in `src/contexts/`.
 
-| Screen | Lines | Hooks used | Key visual elements |
-|--------|------:|------------|---------------------|
-| `HomeScreen.tsx` | 119 | `useAppShell`, `useGame`, `useProfile` | season framing, reward-ready quests, streak fire, nav tiles, resume battle |
-| `PlayScreen.tsx` | 140 | `useAppShell`, `useGame`, `useProfile`, `useQueue` | mode cards, difficulty chips, queue portal, VS found banner, live ladder strip |
-| `CollectionScreen.tsx` | 329 | `useAppShell`, `useGame`, `useProfile`, `useQueue` | collection ring, rarity completion chips, deck forge cards, breakdown flow |
-| `SocialScreen.tsx` | 391 | `useAppShell`, `useProfile`, `useQueue`, `useSocial` | command hero, leaderboard, friend challenge CTA, clan and trade surfaces |
-| `ShopScreen.tsx` | 321 | `useAppShell`, `useGame`, `useProfile` | reward vault urgency, theme and border cards, pack ceremony and reveal summary |
-| `SettingsScreen.tsx` | 565 | `useAppShell`, `useProfile` | compact preference hero, complaint desk, and role-gated admin console |
-| `BattleScreen.tsx` | 780 | `useAppShell`, `useGame`, `useProfile` | slim duel ribbon, board-first arena, drag-to-play, attack arrow, hand-fan layout |
+There is no `PlayScreen`. It was absorbed into the Home hub: the mode cards now
+live in `src/components/BattleLaunchSheet.tsx`, opened from Home's battle CTA.
+
+> Line counts are indicative only and drift with every change. Use this table to
+> find the right file, then read the source.
+
+| Screen | Hooks used | Key visual elements |
+|--------|------------|---------------------|
+| `HomeScreen.tsx` | `useAppShell`, `useGame`, `useProfile` | season framing, quest board, quest ledger subview, streak fire, primary battle CTA, Abandon control for a pending match |
+| `CollectionScreen.tsx` | `useAppShell`, `useGame`, `useProfile`, `useQueue` | collection ring, rarity completion chips, deck forge cards, breakdown flow |
+| `SocialScreen.tsx` | `useAppShell`, `useProfile`, `useQueue`, `useSocial` | command hero, leaderboard, friend challenge CTA, clan and trade surfaces |
+| `ShopScreen.tsx` | `useAppShell`, `useGame`, `useProfile` | reward vault urgency, theme and border cards, pack ceremony and reveal summary |
+| `SettingsScreen.tsx` | `useAppShell`, `useProfile` | compact preference hero, complaint desk, and role-gated admin console |
+| `BattleScreen.tsx` | `useAppShell`, `useGame`, `useProfile` | slim duel ribbon, board-first arena, drag-to-play, attack arrow, hand-fan layout |
 
 ## Shared components
 

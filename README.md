@@ -339,22 +339,35 @@ server {
 | `npm test` | Run Vitest test suite |
 | `npm run lint` | ESLint check |
 | `npm run release:check` | Test + lint + build (pre-deploy validation) |
+| `npm run qa:probe` | Targeted layout invariants with CSS rule attribution (see `docs/layout-qa.md`) |
+| `npm run qa:snap` / `qa:snap:check` | Visual baselines and regression diffing |
+| `npm run qa:viewport` | Full device-matrix layout sweep with screenshots |
 
 ## Project Structure
 
 ```text
 src/
-  App.tsx            React SPA (all screens, game UI, deck builder, shop)
-  App.css            Styles with rarity theming and responsive design
-  game.ts            Game engine (cards, effects, combat, turn logic)
-  game.test.ts       Test suite
-  audio.ts           Sound effect playback
+  App.tsx            Provider tree + AppShell: shared state, effects, screen routing
+  App.css            Full visual system: shell, chrome, transitions, battle, responsive
+  game.ts            Game engine (cards, effects, combat, turn logic) — pure
+  screens/           Propless screens: Home, Collection, Shop, Social, Settings, Battle
+  components/        Shared prop-driven UI (modals, nav, overlays, sheets, ceremonies)
+  contexts/          Providers + typed slice hooks (useGame, useProfile, useSocial, …)
+  hooks/             useViewportMetrics (--app-h), useSceneSwipe
+  utils/             Pure helpers, unit-tested (layoutScaling, sceneSwipe)
+  audio.ts           Web Audio synthesis
 server/
   server.js          Express + Socket.IO server (auth, matchmaking, game rooms)
   game-room.js       Server-authoritative game room manager
   db.js              SQLite database (accounts, sessions, economy, match history)
+  passkey-service.js WebAuthn registration and assertion
+  quest-definitions.js / quest-chains.js   Quest catalogue and progression
 scripts/
   generate-brand-assets.mjs   SVG card art generator
+  probe-layout.mjs            Layout invariants (npm run qa:probe)
+  snap-layout.mjs             Visual baselines (npm run qa:snap)
+  verify-responsive-layout.mjs  Device-matrix sweep (npm run qa:viewport)
+  lib/                        Shared QA harness: app states, auth, CSS attribution
 public/
   generated/cards/   Generated card illustrations (WebP/SVG)
   generated/ui/      UI assets
@@ -370,6 +383,8 @@ data/
 - **Server-authoritative multiplayer** — the client sends action intents, the server validates and executes them, then broadcasts redacted state (opponent's hand is hidden).
 - **Reconnect system** — account-to-room mapping allows players to rejoin an in-progress ranked match after a disconnect. A 60-second grace period prevents instant forfeits from network blips.
 - **AI mode** runs entirely client-side — no server needed for single-player.
+- **A match outlives the tab.** It survives a reload and a new browser context. "Leave" on the battle screen pauses it and returns to the lobby; Home's **Abandon** button is what actually ends it.
+- **Agent instructions** live in `CLAUDE.md` at the repo root; `.github/copilot-instructions.md` points there so the rules stay in one place.
 
 ## License
 

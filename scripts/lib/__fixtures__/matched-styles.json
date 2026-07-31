@@ -1,0 +1,2623 @@
+{
+  "matched": {
+    "inlineStyle": {
+      "styleSheetId": "31881.1",
+      "cssProperties": [
+        {
+          "name": "overflow-y",
+          "value": "scroll",
+          "implicit": false,
+          "text": "overflow-y: scroll",
+          "disabled": false,
+          "range": {
+            "startLine": 0,
+            "startColumn": 0,
+            "endLine": 0,
+            "endColumn": 18
+          }
+        },
+        {
+          "name": "overflow-y",
+          "value": "scroll"
+        }
+      ],
+      "shorthandEntries": [],
+      "cssText": "overflow-y: scroll",
+      "range": {
+        "startLine": 0,
+        "startColumn": 0,
+        "endLine": 0,
+        "endColumn": 18
+      }
+    },
+    "matchedCSSRules": [
+      {
+        "rule": {
+          "selectorList": {
+            "selectors": [
+              {
+                "text": "div",
+                "specificity": {
+                  "a": 0,
+                  "b": 0,
+                  "c": 1
+                }
+              }
+            ],
+            "text": "div"
+          },
+          "origin": "user-agent",
+          "style": {
+            "cssProperties": [
+              {
+                "name": "display",
+                "value": "block"
+              }
+            ],
+            "shorthandEntries": []
+          },
+          "media": [],
+          "containerQueries": [],
+          "supports": [],
+          "layers": [],
+          "scopes": [],
+          "ruleTypes": [],
+          "startingStyles": [],
+          "navigations": []
+        },
+        "matchingSelectors": [
+          0
+        ]
+      },
+      {
+        "rule": {
+          "selectorList": {
+            "selectors": [
+              {
+                "text": "address",
+                "specificity": {
+                  "a": 0,
+                  "b": 0,
+                  "c": 1
+                }
+              },
+              {
+                "text": "blockquote",
+                "specificity": {
+                  "a": 0,
+                  "b": 0,
+                  "c": 1
+                }
+              },
+              {
+                "text": "center",
+                "specificity": {
+                  "a": 0,
+                  "b": 0,
+                  "c": 1
+                }
+              },
+              {
+                "text": "div",
+                "specificity": {
+                  "a": 0,
+                  "b": 0,
+                  "c": 1
+                }
+              },
+              {
+                "text": "figure",
+                "specificity": {
+                  "a": 0,
+                  "b": 0,
+                  "c": 1
+                }
+              },
+              {
+                "text": "figcaption",
+                "specificity": {
+                  "a": 0,
+                  "b": 0,
+                  "c": 1
+                }
+              },
+              {
+                "text": "footer",
+                "specificity": {
+                  "a": 0,
+                  "b": 0,
+                  "c": 1
+                }
+              },
+              {
+                "text": "form",
+                "specificity": {
+                  "a": 0,
+                  "b": 0,
+                  "c": 1
+                }
+              },
+              {
+                "text": "header",
+                "specificity": {
+                  "a": 0,
+                  "b": 0,
+                  "c": 1
+                }
+              },
+              {
+                "text": "hr",
+                "specificity": {
+                  "a": 0,
+                  "b": 0,
+                  "c": 1
+                }
+              },
+              {
+                "text": "legend",
+                "specificity": {
+                  "a": 0,
+                  "b": 0,
+                  "c": 1
+                }
+              },
+              {
+                "text": "listing",
+                "specificity": {
+                  "a": 0,
+                  "b": 0,
+                  "c": 1
+                }
+              },
+              {
+                "text": "main",
+                "specificity": {
+                  "a": 0,
+                  "b": 0,
+                  "c": 1
+                }
+              },
+              {
+                "text": "p",
+                "specificity": {
+                  "a": 0,
+                  "b": 0,
+                  "c": 1
+                }
+              },
+              {
+                "text": "plaintext",
+                "specificity": {
+                  "a": 0,
+                  "b": 0,
+                  "c": 1
+                }
+              },
+              {
+                "text": "pre",
+                "specificity": {
+                  "a": 0,
+                  "b": 0,
+                  "c": 1
+                }
+              },
+              {
+                "text": "summary",
+                "specificity": {
+                  "a": 0,
+                  "b": 0,
+                  "c": 1
+                }
+              },
+              {
+                "text": "xmp",
+                "specificity": {
+                  "a": 0,
+                  "b": 0,
+                  "c": 1
+                }
+              },
+              {
+                "text": "article",
+                "specificity": {
+                  "a": 0,
+                  "b": 0,
+                  "c": 1
+                }
+              },
+              {
+                "text": "aside",
+                "specificity": {
+                  "a": 0,
+                  "b": 0,
+                  "c": 1
+                }
+              },
+              {
+                "text": "h1",
+                "specificity": {
+                  "a": 0,
+                  "b": 0,
+                  "c": 1
+                }
+              },
+              {
+                "text": "h2",
+                "specificity": {
+                  "a": 0,
+                  "b": 0,
+                  "c": 1
+                }
+              },
+              {
+                "text": "h3",
+                "specificity": {
+                  "a": 0,
+                  "b": 0,
+                  "c": 1
+                }
+              },
+              {
+                "text": "h4",
+                "specificity": {
+                  "a": 0,
+                  "b": 0,
+                  "c": 1
+                }
+              },
+              {
+                "text": "h5",
+                "specificity": {
+                  "a": 0,
+                  "b": 0,
+                  "c": 1
+                }
+              },
+              {
+                "text": "h6",
+                "specificity": {
+                  "a": 0,
+                  "b": 0,
+                  "c": 1
+                }
+              },
+              {
+                "text": "hgroup",
+                "specificity": {
+                  "a": 0,
+                  "b": 0,
+                  "c": 1
+                }
+              },
+              {
+                "text": "nav",
+                "specificity": {
+                  "a": 0,
+                  "b": 0,
+                  "c": 1
+                }
+              },
+              {
+                "text": "section",
+                "specificity": {
+                  "a": 0,
+                  "b": 0,
+                  "c": 1
+                }
+              },
+              {
+                "text": "search",
+                "specificity": {
+                  "a": 0,
+                  "b": 0,
+                  "c": 1
+                }
+              },
+              {
+                "text": "table",
+                "specificity": {
+                  "a": 0,
+                  "b": 0,
+                  "c": 1
+                }
+              },
+              {
+                "text": "caption",
+                "specificity": {
+                  "a": 0,
+                  "b": 0,
+                  "c": 1
+                }
+              },
+              {
+                "text": "colgroup",
+                "specificity": {
+                  "a": 0,
+                  "b": 0,
+                  "c": 1
+                }
+              },
+              {
+                "text": "col",
+                "specificity": {
+                  "a": 0,
+                  "b": 0,
+                  "c": 1
+                }
+              },
+              {
+                "text": "thead",
+                "specificity": {
+                  "a": 0,
+                  "b": 0,
+                  "c": 1
+                }
+              },
+              {
+                "text": "tbody",
+                "specificity": {
+                  "a": 0,
+                  "b": 0,
+                  "c": 1
+                }
+              },
+              {
+                "text": "tfoot",
+                "specificity": {
+                  "a": 0,
+                  "b": 0,
+                  "c": 1
+                }
+              },
+              {
+                "text": "tr",
+                "specificity": {
+                  "a": 0,
+                  "b": 0,
+                  "c": 1
+                }
+              },
+              {
+                "text": "td",
+                "specificity": {
+                  "a": 0,
+                  "b": 0,
+                  "c": 1
+                }
+              },
+              {
+                "text": "th",
+                "specificity": {
+                  "a": 0,
+                  "b": 0,
+                  "c": 1
+                }
+              },
+              {
+                "text": "dir",
+                "specificity": {
+                  "a": 0,
+                  "b": 0,
+                  "c": 1
+                }
+              },
+              {
+                "text": "dd",
+                "specificity": {
+                  "a": 0,
+                  "b": 0,
+                  "c": 1
+                }
+              },
+              {
+                "text": "dl",
+                "specificity": {
+                  "a": 0,
+                  "b": 0,
+                  "c": 1
+                }
+              },
+              {
+                "text": "dt",
+                "specificity": {
+                  "a": 0,
+                  "b": 0,
+                  "c": 1
+                }
+              },
+              {
+                "text": "menu",
+                "specificity": {
+                  "a": 0,
+                  "b": 0,
+                  "c": 1
+                }
+              },
+              {
+                "text": "ol",
+                "specificity": {
+                  "a": 0,
+                  "b": 0,
+                  "c": 1
+                }
+              },
+              {
+                "text": "ul",
+                "specificity": {
+                  "a": 0,
+                  "b": 0,
+                  "c": 1
+                }
+              },
+              {
+                "text": "li",
+                "specificity": {
+                  "a": 0,
+                  "b": 0,
+                  "c": 1
+                }
+              },
+              {
+                "text": "bdi",
+                "specificity": {
+                  "a": 0,
+                  "b": 0,
+                  "c": 1
+                }
+              },
+              {
+                "text": "output",
+                "specificity": {
+                  "a": 0,
+                  "b": 0,
+                  "c": 1
+                }
+              },
+              {
+                "text": "[dir=\"ltr\" i]",
+                "specificity": {
+                  "a": 0,
+                  "b": 1,
+                  "c": 0
+                }
+              },
+              {
+                "text": "[dir=\"rtl\" i]",
+                "specificity": {
+                  "a": 0,
+                  "b": 1,
+                  "c": 0
+                }
+              },
+              {
+                "text": "[dir=\"auto\" i]",
+                "specificity": {
+                  "a": 0,
+                  "b": 1,
+                  "c": 0
+                }
+              }
+            ],
+            "text": "address, blockquote, center, div, figure, figcaption, footer, form, header, hr, legend, listing, main, p, plaintext, pre, summary, xmp, article, aside, h1, h2, h3, h4, h5, h6, hgroup, nav, section, search, table, caption, colgroup, col, thead, tbody, tfoot, tr, td, th, dir, dd, dl, dt, menu, ol, ul, li, bdi, output, [dir=\"ltr\" i], [dir=\"rtl\" i], [dir=\"auto\" i]"
+          },
+          "origin": "user-agent",
+          "style": {
+            "cssProperties": [
+              {
+                "name": "unicode-bidi",
+                "value": "isolate"
+              }
+            ],
+            "shorthandEntries": []
+          },
+          "media": [],
+          "containerQueries": [],
+          "supports": [],
+          "layers": [],
+          "scopes": [],
+          "ruleTypes": [],
+          "startingStyles": [],
+          "navigations": []
+        },
+        "matchingSelectors": [
+          3
+        ]
+      },
+      {
+        "rule": {
+          "styleSheetId": "style-sheet-31881-1",
+          "selectorList": {
+            "selectors": [
+              {
+                "text": ".panel",
+                "range": {
+                  "startLine": 2,
+                  "startColumn": 2,
+                  "endLine": 2,
+                  "endColumn": 8
+                },
+                "specificity": {
+                  "a": 0,
+                  "b": 1,
+                  "c": 0
+                }
+              }
+            ],
+            "text": ".panel"
+          },
+          "origin": "regular",
+          "style": {
+            "styleSheetId": "style-sheet-31881-1",
+            "cssProperties": [
+              {
+                "name": "padding",
+                "value": "8px 16px 20px 16px",
+                "implicit": false,
+                "text": "padding: 8px 16px 20px 16px;",
+                "disabled": false,
+                "range": {
+                  "startLine": 2,
+                  "startColumn": 11,
+                  "endLine": 2,
+                  "endColumn": 39
+                },
+                "longhandProperties": [
+                  {
+                    "name": "padding-top",
+                    "value": "8px"
+                  },
+                  {
+                    "name": "padding-right",
+                    "value": "16px"
+                  },
+                  {
+                    "name": "padding-bottom",
+                    "value": "20px"
+                  },
+                  {
+                    "name": "padding-left",
+                    "value": "16px"
+                  }
+                ]
+              },
+              {
+                "name": "max-height",
+                "value": "400px",
+                "implicit": false,
+                "text": "max-height: 400px;",
+                "disabled": false,
+                "range": {
+                  "startLine": 2,
+                  "startColumn": 40,
+                  "endLine": 2,
+                  "endColumn": 58
+                }
+              },
+              {
+                "name": "overflow-y",
+                "value": "auto",
+                "implicit": false,
+                "text": "overflow-y: auto;",
+                "disabled": false,
+                "range": {
+                  "startLine": 2,
+                  "startColumn": 59,
+                  "endLine": 2,
+                  "endColumn": 76
+                }
+              },
+              {
+                "name": "padding-top",
+                "value": "8px"
+              },
+              {
+                "name": "padding-right",
+                "value": "16px"
+              },
+              {
+                "name": "padding-bottom",
+                "value": "20px"
+              },
+              {
+                "name": "padding-left",
+                "value": "16px"
+              },
+              {
+                "name": "max-height",
+                "value": "400px"
+              },
+              {
+                "name": "overflow-y",
+                "value": "auto"
+              }
+            ],
+            "shorthandEntries": [
+              {
+                "name": "padding",
+                "value": "8px 16px 20px"
+              }
+            ],
+            "cssText": " padding: 8px 16px 20px 16px; max-height: 400px; overflow-y: auto; ",
+            "range": {
+              "startLine": 2,
+              "startColumn": 10,
+              "endLine": 2,
+              "endColumn": 77
+            }
+          },
+          "originTreeScopeNodeId": 1,
+          "media": [],
+          "containerQueries": [],
+          "supports": [],
+          "layers": [],
+          "scopes": [],
+          "ruleTypes": [],
+          "startingStyles": [],
+          "navigations": []
+        },
+        "matchingSelectors": [
+          0
+        ]
+      },
+      {
+        "rule": {
+          "styleSheetId": "style-sheet-31881-1",
+          "selectorList": {
+            "selectors": [
+              {
+                "text": ".panel",
+                "range": {
+                  "startLine": 8,
+                  "startColumn": 30,
+                  "endLine": 8,
+                  "endColumn": 36
+                },
+                "specificity": {
+                  "a": 0,
+                  "b": 1,
+                  "c": 0
+                }
+              }
+            ],
+            "text": ".panel"
+          },
+          "origin": "regular",
+          "style": {
+            "styleSheetId": "style-sheet-31881-1",
+            "cssProperties": [
+              {
+                "name": "border-radius",
+                "value": "20px",
+                "implicit": false,
+                "text": "border-radius: 20px;",
+                "disabled": false,
+                "range": {
+                  "startLine": 8,
+                  "startColumn": 39,
+                  "endLine": 8,
+                  "endColumn": 59
+                },
+                "longhandProperties": [
+                  {
+                    "name": "border-top-left-radius",
+                    "value": "20px"
+                  },
+                  {
+                    "name": "border-top-right-radius",
+                    "value": "20px"
+                  },
+                  {
+                    "name": "border-bottom-right-radius",
+                    "value": "20px"
+                  },
+                  {
+                    "name": "border-bottom-left-radius",
+                    "value": "20px"
+                  }
+                ]
+              },
+              {
+                "name": "border-top-left-radius",
+                "value": "20px"
+              },
+              {
+                "name": "border-top-right-radius",
+                "value": "20px"
+              },
+              {
+                "name": "border-bottom-right-radius",
+                "value": "20px"
+              },
+              {
+                "name": "border-bottom-left-radius",
+                "value": "20px"
+              }
+            ],
+            "shorthandEntries": [
+              {
+                "name": "border-radius",
+                "value": "20px"
+              }
+            ],
+            "cssText": " border-radius: 20px; ",
+            "range": {
+              "startLine": 8,
+              "startColumn": 38,
+              "endLine": 8,
+              "endColumn": 60
+            }
+          },
+          "originTreeScopeNodeId": 1,
+          "media": [
+            {
+              "text": "(min-width: 100px)",
+              "source": "mediaRule",
+              "sourceURL": "about:blank",
+              "range": {
+                "startLine": 8,
+                "startColumn": 9,
+                "endLine": 8,
+                "endColumn": 27
+              },
+              "styleSheetId": "style-sheet-31881-1",
+              "mediaList": [
+                {
+                  "expressions": [
+                    {
+                      "value": 100,
+                      "unit": "px",
+                      "feature": "min-width",
+                      "computedLength": 100
+                    }
+                  ],
+                  "active": true
+                }
+              ]
+            }
+          ],
+          "containerQueries": [],
+          "supports": [],
+          "layers": [],
+          "scopes": [],
+          "ruleTypes": [
+            "MediaRule"
+          ],
+          "startingStyles": [],
+          "navigations": []
+        },
+        "matchingSelectors": [
+          0
+        ]
+      },
+      {
+        "rule": {
+          "styleSheetId": "style-sheet-31881-1",
+          "selectorList": {
+            "selectors": [
+              {
+                "text": ".panel",
+                "range": {
+                  "startLine": 10,
+                  "startColumn": 38,
+                  "endLine": 10,
+                  "endColumn": 44
+                },
+                "specificity": {
+                  "a": 0,
+                  "b": 1,
+                  "c": 0
+                }
+              }
+            ],
+            "text": ".panel"
+          },
+          "origin": "regular",
+          "style": {
+            "styleSheetId": "style-sheet-31881-1",
+            "cssProperties": [
+              {
+                "name": "row-gap",
+                "value": "12px",
+                "implicit": false,
+                "text": "row-gap: 12px;",
+                "disabled": false,
+                "range": {
+                  "startLine": 10,
+                  "startColumn": 47,
+                  "endLine": 10,
+                  "endColumn": 61
+                }
+              },
+              {
+                "name": "row-gap",
+                "value": "12px"
+              }
+            ],
+            "shorthandEntries": [],
+            "cssText": " row-gap: 12px; ",
+            "range": {
+              "startLine": 10,
+              "startColumn": 46,
+              "endLine": 10,
+              "endColumn": 62
+            }
+          },
+          "originTreeScopeNodeId": 1,
+          "media": [],
+          "containerQueries": [
+            {
+              "text": "(width >= 200px)",
+              "range": {
+                "startLine": 10,
+                "startColumn": 13,
+                "endLine": 10,
+                "endColumn": 35
+              },
+              "styleSheetId": "style-sheet-31881-1",
+              "name": "sheet",
+              "physicalAxes": "Horizontal",
+              "conditionText": "sheet (width >= 200px)"
+            }
+          ],
+          "supports": [],
+          "layers": [],
+          "scopes": [],
+          "ruleTypes": [
+            "ContainerRule"
+          ],
+          "startingStyles": [],
+          "navigations": []
+        },
+        "matchingSelectors": [
+          0
+        ]
+      },
+      {
+        "rule": {
+          "styleSheetId": "style-sheet-31881-1",
+          "selectorList": {
+            "selectors": [
+              {
+                "text": ".shouty",
+                "range": {
+                  "startLine": 12,
+                  "startColumn": 2,
+                  "endLine": 12,
+                  "endColumn": 9
+                },
+                "specificity": {
+                  "a": 0,
+                  "b": 1,
+                  "c": 0
+                }
+              }
+            ],
+            "text": ".shouty"
+          },
+          "origin": "regular",
+          "style": {
+            "styleSheetId": "style-sheet-31881-1",
+            "cssProperties": [
+              {
+                "name": "max-height",
+                "value": "555px !important",
+                "important": true,
+                "implicit": false,
+                "text": "max-height: 555px !important;",
+                "disabled": false,
+                "range": {
+                  "startLine": 12,
+                  "startColumn": 12,
+                  "endLine": 12,
+                  "endColumn": 41
+                }
+              },
+              {
+                "name": "max-height",
+                "value": "555px !important",
+                "important": true
+              }
+            ],
+            "shorthandEntries": [],
+            "cssText": " max-height: 555px !important; ",
+            "range": {
+              "startLine": 12,
+              "startColumn": 11,
+              "endLine": 12,
+              "endColumn": 42
+            }
+          },
+          "originTreeScopeNodeId": 1,
+          "media": [],
+          "containerQueries": [],
+          "supports": [],
+          "layers": [],
+          "scopes": [],
+          "ruleTypes": [],
+          "startingStyles": [],
+          "navigations": []
+        },
+        "matchingSelectors": [
+          0
+        ]
+      },
+      {
+        "rule": {
+          "styleSheetId": "style-sheet-31881-1",
+          "selectorList": {
+            "selectors": [
+              {
+                "text": ".box .panel",
+                "range": {
+                  "startLine": 3,
+                  "startColumn": 2,
+                  "endLine": 3,
+                  "endColumn": 13
+                },
+                "specificity": {
+                  "a": 0,
+                  "b": 2,
+                  "c": 0
+                }
+              }
+            ],
+            "text": ".box .panel"
+          },
+          "origin": "regular",
+          "style": {
+            "styleSheetId": "style-sheet-31881-1",
+            "cssProperties": [
+              {
+                "name": "max-height",
+                "value": "calc(var(--app-h) - var(--space-6))",
+                "implicit": false,
+                "text": "max-height: calc(var(--app-h) - var(--space-6));",
+                "disabled": false,
+                "range": {
+                  "startLine": 3,
+                  "startColumn": 16,
+                  "endLine": 3,
+                  "endColumn": 64
+                }
+              },
+              {
+                "name": "max-height",
+                "value": "calc(var(--app-h) - var(--space-6))"
+              }
+            ],
+            "shorthandEntries": [],
+            "cssText": " max-height: calc(var(--app-h) - var(--space-6)); ",
+            "range": {
+              "startLine": 3,
+              "startColumn": 15,
+              "endLine": 3,
+              "endColumn": 65
+            }
+          },
+          "originTreeScopeNodeId": 1,
+          "media": [],
+          "containerQueries": [],
+          "supports": [],
+          "layers": [],
+          "scopes": [],
+          "ruleTypes": [],
+          "startingStyles": [],
+          "navigations": []
+        },
+        "matchingSelectors": [
+          0
+        ]
+      },
+      {
+        "rule": {
+          "styleSheetId": "style-sheet-31881-1",
+          "selectorList": {
+            "selectors": [
+              {
+                "text": ".box .panel:not(.inert)",
+                "range": {
+                  "startLine": 4,
+                  "startColumn": 2,
+                  "endLine": 4,
+                  "endColumn": 25
+                },
+                "specificity": {
+                  "a": 0,
+                  "b": 3,
+                  "c": 0
+                }
+              }
+            ],
+            "text": ".box .panel:not(.inert)"
+          },
+          "origin": "regular",
+          "style": {
+            "styleSheetId": "style-sheet-31881-1",
+            "cssProperties": [
+              {
+                "name": "padding-bottom",
+                "value": "40px",
+                "implicit": false,
+                "text": "padding-bottom: 40px;",
+                "disabled": false,
+                "range": {
+                  "startLine": 4,
+                  "startColumn": 28,
+                  "endLine": 4,
+                  "endColumn": 49
+                }
+              },
+              {
+                "name": "padding-bottom",
+                "value": "40px"
+              }
+            ],
+            "shorthandEntries": [],
+            "cssText": " padding-bottom: 40px; ",
+            "range": {
+              "startLine": 4,
+              "startColumn": 27,
+              "endLine": 4,
+              "endColumn": 50
+            }
+          },
+          "originTreeScopeNodeId": 1,
+          "media": [],
+          "containerQueries": [],
+          "supports": [],
+          "layers": [],
+          "scopes": [],
+          "ruleTypes": [],
+          "startingStyles": [],
+          "navigations": []
+        },
+        "matchingSelectors": [
+          0
+        ]
+      }
+    ],
+    "pseudoElements": [
+      {
+        "pseudoType": "before",
+        "matches": [
+          {
+            "rule": {
+              "styleSheetId": "style-sheet-31881-1",
+              "selectorList": {
+                "selectors": [
+                  {
+                    "text": ".panel::before",
+                    "range": {
+                      "startLine": 5,
+                      "startColumn": 2,
+                      "endLine": 5,
+                      "endColumn": 16
+                    },
+                    "specificity": {
+                      "a": 0,
+                      "b": 1,
+                      "c": 1
+                    }
+                  }
+                ],
+                "text": ".panel::before"
+              },
+              "origin": "regular",
+              "style": {
+                "styleSheetId": "style-sheet-31881-1",
+                "cssProperties": [
+                  {
+                    "name": "content",
+                    "value": "''",
+                    "implicit": false,
+                    "text": "content: '';",
+                    "disabled": false,
+                    "range": {
+                      "startLine": 5,
+                      "startColumn": 19,
+                      "endLine": 5,
+                      "endColumn": 31
+                    }
+                  },
+                  {
+                    "name": "height",
+                    "value": "4px",
+                    "implicit": false,
+                    "text": "height: 4px;",
+                    "disabled": false,
+                    "range": {
+                      "startLine": 5,
+                      "startColumn": 32,
+                      "endLine": 5,
+                      "endColumn": 44
+                    }
+                  },
+                  {
+                    "name": "display",
+                    "value": "block",
+                    "implicit": false,
+                    "text": "display: block;",
+                    "disabled": false,
+                    "range": {
+                      "startLine": 5,
+                      "startColumn": 45,
+                      "endLine": 5,
+                      "endColumn": 60
+                    }
+                  },
+                  {
+                    "name": "content",
+                    "value": "\"\""
+                  },
+                  {
+                    "name": "height",
+                    "value": "4px"
+                  },
+                  {
+                    "name": "display",
+                    "value": "block"
+                  }
+                ],
+                "shorthandEntries": [],
+                "cssText": " content: ''; height: 4px; display: block; ",
+                "range": {
+                  "startLine": 5,
+                  "startColumn": 18,
+                  "endLine": 5,
+                  "endColumn": 61
+                }
+              },
+              "originTreeScopeNodeId": 1,
+              "media": [],
+              "containerQueries": [],
+              "supports": [],
+              "layers": [],
+              "scopes": [],
+              "ruleTypes": [],
+              "startingStyles": [],
+              "navigations": []
+            },
+            "matchingSelectors": [
+              0
+            ]
+          }
+        ]
+      },
+      {
+        "pseudoType": "scrollbar",
+        "matches": [
+          {
+            "rule": {
+              "styleSheetId": "style-sheet-31881-1",
+              "selectorList": {
+                "selectors": [
+                  {
+                    "text": ".panel::-webkit-scrollbar",
+                    "range": {
+                      "startLine": 6,
+                      "startColumn": 2,
+                      "endLine": 6,
+                      "endColumn": 27
+                    },
+                    "specificity": {
+                      "a": 0,
+                      "b": 1,
+                      "c": 1
+                    }
+                  }
+                ],
+                "text": ".panel::-webkit-scrollbar"
+              },
+              "origin": "regular",
+              "style": {
+                "styleSheetId": "style-sheet-31881-1",
+                "cssProperties": [
+                  {
+                    "name": "width",
+                    "value": "6px",
+                    "implicit": false,
+                    "text": "width: 6px;",
+                    "disabled": false,
+                    "range": {
+                      "startLine": 6,
+                      "startColumn": 30,
+                      "endLine": 6,
+                      "endColumn": 41
+                    }
+                  },
+                  {
+                    "name": "width",
+                    "value": "6px"
+                  }
+                ],
+                "shorthandEntries": [],
+                "cssText": " width: 6px; ",
+                "range": {
+                  "startLine": 6,
+                  "startColumn": 29,
+                  "endLine": 6,
+                  "endColumn": 42
+                }
+              },
+              "originTreeScopeNodeId": 1,
+              "media": [],
+              "containerQueries": [],
+              "supports": [],
+              "layers": [],
+              "scopes": [],
+              "ruleTypes": [],
+              "startingStyles": [],
+              "navigations": []
+            },
+            "matchingSelectors": [
+              0
+            ]
+          }
+        ]
+      }
+    ],
+    "inherited": [
+      {
+        "inlineStyle": {
+          "styleSheetId": "31881.0",
+          "cssProperties": [
+            {
+              "name": "width",
+              "value": "300px",
+              "implicit": false,
+              "text": "width:300px",
+              "disabled": false,
+              "range": {
+                "startLine": 0,
+                "startColumn": 0,
+                "endLine": 0,
+                "endColumn": 11
+              }
+            },
+            {
+              "name": "width",
+              "value": "300px"
+            }
+          ],
+          "shorthandEntries": [],
+          "cssText": "width:300px",
+          "range": {
+            "startLine": 0,
+            "startColumn": 0,
+            "endLine": 0,
+            "endColumn": 11
+          }
+        },
+        "matchedCSSRules": [
+          {
+            "rule": {
+              "selectorList": {
+                "selectors": [
+                  {
+                    "text": "div",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  }
+                ],
+                "text": "div"
+              },
+              "origin": "user-agent",
+              "style": {
+                "cssProperties": [
+                  {
+                    "name": "display",
+                    "value": "block"
+                  }
+                ],
+                "shorthandEntries": []
+              },
+              "media": [],
+              "containerQueries": [],
+              "supports": [],
+              "layers": [],
+              "scopes": [],
+              "ruleTypes": [],
+              "startingStyles": [],
+              "navigations": []
+            },
+            "matchingSelectors": [
+              0
+            ]
+          },
+          {
+            "rule": {
+              "selectorList": {
+                "selectors": [
+                  {
+                    "text": "address",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "blockquote",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "center",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "div",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "figure",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "figcaption",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "footer",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "form",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "header",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "hr",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "legend",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "listing",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "main",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "p",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "plaintext",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "pre",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "summary",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "xmp",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "article",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "aside",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "h1",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "h2",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "h3",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "h4",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "h5",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "h6",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "hgroup",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "nav",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "section",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "search",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "table",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "caption",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "colgroup",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "col",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "thead",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "tbody",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "tfoot",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "tr",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "td",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "th",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "dir",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "dd",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "dl",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "dt",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "menu",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "ol",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "ul",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "li",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "bdi",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "output",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "[dir=\"ltr\" i]",
+                    "specificity": {
+                      "a": 0,
+                      "b": 1,
+                      "c": 0
+                    }
+                  },
+                  {
+                    "text": "[dir=\"rtl\" i]",
+                    "specificity": {
+                      "a": 0,
+                      "b": 1,
+                      "c": 0
+                    }
+                  },
+                  {
+                    "text": "[dir=\"auto\" i]",
+                    "specificity": {
+                      "a": 0,
+                      "b": 1,
+                      "c": 0
+                    }
+                  }
+                ],
+                "text": "address, blockquote, center, div, figure, figcaption, footer, form, header, hr, legend, listing, main, p, plaintext, pre, summary, xmp, article, aside, h1, h2, h3, h4, h5, h6, hgroup, nav, section, search, table, caption, colgroup, col, thead, tbody, tfoot, tr, td, th, dir, dd, dl, dt, menu, ol, ul, li, bdi, output, [dir=\"ltr\" i], [dir=\"rtl\" i], [dir=\"auto\" i]"
+              },
+              "origin": "user-agent",
+              "style": {
+                "cssProperties": [
+                  {
+                    "name": "unicode-bidi",
+                    "value": "isolate"
+                  }
+                ],
+                "shorthandEntries": []
+              },
+              "media": [],
+              "containerQueries": [],
+              "supports": [],
+              "layers": [],
+              "scopes": [],
+              "ruleTypes": [],
+              "startingStyles": [],
+              "navigations": []
+            },
+            "matchingSelectors": [
+              3
+            ]
+          },
+          {
+            "rule": {
+              "styleSheetId": "style-sheet-31881-1",
+              "selectorList": {
+                "selectors": [
+                  {
+                    "text": ".wrap",
+                    "range": {
+                      "startLine": 9,
+                      "startColumn": 2,
+                      "endLine": 9,
+                      "endColumn": 7
+                    },
+                    "specificity": {
+                      "a": 0,
+                      "b": 1,
+                      "c": 0
+                    }
+                  }
+                ],
+                "text": ".wrap"
+              },
+              "origin": "regular",
+              "style": {
+                "styleSheetId": "style-sheet-31881-1",
+                "cssProperties": [
+                  {
+                    "name": "container-type",
+                    "value": "inline-size",
+                    "implicit": false,
+                    "text": "container-type: inline-size;",
+                    "disabled": false,
+                    "range": {
+                      "startLine": 9,
+                      "startColumn": 10,
+                      "endLine": 9,
+                      "endColumn": 38
+                    }
+                  },
+                  {
+                    "name": "container-name",
+                    "value": "sheet",
+                    "implicit": false,
+                    "text": "container-name: sheet;",
+                    "disabled": false,
+                    "range": {
+                      "startLine": 9,
+                      "startColumn": 39,
+                      "endLine": 9,
+                      "endColumn": 61
+                    }
+                  },
+                  {
+                    "name": "container-type",
+                    "value": "inline-size"
+                  },
+                  {
+                    "name": "container-name",
+                    "value": "sheet"
+                  }
+                ],
+                "shorthandEntries": [],
+                "cssText": " container-type: inline-size; container-name: sheet; ",
+                "range": {
+                  "startLine": 9,
+                  "startColumn": 9,
+                  "endLine": 9,
+                  "endColumn": 62
+                }
+              },
+              "originTreeScopeNodeId": 1,
+              "media": [],
+              "containerQueries": [],
+              "supports": [],
+              "layers": [],
+              "scopes": [],
+              "ruleTypes": [],
+              "startingStyles": [],
+              "navigations": []
+            },
+            "matchingSelectors": [
+              0
+            ]
+          }
+        ]
+      },
+      {
+        "matchedCSSRules": [
+          {
+            "rule": {
+              "selectorList": {
+                "selectors": [
+                  {
+                    "text": "div",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  }
+                ],
+                "text": "div"
+              },
+              "origin": "user-agent",
+              "style": {
+                "cssProperties": [
+                  {
+                    "name": "display",
+                    "value": "block"
+                  }
+                ],
+                "shorthandEntries": []
+              },
+              "media": [],
+              "containerQueries": [],
+              "supports": [],
+              "layers": [],
+              "scopes": [],
+              "ruleTypes": [],
+              "startingStyles": [],
+              "navigations": []
+            },
+            "matchingSelectors": [
+              0
+            ]
+          },
+          {
+            "rule": {
+              "selectorList": {
+                "selectors": [
+                  {
+                    "text": "address",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "blockquote",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "center",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "div",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "figure",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "figcaption",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "footer",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "form",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "header",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "hr",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "legend",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "listing",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "main",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "p",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "plaintext",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "pre",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "summary",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "xmp",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "article",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "aside",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "h1",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "h2",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "h3",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "h4",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "h5",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "h6",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "hgroup",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "nav",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "section",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "search",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "table",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "caption",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "colgroup",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "col",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "thead",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "tbody",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "tfoot",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "tr",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "td",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "th",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "dir",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "dd",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "dl",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "dt",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "menu",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "ol",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "ul",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "li",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "bdi",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "output",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  },
+                  {
+                    "text": "[dir=\"ltr\" i]",
+                    "specificity": {
+                      "a": 0,
+                      "b": 1,
+                      "c": 0
+                    }
+                  },
+                  {
+                    "text": "[dir=\"rtl\" i]",
+                    "specificity": {
+                      "a": 0,
+                      "b": 1,
+                      "c": 0
+                    }
+                  },
+                  {
+                    "text": "[dir=\"auto\" i]",
+                    "specificity": {
+                      "a": 0,
+                      "b": 1,
+                      "c": 0
+                    }
+                  }
+                ],
+                "text": "address, blockquote, center, div, figure, figcaption, footer, form, header, hr, legend, listing, main, p, plaintext, pre, summary, xmp, article, aside, h1, h2, h3, h4, h5, h6, hgroup, nav, section, search, table, caption, colgroup, col, thead, tbody, tfoot, tr, td, th, dir, dd, dl, dt, menu, ol, ul, li, bdi, output, [dir=\"ltr\" i], [dir=\"rtl\" i], [dir=\"auto\" i]"
+              },
+              "origin": "user-agent",
+              "style": {
+                "cssProperties": [
+                  {
+                    "name": "unicode-bidi",
+                    "value": "isolate"
+                  }
+                ],
+                "shorthandEntries": []
+              },
+              "media": [],
+              "containerQueries": [],
+              "supports": [],
+              "layers": [],
+              "scopes": [],
+              "ruleTypes": [],
+              "startingStyles": [],
+              "navigations": []
+            },
+            "matchingSelectors": [
+              3
+            ]
+          }
+        ]
+      },
+      {
+        "matchedCSSRules": [
+          {
+            "rule": {
+              "selectorList": {
+                "selectors": [
+                  {
+                    "text": "body",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  }
+                ],
+                "text": "body"
+              },
+              "origin": "user-agent",
+              "style": {
+                "cssProperties": [
+                  {
+                    "name": "display",
+                    "value": "block"
+                  },
+                  {
+                    "name": "margin-top",
+                    "value": "8px"
+                  },
+                  {
+                    "name": "margin-right",
+                    "value": "8px"
+                  },
+                  {
+                    "name": "margin-bottom",
+                    "value": "8px"
+                  },
+                  {
+                    "name": "margin-left",
+                    "value": "8px"
+                  }
+                ],
+                "shorthandEntries": [
+                  {
+                    "name": "margin",
+                    "value": "8px"
+                  }
+                ]
+              },
+              "media": [],
+              "containerQueries": [],
+              "supports": [],
+              "layers": [],
+              "scopes": [],
+              "ruleTypes": [],
+              "startingStyles": [],
+              "navigations": []
+            },
+            "matchingSelectors": [
+              0
+            ]
+          }
+        ]
+      },
+      {
+        "matchedCSSRules": [
+          {
+            "rule": {
+              "selectorList": {
+                "selectors": [
+                  {
+                    "text": "html",
+                    "specificity": {
+                      "a": 0,
+                      "b": 0,
+                      "c": 1
+                    }
+                  }
+                ],
+                "text": "html"
+              },
+              "origin": "user-agent",
+              "style": {
+                "cssProperties": [
+                  {
+                    "name": "display",
+                    "value": "block"
+                  }
+                ],
+                "shorthandEntries": []
+              },
+              "media": [],
+              "containerQueries": [],
+              "supports": [],
+              "layers": [],
+              "scopes": [],
+              "ruleTypes": [],
+              "startingStyles": [],
+              "navigations": []
+            },
+            "matchingSelectors": [
+              0
+            ]
+          },
+          {
+            "rule": {
+              "selectorList": {
+                "selectors": [
+                  {
+                    "text": ":root",
+                    "specificity": {
+                      "a": 0,
+                      "b": 1,
+                      "c": 0
+                    }
+                  }
+                ],
+                "text": ":root"
+              },
+              "origin": "user-agent",
+              "style": {
+                "cssProperties": [
+                  {
+                    "name": "view-transition-name",
+                    "value": "root"
+                  }
+                ],
+                "shorthandEntries": []
+              },
+              "media": [],
+              "containerQueries": [],
+              "supports": [],
+              "layers": [],
+              "scopes": [],
+              "ruleTypes": [],
+              "startingStyles": [],
+              "navigations": []
+            },
+            "matchingSelectors": [
+              0
+            ]
+          },
+          {
+            "rule": {
+              "styleSheetId": "style-sheet-31881-1",
+              "selectorList": {
+                "selectors": [
+                  {
+                    "text": ":root",
+                    "range": {
+                      "startLine": 1,
+                      "startColumn": 2,
+                      "endLine": 1,
+                      "endColumn": 7
+                    },
+                    "specificity": {
+                      "a": 0,
+                      "b": 1,
+                      "c": 0
+                    }
+                  }
+                ],
+                "text": ":root"
+              },
+              "origin": "regular",
+              "style": {
+                "styleSheetId": "style-sheet-31881-1",
+                "cssProperties": [
+                  {
+                    "name": "--app-h",
+                    "value": "900px",
+                    "implicit": false,
+                    "text": "--app-h: 900px;",
+                    "disabled": false,
+                    "range": {
+                      "startLine": 1,
+                      "startColumn": 10,
+                      "endLine": 1,
+                      "endColumn": 25
+                    }
+                  },
+                  {
+                    "name": "--space-6",
+                    "value": "24px",
+                    "implicit": false,
+                    "text": "--space-6: 24px;",
+                    "disabled": false,
+                    "range": {
+                      "startLine": 1,
+                      "startColumn": 26,
+                      "endLine": 1,
+                      "endColumn": 42
+                    }
+                  },
+                  {
+                    "name": "--app-h",
+                    "value": "900px"
+                  },
+                  {
+                    "name": "--space-6",
+                    "value": "24px"
+                  }
+                ],
+                "shorthandEntries": [],
+                "cssText": " --app-h: 900px; --space-6: 24px; ",
+                "range": {
+                  "startLine": 1,
+                  "startColumn": 9,
+                  "endLine": 1,
+                  "endColumn": 43
+                }
+              },
+              "originTreeScopeNodeId": 1,
+              "media": [],
+              "containerQueries": [],
+              "supports": [],
+              "layers": [],
+              "scopes": [],
+              "ruleTypes": [],
+              "startingStyles": [],
+              "navigations": []
+            },
+            "matchingSelectors": [
+              0
+            ]
+          }
+        ]
+      }
+    ],
+    "inheritedPseudoElements": [
+      {
+        "pseudoElements": []
+      },
+      {
+        "pseudoElements": []
+      },
+      {
+        "pseudoElements": []
+      },
+      {
+        "pseudoElements": []
+      }
+    ],
+    "cssKeyframesRules": [],
+    "cssPropertyRules": [],
+    "cssPropertyRegistrations": [],
+    "cssAtRules": [],
+    "parentLayoutNodeId": 8
+  },
+  "computed": {
+    "maxHeight": "555px",
+    "paddingBottom": "40px",
+    "paddingTop": "8px",
+    "overflowY": "scroll",
+    "rowGap": "12px",
+    "borderTopLeftRadius": "20px",
+    "appH": "900px"
+  }
+}

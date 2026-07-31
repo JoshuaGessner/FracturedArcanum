@@ -8,12 +8,16 @@
 - **Deployment:** Docker and Render-ready Node 20 pipeline
 
 ## Current verified state
-- 7 player-facing screens are live and context-driven
+- 6 player-facing screens are live and context-driven (Home, Collection, Shop, Social, Settings, Battle)
 - the scene shell, reward cinema, pack ceremony, onboarding, swipe gestures, and reconnect recovery are all landed
 - the active visual direction is the unified scene-first plan tracked in `.github/REFACTOR_PLAN.md`
 - current battle alignment priorities include mirrored hero anchors, floating transient battle notices, visible live-card effect seals, and shared summary popup styling
-- local SVG asset generation is verified with a 173-entry manifest
-- the latest validation is green: 130 tests, lint, and production build
+- local SVG asset generation is verified against `public/generated/asset-manifest.json`
+- the latest validation is green: 292 tests, lint, and production build
+
+> **Line counts below are indicative, not authoritative.** They drift with every
+> change. Use this map to find the right file, then read the source. Run
+> `wc -l <file>` for a current size.
 
 ## File Map
 
@@ -34,8 +38,7 @@
 
 | File | Lines | Role |
 |------|------:|------|
-| `src/screens/HomeScreen.tsx` | 119 | Main menu, season framing, quest urgency, streak badge, and scene navigation tiles |
-| `src/screens/PlayScreen.tsx` | 140 | Mode cards, queue portal, opponent found state, and main battle CTA |
+| `src/screens/HomeScreen.tsx` | 190 | Hub: season framing, quest board, quest ledger subview, streak badge, and the primary battle CTA. Absorbed the former PlayScreen, whose mode cards now live in `BattleLaunchSheet`. |
 | `src/screens/CollectionScreen.tsx` | 329 | Deck forge, rarity filters, collection progress, and breakdown flow |
 | `src/screens/SocialScreen.tsx` | 391 | Profile hero, leaderboard, friends, clan, and trade surfaces |
 | `src/screens/ShopScreen.tsx` | 321 | Reward vault, themes, borders, pack offers, and reveal summary |
@@ -51,11 +54,34 @@
 | `src/components/RewardCinemaOverlay.tsx` | 238 | Unified reward presentation for battle, daily, pack, and rank-up beats |
 | `src/components/PackCeremonyOverlay.tsx` | 303 | Full pack-opening ceremony overlay with reveal flow |
 | `src/components/OnboardingTour.tsx` | 303 | First-launch spotlight tour and replayable guidance flow |
-| `src/components/NavBar.tsx` | 33 | Bottom 6-tab nav using asset-backed status styling |
+| `src/components/NavBar.tsx` | 41 | Bottom 4-tab nav (Home, Cards, Shop, Social) using asset-backed status styling |
 | `src/components/TopBar.tsx` | 48 | Header shell with branding and device controls |
 | `src/components/CardInspectModal.tsx` | 62 | Long-press card detail view |
 | `src/components/ConfirmModal.tsx` | 79 | Shared confirmation modal |
 | `src/components/ToastStack.tsx` | 22 | Toast queue renderer |
+| `src/components/BattleLaunchSheet.tsx` | — | Bottom sheet holding the battle modes; replaced the Play screen |
+| `src/components/HomeQuestBoard.tsx` | — | Quest summary on the Home hub |
+| `src/components/QuestLedgerPanel.tsx` | — | Full quest ledger subview |
+| `src/components/HomeStatusRibbon.tsx` | — | Home status tiles |
+| `src/components/SceneHeaderPanel.tsx` | — | Shared scene header |
+| `src/components/SummaryPopup.tsx` | — | Shared recap/reward conclusion surface |
+| `src/components/TextPromptModal.tsx` | — | In-app text entry, replaces browser `prompt` |
+| `src/components/BattleFxCanvas.tsx` | — | PixiJS battle effects layer |
+| `src/components/PwaInstallPanel.tsx` | — | Install prompt surface |
+| `src/components/ErrorBoundary.tsx` | — | Top-level error fallback |
+
+### Hooks and pure utilities
+
+| File | Role |
+|------|------|
+| `src/hooks/useViewportMetrics.ts` | Publishes `--app-h` / `--app-w` / `--kb-inset` from `visualViewport`; the only correct source of usable viewport height |
+| `src/hooks/useSceneSwipe.ts` | Horizontal scene-swipe gesture |
+| `src/utils/layoutScaling.ts` | Pure scaling probes shared by QA tooling and unit tests |
+| `src/utils/sceneSwipe.ts` | Pure swipe maths |
+| `src/ambient.ts` | Ambient scene bed |
+| `src/feedback.ts` | Sound + haptic pairing |
+| `src/quests.ts` | Client-side quest presentation helpers |
+| `src/pwa.ts` | Service worker and install lifecycle |
 
 ### Server and data
 
@@ -64,6 +90,9 @@
 | `server/server.js` | Express API, Socket.IO events, matchmaking, auth, social, admin endpoints, and reconnect recovery |
 | `server/db.js` | SQLite persistence, economy, social, complaints, and admin data |
 | `server/game-room.js` | Server-authoritative duel lifecycle, validation, and reconnect grace handling |
+| `server/passkey-service.js` | WebAuthn registration and assertion |
+| `server/quest-definitions.js` | Quest catalogue |
+| `server/quest-chains.js` | Multi-step quest progression |
 | `server/game.js` | Auto-generated engine output — never edit directly |
 | `data/server-config.json` | Setup, owner, and season metadata |
 | `data/arena-admin-store.json` | Analytics, activity, complaints, MOTD, and ops state |
@@ -89,6 +118,7 @@
 | `docs/asset-pipeline.md` | SVG generation pipeline, semantic registry workflow, and adding new art |
 | `docs/aaa-asset-pipeline.md` | AI-generated asset production workflow and quality gates |
 | `docs/release-checklist.md` | Pre-deploy validation checklist |
+| `docs/layout-qa.md` | Layout QA tooling: `qa:probe`, `qa:snap`, `qa:viewport` |
 
 ## Build and verification commands
 
@@ -101,6 +131,9 @@
 | `npm run build` | Full production build |
 | `npm run release:check` | Combined pre-deploy validation |
 | `npm run dev:full` | Local full-stack development flow |
+| `npm run qa:probe` | Targeted layout invariants with CSS rule attribution — the fix/verify loop |
+| `npm run qa:snap` / `qa:snap:check` | Visual baselines and regression diffing for restyling work |
+| `npm run qa:viewport` | Full device-matrix sweep with screenshots — slow, pre-release only |
 
 ## Architecture notes
 

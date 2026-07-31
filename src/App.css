@@ -1922,9 +1922,14 @@ button:disabled {
     align-items: start;
   }
 
+  /* `margin-inline: auto`, not `justify-self: center`. The scene-fill rule
+     above overrides .home-screen's grid with `display: flex; flex-direction:
+     column`, and `justify-self` has no effect on a flex item — so the capped
+     980px card pinned to the left edge of a wider shell instead of centring.
+     Auto inline margins centre correctly under flex, grid and block alike. */
   .home-final-card {
     width: min(100%, 980px);
-    justify-self: center;
+    margin-inline: auto;
   }
 
   .home-status-card.scene-status-tile {
