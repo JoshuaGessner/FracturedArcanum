@@ -112,19 +112,21 @@ describe('useProfile and useSocial', () => {
   })
 
   /**
-   * Quirk, recorded deliberately: `savedDecks` and `activeDeckId` exist in BOTH
-   * ProfileProvider and AppShellContext. `useProfile` spreads the provider
-   * first and then overwrites both with the shell's copies, so screens read the
-   * shell's version and the provider's is dead state for them.
+   * Decks come from ProfileProvider, and only from there.
    *
-   * That is two sources of truth for the same data. It is not fixed here —
-   * changing it is a behaviour change that belongs in its own commit — but it
-   * is pinned so the AppShell split cannot flip which one wins by accident.
+   * This used to be routed twice: AppShell read `savedDecks` off
+   * `useProfileState()`, republished it on AppShellContext, and `useProfile`
+   * then overwrote the provider's own value with the shell's copy. Both held
+   * the same data, so nothing was visibly wrong — it was redundant plumbing
+   * rather than two sources of truth — but it meant a reader could not tell
+   * which path was authoritative. The shell no longer carries them at all.
    */
-  it('lets the shell shadow savedDecks and activeDeckId over the provider', () => {
-    const slice = readSlice(useProfile) as unknown as Record<string, { markerName?: string }>
-    expect(slice.savedDecks.markerName).toBe('savedDecks')
-    expect(slice.activeDeckId.markerName).toBe('activeDeckId')
+  it('reads savedDecks and activeDeckId from the provider, not the shell', () => {
+    const slice = readSlice(useProfile) as unknown as Record<string, unknown>
+    // The marker shell would hand back a function for any key it owned.
+    expect(typeof slice.savedDecks).not.toBe('function')
+    expect(slice.savedDecks).toEqual([])
+    expect(slice.activeDeckId).toBeNull()
   })
 
   it('useSocial surfaces the social slice', () => {

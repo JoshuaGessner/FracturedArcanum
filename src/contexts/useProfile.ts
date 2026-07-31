@@ -34,8 +34,6 @@ export type ProfileContextValue = ProfileStateValue &
     | 'totalOwnedCards'
     | 'selectedDeckSize'
     | 'deckReady'
-    | 'savedDecks'
-    | 'activeDeckId'
     | 'handleCreateDeck'
     | 'handleRenameDeck'
     | 'handleDeleteDeck'
@@ -80,8 +78,6 @@ export function useProfile(): ProfileContextValue {
     totalOwnedCards: shell.totalOwnedCards,
     selectedDeckSize: shell.selectedDeckSize,
     deckReady: shell.deckReady,
-    savedDecks: shell.savedDecks,
-    activeDeckId: shell.activeDeckId,
     handleCreateDeck: shell.handleCreateDeck,
     handleRenameDeck: shell.handleRenameDeck,
     handleDeleteDeck: shell.handleDeleteDeck,

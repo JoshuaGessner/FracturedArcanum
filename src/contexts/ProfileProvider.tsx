@@ -79,15 +79,35 @@ const INITIAL_BUILDER_FILTER: BuilderFilter = {
   rarity: 'all',
 }
 
-export function ProfileProvider({ children }: { children: ReactNode }) {
-  const [savedDecks, setSavedDecks] = useState<SavedDeck[]>([])
-  const [activeDeckId, setActiveDeckId] = useState<string | null>(null)
+/**
+ * Seed values for tests.
+ *
+ * Screens read decks from this provider rather than from AppShellContext, so a
+ * screen test that needs a populated deck list has to be able to say so. Only
+ * the initial state is settable — the provider still owns every subsequent
+ * update.
+ */
+export type ProfileProviderSeed = {
+  savedDecks?: SavedDeck[]
+  activeDeckId?: string | null
+  collection?: CardCollection
+}
+
+export function ProfileProvider({
+  children,
+  seed,
+}: {
+  children: ReactNode
+  seed?: ProfileProviderSeed
+}) {
+  const [savedDecks, setSavedDecks] = useState<SavedDeck[]>(seed?.savedDecks ?? [])
+  const [activeDeckId, setActiveDeckId] = useState<string | null>(seed?.activeDeckId ?? null)
   const [builderFilter, setBuilderFilter] = useState<BuilderFilter>(INITIAL_BUILDER_FILTER)
   const [pendingBreakdown, setPendingBreakdown] = useState<PendingBreakdown>(null)
   const [deckConfig, setDeckConfig] = useState<DeckConfig>(() =>
     readStoredValue<DeckConfig>(STORAGE_KEYS.deck, DEFAULT_DECK_CONFIG),
   )
-  const [collection, setCollection] = useState<CardCollection>({})
+  const [collection, setCollection] = useState<CardCollection>(seed?.collection ?? {})
   const [packOffers, setPackOffers] = useState<PackOffer[]>([])
   const [openedPackCards, setOpenedPackCards] = useState<OpenedPackCard[]>([])
   const [packOpening, setPackOpening] = useState<string | null>(null)

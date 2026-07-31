@@ -30,6 +30,7 @@ import path from 'node:path'
 import process from 'node:process'
 import { chromium } from 'playwright-core'
 import { ensureAuthenticated, findBrowserExecutable, startApp } from './lib/qa-app.mjs'
+import { abandonBattleIfActive } from './lib/appStates.mjs'
 
 const OUTPUT_DIR = path.resolve('.layout-qa')
 /**
@@ -556,9 +557,20 @@ async function main() {
       }
 
       // Battle now launches from the Home hub's sheet rather than a Play tab.
+      //
+      // Clear any match left over from an earlier viewport FIRST. A match
+      // outlives the tab: "Leave" only pauses it, so without this the Home CTA
+      // is still in its "Resume Battle" form — or the app is sitting on the
+      // battle screen entirely — and clicking `.home-battle-cta` times out
+      // waiting for an element that is never visible. That is what made this
+      // sweep fail partway through. `abandonBattleIfActive` is shared with
+      // qa:probe, which already had the fix.
       await clickPrimaryScreen(page, 'Home')
+      await abandonBattleIfActive(page)
       const battleCta = page.locator('.home-battle-cta').first()
-      if (await battleCta.count()) await battleCta.click()
+      if (await battleCta.count()) {
+        await battleCta.click({ timeout: 5_000 }).catch(() => {})
+      }
       await page.waitForTimeout(300)
       const aiButton = page.getByRole('button', { name: /AI Skirmish/i }).first()
       if (await aiButton.count()) {
@@ -574,8 +586,9 @@ async function main() {
           if (viewport.width >= 768) {
             results.push(...await collectBattleHandHoverMetrics(page, viewport.name))
           }
-          const leaveButton = page.getByRole('button', { name: /^Leave$/i }).first()
-          if (await leaveButton.count()) await leaveButton.click()
+          // Leave only pauses the match; abandon actually ends it so the next
+          // viewport starts from a clean lobby.
+          await abandonBattleIfActive(page)
         }
       }
     }

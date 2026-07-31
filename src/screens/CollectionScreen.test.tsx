@@ -80,11 +80,6 @@ function buildShellValue(overrides: Partial<AppShellContextValue> = {}): AppShel
     handleDeleteAccount: asyncNoop,
     selectedDeckSize: 20,
     deckReady: true,
-    savedDecks: [
-      { id: 'deck-1', name: 'Moon Guard', deckConfig: { 'spark-imp': 2 }, isActive: true, createdAt: '2026-04-18T00:00:00.000Z', updatedAt: '2026-04-18T00:00:00.000Z' },
-      { id: 'deck-2', name: 'Rune Storm', deckConfig: { 'spark-imp': 1 }, isActive: false, createdAt: '2026-04-18T00:00:00.000Z', updatedAt: '2026-04-18T00:00:00.000Z' },
-    ],
-    activeDeckId: 'deck-1',
     handleCreateDeck: noop,
     handleRenameDeck: noop,
     handleDeleteDeck: noop,
@@ -237,7 +232,10 @@ function renderCollectionScreen(valueOverrides: Partial<AppShellContextValue> = 
   const value = buildShellValue(valueOverrides)
   return render(
     <QueueProvider>
-      <ProfileProvider>
+      <ProfileProvider seed={{ savedDecks: [
+      { id: 'deck-1', name: 'Moon Guard', deckConfig: { 'spark-imp': 2 }, isActive: true, createdAt: '2026-04-18T00:00:00.000Z', updatedAt: '2026-04-18T00:00:00.000Z' },
+      { id: 'deck-2', name: 'Rune Storm', deckConfig: { 'spark-imp': 1 }, isActive: false, createdAt: '2026-04-18T00:00:00.000Z', updatedAt: '2026-04-18T00:00:00.000Z' },
+    ], activeDeckId: 'deck-1' }}>
         <SocialProvider>
           <GameProvider>
             <AppShellContext.Provider value={value}>

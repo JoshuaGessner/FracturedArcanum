@@ -81,8 +81,6 @@ function buildShellValue(overrides: Partial<AppShellContextValue> = {}): AppShel
     handleDeleteAccount: asyncNoop,
     selectedDeckSize: 20,
     deckReady: true,
-    savedDecks: [],
-    activeDeckId: null,
     handleCreateDeck: noop,
     handleRenameDeck: noop,
     handleDeleteDeck: noop,

@@ -3725,7 +3725,7 @@ function AppShell() {
     handleRegisterPasskey, handleDeletePasskey,
     handleLogoutAllSessions, handleExportAccountData, handleDeleteAccount,
     // Deck / collection handlers + derived (state lives in ProfileProvider)
-    selectedDeckSize, deckReady, savedDecks, activeDeckId,
+    selectedDeckSize, deckReady,
     handleCreateDeck, handleRenameDeck, handleDeleteDeck, handleSelectDeck,
     handleBreakdownCard, handleDeckCount,
     // Cosmetics / shop handlers (state lives in ProfileProvider)

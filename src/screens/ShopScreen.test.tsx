@@ -11,11 +11,14 @@ import { createGame } from '../game'
 import { createPwaInstallState } from '../pwa'
 import type { AppScreen, CosmeticTheme, CardBorder, SavedDeck } from '../types'
 
+const starterDecks: SavedDeck[] = [
+  { id: 'd1', name: 'Starter', deckConfig: {}, isActive: true, createdAt: '', updatedAt: '' },
+]
+
 function buildShellValue(overrides: Partial<AppShellContextValue> = {}): AppShellContextValue {
   const noop = () => {}
   const asyncNoop = async () => {}
   const testGame = createGame('ai', {})
-  const starterDecks: SavedDeck[] = [{ id: 'd1', name: 'Starter', deckConfig: {}, isActive: true, createdAt: '', updatedAt: '' }]
   return {
     authToken: '',
     setAuthToken: noop,
@@ -81,8 +84,6 @@ function buildShellValue(overrides: Partial<AppShellContextValue> = {}): AppShel
     handleDeleteAccount: asyncNoop,
     selectedDeckSize: 20,
     deckReady: true,
-    savedDecks: starterDecks,
-    activeDeckId: 'd1',
     handleCreateDeck: noop,
     handleRenameDeck: noop,
     handleDeleteDeck: noop,
@@ -235,7 +236,7 @@ function renderShopScreen(valueOverrides: Partial<AppShellContextValue> = {}) {
   const value = buildShellValue(valueOverrides)
   return render(
     <QueueProvider>
-      <ProfileProvider>
+      <ProfileProvider seed={{ savedDecks: starterDecks, activeDeckId: 'd1' }}>
         <GameProvider>
           <AppShellContext.Provider value={value}>
             <ShopScreen />

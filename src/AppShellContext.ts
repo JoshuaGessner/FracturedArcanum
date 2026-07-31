@@ -118,8 +118,6 @@ export type AppShellContextValue = {
   // ─── Deck/collection handlers + derived (state in ProfileProvider) ────
   selectedDeckSize: number
   deckReady: boolean
-  savedDecks: SavedDeck[]
-  activeDeckId: string | null
   handleCreateDeck: () => void
   handleRenameDeck: (deck: SavedDeck) => void
   handleDeleteDeck: (deck: SavedDeck) => void
