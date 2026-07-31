@@ -4,7 +4,13 @@ import { render, screen, cleanup, fireEvent } from '@testing-library/react'
 import { ConfirmModal } from './ConfirmModal'
 import type { ConfirmRequest } from '../types'
 
-const base: ConfirmRequest = { title: 'Delete deck', body: 'This cannot be undone.' }
+// ConfirmRequest carries the promise resolver the app uses to await a choice.
+// These tests assert on the onClose prop instead, so it is an inert stub.
+const base: ConfirmRequest = {
+  title: 'Delete deck',
+  body: 'This cannot be undone.',
+  resolve: () => {},
+}
 
 function setup(request: ConfirmRequest | null, textInput = '') {
   const onClose = vi.fn()

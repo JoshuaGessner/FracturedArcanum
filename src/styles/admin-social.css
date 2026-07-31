@@ -6,14 +6,14 @@
   margin-top: 10px;
   display: grid;
   grid-template-columns: 1fr auto;
-  gap: 8px;
+  gap: var(--space-2);
   align-items: center;
 }
 
 .social-list {
   margin-top: 10px;
   display: grid;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .social-row {
@@ -34,9 +34,9 @@
 }
 
 .social-clan-block {
-  margin-top: 8px;
+  margin-top: var(--space-2);
   padding: 10px;
-  border-radius: 14px;
+  border-radius: var(--radius-lg);
   border: 1px solid rgba(147, 197, 253, 0.16);
   background: rgba(8, 14, 30, 0.36);
 }
@@ -82,13 +82,13 @@
 .checkbox-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   color: #eaf0ff;
 }
 
 .admin-console {
   display: grid;
-  gap: 12px;
+  gap: var(--space-3);
   grid-column: span 2;
   width: 100%;
   max-width: 100%;
@@ -102,7 +102,7 @@
   width: 100%;
   max-width: 100%;
   min-width: 0;
-  padding: 12px;
+  padding: var(--space-3);
   border-radius: 16px;
   border: 1px solid rgba(147, 197, 253, 0.18);
   background: rgba(8, 14, 30, 0.78);
@@ -121,12 +121,12 @@
 }
 
 .stat-tile {
-  padding: 12px;
-  border-radius: 14px;
+  padding: var(--space-3);
+  border-radius: var(--radius-lg);
   background: linear-gradient(135deg, rgba(21, 31, 58, 0.95), rgba(39, 58, 110, 0.72));
   border: 1px solid rgba(96, 165, 250, 0.2);
   display: grid;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 .stat-tile strong { font-size: 1.25rem; }
@@ -136,13 +136,13 @@
   padding: 0;
   margin: 0;
   display: grid;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .stats-list li {
   display: flex;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--space-3);
   min-width: 0;
   padding-bottom: 6px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
@@ -155,12 +155,12 @@
 
 .ticket-card {
   display: grid;
-  gap: 8px;
+  gap: var(--space-2);
   width: 100%;
   max-width: 100%;
   min-width: 0;
-  padding: 12px;
-  border-radius: 14px;
+  padding: var(--space-3);
+  border-radius: var(--radius-lg);
   border: 1px solid rgba(147, 197, 253, 0.18);
   background: rgba(7, 12, 24, 0.78);
 }
@@ -196,7 +196,7 @@
 
 .ticket-badges {
   min-width: 0;
-  margin-top: 4px;
+  margin-top: var(--space-1);
 }
 
 .ticket-badges .badge {
@@ -208,7 +208,7 @@
 }
 
 .ticket-actions {
-  margin-top: 4px;
+  margin-top: var(--space-1);
 }
 
 .ticket-actions button {
@@ -218,9 +218,9 @@
 
 .ticket-updates {
   display: grid;
-  gap: 4px;
+  gap: var(--space-1);
   min-width: 0;
-  padding: 8px;
+  padding: var(--space-2);
   border-radius: var(--radius-sm);
   background: rgba(15, 23, 42, 0.52);
 }
@@ -255,7 +255,7 @@
   padding: 0;
   margin: 0;
   display: grid;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .role-row {
@@ -293,9 +293,9 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   padding: 8px 10px;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   border: 1px solid rgba(147, 197, 253, 0.12);
   background: rgba(8, 14, 30, 0.45);
   font-size: 0.85rem;
@@ -362,12 +362,12 @@ button.danger:hover { filter: brightness(1.08); }
 
 .social-trade-block {
   display: grid;
-  gap: 8px;
+  gap: var(--space-2);
   padding: 10px;
-  border-radius: 14px;
+  border-radius: var(--radius-lg);
   border: 1px solid rgba(147, 197, 253, 0.18);
   background: linear-gradient(135deg, rgba(10, 16, 31, 0.9), rgba(29, 36, 62, 0.76));
-  margin-top: 8px;
+  margin-top: var(--space-2);
   box-shadow: inset 0 1px 0 rgba(251, 191, 36, 0.08);
 }
 
@@ -384,7 +384,7 @@ button.danger:hover { filter: brightness(1.08); }
   padding: 0;
   margin: 0;
   display: grid;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .trade-row {
@@ -401,7 +401,7 @@ button.danger:hover { filter: brightness(1.08); }
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .badge.trade-status-pending { background: rgba(250, 204, 21, 0.2); border-color: rgba(250, 204, 21, 0.45); color: #fde68a; }

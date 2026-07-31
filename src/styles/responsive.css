@@ -57,7 +57,7 @@
     box-shadow: none;
   }
   .section-card {
-    border-radius: 14px;
+    border-radius: var(--radius-lg);
     box-shadow: 0 10px 26px rgba(10, 14, 30, 0.22);
   }
   .section-head { gap: 6px; }
@@ -70,8 +70,8 @@
   /* Home density — reference-style command panel */
 
   .scene-status-grid {
-    gap: 8px;
-    margin-top: 8px;
+    gap: var(--space-2);
+    margin-top: var(--space-2);
   }
 
   .scene-status-tile {
@@ -79,13 +79,13 @@
   }
 
   .home-command-card {
-    gap: 8px;
+    gap: var(--space-2);
     padding: clamp(9px, 1.2svh, 12px);
   }
 
   .home-rank-badge.rank-badge-art {
     padding: 7px 12px;
-    border-radius: 999px;
+    border-radius: var(--radius-pill);
   }
 
   .home-rank-badge.rank-badge-art img {
@@ -94,7 +94,7 @@
   }
 
   .home-status-card.scene-status-tile {
-    gap: 4px;
+    gap: var(--space-1);
     padding: 10px 12px;
     border-radius: 12px;
   }
@@ -121,13 +121,13 @@
 
   .nav-tile-row {
     grid-template-columns: repeat(3, 1fr);
-    gap: 8px;
+    gap: var(--space-2);
     margin-top: 10px;
   }
   .nav-tile {
     min-height: 80px;
     padding: 12px 8px;
-    gap: 4px;
+    gap: var(--space-1);
   }
   .nav-tile-label { font-size: 0.88rem; }
   .nav-tile-description { display: none; }
@@ -137,14 +137,14 @@
     align-items: start;
     gap: 7px;
     padding: 9px 12px 10px;
-    margin-top: 4px;
+    margin-top: var(--space-1);
     border-radius: 12px;
   }
 
   .quest-ledger-toolbar,
   .quest-ledger-hero,
   .quest-ledger-card {
-    border-radius: 10px;
+    border-radius: var(--radius-md);
   }
 
   .quest-ledger-hero {
@@ -197,7 +197,7 @@
   .difficulty-strip-head {
     grid-template-columns: auto 1fr;
     align-items: baseline;
-    gap: 8px;
+    gap: var(--space-2);
   }
   .play-ai-settings .difficulty-chip-row {
     display: grid;
@@ -209,7 +209,7 @@
   .play-live-label,
   .play-live-stat { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .play-live-stat { margin-left: auto; }
-  .queue-search-portal { margin-top: 0; padding: 8px; gap: 8px; }
+  .queue-search-portal { margin-top: 0; padding: var(--space-2); gap: var(--space-2); }
   .queue-portal-ring { width: 72px; height: 72px; }
   .queue-portal-core { font-size: 0.8rem; }
   .queue-portal-copy { gap: 5px; }
@@ -222,7 +222,7 @@
   .stepper { flex-wrap: wrap; }
   .slot { min-height: 88px; padding: 7px; }
   .battle-arena-frame {
-    padding: 8px;
+    padding: var(--space-2);
     gap: 6px;
   }
   .battle-hero-anchor {
@@ -284,7 +284,7 @@
     padding: 1px 4px;
   }
   .battle-action-dock {
-    gap: 4px;
+    gap: var(--space-1);
   }
   .battle-action-dock > button {
     min-height: 34px;
@@ -338,7 +338,7 @@
     max-height: none;
     overflow-y: visible;
   }
-  .deck-roster-list { grid-template-columns: 1fr; gap: 4px; }
+  .deck-roster-list { grid-template-columns: 1fr; gap: var(--space-1); }
   .builder-toolbar { padding: 4px 8px; gap: 6px; }
   .deck-stats { padding: 4px 8px; gap: 6px; }
   .builder-grid { gap: 6px; }
@@ -349,7 +349,7 @@
   .leaderboard-list,
   .social-list {
     margin-top: 6px;
-    gap: 4px;
+    gap: var(--space-1);
     max-height: none;
     overflow-y: visible;
     padding-right: 2px;
@@ -384,13 +384,13 @@
   }
 
   .social-clan-block {
-    padding: 8px;
+    padding: var(--space-2);
     margin-top: 6px;
     max-height: none;
     overflow-y: visible;
   }
   .social-trade-block {
-    padding: 8px;
+    padding: var(--space-2);
     margin-top: 6px;
     max-height: none;
     overflow-y: visible;
@@ -400,7 +400,7 @@
   /* Shop density — compact hero, convert offer stacks to rails */
   .shop-market-ledger {
     grid-template-columns: 1fr;
-    gap: 8px;
+    gap: var(--space-2);
   }
 
   .shop-resource-strip {
@@ -470,7 +470,7 @@
 
   .shop-hub-panels {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
+    gap: var(--space-2);
   }
 
   /* Shop hub panel density moved to `@container shoppanel` — the panel is
@@ -478,7 +478,7 @@
      two-column split, so viewport width does not describe it. */
 
   .shop-section-panel {
-    gap: 8px;
+    gap: var(--space-2);
   }
 
   .reward-vault-console {
@@ -513,7 +513,7 @@
   .reward-vault-action-center {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
+    gap: var(--space-2);
   }
 
   .reward-vault-action-center button {
@@ -531,19 +531,19 @@
     }
 
     .reward-vault-console {
-      gap: 8px;
-      padding: 8px;
+      gap: var(--space-2);
+      padding: var(--space-2);
     }
 
     .reward-vault-stage {
       grid-template-columns: 1fr;
-      gap: 8px;
+      gap: var(--space-2);
       text-align: center;
     }
 
     .reward-vault-medallion {
       width: min(108px, 31vw);
-      border-radius: 14px;
+      border-radius: var(--radius-lg);
     }
 
     .reward-vault-medallion span {
@@ -556,7 +556,7 @@
 
     .reward-vault-copy {
       justify-items: center;
-      gap: 4px;
+      gap: var(--space-1);
     }
 
     .reward-vault-copy strong {
@@ -579,7 +579,7 @@
 
     .reward-vault-rule-grid {
       grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 4px;
+      gap: var(--space-1);
     }
 
     .reward-vault-rule {
@@ -605,7 +605,7 @@
   .theme-grid-shop-fit {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(min(100%, 148px), 1fr));
-    gap: 8px;
+    gap: var(--space-2);
     width: 100%;
     overflow: visible;
     padding-bottom: 0;
@@ -615,13 +615,13 @@
     min-width: 0;
     width: 100%;
     flex: initial;
-    padding: 8px;
+    padding: var(--space-2);
     gap: 6px;
   }
   .pack-reveal-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
+    gap: var(--space-2);
     overflow: visible;
     padding-bottom: 0;
   }
@@ -635,13 +635,13 @@
     height: 100%;
     max-height: 100%;
     min-height: 100%;
-    gap: 8px;
+    gap: var(--space-2);
     overflow: hidden;
   }
 
   .settings-command-ledger {
     grid-template-columns: 1fr;
-    gap: 8px;
+    gap: var(--space-2);
     padding: 8px 10px;
   }
 
@@ -671,7 +671,7 @@
   .settings-section-panel {
     overflow-x: hidden;
     overflow-y: auto;
-    gap: 8px;
+    gap: var(--space-2);
     padding-bottom: 18px;
   }
 
@@ -698,7 +698,7 @@
     min-width: 112px;
     max-width: 112px;
     min-height: 44px;
-    padding-inline: 12px;
+    padding-inline: var(--space-3);
     font-size: 0.86rem;
   }
 
@@ -720,7 +720,7 @@
   }
 
   .settings-support-panel .complaint-form {
-    padding: 8px;
+    padding: var(--space-2);
   }
 
   .settings-admin-nav {
@@ -732,8 +732,8 @@
   }
 
   .admin-panel-block {
-    padding: 8px;
-    gap: 8px;
+    padding: var(--space-2);
+    gap: var(--space-2);
   }
 
   .role-list {

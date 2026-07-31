@@ -14,7 +14,6 @@ function quest(overrides: Partial<QuestProgress> & { cadence: QuestCadence }): Q
   seq += 1
   return {
     id: `quest-${seq}`,
-    cadence: overrides.cadence,
     tier: 'bronze',
     title: `Quest ${seq}`,
     description: 'Do the thing.',

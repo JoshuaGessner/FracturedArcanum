@@ -111,7 +111,7 @@
 .app-shell:not(.battle-shell-active) .scene-stage > .screen-panel.active::-webkit-scrollbar { width: 6px; }
 .app-shell:not(.battle-shell-active) .scene-stage > .screen-panel.active::-webkit-scrollbar-thumb {
   background: rgba(147, 197, 253, 0.35);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
 }
 .app-shell:not(.battle-shell-active) .scene-stage > .screen-panel.active::-webkit-scrollbar-track { background: transparent; }
 
@@ -172,7 +172,7 @@
 .app-shell.battle-shell-active .scene-stage {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
   overflow: hidden;
   min-height: 0;
   /* Lift the pan-y-only constraint set on .scene-stage for the scene-swipe

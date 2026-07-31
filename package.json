@@ -17,6 +17,7 @@
     "release:check": "npm test && npm run lint && npm run build",
     "qa:viewport": "node scripts/verify-responsive-layout.mjs",
     "qa:probe": "node scripts/probe-layout.mjs",
+    "qa:tokens": "node scripts/audit-tokens.mjs",
     "qa:snap": "node scripts/snap-layout.mjs",
     "qa:snap:check": "node scripts/snap-layout.mjs --check",
     "css:audit": "node scripts/audit-css-usage.mjs --list",

@@ -7,7 +7,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 16px;
+  padding: var(--space-4);
   overflow: hidden;
   background: radial-gradient(ellipse at center, rgba(8, 6, 22, 0.78) 0%, rgba(2, 2, 10, 0.94) 70%);
   backdrop-filter: blur(6px);
@@ -50,7 +50,7 @@
   grid-template-rows: 1fr auto;
   align-items: center;
   justify-items: center;
-  gap: 16px;
+  gap: var(--space-4);
   overflow: hidden;
 }
 
@@ -237,7 +237,7 @@
 .pack-ceremony-card-front {
   position: absolute;
   inset: 0;
-  border-radius: 14px;
+  border-radius: var(--radius-lg);
   overflow: hidden;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
@@ -259,7 +259,7 @@
   display: grid;
   grid-template-rows: 1fr auto;
   gap: 6px;
-  padding: 8px;
+  padding: var(--space-2);
 }
 
 .pack-ceremony-card-glow {
@@ -294,7 +294,7 @@
 .pack-ceremony-card-art {
   position: relative;
   z-index: 1;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   overflow: hidden;
   background: rgba(8, 12, 28, 0.6);
 }
@@ -350,7 +350,7 @@
   gap: 10px;
   justify-content: center;
   padding: 10px 12px;
-  border-radius: 14px;
+  border-radius: var(--radius-lg);
   background: linear-gradient(180deg, rgba(15, 17, 40, 0.92), rgba(8, 10, 28, 0.92));
   border: 1px solid rgba(251, 191, 36, 0.3);
   box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.45);
@@ -368,7 +368,7 @@
   .pack-ceremony-stage {
     width: 100%;
     max-height: calc(100dvh - 20px);
-    gap: 12px;
+    gap: var(--space-3);
   }
 
   .pack-ceremony-fan {
@@ -398,7 +398,7 @@
   }
 
   .pack-ceremony-footer {
-    gap: 8px;
+    gap: var(--space-2);
     padding: 8px 10px;
   }
 }
@@ -469,7 +469,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 16px;
+  padding: var(--space-4);
   overflow: hidden;
   background: radial-gradient(ellipse at center, rgba(20, 12, 6, 0.78) 0%, rgba(2, 2, 8, 0.94) 70%);
   backdrop-filter: blur(8px);
@@ -643,7 +643,7 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
-  margin-top: 4px;
+  margin-top: var(--space-1);
 }
 
 .reward-cinema-pip {

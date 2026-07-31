@@ -17,7 +17,7 @@
 
 /* ─── Summary / Victory ──────────────────────────────────────── */
 
-.log-heading { margin-top: 16px; }
+.log-heading { margin-top: var(--space-4); }
 
 /* ─── Quest Summary Strip (Home density) ─────────────────────── */
 
@@ -25,10 +25,10 @@
   display: grid;
   grid-template-columns: auto auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   padding: var(--panel-gap) 10px;
   margin-top: var(--panel-gap);
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   background: rgba(30, 41, 59, 0.5);
   border: 1px solid rgba(147, 197, 253, 0.1);
   width: 100%;
@@ -64,7 +64,7 @@ button.quest-summary:focus-visible {
 
 .quest-ledger-panel {
   display: grid;
-  gap: 12px;
+  gap: var(--space-3);
   min-height: 0;
 }
 
@@ -101,7 +101,7 @@ button.quest-summary:focus-visible {
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
   gap: 14px;
-  padding: 12px;
+  padding: var(--space-3);
   border-radius: var(--radius-md);
 }
 
@@ -146,7 +146,7 @@ button.quest-summary:focus-visible {
 
 .quest-ledger-hero-copy {
   display: grid;
-  gap: 4px;
+  gap: var(--space-1);
   min-width: 0;
 }
 
@@ -185,7 +185,7 @@ button.quest-summary:focus-visible {
 
 .quest-ledger-list {
   display: grid;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .quest-ledger-card {
@@ -257,7 +257,7 @@ button.quest-summary:focus-visible {
 .quest-progress-track {
   height: 8px;
   overflow: hidden;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: rgba(15, 23, 42, 0.75);
   border: 1px solid rgba(147, 197, 253, 0.12);
 }
@@ -272,7 +272,7 @@ button.quest-summary:focus-visible {
 
 .quest-ledger-card-reward {
   justify-items: end;
-  gap: 4px;
+  gap: var(--space-1);
   min-width: 92px;
 }
 
@@ -296,7 +296,7 @@ button.quest-summary:focus-visible {
 
 .quest-ledger-empty {
   display: grid;
-  gap: 4px;
+  gap: var(--space-1);
   justify-items: center;
   padding: 18px;
   color: #cbd5e1;

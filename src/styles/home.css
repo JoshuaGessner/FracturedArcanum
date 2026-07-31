@@ -251,7 +251,7 @@
   overflow: hidden;
   display: grid;
   align-content: start;
-  gap: 12px;
+  gap: var(--space-3);
   padding: clamp(14px, 2.2svh, 20px);
   border-radius: var(--radius-lg);
   border: 1px solid rgba(251, 191, 36, 0.25);
@@ -339,7 +339,7 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 10px;
-  padding: 12px;
+  padding: var(--space-3);
   border-radius: var(--radius-md);
   border: 1px solid rgba(147, 197, 253, 0.15);
   background: rgba(8, 14, 30, 0.54);
@@ -347,7 +347,7 @@
 
 .home-featured-contract-copy {
   display: grid;
-  gap: 4px;
+  gap: var(--space-1);
   min-width: 0;
 }
 
@@ -387,7 +387,7 @@
   grid-column: 1 / -1;
   height: 9px;
   overflow: hidden;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   border: 1px solid rgba(147, 197, 253, 0.12);
   background: rgba(15, 23, 42, 0.8);
 }
@@ -411,7 +411,7 @@
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   padding: 7px 8px;
   border-radius: var(--radius-sm);
   background: rgba(255, 255, 255, 0.045);
@@ -472,7 +472,7 @@
 @media (max-width: 720px) {
   .home-status-ribbon {
     grid-template-columns: minmax(0, 1fr) auto;
-    gap: 8px;
+    gap: var(--space-2);
   }
 
   .home-status-ribbon-badges {
@@ -563,13 +563,13 @@
   }
 
   .home-quest-board {
-    gap: 8px;
+    gap: var(--space-2);
     padding: 10px;
     border-radius: 12px;
   }
 
   .home-quest-board-header {
-    gap: 8px;
+    gap: var(--space-2);
   }
 
   .home-quest-board-title {
@@ -593,7 +593,7 @@
   .home-featured-contract {
     grid-template-columns: 1fr;
     gap: 7px;
-    padding: 8px;
+    padding: var(--space-2);
   }
 
   .home-featured-contract-copy {
@@ -651,11 +651,11 @@
    They are deliberately kept. */
 @media (max-height: 780px) {
   .home-command-layout {
-    gap: 8px;
+    gap: var(--space-2);
   }
 
   .home-status-ribbon {
-    padding-block: 8px;
+    padding-block: var(--space-2);
   }
 
   .home-status-chip {
@@ -664,7 +664,7 @@
 
   .home-quest-board {
     gap: 9px;
-    padding-block: 12px;
+    padding-block: var(--space-3);
   }
 
   .home-featured-contract {
@@ -679,7 +679,7 @@
      lopsided 2+1 that a two-column grid produces with three tiles. */
   .home-status-rail {
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 4px;
+    gap: var(--space-1);
   }
 
   .home-status-ribbon-badges .badge {
@@ -701,7 +701,7 @@
   width: 100%;
   height: 12px;
   overflow: hidden;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: rgba(255, 255, 255, 0.1);
   box-shadow: inset 0 0 0 1px rgba(147, 197, 253, 0.08);
 }
@@ -760,14 +760,14 @@
 .badges, .controls {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 12px;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
 }
 
 .difficulty-panel {
-  margin-top: 12px;
-  padding: 12px;
-  border-radius: 14px;
+  margin-top: var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--radius-lg);
   background: rgba(37, 99, 235, 0.08);
   border: 1px solid rgba(147, 197, 253, 0.14);
 }
@@ -812,7 +812,7 @@
   min-height: 132px;
   padding: 14px;
   display: grid;
-  gap: 8px;
+  gap: var(--space-2);
   align-content: start;
   border-radius: var(--radius-lg);
   border: 1px solid var(--border);
@@ -877,7 +877,7 @@
 .difficulty-chip-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--space-2);
   margin-top: 10px;
 }
 
@@ -906,7 +906,7 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
-  margin-top: 12px;
+  margin-top: var(--space-3);
 }
 
 .live-status-grid > div {
@@ -920,10 +920,10 @@
 .play-live-strip {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   margin-top: 0;
   padding: 5px 10px;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   background: rgba(255, 255, 255, 0.04);
   font-size: 0.78rem;
   color: #b9c2dd;
@@ -950,8 +950,8 @@
 
 .leaderboard-list {
   display: grid;
-  gap: 8px;
-  margin-top: 12px;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
 }
 
 .leaderboard-row {
@@ -1007,7 +1007,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: var(--space-2);
   padding: 6px 2px;
   border-bottom: 1px solid rgba(147, 197, 253, 0.1);
 }
@@ -1023,7 +1023,7 @@
 .social-info-bar .badges {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
+  gap: var(--space-1);
   justify-content: flex-end;
 }
 
@@ -1040,7 +1040,7 @@
 
 .badge, .deck-status {
   padding: 6px 10px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: rgba(91, 118, 255, 0.16);
   color: #eff3ff;
   font-size: 0.88rem;

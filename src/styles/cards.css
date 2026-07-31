@@ -143,7 +143,7 @@
   width: 24px;
   height: 24px;
   padding: 0;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: rgba(13, 20, 40, 0.86);
   border: 1px solid rgba(192, 38, 211, 0.34);
   box-shadow: 0 4px 12px rgba(7, 12, 24, 0.24);
@@ -294,7 +294,7 @@
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  gap: 4px;
+  gap: var(--space-1);
   box-shadow: 0 8px 20px rgba(6, 10, 22, 0.28);
   border-radius: 12px;
   border: 2px solid var(--rarity-color, var(--border));
@@ -374,7 +374,7 @@
   height: 32px;
   display: inline-grid;
   place-items: center;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: linear-gradient(135deg, #38bdf8, #2563eb);
   font-weight: 800;
   box-shadow: 0 2px 8px rgba(56, 189, 248, 0.3);
@@ -382,7 +382,7 @@
 
 .card-name {
   display: -webkit-box;
-  margin-bottom: 4px;
+  margin-bottom: var(--space-1);
   min-height: 2.4em;
   font-size: 0.92rem;
   overflow: hidden;
@@ -410,11 +410,11 @@
 .badge-with-art {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 .battle-stats-inline {
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .stat-icon {
@@ -425,7 +425,7 @@
 
 .rank-badge-art {
   padding: 4px 8px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: rgba(91, 118, 255, 0.16);
   color: #eff3ff;
   font-size: 0.88rem;
@@ -467,7 +467,7 @@
   height: 100%;
   min-height: 0;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--space-3);
   overflow: hidden;
 }
 
@@ -479,7 +479,7 @@
 .shop-market-ledger {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 12px;
+  gap: var(--space-3);
   align-items: center;
 }
 
@@ -507,7 +507,7 @@
   gap: 5px;
   min-height: 30px;
   padding: 5px 9px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   border: 1px solid rgba(147, 197, 253, 0.16);
   background: rgba(91, 118, 255, 0.13);
   color: #e8eeff;
@@ -560,7 +560,7 @@
 .shop-section-panel {
   display: grid;
   flex: 1 1 auto;
-  gap: 12px;
+  gap: var(--space-3);
   min-height: 0;
 }
 
@@ -587,16 +587,16 @@
 .shop-section-panel::-webkit-scrollbar { width: 6px; }
 .shop-section-panel::-webkit-scrollbar-thumb {
   background: rgba(147, 197, 253, 0.28);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
 }
 
 .shop-feature-panel {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 12px;
+  gap: var(--space-3);
   align-items: center;
-  padding: 12px;
-  border-radius: 14px;
+  padding: var(--space-3);
+  border-radius: var(--radius-lg);
   border: 1px solid rgba(251, 191, 36, 0.2);
   background: linear-gradient(135deg, rgba(66, 45, 12, 0.44), rgba(18, 24, 44, 0.8));
 }
@@ -627,15 +627,15 @@
 .shop-vault-stat-strip {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
-  margin-top: 12px;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
 }
 
 .shop-vault-stat-strip span {
   display: grid;
   gap: 2px;
   min-width: 0;
-  padding: 8px;
+  padding: var(--space-2);
   border-radius: 12px;
   border: 1px solid rgba(251, 191, 36, 0.14);
   background: rgba(255, 255, 255, 0.045);
@@ -697,7 +697,7 @@
   min-height: 0;
   padding: clamp(12px, 2.4vw, 22px);
   border: 1px solid rgba(251, 191, 36, 0.22);
-  border-radius: 14px;
+  border-radius: var(--radius-lg);
   background:
     linear-gradient(150deg, rgba(71, 48, 14, 0.58), rgba(8, 14, 29, 0.88) 46%, rgba(22, 33, 65, 0.72)),
     linear-gradient(90deg, rgba(251, 191, 36, 0.08), transparent 35%, rgba(96, 165, 250, 0.08));
@@ -800,7 +800,7 @@
 .reward-vault-rule-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
+  gap: var(--space-2);
   width: min(100%, 720px);
 }
 
@@ -857,7 +857,7 @@
   align-content: start;
   text-align: left;
   padding: 13px;
-  border-radius: 14px;
+  border-radius: var(--radius-lg);
   border: 1px solid rgba(147, 197, 253, 0.16);
   background: linear-gradient(150deg, rgba(10, 16, 31, 0.9), rgba(34, 38, 72, 0.72));
   color: #f5f8ff;
@@ -955,7 +955,7 @@
 .shop-hub-panel-kicker {
   justify-self: start;
   padding: 4px 8px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   border: 1px solid rgba(147, 197, 253, 0.14);
   background: rgba(255, 255, 255, 0.05);
   color: #dbe5ff;
@@ -978,7 +978,7 @@
 
 .shop-hub-panel-stat {
   align-self: end;
-  margin-top: 4px;
+  margin-top: var(--space-1);
   color: #fff3c4 !important;
   font-size: 0.74rem !important;
 }
@@ -986,7 +986,7 @@
 @media (min-width: 820px) {
   .shop-hub-panel {
     min-height: 0;
-    padding: 16px;
+    padding: var(--space-4);
   }
 }
 
@@ -996,7 +996,7 @@
   z-index: 2;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: 8px;
+  gap: var(--space-2);
   align-items: center;
   padding: 6px 0 8px;
   background: linear-gradient(180deg, rgba(12, 18, 36, 0.98), rgba(12, 18, 36, 0.82));
@@ -1032,7 +1032,7 @@
 
 .pack-reveal-stage {
   margin-top: 14px;
-  padding: 12px;
+  padding: var(--space-3);
   border-radius: 16px;
   background: linear-gradient(160deg, rgba(18, 14, 36, 0.94), rgba(32, 24, 58, 0.88));
   border: 1px solid rgba(147, 197, 253, 0.18);
@@ -1049,9 +1049,9 @@
   position: relative;
   overflow: hidden;
   display: grid;
-  gap: 8px;
+  gap: var(--space-2);
   padding: 10px;
-  border-radius: 14px;
+  border-radius: var(--radius-lg);
   border: 1px solid var(--rarity-color, var(--border));
   background: linear-gradient(180deg, rgba(22, 24, 46, 0.96), rgba(12, 16, 32, 0.96));
   box-shadow: 0 8px 22px rgba(0, 0, 0, 0.22);
@@ -1086,7 +1086,7 @@
   position: relative;
   z-index: 1;
   display: grid;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 .new-card-badge {
@@ -1099,13 +1099,13 @@
 .card-art-shell {
   height: 92px;
   overflow: hidden;
-  border-radius: 14px;
+  border-radius: var(--radius-lg);
   border: 1px solid rgba(251, 191, 36, 0.22);
   background: linear-gradient(135deg, rgba(10, 18, 36, 0.95), rgba(23, 35, 71, 0.7));
 }
 
 .card-art-shell.large { height: 104px; }
-.card-art-shell.thumb { height: 52px; border-radius: 10px; }
+.card-art-shell.thumb { height: 52px; border-radius: var(--radius-md); }
 
 .card-illustration {
   width: 100%;

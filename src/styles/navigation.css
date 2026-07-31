@@ -35,7 +35,7 @@
 .nav-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 /* ─── Bottom navigation ─────────────────────────────────────────────
@@ -155,7 +155,7 @@
 .nav-tile-row {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 12px;
+  gap: var(--space-3);
   margin-top: 14px;
 }
 

@@ -26,7 +26,7 @@
   z-index: 3;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   min-height: 36px;
   padding: 5px 10px;
   border-radius: var(--radius-md);
@@ -69,7 +69,7 @@
 .battle-hero-hp {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-1);
   font-size: 0.82rem;
   font-weight: 700;
   white-space: nowrap;
@@ -91,7 +91,7 @@
   font-size: 0.72rem;
   font-weight: 700;
   padding: 2px 6px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: rgba(37, 99, 235, 0.14);
   border: 1px solid rgba(147, 197, 253, 0.16);
   color: #dbe6ff;
@@ -129,7 +129,7 @@
 .pip {
   width: 16px;
   height: 16px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: url('/generated/ui/pip-mana-empty.svg') center / contain no-repeat;
   transition: transform 0.2s ease, filter 0.3s, box-shadow 0.3s;
 }
@@ -166,7 +166,7 @@
   padding: 8px 12px;
   background: linear-gradient(135deg, rgba(124, 58, 237, 0.94), rgba(192, 38, 211, 0.9));
   border: 1px solid rgba(233, 213, 255, 0.34);
-  border-radius: 14px;
+  border-radius: var(--radius-lg);
   box-shadow: 0 12px 28px rgba(30, 12, 60, 0.34);
   backdrop-filter: blur(12px);
   animation: banner-pulse 0.7s ease-in-out infinite alternate;
@@ -223,7 +223,7 @@
   z-index: 18;
   display: grid;
   place-items: center;
-  padding: 16px;
+  padding: var(--space-4);
   overflow: hidden;
   background: rgba(6, 10, 22, 0.6);
   backdrop-filter: blur(6px);
@@ -234,7 +234,7 @@
 .summary-popup-card {
   width: min(100%, 430px);
   display: grid;
-  gap: 12px;
+  gap: var(--space-3);
   background: linear-gradient(180deg, rgba(12, 18, 35, 0.98), rgba(27, 34, 62, 0.96));
   border: 1px solid rgba(147, 197, 253, 0.18);
   box-shadow: 0 18px 48px rgba(6, 10, 22, 0.46);
@@ -273,13 +273,13 @@
 }
 
 .summary-popup-highlights {
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .summary-popup-actions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .summary-popup-actions.is-single-action {
@@ -303,7 +303,7 @@
 .battle-board-stack {
   display: grid;
   grid-template-rows: minmax(0, 1fr) auto minmax(0, 1fr);
-  gap: 8px;
+  gap: var(--space-2);
   min-height: clamp(220px, 42svh, 360px);
   height: 100%;
   padding: 0;
@@ -311,7 +311,7 @@
 
 .battlefield-side {
   display: grid;
-  gap: 4px;
+  gap: var(--space-1);
   min-height: 0;
 }
 
@@ -319,12 +319,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: var(--space-2);
   width: fit-content;
   max-width: 100%;
   margin: 0 auto;
   padding: 3px 10px;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   border: 1px solid rgba(147, 197, 253, 0.16);
   background: linear-gradient(135deg, rgba(12, 18, 36, 0.88), rgba(28, 34, 60, 0.74));
 }
@@ -384,7 +384,7 @@
   letter-spacing: 0.08em;
   text-transform: uppercase;
   padding: 1px 6px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   flex-shrink: 0;
 }
 
@@ -439,7 +439,7 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 4px;
+  gap: var(--space-1);
   background: linear-gradient(180deg, rgba(39, 51, 92, 0.96), rgba(24, 31, 58, 0.96));
   color: #f9fbff;
   border-radius: 12px;

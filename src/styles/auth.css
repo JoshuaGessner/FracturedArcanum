@@ -39,7 +39,7 @@
   text-align: center;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--space-3);
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.4);
 }
 
@@ -87,7 +87,7 @@
 .auth-form label {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-1);
   font-size: 0.8rem;
   font-weight: 600;
   color: var(--muted);
@@ -95,7 +95,7 @@
 
 .auth-form input,
 .auth-form select {
-  padding: 12px;
+  padding: var(--space-3);
   min-height: 44px;
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -115,7 +115,7 @@
 
 .account-requirements-list {
   display: grid;
-  gap: 8px;
+  gap: var(--space-2);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -150,7 +150,7 @@
   grid-template-columns: 34px 1fr;
   gap: 10px;
   align-items: start;
-  padding: 12px;
+  padding: var(--space-3);
   border: 1px solid rgba(148, 163, 184, 0.22);
   border-radius: var(--radius-sm);
   background: rgba(8, 14, 30, 0.42);
@@ -196,7 +196,7 @@
 }
 
 .migration-consent-form {
-  padding: 12px;
+  padding: var(--space-3);
   border: 1px solid rgba(148, 163, 184, 0.2);
   border-radius: var(--radius-sm);
   background: rgba(8, 14, 30, 0.34);
@@ -228,7 +228,7 @@
   display: grid;
   grid-template-columns: 20px 1fr;
   align-items: start;
-  gap: 8px;
+  gap: var(--space-2);
   color: var(--text);
 }
 

@@ -8,6 +8,7 @@ front of you.
 |------|--------------------|------|
 | `npm run qa:probe` | "Does this specific layout invariant still hold, and which CSS rule broke it?" | ~1s per state |
 | `npm run qa:snap` / `qa:snap:check` | "Did this restyle change anything I didn't intend?" | ~5s per state |
+| `npm run qa:tokens` | "Where has the UI drifted off the design tokens?" | milliseconds |
 | `npm run qa:viewport` | "Is the full device matrix sound before release?" | minutes |
 
 ## qa:probe — the fix/verify loop
@@ -74,6 +75,32 @@ States marked `volatile` in `scripts/lib/appStates.mjs` are excluded from
 baselines unless named explicitly. `battle` is volatile — each match deals a
 random hand, so the frame differs by ~1.2% between runs with no code change.
 It is covered by `qa:probe` instead, which measures geometry rather than colour.
+
+## qa:tokens — design-system drift
+
+```bash
+npm run qa:tokens              # summary, worst offenders first
+npm run qa:tokens -- --list    # every occurrence with file:line
+npm run qa:tokens -- --fixable # only the unambiguous 1:1 substitutions
+npm run qa:tokens -- --write   # apply those substitutions
+```
+
+Static parse of `src/styles/*.css`, no browser. Finds literal values that have
+an exact token equivalent — a hardcoded `12px` where `var(--space-3)` means the
+same thing.
+
+Correctness comes from what it refuses to flag: declarations inside `:root`
+(where tokens are defined), values already inside a `var()`, `@keyframes` bodies
+(animation waypoints, not layout), `0` and `1px` (hairlines and resets), and
+properties outside a token family's scale — `4px` as a `border-radius` is not
+`--space-1`, since spacing and radii are different scales that share numbers.
+
+`--write` only rewrites declarations whose *entire* value is a single matching
+literal, so each substitution is behaviour-preserving by construction. Compound
+values like `8px 16px` are always left for a human: whether a whole shorthand
+was reaching for the scale is a judgement call. The first run applied 240
+substitutions across 17 files and `qa:snap:check` reported 48/48 states
+unchanged.
 
 ## Shared definitions
 

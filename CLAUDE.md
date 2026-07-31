@@ -283,6 +283,7 @@ Three tools, in increasing cost. Pick the cheapest that answers the question.
 |---------|----------|
 | `npm run qa:probe` | **The fix/verify loop.** Targeted layout invariants with CSS rule attribution. ~1s per state, filterable. |
 | `npm run qa:snap` / `qa:snap:check` | **Before and after broad restyling.** Visual baselines; reports percent-changed per state and writes diff images. |
+| `npm run qa:tokens` | **Design-system drift.** Static audit of literal values that have an exact token equivalent. No browser; milliseconds. |
 | `npm run qa:viewport` | **Pre-release sweep.** The full device matrix with screenshots. Slow — not for iteration. |
 
 ```bash

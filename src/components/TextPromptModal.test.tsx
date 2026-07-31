@@ -3,9 +3,18 @@ import { describe, it, expect, vi, afterEach } from 'vitest'
 import { render, screen, cleanup, fireEvent } from '@testing-library/react'
 import { TextPromptModal } from './TextPromptModal'
 
-const base = { title: 'Rename deck', label: 'Deck name' }
+// Mirrors TextPromptModal's internal request type, which it does not export.
+type TextPromptRequest = {
+  title: string
+  label: string
+  confirmLabel?: string
+  placeholder?: string
+  maxLength?: number
+}
 
-function setup(request: typeof base | null, value = '') {
+const base: TextPromptRequest = { title: 'Rename deck', label: 'Deck name' }
+
+function setup(request: TextPromptRequest | null, value = '') {
   const onClose = vi.fn()
   const onChange = vi.fn()
   const view = render(

@@ -112,7 +112,7 @@
 }
 
 .brand-block-home {
-  gap: 12px;
+  gap: var(--space-3);
   padding: 2px 4px;
   padding-inline-start: calc(4px + var(--safe-left));
   padding-inline-end: calc(4px + var(--safe-right));
@@ -146,7 +146,7 @@
 
 .brand-logo-home {
   width: clamp(40px, 10vw, 52px);
-  border-radius: 10px;
+  border-radius: var(--radius-md);
 }
 
 @keyframes logoPulse {
@@ -218,7 +218,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: var(--space-2);
   padding: 4px 2px;
   border-bottom: 1px solid rgba(147, 197, 253, 0.1);
   position: sticky;
@@ -247,7 +247,7 @@
 
 .scene-header-top {
   display: grid;
-  gap: 8px;
+  gap: var(--space-2);
   align-items: center;
 }
 
@@ -264,7 +264,7 @@
 .scene-header-copy {
   min-width: 0;
   display: grid;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 .scene-header-copy-main {
@@ -290,7 +290,7 @@
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--panel-gap);
-  margin-top: 4px;
+  margin-top: var(--space-1);
 }
 
 .scene-header-shortcut-grid {
@@ -301,7 +301,7 @@
 
 .scene-header-shortcut {
   display: grid;
-  gap: 4px;
+  gap: var(--space-1);
   min-height: 74px;
   padding: 10px 12px;
   border-radius: var(--radius-sm);
@@ -322,8 +322,8 @@
   display: grid;
   gap: 2px;
   min-width: 0;
-  padding: var(--panel-gap) 8px;
-  border-radius: 10px;
+  padding: var(--panel-gap) var(--space-2);
+  border-radius: var(--radius-md);
   border: 1px solid rgba(147, 197, 253, 0.14);
   background: rgba(255, 255, 255, 0.04);
 }

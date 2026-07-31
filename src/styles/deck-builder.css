@@ -43,7 +43,7 @@
   position: relative;
   min-width: 0;
   min-height: 200px;
-  padding: 8px;
+  padding: var(--space-2);
   display: grid;
   grid-template-rows: minmax(0, 1fr) auto;
   gap: 6px;
@@ -88,7 +88,7 @@
   .builder-card .slot-head,
   .builder-card .card-meta-row,
   .builder-card .card-stats {
-    gap: 4px;
+    gap: var(--space-1);
   }
 
   .builder-card .slot-head strong {
@@ -142,7 +142,7 @@
     width: 22px;
     height: 22px;
     padding: 0;
-    border-radius: 999px;
+    border-radius: var(--radius-pill);
   }
 
   .builder-card .effect-badge span {
@@ -161,7 +161,7 @@
     min-width: 34px;
     height: 34px;
     padding: 0;
-    border-radius: 10px;
+    border-radius: var(--radius-md);
   }
 
   .builder-card .count-chip {
@@ -175,7 +175,7 @@
   min-width: 0;
   padding: 0;
   display: grid;
-  gap: 4px;
+  gap: var(--space-1);
   border: 0;
   box-sizing: border-box;
   background: transparent;
@@ -227,7 +227,7 @@
   align-items: center;
   justify-content: center;
   flex-wrap: nowrap;
-  gap: 4px;
+  gap: var(--space-1);
   min-width: 0;
   max-width: 100%;
   box-sizing: border-box;
