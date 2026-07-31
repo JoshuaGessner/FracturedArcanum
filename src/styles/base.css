@@ -1,0 +1,56 @@
+/* ─── Shared layout primitives ───────────────────────────────────── */
+.stack-2 { display: grid; gap: var(--space-2); }
+
+.row-2   { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+
+/* Consistent keyboard-focus ring for interactive elements that opt in. */
+.focusable:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+a:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: var(--radius-sm);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+button {
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+/* ─── Error Boundary Fallback ──────────────────────────────────── */
+
+.error-boundary-fallback {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100dvh;
+  padding: var(--space-4);
+  text-align: center;
+  background: var(--bg);
+  color: var(--text);
+  gap: var(--space-3);
+}
+
+.error-boundary-fallback h1 {
+  font-size: var(--font-xl, 1.5rem);
+  margin: 0;
+}
+
+.error-boundary-fallback p {
+  color: var(--muted);
+  margin: 0;
+}
+

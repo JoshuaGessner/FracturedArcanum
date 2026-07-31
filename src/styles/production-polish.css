@@ -1,0 +1,162 @@
+/* ═══════════════════════════════════════════════════════════════════
+   Multi-deck builder, filters, mana curve, card borders, themes v2
+   Production polish: removes browser-look defaults, tightens taps.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ─── Production app shell polish (less browser look) ─────────────── */
+
+html, body {
+  /* Disable rubber-band scroll on iOS / mobile to feel app-like. */
+  overscroll-behavior: none;
+}
+
+body {
+  /* Most of the UI is interactive; allow text selection only inside
+     selectable surfaces (inputs, paragraphs of body copy). */
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  user-select: none;
+}
+
+input, textarea, p, .card-text, .note, .mini-text {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* But inside long-press surfaces (cards, slots, hand) keep selection
+   off so iOS does not fire the system text-callout on inspect. */
+.slot p, .slot .note, .slot .card-text, .hand-card p, .hand-card .note, .hand-card .card-text, .builder-card p, .builder-card .note, .builder-card .card-text {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* Prevent iOS Safari image callout on ALL card art, reward, and
+   ceremony images that live inside inspectable surfaces. */
+.slot img, .hand-card img, .builder-card img,
+.card-inspect-modal img, .reward-cinema-overlay img,
+.pack-ceremony-overlay img {
+  -webkit-touch-callout: none;
+  -webkit-user-drag: none;
+  user-select: none;
+  pointer-events: none;
+}
+
+button, [role="button"], .scene-link, .chip {
+  /* Faster tap response on touch devices, no double-tap zoom. */
+  touch-action: manipulation;
+}
+
+/* ─── Form control reset ──────────────────────────────────────────
+   Remove browser-default appearance from selects, textareas, and
+   checkboxes so they inherit the app's dark surface look. */
+
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  background: rgba(8, 12, 26, 0.6);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 6px 28px 6px 10px;
+  font: inherit;
+  font-size: var(--font-sm);
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 6 L8 10 L12 6' fill='none' stroke='%23a0b0d0' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 6px center;
+  background-size: 16px 16px;
+}
+
+select:hover { border-color: var(--border-bright); }
+select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: var(--focus-ring);
+}
+
+textarea {
+  appearance: none;
+  background: rgba(8, 12, 26, 0.6);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  font: inherit;
+  font-size: var(--font-sm);
+  resize: vertical;
+  min-height: 64px;
+}
+
+textarea:hover { border-color: var(--border-bright); }
+textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: var(--focus-ring);
+}
+
+/* Custom checkbox toggle — replaces raw browser checkbox with a
+   small rounded switch that matches the dark-panel design. */
+input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  border: 1.5px solid var(--border-bright);
+  border-radius: 4px;
+  background: rgba(8, 12, 26, 0.5);
+  cursor: pointer;
+  position: relative;
+  transition: background var(--motion-fast), border-color var(--motion-fast);
+  vertical-align: middle;
+}
+
+input[type="checkbox"]:checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+input[type="checkbox"]:checked::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 5px;
+  width: 5px;
+  height: 9px;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+input[type="checkbox"]:focus-visible {
+  box-shadow: var(--focus-ring);
+}
+
+input[type="checkbox"]:hover {
+  border-color: var(--accent);
+}
+
+/* ─── Theme overrides v2: visible accent / surface differences ─── */
+
+.app-shell.theme-ember {
+  --accent: #f97316;
+  --accent-blue: #ef4444;
+  --border: rgba(249, 115, 22, 0.22);
+  --border-bright: rgba(249, 115, 22, 0.4);
+  --focus-ring: 0 0 0 2px rgba(249, 115, 22, 0.85);
+}
+
+.app-shell.theme-moon {
+  --accent: #38bdf8;
+  --accent-blue: #a78bfa;
+  --border: rgba(167, 139, 250, 0.24);
+  --border-bright: rgba(167, 139, 250, 0.4);
+  --focus-ring: 0 0 0 2px rgba(56, 189, 248, 0.85);
+}
+
+/* Theme swatch in vault matches the new accents. */
+.theme-swatch.royal { background: linear-gradient(135deg, #7c3aed, #2563eb); }
+.theme-swatch.ember { background: linear-gradient(135deg, #f97316, #ef4444); }
+.theme-swatch.moon  { background: linear-gradient(135deg, #38bdf8, #a78bfa); }
+

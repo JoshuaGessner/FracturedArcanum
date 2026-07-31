@@ -1,0 +1,94 @@
+/* ═══════════════════════════════════════════════════════════════════
+   Fractured Arcanum — Production CSS
+   ═══════════════════════════════════════════════════════════════════ */
+
+:root {
+  --bg: #0a0e1c;
+  --surface: rgba(18, 22, 40, 0.84);
+  --surface-alt: rgba(12, 18, 36, 0.94);
+  --border: rgba(147, 197, 253, 0.18);
+  --border-bright: rgba(147, 197, 253, 0.35);
+  --text: #f0f4ff;
+  --muted: #a0b0d0;
+  --accent: #7c3aed;
+  --accent-blue: #2563eb;
+  --gold: #fbbf24;
+  --gold-light: #fde68a;
+  --gold-dark: #b45309;
+  --red: #ef4444;
+  --green: #22c55e;
+  --rarity-common: #9ca3af;
+  --rarity-rare: #3b82f6;
+  --rarity-epic: #a855f7;
+  --rarity-legendary: #f59e0b;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+
+  /* ─── Design tokens (v1) ─────────────────────────────────────────
+     Consistent spacing / radii / typography scales. New components
+     should prefer these tokens over magic numbers so the look stays
+     coherent as the UI grows. Existing components are not refactored
+     wholesale — they continue to work as-is.
+     ─────────────────────────────────────────────────────────────── */
+
+  /* Spacing — 4 px base scale. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+
+  /* Border radii. */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-pill: 999px;
+
+  /* Typography scale. */
+  --font-xs: 11px;
+  --font-sm: 13px;
+  --font-md: 15px;
+  --font-lg: 18px;
+  --font-xl: 22px;
+  --font-2xl: 28px;
+
+  /* Elevation / shadows. */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.45);
+
+  /* Focus ring (accessibility). */
+  --focus-ring: 0 0 0 2px rgba(124, 58, 237, 0.85);
+
+  /* Semantic colors (used for buttons, banners, badges). */
+  --color-danger: #ef4444;
+  --color-danger-strong: #b91c1c;
+  --color-success: #22c55e;
+  --color-success-strong: #15803d;
+  --color-warning: #f59e0b;
+  --color-info: #3b82f6;
+
+  /* Backdrops for translucent panels and modals. */
+  --backdrop: rgba(4, 8, 22, 0.72);
+  --modal-bg: linear-gradient(160deg, rgba(28, 32, 56, 0.98), rgba(14, 18, 36, 0.98));
+
+  /* Animation curves & durations. */
+  --motion-fast: 120ms cubic-bezier(0.4, 0, 0.2, 1);
+  --motion-base: 220ms cubic-bezier(0.4, 0, 0.2, 1);
+  --motion-slow: 380ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* ── Viewport-Responsive Sizing ──────────────────────────────────
+     Gaps, padding, and panel spacing scale fluidly between compact
+     phones (667px tall) and spacious tablets (1024px+).  Uses svh so
+     iOS Safari dynamic toolbar changes don't cause constant reflow. */
+  --scene-gap: clamp(12px, 2svh, 28px);
+  --card-pad: clamp(12px, 1.6svh, 22px);
+  --panel-gap: clamp(6px, 1svh, 14px);
+}
+

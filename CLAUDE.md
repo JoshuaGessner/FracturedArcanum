@@ -208,7 +208,8 @@ Read these before touching layout CSS — each cost real debugging time:
 | `src/types.ts` | UI-only types | |
 | `src/constants.ts` | Static UI constants, theme offers, labels, semantic asset registry | Data only, no functions |
 | `src/utils.ts` | Pure helpers (asset lookup, transitions, completion, severity, fan layout) | No React, no app state |
-| `src/App.css` | All styles and motion systems | Add to the correct section per `06-styles.md` |
+| `src/App.css` | Ordered index of `src/styles/*.css` — imports only | **Import order is load-bearing**; add a module where its cascade requires |
+| `src/styles/` | 24 stylesheet modules, each a contiguous slice of the original single file | Edit the module that owns the surface; never reorder the index |
 | `src/audio.ts` | Web Audio synthesis | |
 | `src/ambient.ts` | Ambient scene audio/visual bed | |
 | `src/feedback.ts` | Sound + haptic pairing | |

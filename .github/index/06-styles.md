@@ -1,3 +1,16 @@
+> **`src/App.css` is now an index, not a stylesheet.** It contains only
+> `@import` lines pointing at `src/styles/*.css`, split into 24 modules that are
+> contiguous slices of the original 9,550-line file.
+>
+> **The import order in `App.css` is load-bearing.** The cascade resolves by
+> source order and this project relies on it heavily — `responsive.css`
+> overrides earlier layout, `production-polish.css` overrides component
+> defaults. Reordering the imports changes rendering. Add a new module in the
+> position its cascade requires, not alphabetically.
+>
+> The section map below still describes what lives where; each heading now
+> corresponds to a file in `src/styles/`. Line numbers are historical.
+
 # Styles Index — `src/App.css` (5,440 lines)
 
 <!-- markdownlint-disable MD022 MD032 MD060 -->

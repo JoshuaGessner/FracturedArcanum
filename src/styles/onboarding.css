@@ -1,0 +1,203 @@
+/* ─── Phase 3X — Onboarding Tour ───────────────────────────────── */
+.onboarding-tour {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  pointer-events: auto;
+}
+
+.onboarding-tour-veil {
+  position: absolute;
+  inset: 0;
+  transition: background 240ms ease-out;
+}
+.onboarding-tour-veil.centered {
+  background: rgba(6, 7, 14, 0.78);
+}
+
+.onboarding-tour-caption {
+  position: absolute;
+  max-width: 320px;
+  padding: 18px 18px 16px;
+  border-radius: 16px;
+  background: rgba(20, 17, 36, 0.96);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.55);
+  animation: onboardingCaptionIn 260ms ease-out;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.onboarding-tour-caption.centered {
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(320px, calc(100vw - 32px));
+}
+
+.onboarding-tour-title {
+  margin: 0;
+  font-size: 1.15rem;
+  line-height: 1.25;
+}
+.onboarding-tour-body {
+  margin: 0;
+  line-height: 1.4;
+}
+
+.onboarding-tour-progress {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  margin-top: 4px;
+}
+.onboarding-tour-pip {
+  width: 24px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.18);
+  transition: background 200ms ease-out;
+}
+.onboarding-tour-pip.active {
+  background: var(--accent, #d4a548);
+}
+
+.onboarding-tour-controls {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 6px;
+}
+.onboarding-tour-controls button {
+  min-height: 44px;
+  flex: 1 1 auto;
+}
+
+@keyframes onboardingCaptionIn {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.onboarding-tour-caption.centered {
+  animation-name: onboardingCaptionInCentered;
+}
+@keyframes onboardingCaptionInCentered {
+  from { opacity: 0; transform: translate(-50%, calc(-50% + 8px)) scale(0.98); }
+  to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+.onboarding-tour.reduced-motion .onboarding-tour-veil,
+.onboarding-tour.reduced-motion .onboarding-tour-caption {
+  animation: none !important;
+  transition: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .onboarding-tour-veil,
+  .onboarding-tour-caption {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+@media (max-width: 600px) {
+  .onboarding-tour-caption {
+    max-width: min(320px, calc(100vw - 24px));
+  }
+}
+
+/* ─── Phase 3Y — Scene Swipe Gesture ───────────────────────────── */
+/*
+ * The swipe layer is implemented entirely in JS via useSceneSwipe; the
+ * only CSS affordance needed is a touch-action hint on the scene shell
+ * so the browser keeps native vertical scrolling snappy while still
+ * allowing horizontal swipe detection. Battle is inside `.scene-stage`
+ * but the hook short-circuits via `isBattleScreen`, so no per-screen
+ * CSS conflict arises.
+ *
+ * Reduced motion: scene-change commits inherit from the existing
+ * curtain transition system (.screen-enter-* + the prefers-reduced-motion
+ * rules already declared earlier in this file). The gesture itself adds
+ * no animated affordance, so there is nothing to collapse here.
+ */
+.scene-stage {
+  touch-action: pan-y;
+}
+
+/* ─── Phase 3Z — Accessibility & Reduced-Motion Audit ─────────── */
+/*
+ * Consolidated reduced-motion rules for surfaces added in 3Q–3Y.
+ * Per-feature co-located rules (3S battle, 3T pack, 3W reward, 3X tour)
+ * remain in their own sections above. This block catches any gaps
+ * identified during the Phase 3Z audit.
+ */
+
+/* 3R — Curtain scene transitions. The earlier generic `.screen-panel.active`
+   reduced-motion rule has lower specificity than the class-compound selectors
+   used by the curtain system, so we override them explicitly here. Under
+   reduced motion the panel still fades in (1-frame opacity jump) but skips
+   translation, clip-path, and filter motion. */
+@media (prefers-reduced-motion: reduce) {
+  .app-shell.screen-enter-forward .screen-panel.active,
+  .app-shell.screen-enter-back .screen-panel.active,
+  .app-shell.screen-enter-lateral .screen-panel.active,
+  .app-shell.screen-enter-battle .screen-panel.active {
+    animation: none !important;
+  }
+
+  /* Ambient background float and logo pulse — non-essential infinite loops. */
+  .app-shell::before { animation: none !important; }
+  .brand-logo { animation: none !important; }
+
+  /* Collection card selection ring and social challenge banner pulses. */
+  .challenge-banner.incoming { animation: none !important; }
+
+  /* Streak badge decorative loops (emberFloat, fireGlow, rewardSweep). */
+  .streak-badge::before,
+  .streak-badge::after,
+  .streak-badge.streak-inferno { animation: none !important; }
+
+  /* Slot selection pulse + claim-ready vault pulse. */
+  .slot.selected,
+  .reward-vault-card.claim-ready .primary { animation: none !important; }
+
+  /* Legendary card cosmetic glow. */
+  .builder-card.rarity-legendary::before,
+  .hand-card.rarity-legendary::before { animation: none !important; }
+
+  /* Animated cosmetic frames. The finish still reads — the ember sits at its
+     mid brightness and the sheen parks off to one side — it just stops
+     moving, so the frame keeps its identity without the motion. */
+  .border-solar > .card-frame,
+  .border-preview.border-solar::after {
+    animation: none !important;
+    opacity: 0.8;
+  }
+
+  .border-void > .card-frame,
+  .border-preview.border-void::after {
+    animation: none !important;
+    background-position: 30% 0 !important;
+  }
+
+  /* Banner / challenge incoming pulse. */
+  .challenge-banner { animation: none !important; }
+
+  /* Drop-target pulse during drag. */
+  .slot.drop-target-active { animation: none !important; }
+
+  /* Queue portal spinner. */
+  .queue-portal-ring { animation: none !important; }
+
+  /* Rarity celebrate spark. */
+  .rarity-chip.rarity-celebrate { animation: none !important; }
+
+  /* Form control transitions — keep them instant. */
+  input[type="checkbox"],
+  select { transition: none !important; }
+
+  /* Focus ring uses box-shadow only — no motion concern. */
+}
+
+/* 3Y — Swipe gestures: scene-change commits inherit the curtain transition
+   system whose reduced-motion collapse is handled above. The gesture itself
+   adds no animated CSS affordance, so no additional rule is needed. */
+

@@ -1,0 +1,82 @@
+/* ─── Buttons ───────────────────────────────────────────────────── */
+/* ─── Inline icon helpers ─────────────────────────────────────────
+   Small SVG icons embedded in text-flow buttons and labels. They
+   inherit the line height of the surrounding text and stay crisp at
+   any size. */
+
+.action-icon {
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.12em;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.inline-stat {
+  width: 0.95em;
+  height: 0.95em;
+  vertical-align: -0.1em;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+/* Single-owner chrome rule: buttons own ONE edge treatment (the
+   border + gradient) — no stacked SVG button art behind them. The
+   SVG button frames never aligned to arbitrary button widths and
+   produced the "inner button inside an outer button" look on
+   primary/secondary/ghost. Hover/active state lives in the border
+   glow + transform, not in a second decorative frame. */
+
+.primary, .secondary, .ghost {
+  padding: 12px 16px;
+  min-height: 44px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  transition: transform var(--motion-fast), opacity var(--motion-fast), box-shadow var(--motion-fast), filter var(--motion-fast), border-color var(--motion-fast);
+}
+
+.primary {
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.92), rgba(37, 99, 235, 0.9));
+  border-color: rgba(168, 130, 255, 0.42);
+  color: white;
+  box-shadow: 0 4px 16px rgba(124, 58, 237, 0.25);
+}
+
+.primary:hover:not(:disabled) {
+  box-shadow: 0 6px 24px rgba(124, 58, 237, 0.4);
+  filter: brightness(1.05);
+}
+
+.secondary {
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.32), rgba(76, 29, 149, 0.28));
+  color: var(--text);
+}
+
+.ghost {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.16), rgba(30, 41, 59, 0.32));
+  color: var(--muted);
+}
+
+.mini {
+  min-width: 44px;
+  min-height: 44px;
+  padding-inline: 0;
+}
+
+.primary:hover:not(:disabled),
+.secondary:hover:not(:disabled),
+.ghost:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.primary:active:not(:disabled),
+.secondary:active:not(:disabled),
+.ghost:active:not(:disabled) {
+  transform: translateY(0.5px) scale(0.98);
+}
+
+.primary:disabled, .secondary:disabled, .ghost:disabled,
+.hand-card:disabled, .slot:disabled {
+  opacity: 0.55;
+}
+

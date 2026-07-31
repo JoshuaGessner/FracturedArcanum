@@ -1,0 +1,1118 @@
+/* ─── Home Command Panel ───────────────────────────────────────── */
+
+.home-command-card {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: var(--panel-gap);
+  min-height: 0;
+  align-content: start;
+}
+
+.home-command-card.home-view-quests {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.home-view-quests > .quest-ledger-panel {
+  flex: 1 1 auto;
+  align-content: start;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(147, 197, 253, 0.35) transparent;
+}
+
+/* The hub scrolls; the primary action does not.
+
+   An earlier version made this a fixed three-row grid (status / quests /
+   action). That guaranteed the CTA stayed on screen, but on a 560px-tall
+   phone the status ribbon ate the middle row and the quest board was left
+   with a sliver. Letting the content scroll and sticking the action to the
+   bottom keeps the CTA permanently reachable *and* gives quests real height. */
+.home-command-layout {
+  display: grid;
+  grid-template-rows: auto auto 1fr;
+  gap: clamp(10px, 1.5svh, 16px);
+  min-width: 0;
+  min-height: 100%;
+  align-content: start;
+}
+
+/* ─── Primary battle action ─────────────────────────────────────────
+   The single most important control in the app. Previously the launch
+   surface was a tab of equal weight to Settings; now it is the largest
+   element on the hub and sticks to the bottom of the scroll area, inside
+   the natural thumb arc for one-handed use. */
+.home-battle-dock {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  align-self: end;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-2);
+  align-items: center;
+  padding-top: var(--space-3);
+  /* Fades the scrolling content out behind the button rather than letting it
+     collide with the label. */
+  background: linear-gradient(to top, var(--surface-alt) 62%, transparent);
+}
+
+.home-battle-dock:has(.home-battle-secondary) {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.home-battle-cta {
+  min-height: clamp(56px, 9svh, 72px);
+  padding: var(--space-2) var(--space-5);
+  border-radius: var(--radius-lg);
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 2px;
+  color: #fff;
+  background: linear-gradient(135deg, #7c3aed, #2563eb);
+  border: 1px solid rgba(196, 181, 253, 0.35);
+  box-shadow: 0 10px 28px rgba(76, 29, 149, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  transition: transform var(--motion-fast), box-shadow var(--motion-fast), filter var(--motion-fast);
+}
+
+.home-battle-cta:active {
+  transform: translateY(1px) scale(0.995);
+  box-shadow: 0 4px 14px rgba(76, 29, 149, 0.4);
+}
+
+.home-battle-cta-label {
+  font-size: clamp(1.15rem, 4.6vw, 1.5rem);
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  line-height: 1.05;
+}
+
+.home-battle-cta-note {
+  font-size: var(--font-xs);
+  font-weight: 600;
+  color: rgba(233, 233, 255, 0.86);
+  line-height: 1.15;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+/* Tones carry state without changing the control's position or size, so the
+   CTA never moves under the player's thumb between renders. */
+.home-battle-dock.tone-resume .home-battle-cta {
+  background: linear-gradient(135deg, #b45309, #f59e0b);
+  border-color: rgba(253, 230, 138, 0.45);
+  box-shadow: 0 10px 28px rgba(180, 83, 9, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.home-battle-dock.tone-queued .home-battle-cta {
+  background: linear-gradient(135deg, #0e7490, #0891b2);
+  border-color: rgba(165, 243, 252, 0.35);
+}
+
+.home-battle-dock.tone-blocked .home-battle-cta {
+  background: linear-gradient(135deg, #4b5563, #374151);
+  border-color: rgba(203, 213, 225, 0.22);
+  box-shadow: var(--shadow-md);
+}
+
+.home-battle-secondary {
+  min-height: clamp(56px, 9svh, 72px);
+  padding-inline: var(--space-4);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-battle-cta { transition: none; }
+  .home-battle-cta:active { transform: none; }
+}
+
+.home-status-ribbon {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(210px, 0.9fr) auto;
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid rgba(147, 197, 253, 0.14);
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, rgba(8, 14, 30, 0.72), rgba(23, 31, 57, 0.52));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.home-status-ribbon-identity {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.home-status-ribbon-identity > div,
+.home-status-ribbon-meter {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.home-status-ribbon-identity strong {
+  color: #f8fbff;
+  font-size: clamp(1rem, 2.1vw, 1.24rem);
+  line-height: 1.05;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.home-status-ribbon-identity > div > span {
+  color: #dbeafe;
+  font-size: var(--font-sm);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.home-status-ribbon-meter strong {
+  color: #f8fbff;
+  font-size: var(--font-sm);
+}
+
+.home-status-ribbon-meter span {
+  color: #bfdbfe;
+  font-size: var(--font-xs);
+}
+
+.home-status-ribbon-badges {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.home-status-rail {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.home-status-chip {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  padding: 7px 9px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(147, 197, 253, 0.13);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.home-status-chip.is-accent {
+  border-color: rgba(251, 191, 36, 0.28);
+  background: linear-gradient(135deg, rgba(87, 62, 14, 0.34), rgba(49, 34, 10, 0.24));
+}
+
+.home-status-chip span {
+  color: #cbd5ff;
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.home-status-chip strong {
+  min-width: 0;
+  color: #f8fbff;
+  font-size: 0.9rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.home-status-chip small {
+  min-width: 0;
+  color: #d7def7;
+  font-size: 0.76rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The quest board takes its natural height and lets the hub scroll around it.
+   It briefly owned an internal scroller, which produced the worst of both
+   worlds on short phones: a squeezed board with content hidden inside it and
+   no visible affordance saying so. */
+.home-quest-board {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  padding: clamp(14px, 2.2svh, 20px);
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(251, 191, 36, 0.25);
+  background:
+    linear-gradient(135deg, rgba(22, 31, 57, 0.92), rgba(10, 14, 30, 0.94)),
+    radial-gradient(circle at 20% 0%, rgba(251, 191, 36, 0.16), transparent 36%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 22px 48px rgba(2, 6, 23, 0.36);
+}
+
+.home-quest-board.is-ready {
+  border-color: rgba(251, 191, 36, 0.42);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 0 0 1px rgba(251, 191, 36, 0.12), 0 24px 52px rgba(2, 6, 23, 0.38);
+}
+
+.home-quest-board-glow {
+  position: absolute;
+  inset: -25% -10% auto auto;
+  width: 220px;
+  aspect-ratio: 1;
+  pointer-events: none;
+  opacity: 0.34;
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.36), transparent 68%);
+}
+
+.home-quest-board-header,
+.home-quest-board-footer,
+.home-featured-contract {
+  position: relative;
+  z-index: 1;
+}
+
+.home-quest-board-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+}
+
+.home-quest-board-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.home-quest-board-title img {
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+  filter: drop-shadow(0 8px 18px rgba(251, 191, 36, 0.18));
+}
+
+.home-quest-board-title > div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.home-quest-board-title strong {
+  color: #fff7d6;
+  font-size: clamp(1.2rem, 3.1vw, 1.7rem);
+  line-height: 1.05;
+}
+
+.home-quest-ready-badge {
+  min-width: 72px;
+  padding: 7px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(147, 197, 253, 0.14);
+  background: rgba(15, 23, 42, 0.6);
+  color: #dbeafe;
+  font-size: var(--font-xs);
+  font-weight: 900;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.home-quest-ready-badge.is-ready {
+  border-color: rgba(251, 191, 36, 0.36);
+  background: rgba(120, 90, 18, 0.28);
+  color: #fff7d6;
+}
+
+.home-featured-contract {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  padding: 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(147, 197, 253, 0.15);
+  background: rgba(8, 14, 30, 0.54);
+}
+
+.home-featured-contract-copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.home-featured-contract-copy span,
+.home-featured-contract-reward span,
+.home-featured-contract-reward small {
+  color: #93c5fd;
+  font-size: var(--font-xs);
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.home-featured-contract-copy strong {
+  color: #f8fbff;
+  font-size: clamp(1.05rem, 2.3vw, 1.32rem);
+}
+
+.home-featured-contract-copy p {
+  margin: 0;
+  color: #d7def7;
+  font-size: var(--font-sm);
+}
+
+.home-featured-contract-reward {
+  display: grid;
+  justify-items: end;
+  gap: 2px;
+  min-width: 88px;
+}
+
+.home-featured-contract-reward strong {
+  color: #fff7d6;
+  font-size: 1.24rem;
+}
+
+.home-contract-progress {
+  grid-column: 1 / -1;
+  height: 9px;
+  overflow: hidden;
+  border-radius: 999px;
+  border: 1px solid rgba(147, 197, 253, 0.12);
+  background: rgba(15, 23, 42, 0.8);
+}
+
+.home-contract-progress span {
+  display: block;
+  height: 100%;
+  min-width: 8px;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #38bdf8, #facc15);
+}
+
+.home-contract-preview-list {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 6px;
+}
+
+.home-contract-preview {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 8px;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid rgba(147, 197, 253, 0.1);
+}
+
+.home-contract-preview > span {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1px solid rgba(147, 197, 253, 0.24);
+  background: rgba(71, 85, 105, 0.72);
+}
+
+.home-contract-preview > span.is-complete {
+  border-color: rgba(34, 197, 94, 0.34);
+  background: radial-gradient(circle, #86efac 0%, #22c55e 60%, #166534 100%);
+  box-shadow: 0 0 7px rgba(34, 197, 94, 0.32);
+}
+
+.home-contract-preview strong {
+  min-width: 0;
+  color: #eef4ff;
+  font-size: var(--font-sm);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.home-contract-preview small {
+  color: #bfdbfe;
+  font-size: var(--font-xs);
+  font-weight: 800;
+}
+
+.home-quest-board-footer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.home-quest-board-footer > span {
+  min-width: 0;
+  color: #e0e7ff;
+  font-size: var(--font-sm);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.home-open-ledger-cta {
+  min-height: 46px;
+  padding-inline: 18px;
+  font-weight: 900;
+}
+
+@media (max-width: 720px) {
+  .home-status-ribbon {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+  }
+
+  .home-status-ribbon-badges {
+    justify-content: flex-end;
+  }
+
+  .home-status-ribbon-meter,
+  .home-status-rail {
+    grid-column: 1 / -1;
+  }
+
+  .home-status-rail {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  /* The rating label stays visible; it truncates instead of being removed. */
+  .home-status-ribbon-meter span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 460px) {
+  .home-status-ribbon {
+    padding: 7px;
+    gap: 6px;
+  }
+
+  .home-status-ribbon-identity {
+    gap: 7px;
+  }
+
+  .home-rank-badge.rank-badge-art {
+    padding: 5px 8px;
+  }
+
+  .home-rank-badge.rank-badge-art img {
+    width: 22px;
+    height: 22px;
+  }
+
+  .home-status-ribbon-identity strong {
+    font-size: 1rem;
+  }
+
+  .home-status-ribbon-identity > div > span,
+  .home-status-ribbon-meter span {
+    font-size: 0.72rem;
+  }
+
+  .home-status-ribbon-meter {
+    gap: 2px;
+  }
+
+  .home-status-ribbon-badges .badge {
+    padding: 5px 8px;
+    font-size: 0.74rem;
+  }
+
+  .home-status-rail {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 5px;
+  }
+
+  .home-status-chip {
+    padding: 5px 6px;
+    gap: 1px;
+  }
+
+  .home-status-chip span {
+    font-size: 0.52rem;
+    letter-spacing: 0.08em;
+  }
+
+  .home-status-chip strong {
+    font-size: 0.78rem;
+  }
+
+  /* Chip captions truncate rather than vanish — they carry the only
+     explanation of what each number means. */
+  .home-status-chip small {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .home-quest-board {
+    gap: 8px;
+    padding: 10px;
+    border-radius: 12px;
+  }
+
+  .home-quest-board-header {
+    gap: 8px;
+  }
+
+  .home-quest-board-title {
+    gap: 7px;
+  }
+
+  .home-quest-board-title img {
+    width: 32px;
+    height: 32px;
+  }
+
+  .home-quest-board-title strong {
+    font-size: 1.1rem;
+  }
+
+  .home-quest-ready-badge {
+    padding: 5px 8px;
+    min-width: 64px;
+  }
+
+  .home-featured-contract {
+    grid-template-columns: 1fr;
+    gap: 7px;
+    padding: 8px;
+  }
+
+  .home-featured-contract-copy {
+    gap: 2px;
+  }
+
+  .home-featured-contract-copy strong {
+    font-size: 0.98rem;
+  }
+
+  /* Contract description clamps to one line rather than vanishing. */
+  .home-featured-contract-copy p {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+  }
+
+  .home-featured-contract-reward {
+    grid-template-columns: auto 1fr auto;
+    justify-items: start;
+    align-items: center;
+  }
+
+  .home-quest-board-header,
+  .home-quest-board-footer {
+    grid-template-columns: 1fr;
+    display: grid;
+    align-items: stretch;
+  }
+
+  .home-quest-ready-badge {
+    justify-self: start;
+  }
+
+  .home-open-ledger-cta {
+    width: 100%;
+  }
+
+  /* Contract previews stay; they scroll horizontally at this width. */
+  .home-contract-preview-list {
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+}
+
+/* ─── Height-based queries stay media queries ────────────────────────
+   Container queries describe an element's *inline* size. There is no useful
+   container equivalent for "the window is short", and short-window density is
+   a real concern on landscape phones and small laptop windows.
+
+   These blocks were re-checked after the svh/clamp work: the fluid values
+   (`clamp(10px, 1.5svh, 16px)` and friends) already carry most of the load, so
+   what remains here is a final tightening rather than the primary mechanism.
+   They are deliberately kept. */
+@media (max-height: 780px) {
+  .home-command-layout {
+    gap: 8px;
+  }
+
+  .home-status-ribbon {
+    padding-block: 8px;
+  }
+
+  .home-status-chip {
+    padding-block: 5px;
+  }
+
+  .home-quest-board {
+    gap: 9px;
+    padding-block: 12px;
+  }
+
+  .home-featured-contract {
+    padding-block: 9px;
+  }
+}
+
+@media (max-width: 380px) and (max-height: 680px) {
+  /* The status rail stays. It used to be removed entirely below 380×680,
+     which silently shipped a different app to the smallest phones. Three
+     columns still fit here — the chips are narrow — and 3-up avoids the
+     lopsided 2+1 that a two-column grid produces with three tiles. */
+  .home-status-rail {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 4px;
+  }
+
+  .home-status-ribbon-badges .badge {
+    min-height: 34px;
+  }
+
+  /* Footer text truncates rather than disappearing (see base rule). */
+}
+
+.home-rank-badge.rank-badge-art {
+  width: fit-content;
+}
+
+.home-status-card.scene-status-tile {
+  padding: clamp(10px, 1.35svh, 14px) 12px;
+}
+
+.home-rating-track {
+  width: 100%;
+  height: 12px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow: inset 0 0 0 1px rgba(147, 197, 253, 0.08);
+}
+
+.home-rating-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(135deg, #38bdf8, #7c3aed, #fbbf24);
+  transition: width 0.6s ease;
+}
+
+@media (min-width: 721px) {
+  .home-screen:not(.social-screen).screen-panel.active {
+    align-items: start;
+  }
+
+  /* `margin-inline: auto`, not `justify-self: center`. The scene-fill rule
+     above overrides .home-screen's grid with `display: flex; flex-direction:
+     column`, and `justify-self` has no effect on a flex item — so the capped
+     980px card pinned to the left edge of a wider shell instead of centring.
+     Auto inline margins centre correctly under flex, grid and block alike. */
+  .home-final-card {
+    width: min(100%, 980px);
+    margin-inline: auto;
+  }
+
+  .home-status-card.scene-status-tile {
+    min-height: 92px;
+    padding: 14px 16px;
+  }
+
+  .quest-summary {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 10px 14px;
+  }
+}
+
+/* ─── Eyebrow & Subtitle ───────────────────────────────────────── */
+
+.eyebrow {
+  margin: 0 0 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.74rem;
+  color: #cbd5ff;
+}
+
+/* ─── Hero Display ──────────────────────────────────────────────── */
+
+.hero-copy { min-width: 0; }
+
+.stats { font-weight: 800; }
+
+/* ─── Badges & Status ───────────────────────────────────────────── */
+
+.badges, .controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.difficulty-panel {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 14px;
+  background: rgba(37, 99, 235, 0.08);
+  border: 1px solid rgba(147, 197, 253, 0.14);
+}
+
+.play-ai-settings {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  margin-top: 0;
+  padding: 8px 10px;
+  border-radius: var(--radius-md);
+}
+
+.difficulty-strip-head {
+  display: grid;
+  gap: 1px;
+  min-width: 118px;
+}
+
+.difficulty-strip-head strong {
+  color: #f8fafc;
+  font-size: var(--font-sm);
+  line-height: 1.1;
+}
+
+.play-ai-settings .difficulty-chip-row {
+  justify-content: flex-end;
+  margin-top: 0;
+}
+
+.mode-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--panel-gap);
+  margin-top: var(--scene-gap);
+}
+
+.mode-card {
+  position: relative;
+  overflow: hidden;
+  min-height: 132px;
+  padding: 14px;
+  display: grid;
+  gap: 8px;
+  align-content: start;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  background: linear-gradient(160deg, rgba(14, 20, 38, 0.96), rgba(24, 34, 68, 0.9));
+  color: var(--text);
+  text-align: left;
+  transition: transform var(--motion-fast), box-shadow var(--motion-fast), border-color var(--motion-fast);
+}
+
+.mode-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+  opacity: 0.14;
+  pointer-events: none;
+}
+
+.mode-card-ai::before { background-image: url('/generated/ui/tile-play.svg'); }
+.mode-card-duel::before { background-image: url('/generated/ui/tile-battle.svg'); }
+.mode-card-ranked::before { background-image: url('/generated/ui/overlay-vs.svg'); }
+
+.mode-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+.mode-card:hover:not(:disabled) {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.24);
+}
+
+.mode-card:active:not(:disabled) {
+  transform: translateY(0) scale(0.98);
+}
+
+.mode-card.active {
+  border-color: rgba(251, 191, 36, 0.55);
+  box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.24), 0 10px 28px rgba(251, 191, 36, 0.12);
+}
+
+.mode-card:disabled {
+  opacity: 0.58;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.mode-card-eyebrow {
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #cfd8ff;
+}
+
+.mode-card .note {
+  margin: 0;
+}
+
+.difficulty-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.difficulty-chip {
+  min-height: 32px;
+  padding: 8px 12px;
+  border-radius: var(--radius-pill);
+  background: rgba(99, 102, 241, 0.14);
+  color: #dbe6ff;
+  cursor: pointer;
+  transition: background var(--motion-fast), color var(--motion-fast), box-shadow var(--motion-fast);
+}
+
+.difficulty-chip:hover:not(.active) {
+  background: rgba(99, 102, 241, 0.24);
+  color: var(--text);
+}
+
+.difficulty-chip.active {
+  background: linear-gradient(135deg, #7c3aed, #2563eb);
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(124, 58, 237, 0.24);
+}
+
+.live-status-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.live-status-grid > div {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* ─── Play Action Row & Live Strip ──────────────────────────────── */
+
+.play-live-strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 0;
+  padding: 5px 10px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  font-size: 0.78rem;
+  color: #b9c2dd;
+}
+
+.play-live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 6px rgba(34, 197, 94, 0.4);
+  flex: 0 0 auto;
+}
+
+.play-live-label {
+  font-weight: 600;
+  color: #e6ecff;
+}
+
+.play-live-stat {
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.leaderboard-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.leaderboard-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(147, 197, 253, 0.14);
+  background: linear-gradient(135deg, rgba(10, 18, 36, 0.78), rgba(27, 37, 74, 0.76));
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+  transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.leaderboard-row:hover {
+  transform: translateY(-1px);
+  border-color: rgba(251, 191, 36, 0.24);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.16);
+}
+
+.leaderboard-meta {
+  display: grid;
+  gap: 2px;
+}
+
+.social-command-card {
+  position: relative;
+  overflow: clip;
+}
+
+.social-command-card::after {
+  content: '';
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  width: 72px;
+  height: 72px;
+  opacity: 0.16;
+  pointer-events: none;
+  background: url('/generated/ui/particle-rune.svg') center / contain no-repeat;
+}
+
+.social-command-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* ─── Social Info Bar ──────────────────────────────────────────────
+   Minimalist single-row header replacing the full SceneHeaderPanel.
+   Shows screen label on the left and status badges on the right. */
+.social-info-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 2px;
+  border-bottom: 1px solid rgba(147, 197, 253, 0.1);
+}
+
+.social-info-bar-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #7a8ab8;
+}
+
+.social-info-bar .badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-content: flex-end;
+}
+
+.social-info-bar .badge {
+  padding: 3px 8px;
+  font-size: 0.72rem;
+}
+
+.social-info-bar .badge.is-accent {
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.22), rgba(96, 165, 250, 0.16));
+  border: 1px solid rgba(251, 191, 36, 0.36);
+  color: #fff7d6;
+}
+
+.badge, .deck-status {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(91, 118, 255, 0.16);
+  color: #eff3ff;
+  font-size: 0.88rem;
+}
+
+.streak-badge {
+  position: relative;
+  overflow: hidden;
+}
+
+.streak-badge.streak-ember {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.22), rgba(239, 68, 68, 0.18));
+  border: 1px solid rgba(245, 158, 11, 0.28);
+}
+
+.streak-badge.streak-inferno {
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.26), rgba(239, 68, 68, 0.26));
+  border: 1px solid rgba(251, 191, 36, 0.52);
+  box-shadow:
+    0 0 8px rgba(245, 158, 11, 0.28),
+    0 0 18px rgba(245, 158, 11, 0.14),
+    inset 0 0 12px rgba(251, 191, 36, 0.1);
+  animation: fireGlow 1.8s ease-in-out infinite alternate;
+}
+
+@keyframes fireGlow {
+  0% { box-shadow: 0 0 8px rgba(245,158,11,0.28), 0 0 18px rgba(245,158,11,0.14), inset 0 0 12px rgba(251,191,36,0.1); }
+  100% { box-shadow: 0 0 12px rgba(239,68,68,0.32), 0 0 24px rgba(245,158,11,0.22), inset 0 0 14px rgba(251,191,36,0.16); }
+}
+
+.streak-badge.streak-ember::before,
+.streak-badge.streak-inferno::before {
+  content: '';
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: rgba(251, 191, 36, 0.7);
+  top: 50%;
+  left: 20%;
+  box-shadow:
+    8px -4px 0 rgba(239, 68, 68, 0.6),
+    16px 2px 0 rgba(245, 158, 11, 0.5),
+    24px -6px 0 rgba(251, 191, 36, 0.4);
+  animation: emberFloat 2.2s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.streak-badge.streak-inferno::before {
+  box-shadow:
+    6px -5px 0 rgba(239, 68, 68, 0.7),
+    14px 3px 0 rgba(245, 158, 11, 0.65),
+    22px -7px 0 rgba(251, 191, 36, 0.6),
+    30px -2px 0 rgba(239, 68, 68, 0.5);
+}
+
+@keyframes emberFloat {
+  0%, 100% { transform: translateY(0) scale(1); opacity: 0.7; }
+  50% { transform: translateY(-3px) scale(1.2); opacity: 1; }
+}
+
+.streak-badge.streak-ember::after,
+.streak-badge.streak-inferno::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0.18;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.32), transparent);
+  animation: rewardSweep 2.4s linear infinite;
+}
+
+.deck-status.ready { background: rgba(34, 197, 94, 0.18); }
+.deck-status.warning { background: rgba(251, 191, 36, 0.18); }
+

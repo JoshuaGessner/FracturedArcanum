@@ -1,0 +1,836 @@
+/* ─── Responsive ────────────────────────────────────────────────── */
+
+@media (max-width: 900px) {
+  .meta-grid, .split-fields, .admin-auth-row, .insight-grid, .scene-status-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .battle-action-dock {
+    flex-wrap: wrap;
+  }
+
+  .admin-console { grid-column: span 1; }
+
+  .section-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  /* The two-slot header shape is kept on phones. Collapsing it to one column
+     pushed the currency + settings controls onto a second row, which is where
+     the home header's 108px height on a 393px phone came from. */
+}
+
+@media (max-width: 640px) {
+  :root {
+    --scene-gap: clamp(8px, 1.5svh, 16px);
+    --card-pad: clamp(10px, 1.4svh, 16px);
+    --panel-gap: clamp(4px, 0.8svh, 10px);
+  }
+  .app-shell {
+    /* Bottom padding stays 0 — the nav rail owns the safe-area inset. */
+    padding: 10px 10px 0;
+  }
+  .topbar-home {
+    gap: 6px;
+  }
+  .brand-wordmark {
+    font-size: clamp(1.35rem, 6.2vw, 1.8rem);
+    line-height: 1;
+  }
+  .username-label {
+    display: none;
+  }
+  /* `.subtitle` is no longer hidden here — it wraps instead. Removing the
+     sentence that explains a screen is the worst thing to cut on the
+     smallest screen, where context is hardest to infer from layout. */
+  .brand-block-home {
+    gap: 9px;
+    min-height: 62px;
+    padding: 0 0 2px;
+  }
+  .brand-logo:not(.brand-logo-home) { width: min(156px, 44vw); }
+  .brand-logo-home { width: clamp(48px, 13vw, 62px); }
+  .topbar-home.topbar-art {
+    background: transparent;
+    border-color: transparent;
+    box-shadow: none;
+  }
+  .section-card {
+    border-radius: 14px;
+    box-shadow: 0 10px 26px rgba(10, 14, 30, 0.22);
+  }
+  .section-head { gap: 6px; }
+  .nav-strip { padding: 10px; }
+  .play-live-strip { flex-wrap: wrap; gap: 6px; padding: 4px 6px; margin-top: 6px; font-size: 0.72rem; }
+  .play-live-stat { margin-left: 0; }
+
+  /* (nav sizing intentionally not overridden — see .scene-link) */
+
+  /* Home density — reference-style command panel */
+
+  .scene-status-grid {
+    gap: 8px;
+    margin-top: 8px;
+  }
+
+  .scene-status-tile {
+    padding: 8px 10px;
+  }
+
+  .home-command-card {
+    gap: 8px;
+    padding: clamp(9px, 1.2svh, 12px);
+  }
+
+  .home-rank-badge.rank-badge-art {
+    padding: 7px 12px;
+    border-radius: 999px;
+  }
+
+  .home-rank-badge.rank-badge-art img {
+    width: 24px;
+    height: 24px;
+  }
+
+  .home-status-card.scene-status-tile {
+    gap: 4px;
+    padding: 10px 12px;
+    border-radius: 12px;
+  }
+
+  .home-status-card .scene-status-kicker {
+    font-size: clamp(0.64rem, 2.7vw, 0.78rem);
+    letter-spacing: 0.14em;
+  }
+
+  .home-status-card strong {
+    font-size: clamp(0.98rem, 4.2vw, 1.16rem);
+    line-height: 1.05;
+  }
+
+  .home-status-card .mini-text {
+    color: #dce3f7;
+    font-size: clamp(0.82rem, 3.7vw, 1rem);
+    line-height: 1.18;
+  }
+
+  .home-rating-track {
+    height: 8px;
+  }
+
+  .nav-tile-row {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-top: 10px;
+  }
+  .nav-tile {
+    min-height: 80px;
+    padding: 12px 8px;
+    gap: 4px;
+  }
+  .nav-tile-label { font-size: 0.88rem; }
+  .nav-tile-description { display: none; }
+
+  .quest-summary {
+    grid-template-columns: 1fr;
+    align-items: start;
+    gap: 7px;
+    padding: 9px 12px 10px;
+    margin-top: 4px;
+    border-radius: 12px;
+  }
+
+  .quest-ledger-toolbar,
+  .quest-ledger-hero,
+  .quest-ledger-card {
+    border-radius: 10px;
+  }
+
+  .quest-ledger-hero {
+    grid-template-columns: auto 1fr;
+    gap: 10px;
+    padding: 8px 10px;
+  }
+
+  .quest-ledger-hero-medallion {
+    width: 60px;
+    justify-self: start;
+  }
+
+  .quest-ledger-tabs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .quest-ledger-card {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .quest-ledger-card-reward {
+    grid-column: 1 / -1;
+    grid-template-columns: auto auto 1fr auto;
+    align-items: center;
+    justify-items: start;
+  }
+
+  .quest-ledger-card-reward button {
+    justify-self: end;
+    padding-block: 7px;
+    min-height: 34px;
+    font-size: var(--font-xs);
+  }
+
+  /* Play density — single-screen arena gate */
+  .mode-card {
+    min-height: 76px;
+    padding: 8px 6px;
+    gap: 3px;
+  }
+  /* `.mode-card .note` is no longer hidden here. The mode cards moved into a
+     bottom sheet where they stack full-width, so the description fits. */
+  .difficulty-panel { margin-top: 0; padding: 6px 8px; }
+  .difficulty-panel .note { font-size: 0.76rem; }
+  .play-ai-settings {
+    grid-template-columns: 1fr;
+    gap: 5px;
+  }
+  .difficulty-strip-head {
+    grid-template-columns: auto 1fr;
+    align-items: baseline;
+    gap: 8px;
+  }
+  .play-ai-settings .difficulty-chip-row {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 5px;
+  }
+  .difficulty-chip { min-height: 34px; padding: 6px 5px; font-size: 0.68rem; border-radius: var(--radius-sm); }
+  .play-live-strip { display: flex; flex-wrap: nowrap; gap: 5px; padding: 4px 6px; font-size: 0.68rem; }
+  .play-live-label,
+  .play-live-stat { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .play-live-stat { margin-left: auto; }
+  .queue-search-portal { margin-top: 0; padding: 8px; gap: 8px; }
+  .queue-portal-ring { width: 72px; height: 72px; }
+  .queue-portal-core { font-size: 0.8rem; }
+  .queue-portal-copy { gap: 5px; }
+  .queue-portal-copy h3 { font-size: 0.96rem; }
+  .live-status-grid { gap: 6px; margin-top: 0; }
+  .live-status-grid > div { padding: 6px 8px; }
+  .live-status-grid .note { margin: 0; font-size: 0.66rem; }
+  .queue-leave-btn { min-height: 32px; padding: 5px 10px; font-size: 0.72rem; }
+
+  .stepper { flex-wrap: wrap; }
+  .slot { min-height: 88px; padding: 7px; }
+  .battle-arena-frame {
+    padding: 8px;
+    gap: 6px;
+  }
+  .battle-hero-anchor {
+    padding: 4px 8px;
+    gap: 6px;
+    min-height: 30px;
+  }
+  .battle-hero-name {
+    font-size: 0.76rem;
+  }
+  .battle-hero-hp {
+    font-size: 0.76rem;
+  }
+  .battle-hero-resource {
+    font-size: 0.66rem;
+    padding: 1px 5px;
+  }
+  .battle-board-stack {
+    min-height: clamp(200px, 38svh, 300px);
+    gap: 6px;
+  }
+  .board-grid-battle .slot {
+    min-height: 68px;
+    padding: 0;
+  }
+  .board-grid-battle .slot .effect-badge:not(.icon-only) {
+    display: none;
+  }
+  .board-grid-battle .unit-portrait {
+    /* inherits position:absolute + height:100% from base overlay rule */
+  }
+  .battle-centerline {
+    flex-direction: row;
+    align-items: center;
+    padding: 3px 6px;
+    gap: 6px;
+  }
+  .battle-center-hero-slot {
+    min-width: 72px;
+    min-height: 26px;
+  }
+  .battle-center-hero-button {
+    min-width: 68px;
+    min-height: 26px;
+    padding: 3px 6px;
+    font-size: 0.58rem;
+  }
+  .battle-center-hero-hint {
+    font-size: 0.52rem;
+  }
+  .battle-center-note {
+    font-size: 0.62rem;
+  }
+  .battle-center-turn {
+    font-size: 0.56rem;
+  }
+  .battle-center-phase {
+    font-size: 0.52rem;
+    padding: 1px 4px;
+  }
+  .battle-action-dock {
+    gap: 4px;
+  }
+  .battle-action-dock > button {
+    min-height: 34px;
+    padding: 5px 3px;
+    font-size: 0.74rem;
+  }
+  .queue-modal { width: 100%; }
+  /* Small screens tune the one variable the hand derives from. Everything
+     else — rail height, card width, fan overlap, padding — follows. The old
+     block here re-declared block-size, min-height, flex-basis, and margins
+     independently, which is how the rail and its cards drifted out of sync
+     and started clipping. */
+  .battle-hand-rail {
+    --battle-hand-top-clearance: clamp(8px, 1.6svh, 16px);
+    --battle-hand-bottom-clearance: clamp(4px, 1svh, 8px);
+    --hand-card-h: clamp(88px, 17svh, 128px);
+    margin-top: -4px;
+    padding: 2px 6px 6px;
+  }
+  .hand-card {
+    gap: 3px;
+  }
+  .hand-card .card-name {
+    min-height: 2.2em;
+    margin-bottom: 0;
+    font-size: 0.68rem;
+    line-height: 1.08;
+    -webkit-line-clamp: 2;
+  }
+  .hand-card .card-art-shell.thumb {
+    height: 40px;
+  }
+  .hand-card .cost-pill {
+    width: 26px;
+    height: 26px;
+    font-size: 0.8rem;
+  }
+  /* (stat sizing is derived from --hand-card-h; see .hand-card .card-stats) */
+
+  /* Deck-builder card sizing moved to `@container card` — see the Deck
+     Builder section. Card width and viewport width are not the same number,
+     and this block used to assert that they were. */
+
+  /* Collection density — compact roster, tighter hero */
+  .collection-progress-ring,
+  .collection-progress-svg { width: 40px; height: 40px; }
+  .collection-progress-core { inset: 4px; }
+  .collection-progress-core strong { font-size: 0.6rem; }
+  .deck-roster {
+    padding: 6px 8px;
+    max-height: none;
+    overflow-y: visible;
+  }
+  .deck-roster-list { grid-template-columns: 1fr; gap: 4px; }
+  .builder-toolbar { padding: 4px 8px; gap: 6px; }
+  .deck-stats { padding: 4px 8px; gap: 6px; }
+  .builder-grid { gap: 6px; }
+  .collection-action-row { margin: 6px 0 4px; }
+  .collection-quick-strip { padding: 4px 8px; }
+
+  /* Social density — compact hero, segmented scroll areas */
+  .leaderboard-list,
+  .social-list {
+    margin-top: 6px;
+    gap: 4px;
+    max-height: none;
+    overflow-y: visible;
+    padding-right: 2px;
+  }
+  .social-screen .utility-card {
+    max-height: none;
+    overflow-y: visible;
+    overscroll-behavior: contain;
+  }
+
+  .shop-market-card {
+    max-height: none;
+    overflow: visible;
+  }
+
+  .shop-market-card.shop-view-hub {
+    height: auto;
+    min-height: 100%;
+    overflow: visible;
+  }
+
+  .shop-market-card.shop-view-hub .shop-hub-surface {
+    padding-bottom: 14px;
+  }
+
+  .shop-market-card.shop-view-hub .shop-hub-surface {
+    overflow: visible;
+  }
+
+  .shop-market-card.shop-view-hub .shop-hub-panels {
+    grid-auto-rows: minmax(108px, auto);
+  }
+
+  .social-clan-block {
+    padding: 8px;
+    margin-top: 6px;
+    max-height: none;
+    overflow-y: visible;
+  }
+  .social-trade-block {
+    padding: 8px;
+    margin-top: 6px;
+    max-height: none;
+    overflow-y: visible;
+  }
+  .social-row { padding: 6px 8px; gap: 6px; }
+
+  /* Shop density — compact hero, convert offer stacks to rails */
+  .shop-market-ledger {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .shop-resource-strip {
+    justify-content: flex-start;
+  }
+
+  .shop-resource-chip {
+    min-height: 28px;
+    padding: 4px 8px;
+    font-size: var(--font-xs);
+  }
+
+  .shop-nav-strip {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    overflow: visible;
+    padding-bottom: 0;
+  }
+
+  .shop-nav-strip button {
+    width: 100%;
+    min-height: 32px;
+    padding: 6px 8px;
+    font-size: var(--font-xs);
+  }
+
+  .social-nav-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .social-nav-strip button {
+    flex: 1 1 calc(33.33% - 6px);
+    min-width: calc(33.33% - 6px);
+    min-height: 32px;
+    padding: 6px 4px;
+    font-size: 0.68rem;
+    text-align: center;
+  }
+
+  .shop-feature-panel {
+    grid-template-columns: 1fr;
+    padding: 9px 10px;
+  }
+
+  .shop-vault-stat-strip {
+    display: none;
+  }
+
+  .shop-feature-panel .controls {
+    justify-content: center;
+  }
+
+  .shop-vault-actions {
+    width: 100%;
+  }
+
+  .shop-vault-actions button {
+    flex: 1 1 130px;
+  }
+
+  .shop-feature-panel .note {
+    margin-top: 2px;
+    line-height: 1.35;
+  }
+
+  .shop-hub-panels {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  /* Shop hub panel density moved to `@container shoppanel` — the panel is
+     166px wide on a phone, 180px on a tablet, and 340px in the desktop
+     two-column split, so viewport width does not describe it. */
+
+  .shop-section-panel {
+    gap: 8px;
+  }
+
+  .reward-vault-console {
+    gap: 10px;
+    width: 100%;
+    padding: 10px;
+  }
+
+  .reward-vault-stage {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    text-align: center;
+  }
+
+  .reward-vault-medallion {
+    width: min(132px, 44vw);
+    padding: 10px;
+  }
+
+  .reward-vault-copy {
+    justify-items: center;
+  }
+
+  .reward-vault-state {
+    justify-self: center;
+  }
+
+  .reward-vault-copy .note {
+    max-width: 34ch;
+  }
+
+  .reward-vault-action-center {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .reward-vault-action-center button {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .reward-vault-rule-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  @media (max-height: 720px) {
+    .reward-vault-card .shop-section-toolbar {
+      padding: 4px 0 5px;
+    }
+
+    .reward-vault-console {
+      gap: 8px;
+      padding: 8px;
+    }
+
+    .reward-vault-stage {
+      grid-template-columns: 1fr;
+      gap: 8px;
+      text-align: center;
+    }
+
+    .reward-vault-medallion {
+      width: min(108px, 31vw);
+      border-radius: 14px;
+    }
+
+    .reward-vault-medallion span {
+      font-size: 0.62rem;
+    }
+
+    .reward-vault-medallion strong {
+      font-size: 2.1rem;
+    }
+
+    .reward-vault-copy {
+      justify-items: center;
+      gap: 4px;
+    }
+
+    .reward-vault-copy strong {
+      font-size: 1.05rem;
+    }
+
+    .reward-vault-copy .note {
+      display: none;
+    }
+
+    .reward-vault-action-center {
+      gap: 6px;
+    }
+
+    .reward-vault-action-center button {
+      min-height: 36px;
+      padding: 6px 8px;
+      font-size: 0.74rem;
+    }
+
+    .reward-vault-rule-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 4px;
+    }
+
+    .reward-vault-rule {
+      padding: 6px 4px;
+      font-size: 0.62rem;
+    }
+
+    .reward-vault-rule strong {
+      font-size: 0.88rem;
+    }
+  }
+
+  .shop-section-toolbar {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 6px;
+  }
+
+  .shop-section-toolbar .badge {
+    justify-self: end;
+    padding: 5px 8px;
+    font-size: 0.74rem;
+  }
+  .theme-grid-shop-fit {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 148px), 1fr));
+    gap: 8px;
+    width: 100%;
+    overflow: visible;
+    padding-bottom: 0;
+    grid-auto-flow: row;
+  }
+  .theme-grid-shop-fit .theme-offer-card {
+    min-width: 0;
+    width: 100%;
+    flex: initial;
+    padding: 8px;
+    gap: 6px;
+  }
+  .pack-reveal-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    overflow: visible;
+    padding-bottom: 0;
+  }
+  .pack-reveal-card {
+    min-width: 0;
+    flex: initial;
+  }
+
+  /* Settings density — compact command surface with contained subview scroll */
+  .settings-command-card {
+    height: 100%;
+    max-height: 100%;
+    min-height: 100%;
+    gap: 8px;
+    overflow: hidden;
+  }
+
+  .settings-command-ledger {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    padding: 8px 10px;
+  }
+
+  .settings-status-strip {
+    justify-content: flex-start;
+  }
+
+  .settings-status-chip {
+    min-height: 27px;
+    padding: 4px 8px;
+    font-size: 0.72rem;
+  }
+
+  .settings-nav-strip {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 96px), 1fr));
+    gap: 6px;
+  }
+
+  .settings-nav-strip button,
+  .social-nav-strip button,
+  .settings-admin-nav button {
+    min-height: 44px;
+    padding: 8px 7px;
+    font-size: 0.72rem;
+  }
+
+  .settings-section-panel {
+    overflow-x: hidden;
+    overflow-y: auto;
+    gap: 8px;
+    padding-bottom: 18px;
+  }
+
+  .settings-toggle-list {
+    gap: 6px;
+    margin: 0;
+  }
+
+  .settings-toggle-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    min-height: 46px;
+    padding: 8px 10px;
+    font-size: var(--font-xs);
+  }
+
+  .settings-toggle-row-danger {
+    grid-template-columns: minmax(0, 1fr) 112px;
+    min-height: 64px;
+    padding: 9px 10px;
+  }
+
+  .settings-toggle-row-danger .settings-toggle-action .ghost.mini {
+    width: 112px;
+    min-width: 112px;
+    max-width: 112px;
+    min-height: 44px;
+    padding-inline: 12px;
+    font-size: 0.86rem;
+  }
+
+  .settings-toggle-copy {
+    gap: 1px;
+  }
+
+  .settings-toggle-note {
+    font-size: 0.72rem;
+  }
+
+  .settings-toggle-action .ghost.mini,
+  .settings-toggle-action .badge {
+    min-width: 72px;
+    max-width: 128px;
+    min-height: 38px;
+    padding-inline: 10px;
+    font-size: 0.76rem;
+  }
+
+  .settings-support-panel .complaint-form {
+    padding: 8px;
+  }
+
+  .settings-admin-nav {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .recovery-request-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-panel-block {
+    padding: 8px;
+    gap: 8px;
+  }
+
+  .role-list {
+    max-height: none;
+    overflow: visible;
+  }
+
+  .social-inline-form {
+    grid-template-columns: 1fr;
+  }
+
+  .social-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 400px) {
+  :root {
+    --scene-gap: clamp(6px, 1.2svh, 12px);
+    --card-pad: clamp(8px, 1.2svh, 14px);
+    --panel-gap: clamp(4px, 0.6svh, 8px);
+  }
+  /* Nav sizing is deliberately absent here. These overrides used to shrink
+     targets to 44px/40px, glyphs to 14px, and labels to 0.64rem to fit six
+     tabs into 360px. With four tabs the default sizing fits, and touch
+     targets are no longer something small screens pay for. */
+  .brand-logo-home { width: clamp(44px, 13vw, 54px); }
+  .brand-block-home { min-height: 58px; }
+  .brand-wordmark { font-size: clamp(1.28rem, 6vw, 1.58rem); }
+  .home-status-card.scene-status-tile { padding: 9px 11px; }
+  .home-status-card strong { font-size: 0.96rem; }
+  .home-status-card .mini-text { font-size: 0.82rem; }
+  .theme-grid-shop-fit,
+  .pack-reveal-grid {
+    grid-template-columns: 1fr;
+  }
+  .hand-grid { grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); }
+  /* .builder-grid columns are decided by `@container panel`, not by viewport
+     width — a second viewport-keyed override here would race it. */
+  .auth-card { padding: 24px 16px; }
+}
+
+@media (max-width: 720px) and (max-height: 760px) {
+  .app-shell {
+    gap: 6px;
+  }
+
+  .topbar-home.topbar-art {
+    border-color: rgba(147, 197, 253, 0.06);
+  }
+
+  .brand-block-home {
+    min-height: 56px;
+  }
+
+  .brand-logo-home {
+    width: 46px;
+  }
+
+  .brand-wordmark {
+    font-size: clamp(1.34rem, 5.6vw, 1.72rem);
+  }
+
+  .home-status-card.scene-status-tile {
+    gap: 2px;
+    padding: 7px 10px;
+  }
+
+  .home-status-card .scene-status-kicker {
+    font-size: 0.62rem;
+  }
+
+  .home-status-card strong {
+    font-size: 0.88rem;
+  }
+
+  .home-status-card .mini-text {
+    font-size: 0.72rem;
+  }
+
+  .home-rating-track {
+    height: 8px;
+  }
+
+  .home-command-card {
+    gap: 6px;
+    padding: 7px;
+  }
+
+  .quest-summary {
+    gap: 5px;
+    padding: 6px 8px;
+  }
+
+  /* (nav padding intentionally not overridden — the rail owns its safe-area
+     inset and must not be compressed on short screens) */
+
+  /* (nav target sizing intentionally not overridden — see .scene-link) */
+}
+

@@ -1,0 +1,469 @@
+/* ─── App Shell ─────────────────────────────────────────────────── */
+
+/* The shell is pinned to the *visual* viewport, not the layout viewport.
+   --app-h is published by useViewportMetrics() from window.visualViewport,
+   which is the only measurement that accounts for the iOS toolbar retracting,
+   Android edge-to-edge insets, and the software keyboard all at once. The
+   `100svh` fallback covers first paint and any no-JS pass; it is short but
+   never clipped, which is the right way to be wrong. */
+.app-shell {
+  position: fixed;
+  inset: 0;
+  height: 100svh;
+  height: var(--app-h, 100svh);
+  width: 100%;
+  max-width: 1180px;
+  margin-inline: auto;
+  padding:
+    calc(var(--space-3) + var(--safe-top))
+    calc(var(--space-3) + var(--safe-right))
+    0
+    calc(var(--space-3) + var(--safe-left));
+  display: flex;
+  flex-direction: column;
+  gap: var(--scene-gap);
+  overflow: hidden;
+}
+
+.app-shell.battle-shell-active {
+  max-width: 1320px;
+  gap: var(--space-2);
+  padding-inline: calc(var(--space-2) + var(--safe-right)) calc(var(--space-2) + var(--safe-left));
+  padding-top: calc(var(--space-2) + var(--safe-top));
+}
+
+/* Dock chrome keeps its natural height; only the scene stage may grow or
+   shrink. `flex: 0 0 auto` on a wildcard rather than an allowlist — the old
+   allowlist named five classes (one of which, `.nav-strip`, matched nothing)
+   and every conditional banner rendered outside it competed for height and
+   pushed the nav bar out of the clipped shell. */
+.app-shell > * {
+  flex: 0 0 auto;
+}
+
+/* The scene stage owns vertical scroll for the active screen. The shell
+   itself never scrolls so dock chrome (TopBar, NavBar) stays pinned. */
+.app-shell > .scene-stage {
+  flex: 1 1 auto;
+  min-height: 0;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ─── Overlay layer ─────────────────────────────────────────────────
+   Banners, gates, and account panels are *never* in the flex flow. In flow
+   they stole height from the scene stage and pushed the nav bar off-screen;
+   as fixed layers they can't affect the dock at all. */
+
+/* Banner-style overlays stack downward from under the top safe area. */
+
+/* Full-surface gates (auth, forced setup) get their own scroll context so a
+   tall form can never push the app chrome around. */
+
+.app-shell::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 20% 10%, rgba(56, 189, 248, 0.12), transparent 0 28%),
+    radial-gradient(circle at 80% 0%, rgba(124, 58, 237, 0.14), transparent 0 24%);
+  animation: ambientFloat 12s ease-in-out infinite;
+}
+
+.app-shell.theme-ember::before {
+  background:
+    radial-gradient(circle at 18% 10%, rgba(251, 113, 133, 0.16), transparent 0 28%),
+    radial-gradient(circle at 82% 0%, rgba(249, 115, 22, 0.16), transparent 0 24%);
+}
+
+.app-shell.theme-moon::before {
+  background:
+    radial-gradient(circle at 18% 10%, rgba(147, 197, 253, 0.16), transparent 0 28%),
+    radial-gradient(circle at 82% 0%, rgba(167, 139, 250, 0.16), transparent 0 24%);
+}
+
+@keyframes ambientFloat {
+  0%, 100% { transform: translateY(0) scale(1); }
+  33%      { transform: translateY(-4px) scale(1.003); }
+  66%      { transform: translateY(-8px) scale(0.997); }
+}
+
+/* ─── Screen Transitions ────────────────────────────────────────── */
+
+.screen-panel.active {
+  animation: screenIn 240ms ease;
+}
+
+/* Non-battle screens: the single active panel owns vertical scroll. */
+.app-shell:not(.battle-shell-active) .scene-stage > .screen-panel.active {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(147, 197, 253, 0.35) transparent;
+}
+
+.app-shell:not(.battle-shell-active) .scene-stage > .screen-panel.active::-webkit-scrollbar { width: 6px; }
+.app-shell:not(.battle-shell-active) .scene-stage > .screen-panel.active::-webkit-scrollbar-thumb {
+  background: rgba(147, 197, 253, 0.35);
+  border-radius: 999px;
+}
+.app-shell:not(.battle-shell-active) .scene-stage > .screen-panel.active::-webkit-scrollbar-track { background: transparent; }
+
+.app-shell:not(.battle-shell-active) .scene-stage > .home-screen:not(.social-screen).screen-panel.active {
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+}
+
+.app-shell:not(.battle-shell-active) .scene-stage > .home-screen:not(.social-screen).screen-panel.active::-webkit-scrollbar {
+  width: 6px;
+}
+
+/* ── Scene Fill — single-column screens stretch to use full viewport ─
+   The grid display from .home-screen / .collection-screen is overridden
+   to flex-column so the primary content card can grow into surplus
+   height instead of leaving dead space below. Shop, social and settings
+   screens join this rule so they always fill the viewport and scroll
+   naturally at the screen-panel level. Multi-column screens
+   (.vault-grid, .ops-grid) keep their native CSS Grid layout. */
+.app-shell:not(.battle-shell-active) .scene-stage > .home-screen.screen-panel.active,
+.app-shell:not(.battle-shell-active) .scene-stage > .collection-screen.screen-panel.active,
+.app-shell:not(.battle-shell-active) .scene-stage > .shop-market.shop-screen.screen-panel.active,
+.app-shell:not(.battle-shell-active) .scene-stage > .home-screen.social-screen.screen-panel.active,
+.app-shell:not(.battle-shell-active) .scene-stage > .settings-screen.screen-panel.active {
+  display: flex;
+  flex-direction: column;
+  gap: var(--scene-gap);
+}
+
+/* Primary content block grows to absorb surplus height. */
+.home-screen.screen-panel.active > .section-card,
+.home-screen.screen-panel.active > .home-cards,
+.collection-screen.screen-panel.active > .section-card {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.home-screen:not(.social-screen).screen-panel.active > .home-command-card {
+  flex: 0 1 auto;
+}
+
+.home-screen:not(.social-screen).screen-panel.active > .home-command-card.home-view-quests {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* Shop / social / settings: first article fills when content is sparse. */
+.shop-market.shop-screen.screen-panel.active > article:first-child,
+.home-screen.social-screen.screen-panel.active > .home-cards,
+.settings-screen.screen-panel.active > article:first-child {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* Battle: the active arena should own the remaining height while banners
+   and the hand rail stay compact around it. */
+.app-shell.battle-shell-active .scene-stage {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow: hidden;
+  min-height: 0;
+  /* Lift the pan-y-only constraint set on .scene-stage for the scene-swipe
+     hook. During battle that hook is disabled, so the restriction only
+     prevents the hand-fan-grid's touch-action: pan-x from working on iOS. */
+  touch-action: pan-x pan-y;
+}
+
+.app-shell.battle-shell-active .scene-stage > .screen-panel.active {
+  flex: 0 0 auto;
+  min-height: 0;
+}
+
+.app-shell.battle-shell-active .scene-stage > .battlefield.active {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.screen-panel.hidden {
+  display: none;
+}
+
+@keyframes screenIn {
+  from { opacity: 0; transform: translateY(14px) scale(0.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.app-shell.screen-enter-forward .screen-panel.active { animation: curtainPullForward 360ms cubic-bezier(0.22, 0.61, 0.36, 1); }
+.app-shell.screen-enter-back .screen-panel.active { animation: curtainPullBack 360ms cubic-bezier(0.22, 0.61, 0.36, 1); }
+.app-shell.screen-enter-lateral .screen-panel.active { animation: runeWipeFade 320ms cubic-bezier(0.22, 0.61, 0.36, 1); }
+.app-shell.screen-enter-battle .screen-panel.active { animation: portalSlamIris 520ms cubic-bezier(0.16, 1, 0.3, 1); }
+
+/* Curtain pull forward (deeper into the app) — new scene wipes in from
+   the right with a parchment-curtain feel; previous scene parallaxes
+   away (handled by the implicit display swap, but the entering scene
+   still telegraphs the direction with a clipped reveal). */
+@keyframes curtainPullForward {
+  0%   { opacity: 0; transform: translateX(42px) scale(0.96); clip-path: inset(0 100% 0 0); filter: brightness(0.7); }
+  50%  { opacity: 1; clip-path: inset(0 8% 0 0); filter: brightness(1.12); }
+  100% { opacity: 1; transform: translateX(0) scale(1); clip-path: inset(0 0 0 0); filter: brightness(1); }
+}
+
+/* Curtain pull back (toward home) — mirror of forward. */
+@keyframes curtainPullBack {
+  0%   { opacity: 0; transform: translateX(-42px) scale(0.96); clip-path: inset(0 0 0 100%); filter: brightness(0.7); }
+  50%  { opacity: 1; clip-path: inset(0 0 0 8%); filter: brightness(1.12); }
+  100% { opacity: 1; transform: translateX(0) scale(1); clip-path: inset(0 0 0 0); filter: brightness(1); }
+}
+
+/* Lateral rune wipe — band of brightness sweeps across as scene fades. */
+@keyframes runeWipeFade {
+  0%   { opacity: 0; filter: brightness(0.5) blur(3px); transform: scale(0.99); }
+  40%  { opacity: 0.8; filter: brightness(1.2) blur(1px); }
+  100% { opacity: 1; filter: brightness(1) blur(0); transform: scale(1); }
+}
+
+/* Portal slam (any → battle) — central iris expands outward from
+   the spark, screen darkens briefly, then opens up. */
+@keyframes portalSlamIris {
+  0%   { opacity: 0; transform: scale(0.5); clip-path: circle(0% at 50% 50%); filter: brightness(0.3) saturate(1.4); }
+  30%  { opacity: 1; transform: scale(1.08); clip-path: circle(24% at 50% 50%); filter: brightness(1.35) saturate(1.2); }
+  70%  { transform: scale(1.02); clip-path: circle(55% at 50% 50%); filter: brightness(1.05); }
+  100% { opacity: 1; transform: scale(1); clip-path: circle(75% at 50% 50%); filter: brightness(1) saturate(1); }
+}
+
+/* Legacy slide keyframes retained for any consumers still referencing them. */
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(26px) scale(0.985); }
+  to { opacity: 1; transform: translateX(0) scale(1); }
+}
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(-26px) scale(0.985); }
+  to { opacity: 1; transform: translateX(0) scale(1); }
+}
+
+@keyframes fadeInScreen {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes zoomWhoosh {
+  from { opacity: 0; transform: scale(0.94) translateY(18px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* ─── Per-screen ambient backgrounds (Phase 3A assets) ──────────── */
+/* Subtle full-bleed backdrops layered behind content. Each panel uses
+   a low-opacity image so type stays legible. Scoped to specific
+   screen classes so BattleScreen's nested panels are not affected. */
+
+.home-screen.active,
+.social-screen.active,
+.collection-screen.active,
+.shop-screen.active,
+.settings-screen.active,
+.battlefield.active {
+  position: relative;
+  isolation: isolate;
+}
+
+.home-screen.active::before,
+.social-screen.active::before,
+.collection-screen.active::before,
+.shop-screen.active::before,
+.settings-screen.active::before,
+.battlefield.active::before {
+  content: '';
+  position: absolute;
+  inset: -16px;
+  z-index: -1;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: 0.22;
+  filter: saturate(1.05) blur(0.5px);
+  border-radius: 24px;
+  pointer-events: none;
+}
+
+@media (max-width: 640px) {
+  .home-screen.active::before,
+  .social-screen.active::before,
+  .collection-screen.active::before,
+  .shop-screen.active::before,
+  .settings-screen.active::before,
+  .battlefield.active::before {
+    inset: 0;
+  }
+}
+
+.home-screen.active::before { background-image: url('/generated/ui/bg-main-menu.svg'); }
+.home-screen:not(.social-screen).active::before { inset: 0; }
+.collection-screen.active::before { background-image: url('/generated/ui/bg-collection.svg'); }
+.social-screen.active::before { background-image: url('/generated/ui/bg-social.svg'); }
+.shop-screen.active::before { background-image: url('/generated/ui/bg-shop.svg'); }
+.settings-screen.active::before { background-image: url('/generated/ui/bg-settings.svg'); }
+.battlefield.active::before { background-image: url('/generated/ui/bg-battle.svg'); opacity: 0.32; }
+
+/* PlayScreen reuses .home-screen as a layout class but should NOT show
+   the main-menu backdrop — .play-screen rules above override. */
+.home-screen.social-screen.active::before { background-image: none; }
+.social-screen.active::before { background-image: url('/generated/ui/bg-social.svg'); }
+
+@media (prefers-reduced-motion: reduce) {
+  .home-screen.active::before,
+  .social-screen.active::before,
+  .collection-screen.active::before,
+  .shop-screen.active::before,
+  .settings-screen.active::before,
+  .battlefield.active::before { filter: none; }
+}
+
+/* ─── Ambient Scene FX Layer ─────────────────────────────────────
+   Each active screen gets a `::after` layer for floating ambient
+   particles (runes, embers, dust, sparkles). These use CSS radial
+   gradients as pseudo-particles animated along offset paths so no
+   extra DOM nodes or JS are needed. Each scene picks a thematic
+   colour and motion character. The entire layer is decoration-only,
+   non-interactive, and removed under reduced motion.
+   ─────────────────────────────────────────────────────────────── */
+
+.home-screen.active::after,
+.social-screen.active::after,
+.collection-screen.active::after,
+.shop-screen.active::after,
+.settings-screen.active::after,
+.battlefield.active::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  border-radius: 24px;
+  overflow: hidden;
+  opacity: 0;
+  animation: sceneFxFadeIn 1.2s ease 0.4s forwards;
+}
+
+/* Shared particle paint — a scattered radial-gradient pattern that
+   each scene tints via background-color mix. */
+.home-screen.active::after {
+  background:
+    radial-gradient(1.5px 1.5px at 12% 18%, rgba(251, 191, 36, 0.55), transparent),
+    radial-gradient(1px 1px at 28% 72%, rgba(251, 191, 36, 0.35), transparent),
+    radial-gradient(2px 2px at 65% 8%, rgba(251, 191, 36, 0.4), transparent),
+    radial-gradient(1px 1px at 82% 42%, rgba(251, 191, 36, 0.3), transparent),
+    radial-gradient(1.5px 1.5px at 45% 88%, rgba(251, 191, 36, 0.45), transparent),
+    radial-gradient(1px 1px at 92% 76%, rgba(251, 191, 36, 0.25), transparent);
+  animation: sceneFxFadeIn 1.2s ease 0.4s forwards, sceneFxDriftSlow 18s ease-in-out infinite;
+}
+
+.collection-screen.active::after {
+  background:
+    radial-gradient(1px 1px at 10% 30%, rgba(56, 189, 248, 0.5), transparent),
+    radial-gradient(1.5px 1.5px at 35% 58%, rgba(56, 189, 248, 0.3), transparent),
+    radial-gradient(1px 1px at 62% 15%, rgba(147, 197, 253, 0.45), transparent),
+    radial-gradient(2px 2px at 78% 70%, rgba(56, 189, 248, 0.35), transparent),
+    radial-gradient(1px 1px at 48% 90%, rgba(147, 197, 253, 0.25), transparent),
+    radial-gradient(1.5px 1.5px at 90% 25%, rgba(56, 189, 248, 0.4), transparent);
+  animation: sceneFxFadeIn 1.2s ease 0.4s forwards, sceneFxDriftSlow 22s ease-in-out infinite;
+}
+
+.social-screen.active::after {
+  background:
+    radial-gradient(2px 2px at 14% 25%, rgba(249, 115, 22, 0.45), transparent),
+    radial-gradient(1px 1px at 40% 60%, rgba(251, 146, 60, 0.3), transparent),
+    radial-gradient(1.5px 1.5px at 68% 18%, rgba(249, 115, 22, 0.4), transparent),
+    radial-gradient(1px 1px at 88% 55%, rgba(251, 146, 60, 0.25), transparent),
+    radial-gradient(2px 2px at 52% 82%, rgba(249, 115, 22, 0.35), transparent),
+    radial-gradient(1px 1px at 22% 90%, rgba(251, 146, 60, 0.2), transparent);
+  animation: sceneFxFadeIn 1.2s ease 0.4s forwards, sceneFxEmberRise 16s ease-in-out infinite;
+}
+
+.shop-screen.active::after {
+  background:
+    radial-gradient(2px 2px at 18% 20%, rgba(251, 191, 36, 0.5), transparent),
+    radial-gradient(1.5px 1.5px at 42% 55%, rgba(168, 85, 247, 0.35), transparent),
+    radial-gradient(1px 1px at 72% 10%, rgba(251, 191, 36, 0.4), transparent),
+    radial-gradient(2px 2px at 60% 78%, rgba(168, 85, 247, 0.3), transparent),
+    radial-gradient(1px 1px at 88% 40%, rgba(251, 191, 36, 0.35), transparent),
+    radial-gradient(1.5px 1.5px at 30% 92%, rgba(168, 85, 247, 0.25), transparent);
+  animation: sceneFxFadeIn 1.2s ease 0.4s forwards, sceneFxShimmer 12s ease-in-out infinite;
+}
+
+.settings-screen.active::after {
+  background:
+    radial-gradient(1px 1px at 15% 28%, rgba(147, 197, 253, 0.35), transparent),
+    radial-gradient(1px 1px at 42% 62%, rgba(147, 197, 253, 0.2), transparent),
+    radial-gradient(1.5px 1.5px at 68% 20%, rgba(167, 139, 250, 0.3), transparent),
+    radial-gradient(1px 1px at 85% 50%, rgba(147, 197, 253, 0.2), transparent),
+    radial-gradient(1px 1px at 55% 85%, rgba(167, 139, 250, 0.25), transparent),
+    radial-gradient(1px 1px at 8% 75%, rgba(147, 197, 253, 0.15), transparent);
+  animation: sceneFxFadeIn 1.2s ease 0.4s forwards, sceneFxDriftSlow 26s ease-in-out infinite;
+}
+
+.battlefield.active::after {
+  background:
+    radial-gradient(2px 2px at 10% 15%, rgba(239, 68, 68, 0.45), transparent),
+    radial-gradient(1.5px 1.5px at 32% 70%, rgba(249, 115, 22, 0.35), transparent),
+    radial-gradient(2.5px 2.5px at 58% 8%, rgba(239, 68, 68, 0.5), transparent),
+    radial-gradient(1px 1px at 80% 45%, rgba(249, 115, 22, 0.3), transparent),
+    radial-gradient(2px 2px at 45% 90%, rgba(239, 68, 68, 0.4), transparent),
+    radial-gradient(1.5px 1.5px at 92% 72%, rgba(249, 115, 22, 0.25), transparent),
+    radial-gradient(1px 1px at 20% 52%, rgba(251, 191, 36, 0.2), transparent);
+  animation: sceneFxFadeIn 1.2s ease 0.4s forwards, sceneFxEmberRise 10s ease-in-out infinite;
+}
+
+/* Prevent PlayScreen/SocialScreen from doubling the home-screen ::after */
+.home-screen.social-screen.active::after { background: none; animation: none; }
+
+@keyframes sceneFxFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes sceneFxDriftSlow {
+  0%, 100% { transform: translateY(0) translateX(0); }
+  25%      { transform: translateY(-8px) translateX(4px); }
+  50%      { transform: translateY(-3px) translateX(-6px); }
+  75%      { transform: translateY(-10px) translateX(2px); }
+}
+
+@keyframes sceneFxPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.7; transform: scale(1.04); }
+}
+
+@keyframes sceneFxEmberRise {
+  0%, 100% { transform: translateY(0) translateX(0); opacity: 1; }
+  30%      { transform: translateY(-12px) translateX(3px); opacity: 0.85; }
+  60%      { transform: translateY(-6px) translateX(-4px); opacity: 1; }
+  80%      { transform: translateY(-14px) translateX(5px); opacity: 0.75; }
+}
+
+@keyframes sceneFxShimmer {
+  0%, 100% { opacity: 1; transform: translateX(0) scale(1); }
+  33%      { opacity: 0.8; transform: translateX(5px) scale(1.02); }
+  66%      { opacity: 1; transform: translateX(-3px) scale(0.98); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-screen.active::after,
+  .social-screen.active::after,
+  .collection-screen.active::after,
+  .shop-screen.active::after,
+  .settings-screen.active::after,
+  .battlefield.active::after {
+    animation: none !important;
+    opacity: 0.6;
+  }
+}
+

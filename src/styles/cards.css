@@ -1,0 +1,1126 @@
+/* ─── Rarity Styling ────────────────────────────────────────────── */
+
+.rarity-common { --rarity-color: var(--rarity-common); }
+.rarity-rare { --rarity-color: var(--rarity-rare); }
+.rarity-epic { --rarity-color: var(--rarity-epic); }
+.rarity-legendary { --rarity-color: var(--rarity-legendary); }
+
+.rarity-rare .slot-head strong,
+.rarity-rare .card-name {
+  color: #93c5fd;
+}
+
+.rarity-epic .slot-head strong,
+.rarity-epic .card-name {
+  color: #d8b4fe;
+}
+
+.rarity-legendary .slot-head strong,
+.rarity-legendary .card-name {
+  color: var(--gold-light);
+}
+
+.rarity-legendary {
+  box-shadow: 0 0 16px rgba(251, 191, 36, 0.2);
+}
+
+/* ─── The two frame channels ─────────────────────────────────────────
+   A card's frame carries two unrelated things, and they must never share a
+   pixel:
+
+     ::before  → RARITY.   System-owned, always drawn, not for sale.
+     ::after   → COSMETIC. Player-owned, purchased, decorative only.
+
+   Rarity is gameplay information — legendaries are capped at
+   MAX_LEGENDARY_COPIES while everything else allows MAX_COPIES, and collection
+   completion is tracked per rarity — so a frame bought in the shop must never
+   be able to make a common read as an epic. That is exactly what the old
+   single-ring design did: `border-solar` painted #f59e0b, the literal value of
+   --rarity-legendary, and `border-void` painted #a855f7, the literal value of
+   --rarity-epic.
+
+   The fix is a zone split. The cosmetic frame gets the outer bezel (the
+   `border`). Rarity keeps the gem plus a hairline just inside that bezel which
+   nothing in the shop can reach.
+
+   The hairline only appears once a cosmetic frame has actually taken the
+   bezel. On the default frame there is no competitor, so rarity keeps the
+   bezel itself and a second ring would just read as a thick smear. */
+
+.builder-card::before,
+.hand-card::before,
+.slot::before,
+.pack-reveal-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.builder-card:not(.border-default)::before,
+.hand-card:not(.border-default)::before {
+  border: 1px solid var(--rarity-color, var(--border));
+}
+
+/* The legendary wash rides the rarity layer, so an equipped frame dims it as
+   little as it dims the hairline: not at all. */
+.builder-card.rarity-legendary::before,
+.hand-card.rarity-legendary::before,
+.slot.rarity-legendary::before,
+.pack-reveal-card.rarity-legendary::before {
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.15), transparent 60%);
+}
+
+.rarity-gem {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: capitalize;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 2px;
+}
+
+.rarity-gem-icon {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+}
+
+.deck-rarity-summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.card-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+  /* Carries the rarity gem on collection cards — same reason .card-top sits
+     above .card-frame. */
+  position: relative;
+  z-index: 5;
+}
+
+/* ─── Effect Badges ─────────────────────────────────────────────── */
+
+.effect-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 2px 8px;
+  border-radius: 8px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  background: linear-gradient(90deg, rgba(124, 58, 237, 0.5), rgba(192, 38, 211, 0.4));
+  color: #e0d4ff;
+  margin-top: 2px;
+  letter-spacing: 0.02em;
+}
+
+.effect-icon {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+}
+
+.effect-badge.small {
+  font-size: 0.7rem;
+  padding: 1px 6px;
+}
+
+.effect-badge.icon-only {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border-radius: 999px;
+  background: rgba(13, 20, 40, 0.86);
+  border: 1px solid rgba(192, 38, 211, 0.34);
+  box-shadow: 0 4px 12px rgba(7, 12, 24, 0.24);
+}
+
+.effect-badge.icon-only .effect-icon {
+  width: 14px;
+  height: 14px;
+}
+
+.battle-slot-effect {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  z-index: 2;
+}
+
+.battle-hand-effect {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 2;
+}
+
+/* ─── Rarity gem on the battle surfaces ──────────────────────────────
+   Both of these are icon-only: the shapes carry the rarity, so the word is
+   redundant here and there is no room for it anyway. `iconOnly` puts the
+   label on aria-label/title instead. */
+
+.rarity-gem.icon-only {
+  gap: 0;
+  margin-bottom: 0;
+}
+
+/* Board units — mirrors .battle-slot-effect on the opposite corner. */
+.battle-slot-rarity {
+  position: absolute;
+  top: 5px;
+  left: 5px;
+  z-index: 2;
+}
+
+.battle-slot-rarity .rarity-gem-icon {
+  width: 13px;
+  height: 13px;
+  filter: drop-shadow(0 1px 2px rgba(6, 10, 22, 0.7));
+}
+
+/* Hand cards — inline beside the cost pill. `.card-top` is a space-between
+   flex row, so the auto margin is what keeps the gem tucked against the pill
+   instead of drifting right into the absolutely-placed effect badge. */
+.battle-hand-rarity {
+  margin-right: auto;
+}
+
+.battle-hand-rarity .rarity-gem-icon {
+  width: 13px;
+  height: 13px;
+  filter: drop-shadow(0 1px 2px rgba(6, 10, 22, 0.7));
+}
+
+.hand-card .card-top {
+  gap: 6px;
+}
+
+/* ─── Hand Cards ────────────────────────────────────────────────── */
+
+/* `.hand-section` and `.hand-fan-stage` used to live here. No component has
+   rendered them since the hand moved into `.battle-hand-rail`, and their
+   `max-height: min(24svh, 172px)` was clipping the rail that replaced them. */
+
+/* ─── Hand rail ──────────────────────────────────────────────────────
+   The hand used to be clipped on every device by fixed arithmetic: the rail
+   was `min(27svh, 198px)` tall while the card inside had `min-height: 142px`
+   plus 44px of combined clearance and padding — 194px of content in a box
+   that is 180px tall on a 667px phone. Because the card height was a hard
+   px minimum, it could not shrink; it just got cut off.
+
+   Cards now derive their height from the rail, not the other way round, and
+   their width follows from a real playing-card aspect ratio. The hand shrinks
+   gracefully instead of clipping, and never needs a height media query. */
+.battle-hand-rail {
+  /* Room above the rail for the hover/peek lift, and below for the tilt. */
+  --battle-hand-top-clearance: clamp(10px, 2svh, 20px);
+  --battle-hand-bottom-clearance: clamp(6px, 1.2svh, 12px);
+  /* The one number that governs hand size. Everything else is derived. */
+  --hand-card-h: clamp(96px, 19svh, 152px);
+
+  display: grid;
+  min-height: 0;
+  block-size: calc(
+    var(--hand-card-h)
+    + var(--battle-hand-top-clearance)
+    + var(--battle-hand-bottom-clearance)
+    + 12px /* rail padding: 4px top + 8px bottom */
+  );
+  margin-top: -2px;
+  padding: 4px 8px 8px;
+  border-radius: 16px 16px 14px 14px;
+  background: linear-gradient(180deg, rgba(9, 13, 24, 0.96), rgba(20, 30, 56, 0.94));
+  border: 1px solid rgba(147, 197, 253, 0.12);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 -10px 24px rgba(8, 12, 24, 0.18);
+}
+
+.hand-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+  gap: 10px;
+}
+
+.hand-fan-grid {
+  display: flex;
+  align-items: end;
+  /* Centred so a small hand sits under the thumb rather than hugging the
+     left edge, while a large hand still scrolls from the start. */
+  justify-content: safe center;
+  /* Enough room that the tilted corners of adjacent cards never collide. */
+  gap: clamp(4px, 1.4vw, 10px);
+  overflow-x: auto;
+  overflow-y: hidden;
+  min-height: 0;
+  padding: var(--battle-hand-top-clearance) 8px var(--battle-hand-bottom-clearance) 2px;
+  overscroll-behavior-x: contain;
+  scroll-padding-inline: 10px;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+  touch-action: pan-x;
+}
+
+.hand-fan-grid.is-drag-active {
+  overflow-x: hidden;
+}
+
+.hand-fan-grid::-webkit-scrollbar {
+  display: none;
+}
+
+.hand-card {
+  position: relative;
+  /* Height comes from the rail; width follows the standard 63×88mm card
+     ratio. No `min-height` — a hard px floor is what caused the clipping. */
+  block-size: var(--hand-card-h, 142px);
+  aspect-ratio: 63 / 88;
+  padding: clamp(5px, 1.1svh, 8px) clamp(6px, 1.4svh, 10px);
+  background: linear-gradient(180deg, rgba(49, 42, 84, 0.96), rgba(22, 24, 46, 0.96));
+  color: white;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 4px;
+  box-shadow: 0 8px 20px rgba(6, 10, 22, 0.28);
+  border-radius: 12px;
+  border: 2px solid var(--rarity-color, var(--border));
+  overflow: hidden;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  touch-action: pan-x;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  transform: rotate(var(--fan-tilt, 0deg));
+  z-index: var(--fan-order, 1);
+}
+
+/* Cards no longer overlap.
+
+   A fan looks good in a screenshot, but every card's attack/health sits in
+   its bottom-right corner — exactly the part an overlapping neighbour covers.
+   In a game where those two numbers decide every trade, legibility beats the
+   flourish. The per-card `--fan-tilt` rotation keeps the hand from reading as
+   a flat row, and a hand too wide to fit simply scrolls. */
+.hand-fan-grid .hand-card {
+  flex: 0 0 auto;
+  scroll-snap-align: center;
+}
+
+/* (the first-child margin reset is gone with the negative margins) */
+
+.battle-hand-rail .hand-card {
+  transform: translateY(8px) rotate(var(--fan-tilt, 0deg));
+}
+
+/* Hover lift is gated behind a real pointer.
+   iOS Safari and Android Chrome apply `:hover` on tap and leave it applied
+   until the next tap elsewhere, so an unguarded hover rule leaves a card
+   stuck lifted and overlapping its neighbours after every play. Long-press
+   inspect (BATTLE_HAND_INSPECT_DELAY_MS) is the touch equivalent. */
+@media (hover: hover) and (pointer: fine) {
+  .battle-hand-rail .hand-card:hover:not(:disabled) {
+    transform: translateY(6px) scale(1.03) rotate(0deg);
+  }
+
+  .hand-card:hover:not(:disabled) {
+    /* Lift scales with the card so it clears the rail identically at every
+       size — a fixed -18px overshot the clearance on short screens. */
+    transform: translateY(calc(var(--hand-card-h, 142px) * -0.12)) rotate(0deg) scale(1.05);
+    box-shadow: 0 18px 40px rgba(6, 10, 22, 0.4), 0 0 16px var(--rarity-color, transparent);
+    z-index: 8;
+  }
+}
+
+/* Keyboard parity for the hover lift. */
+.hand-card:focus-visible:not(:disabled) {
+  transform: translateY(calc(var(--hand-card-h, 142px) * -0.12)) rotate(0deg) scale(1.05);
+  z-index: 8;
+}
+
+/* Tactile press — card briefly compresses before commit. This is the
+   affordance touch actually gets, so it is not hover-gated. */
+.battle-hand-rail .hand-card:active:not(:disabled):not(.is-dragging) {
+  transform: translateY(6px) scale(0.97) rotate(0deg);
+  box-shadow: 0 2px 8px rgba(6, 10, 22, 0.5);
+  transition: transform 60ms ease-out, box-shadow 60ms ease-out;
+}
+
+.hand-card.unplayable { opacity: 0.55; }
+
+.hand-card.rarity-legendary {
+  background: linear-gradient(180deg, rgba(80, 60, 20, 0.96), rgba(30, 24, 10, 0.96));
+}
+
+.hand-card.rarity-epic {
+  background: linear-gradient(180deg, rgba(60, 30, 80, 0.96), rgba(28, 18, 46, 0.96));
+}
+
+.cost-pill {
+  width: 32px;
+  height: 32px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #38bdf8, #2563eb);
+  font-weight: 800;
+  box-shadow: 0 2px 8px rgba(56, 189, 248, 0.3);
+}
+
+.card-name {
+  display: -webkit-box;
+  margin-bottom: 4px;
+  min-height: 2.4em;
+  font-size: 0.92rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: normal;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.card-top {
+  position: relative;
+  /* Above .card-frame (z-index 4). The gem lives in this row, and a cosmetic
+     finish must never tint the one signal it is forbidden from overriding. */
+  z-index: 5;
+}
+
+.card-stats {
+  font-weight: 700;
+  font-size: 0.92rem;
+}
+
+.card-stats span,
+.battle-stats-inline span,
+.rank-badge-art,
+.badge-with-art {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.battle-stats-inline {
+  gap: 8px;
+}
+
+.stat-icon {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+}
+
+.rank-badge-art {
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(91, 118, 255, 0.16);
+  color: #eff3ff;
+  font-size: 0.88rem;
+}
+
+.rank-badge-art img {
+  width: 18px;
+  height: 18px;
+  display: block;
+}
+
+.rank-badge-inline {
+  justify-self: end;
+}
+
+.pack-offer-card {
+  align-content: start;
+  position: relative;
+  overflow: hidden;
+}
+
+.claim-ready {
+  border-color: rgba(251, 191, 36, 0.24);
+  box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.12), 0 12px 26px rgba(36, 20, 5, 0.18);
+}
+
+.reward-vault-card.claim-ready {
+  border-color: rgba(251, 191, 36, 0.28);
+  box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.16), 0 16px 38px rgba(36, 20, 5, 0.24);
+}
+
+.reward-vault-card.claim-ready .primary {
+  animation: urgencyPulse 1.8s ease-in-out infinite;
+}
+
+.shop-market-card {
+  display: flex;
+  flex: 1 1 auto;
+  height: 100%;
+  min-height: 0;
+  flex-direction: column;
+  gap: 12px;
+  overflow: hidden;
+}
+
+.shop-market.shop-screen.screen-panel.active > .shop-market-card {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.shop-market-ledger {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+}
+
+.shop-market-title {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.shop-market-title strong {
+  font-size: clamp(1rem, 2.4vw, 1.18rem);
+  color: #f8fbff;
+}
+
+.shop-resource-strip {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.shop-resource-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  min-height: 30px;
+  padding: 5px 9px;
+  border-radius: 999px;
+  border: 1px solid rgba(147, 197, 253, 0.16);
+  background: rgba(91, 118, 255, 0.13);
+  color: #e8eeff;
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+.shop-resource-chip strong {
+  color: #fff7d6;
+  font-size: 0.9rem;
+}
+
+.shop-resource-chip.is-accent {
+  border-color: rgba(251, 191, 36, 0.36);
+  background: linear-gradient(135deg, rgba(87, 62, 14, 0.42), rgba(49, 34, 10, 0.28));
+}
+
+.shop-nav-strip {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 2px 0 4px;
+  scrollbar-width: none;
+}
+
+.shop-nav-strip::-webkit-scrollbar {
+  display: none;
+}
+
+.shop-nav-strip button {
+  flex: 0 0 auto;
+  min-height: 34px;
+  padding: 7px 11px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(147, 197, 253, 0.16);
+  background: linear-gradient(135deg, rgba(8, 14, 30, 0.68), rgba(23, 31, 57, 0.54));
+  color: #cbd8f4;
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.shop-nav-strip button.active {
+  border-color: rgba(251, 191, 36, 0.48);
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.16), rgba(96, 165, 250, 0.14));
+  color: #fff7d6;
+}
+
+.shop-hub-surface,
+.shop-section-panel {
+  display: grid;
+  flex: 1 1 auto;
+  gap: 12px;
+  min-height: 0;
+}
+
+.shop-hub-surface {
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+@media (min-width: 820px) {
+  .shop-hub-surface {
+    grid-template-columns: minmax(260px, 0.8fr) minmax(0, 1.2fr);
+    grid-template-rows: auto;
+    align-content: start;
+    align-items: start;
+  }
+}
+
+.shop-section-panel {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 2px;
+}
+
+.shop-section-panel::-webkit-scrollbar { width: 6px; }
+.shop-section-panel::-webkit-scrollbar-thumb {
+  background: rgba(147, 197, 253, 0.28);
+  border-radius: 999px;
+}
+
+.shop-feature-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(251, 191, 36, 0.2);
+  background: linear-gradient(135deg, rgba(66, 45, 12, 0.44), rgba(18, 24, 44, 0.8));
+}
+
+.shop-feature-vault {
+  align-items: center;
+}
+
+.shop-vault-actions,
+.reward-vault-action-center {
+  justify-content: center;
+  margin-top: 0;
+}
+
+.shop-vault-actions button {
+  min-width: 124px;
+}
+
+@media (min-width: 820px) {
+  .shop-feature-panel {
+    grid-template-columns: 1fr;
+    align-content: start;
+    min-height: 0;
+    padding: 18px;
+  }
+}
+
+.shop-vault-stat-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.shop-vault-stat-strip span {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  padding: 8px;
+  border-radius: 12px;
+  border: 1px solid rgba(251, 191, 36, 0.14);
+  background: rgba(255, 255, 255, 0.045);
+  color: #cfd8ff;
+  font-size: 0.76rem;
+}
+
+.shop-feature-panel strong {
+  display: block;
+  margin-top: 2px;
+  color: #fff8dc;
+  font-size: clamp(1rem, 2.4vw, 1.16rem);
+}
+
+.shop-feature-panel .shop-vault-stat-strip strong {
+  margin: 0;
+  overflow: hidden;
+  color: #fff4c4;
+  font-size: 0.84rem;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: normal;
+}
+
+.shop-feature-panel .note {
+  margin: 4px 0 0;
+}
+
+.reward-vault-card {
+  align-items: stretch;
+  align-content: start;
+  grid-template-columns: minmax(0, 1fr);
+  justify-content: stretch;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.reward-vault-card .shop-section-toolbar {
+  grid-template-columns: minmax(72px, auto) minmax(0, 1fr) minmax(72px, auto);
+}
+
+.reward-vault-card .shop-section-toolbar strong {
+  justify-self: center;
+  text-align: center;
+}
+
+.reward-vault-card .shop-section-toolbar .badge {
+  justify-self: end;
+}
+
+.reward-vault-console {
+  position: relative;
+  box-sizing: border-box;
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: 14px;
+  width: 100%;
+  min-height: 0;
+  padding: clamp(12px, 2.4vw, 22px);
+  border: 1px solid rgba(251, 191, 36, 0.22);
+  border-radius: 14px;
+  background:
+    linear-gradient(150deg, rgba(71, 48, 14, 0.58), rgba(8, 14, 29, 0.88) 46%, rgba(22, 33, 65, 0.72)),
+    linear-gradient(90deg, rgba(251, 191, 36, 0.08), transparent 35%, rgba(96, 165, 250, 0.08));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 18px 42px rgba(0, 0, 0, 0.2);
+}
+
+.reward-vault-stage {
+  display: grid;
+  grid-template-columns: minmax(140px, 0.72fr) minmax(0, 1fr);
+  align-items: center;
+  gap: clamp(12px, 2.4vw, 24px);
+  width: min(100%, 720px);
+}
+
+.reward-vault-medallion {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  justify-self: center;
+  width: min(184px, 42vw);
+  aspect-ratio: 1;
+  padding: 14px;
+  overflow: hidden;
+  border: 1px solid rgba(251, 191, 36, 0.38);
+  border-radius: 18px;
+  background: linear-gradient(145deg, rgba(19, 28, 54, 0.96), rgba(82, 58, 17, 0.76));
+  box-shadow: inset 0 0 28px rgba(251, 191, 36, 0.1), 0 16px 34px rgba(0, 0, 0, 0.28);
+  text-align: center;
+}
+
+.reward-vault-medallion::before {
+  content: '';
+  position: absolute;
+  inset: 14px;
+  z-index: -1;
+  opacity: 0.2;
+  background: url('/generated/ui/tile-shop.svg') center / contain no-repeat;
+}
+
+.reward-vault-medallion span {
+  color: #dbe5ff;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.reward-vault-medallion strong {
+  color: #fff6cc;
+  font-size: clamp(2.55rem, 7vw, 4.4rem);
+  line-height: 0.95;
+  text-shadow: 0 0 24px rgba(251, 191, 36, 0.18);
+}
+
+.reward-vault-copy {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.reward-vault-state {
+  justify-self: start;
+  padding: 5px 9px;
+  border: 1px solid rgba(251, 191, 36, 0.24);
+  border-radius: var(--radius-sm);
+  background: rgba(251, 191, 36, 0.1);
+  color: #fff0b6;
+  font-size: 0.68rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.reward-vault-copy strong {
+  color: #f8fbff;
+  font-size: clamp(1.32rem, 3.8vw, 2.05rem);
+  line-height: 1.05;
+}
+
+.reward-vault-copy .note {
+  max-width: 48ch;
+  margin: 0;
+}
+
+.reward-vault-action-center {
+  width: min(100%, 560px);
+  gap: 10px;
+}
+
+.reward-vault-action-center button {
+  flex: 1 1 180px;
+  min-height: 42px;
+}
+
+.reward-vault-card.is-charging .reward-vault-primary,
+.reward-vault-primary:disabled {
+  opacity: 0.68;
+}
+
+.reward-vault-rule-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  width: min(100%, 720px);
+}
+
+.reward-vault-rule {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid rgba(147, 197, 253, 0.14);
+  border-radius: var(--radius-sm);
+  background: rgba(8, 14, 30, 0.48);
+  color: #cfd8ff;
+  font-size: 0.74rem;
+  font-weight: 800;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.reward-vault-rule strong {
+  color: #fff6cc;
+  font-size: 1rem;
+}
+
+.shop-hub-panels {
+  /* Container for the panels' own boxes — see @container shopgrid below. */
+  container-type: inline-size;
+  container-name: shopgrid;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-auto-rows: minmax(108px, 1fr);
+  gap: 10px;
+}
+
+@media (min-width: 820px) {
+  .shop-hub-panels {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-auto-rows: minmax(164px, auto);
+  }
+}
+
+.shop-hub-panel {
+  /* Container for its own contents. The panel's width does not track the
+     viewport: at ≥820px the hub splits into two columns and the panel lands
+     in the narrow one, so a desktop panel (340px) and a tablet panel (180px)
+     used to get the same styling while the tablet panel and the phone panel
+     (166px) — nearly the same size — got different styling. */
+  container-type: inline-size;
+  container-name: shoppanel;
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  gap: 6px;
+  min-height: 108px;
+  align-content: start;
+  text-align: left;
+  padding: 13px;
+  border-radius: 14px;
+  border: 1px solid rgba(147, 197, 253, 0.16);
+  background: linear-gradient(150deg, rgba(10, 16, 31, 0.9), rgba(34, 38, 72, 0.72));
+  color: #f5f8ff;
+}
+
+.shop-hub-panel::before {
+  content: '';
+  position: absolute;
+  inset: auto 12px 12px auto;
+  width: 48px;
+  height: 48px;
+  border-radius: 16px;
+  opacity: 0.18;
+  pointer-events: none;
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.7), rgba(91, 118, 255, 0.72));
+  transform: rotate(10deg);
+}
+
+.shop-hub-panel::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.42;
+  background: radial-gradient(circle at top right, rgba(147, 197, 253, 0.12), transparent 48%);
+}
+
+.shop-hub-panel > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Panel density, keyed to the grid the panels sit in.
+   The panel's *own* box (min-height/padding/gap) cannot come from
+   `@container shoppanel` — an element cannot query itself — so it asks the
+   grid instead, which is the thing that actually decides how much room each
+   panel gets. Content-box threshold. */
+@container shopgrid (width < 400px) {
+  .shop-hub-panel {
+    min-height: 100px;
+    padding: 9px 10px;
+    gap: 5px;
+  }
+}
+
+/* Contents, keyed to the panel itself. */
+@container shoppanel (width < 190px) {
+  .shop-hub-panel::before {
+    width: 36px;
+    height: 36px;
+    inset: auto 10px 10px auto;
+    opacity: 0.16;
+  }
+
+  .shop-hub-panel-packs::before {
+    opacity: 0.28;
+  }
+
+  .shop-hub-panel > span:not(.shop-hub-panel-kicker) {
+    font-size: 0.76rem;
+  }
+
+  /* The supporting stat is the first thing to go when the panel is this
+     narrow; the kicker and title carry the meaning. */
+  .shop-hub-panel-stat {
+    display: none;
+  }
+}
+
+.shop-hub-panel:hover,
+.shop-hub-panel:focus-visible {
+  border-color: rgba(251, 191, 36, 0.32);
+  filter: brightness(1.06);
+}
+
+.shop-hub-panel-packs::before {
+  background: url('/generated/ui/pack-standard.svg') center / contain no-repeat;
+  opacity: 0.34;
+  transform: none;
+}
+
+.shop-hub-panel-themes::before {
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.74), rgba(167, 139, 250, 0.76));
+}
+
+.shop-hub-panel-borders::before {
+  border: 2px solid rgba(147, 197, 253, 0.62);
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.08), rgba(59, 130, 246, 0.42));
+}
+
+.shop-hub-panel-breakdown::before {
+  background: linear-gradient(135deg, rgba(45, 212, 191, 0.62), rgba(251, 191, 36, 0.68));
+}
+
+.shop-hub-panel-kicker {
+  justify-self: start;
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(147, 197, 253, 0.14);
+  background: rgba(255, 255, 255, 0.05);
+  color: #dbe5ff;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.shop-hub-panel strong {
+  color: #f7f9ff;
+  font-size: clamp(0.96rem, 1.9vw, 1.12rem);
+}
+
+.shop-hub-panel > span:not(.shop-hub-panel-kicker) {
+  color: #c9d5f3;
+  font-size: 0.82rem;
+}
+
+.shop-hub-panel-stat {
+  align-self: end;
+  margin-top: 4px;
+  color: #fff3c4 !important;
+  font-size: 0.74rem !important;
+}
+
+@media (min-width: 820px) {
+  .shop-hub-panel {
+    min-height: 0;
+    padding: 16px;
+  }
+}
+
+.shop-section-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 0 8px;
+  background: linear-gradient(180deg, rgba(12, 18, 36, 0.98), rgba(12, 18, 36, 0.82));
+  border-bottom: 1px solid rgba(147, 197, 253, 0.12);
+}
+
+.shop-section-toolbar strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #f8fbff;
+}
+
+.shop-breakdown-list {
+  margin-top: 0;
+}
+
+.pack-offer-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at top, rgba(251, 191, 36, 0.08), transparent 58%);
+}
+
+.pack-offer-art {
+  width: min(170px, 100%);
+  margin: 0 auto;
+  display: block;
+  filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.28));
+}
+
+.pack-reveal-stage {
+  margin-top: 14px;
+  padding: 12px;
+  border-radius: 16px;
+  background: linear-gradient(160deg, rgba(18, 14, 36, 0.94), rgba(32, 24, 58, 0.88));
+  border: 1px solid rgba(147, 197, 253, 0.18);
+}
+
+.pack-reveal-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.pack-reveal-card {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 14px;
+  border: 1px solid var(--rarity-color, var(--border));
+  background: linear-gradient(180deg, rgba(22, 24, 46, 0.96), rgba(12, 16, 32, 0.96));
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.22);
+}
+
+.pack-reveal-card:hover {
+  transform: translateY(-2px);
+}
+
+.pack-reveal-glow {
+  position: absolute;
+  inset: -20px;
+  opacity: 0.18;
+  pointer-events: none;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+
+.pack-reveal-glow-common { background-image: url('/generated/ui/glow-common.svg'); }
+.pack-reveal-glow-rare { background-image: url('/generated/ui/glow-rare.svg'); }
+.pack-reveal-glow-epic { background-image: url('/generated/ui/glow-epic.svg'); }
+.pack-reveal-glow-legendary { background-image: url('/generated/ui/glow-legendary.svg'); }
+
+.pack-reveal-art-shell {
+  position: relative;
+  z-index: 1;
+  height: 74px;
+}
+
+.pack-reveal-meta {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 4px;
+}
+
+.new-card-badge {
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.28), rgba(245, 158, 11, 0.32));
+  border: 1px solid rgba(251, 191, 36, 0.34);
+}
+
+/* ─── Card Art ──────────────────────────────────────────────────── */
+
+.card-art-shell {
+  height: 92px;
+  overflow: hidden;
+  border-radius: 14px;
+  border: 1px solid rgba(251, 191, 36, 0.22);
+  background: linear-gradient(135deg, rgba(10, 18, 36, 0.95), rgba(23, 35, 71, 0.7));
+}
+
+.card-art-shell.large { height: 104px; }
+.card-art-shell.thumb { height: 52px; border-radius: 10px; }
+
+.card-illustration {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+  -webkit-user-drag: none;
+  -webkit-touch-callout: none;
+  user-select: none;
+  pointer-events: none;
+}
+
+.hand-card:hover .card-illustration,
+.builder-card:hover .card-illustration {
+  transform: scale(1.08);
+}
+

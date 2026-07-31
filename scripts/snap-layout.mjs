@@ -144,10 +144,19 @@ async function readPng(file) {
   return PNG.sync.read(await readFile(file))
 }
 
-/** Compare `current` against `baseline`, writing a diff image per change. */
-async function compare() {
+/**
+ * Compare `current` against `baseline`, writing a diff image per change.
+ *
+ * `expected` is the set of images this run intended to capture. Without it a
+ * filtered run (`--state=home`) reports every other baseline as "missing",
+ * which reads as alarming when it is simply out of scope.
+ */
+async function compare(expected) {
   await mkdir(DIFF_DIR, { recursive: true })
-  const baselineFiles = (await readdir(BASELINE_DIR)).filter((f) => f.endsWith('.png')).sort()
+  const inScope = (name) => !expected || expected.has(name)
+  const baselineFiles = (await readdir(BASELINE_DIR))
+    .filter((f) => f.endsWith('.png') && inScope(f))
+    .sort()
   const currentFiles = new Set((await readdir(CURRENT_DIR)).filter((f) => f.endsWith('.png')))
 
   const rows = []
@@ -189,7 +198,9 @@ async function compare() {
   }
 
   for (const name of currentFiles) {
-    if (!baselineFiles.includes(name)) rows.push({ name, status: 'new', pct: null })
+    if (!baselineFiles.includes(name) && inScope(name)) {
+      rows.push({ name, status: 'new', pct: null })
+    }
   }
 
   return rows
@@ -243,7 +254,11 @@ async function main() {
       throw new Error(`No baseline at ${BASELINE_DIR}. Run \`npm run qa:snap\` first.`)
     }
     const { skipped } = await capture(CURRENT_DIR, { viewports, states, log })
-    const failures = report(await compare())
+    // Only the states this run was asked for; see compare().
+    const expected = new Set(
+      viewports.flatMap((viewport) => states.map((state) => shotName(viewport, state))),
+    )
+    const failures = report(await compare(expected))
     if (skipped.length > 0) {
       console.log(`Skipped (state never reached): ${skipped.join(', ')}\n`)
     }

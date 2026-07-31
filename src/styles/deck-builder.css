@@ -1,0 +1,241 @@
+/* ─── Deck Builder ───────────────────────────────────────────────────
+   The grid and the cards in it are sized by their container, not the viewport.
+   Keying these off viewport width produced a measurable inversion: crossing
+   640px took each card from 190px wide to 294px wide while simultaneously
+   switching its contents to the compact treatment — 55% roomier box, 22%
+   smaller type, at the same moment. */
+
+/* The panel is what actually decides how many columns fit. */
+.collection-screen .section-card {
+  container-type: inline-size;
+  container-name: panel;
+}
+
+.builder-grid {
+  margin-top: 6px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+  min-width: 0;
+}
+
+/* Below ~420px of panel, `auto-fit minmax(180px, …)` collapses to a single
+   very wide card. Two columns is the better phone layout, and this asks the
+   panel — not the window — whether that is the situation we are in. */
+@container panel (width < 420px) {
+  .builder-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.builder-card {
+  /* Container for its own contents. Safe here: the card is a grid item so its
+     width comes from the track and never from its contents, it is already
+     `position: relative` with `overflow: hidden`, and its one `position:
+     fixed` descendant (the drag ghost) is portalled out of the subtree.
+
+     Note the card's *own* box cannot use `cqw` — container units resolve
+     against the nearest *ancestor* container, so `cqw` here would mean "panel
+     width", i.e. the viewport again. Only the contents below may use them. */
+  container-type: inline-size;
+  container-name: card;
+
+  position: relative;
+  min-width: 0;
+  min-height: 200px;
+  padding: 8px;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 6px;
+  overflow: hidden;
+  background: linear-gradient(180deg, rgba(30, 35, 64, 0.98), rgba(18, 21, 41, 0.98));
+  border-radius: 16px;
+  border: 2px solid var(--rarity-color, var(--border));
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  -webkit-touch-callout: none;
+}
+
+/* Compact treatment, keyed to the card's own width.
+
+   The threshold is in CONTENT-box pixels, which is what `@container` compares
+   against — not the border box you get from getBoundingClientRect(). The card
+   carries 8px padding each side plus a 2px border, so a 217px card queries as
+   197px. Getting this wrong fails silently: a first pass used 200px and the
+   roomy desktop card still matched the compact branch.
+
+   Measured content widths: 152px (phone, 2-up), 170px (3-up), 174px, 197px
+   (desktop, 5-up), 274px (2-up wide). 185px separates the crowded cases from
+   the roomy ones. */
+@container card (width < 185px) {
+  .builder-card .builder-card-preview,
+  .builder-card .builder-card-preview > *,
+  .builder-card .slot-head,
+  .builder-card .card-meta-row,
+  .builder-card .card-stats,
+  .builder-card .builder-card-footnote,
+  .builder-card .stepper {
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
+  }
+
+  .builder-card .card-art-shell {
+    height: 78px;
+    border-radius: 12px;
+  }
+
+  .builder-card .slot-head,
+  .builder-card .card-meta-row,
+  .builder-card .card-stats {
+    gap: 4px;
+  }
+
+  .builder-card .slot-head strong {
+    font-size: 0.78rem;
+    line-height: 1.15;
+  }
+
+  .builder-card .stats,
+  .builder-card .card-stats {
+    font-size: 0.8rem;
+  }
+
+  .builder-card .rarity-gem {
+    gap: 3px;
+    margin-bottom: 0;
+    flex: 0 1 auto;
+    min-width: 0;
+  }
+
+  /* Icon-only at this width; the label returns as soon as the card has room. */
+  .builder-card .rarity-gem span {
+    display: none;
+  }
+
+  .builder-card .rarity-gem-icon,
+  .builder-card .stat-icon,
+  .builder-card .effect-icon {
+    width: 12px;
+    height: 12px;
+  }
+
+  .builder-card .builder-card-meta-full {
+    display: none;
+  }
+
+  /* Descendant form, not the bare class: the base `.builder-card-meta-compact
+     { display: none }` sits later in the file at equal specificity and would
+     otherwise win, silently keeping the compact label hidden. */
+  .builder-card .builder-card-meta-compact {
+    display: inline-block;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.72rem;
+  }
+
+  .builder-card .effect-badge {
+    display: inline-grid;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    border-radius: 999px;
+  }
+
+  .builder-card .effect-badge span {
+    display: none;
+  }
+
+  .builder-card .stepper {
+    justify-content: space-between;
+    gap: 3px;
+  }
+
+  /* Stays at 34px — a narrow card is exactly where the +/- controls must not
+     shrink further. */
+  .builder-card .stepper .ghost.mini {
+    width: 34px;
+    min-width: 34px;
+    height: 34px;
+    padding: 0;
+    border-radius: 10px;
+  }
+
+  .builder-card .count-chip {
+    min-width: 24px;
+    font-size: 0.86rem;
+  }
+}
+.builder-card-preview {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+  border: 0;
+  box-sizing: border-box;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  overflow: hidden;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.builder-card-meta-compact {
+  display: none;
+}
+
+.builder-card-preview:focus-visible {
+  outline: 2px solid #67e8f9;
+  outline-offset: 2px;
+}
+
+.builder-card-footnote {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  min-width: 0;
+}
+
+.builder-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+}
+
+.builder-card.rarity-legendary {
+  background: linear-gradient(180deg, rgba(60, 48, 16, 0.98), rgba(28, 22, 10, 0.98));
+}
+
+.builder-card.rarity-epic {
+  background: linear-gradient(180deg, rgba(48, 24, 64, 0.98), rgba(24, 16, 38, 0.98));
+}
+
+.builder-card.locked {
+  opacity: 0.72;
+  filter: saturate(0.75);
+}
+
+.stepper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: nowrap;
+  gap: 4px;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.count-chip {
+  min-width: 28px;
+  text-align: center;
+  font-weight: 800;
+}
+

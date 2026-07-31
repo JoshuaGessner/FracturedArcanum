@@ -1,0 +1,238 @@
+/* ─── Layout Grids ──────────────────────────────────────────────── */
+
+.topbar, .home-screen, .battlefield {
+  display: grid;
+  gap: var(--scene-gap);
+}
+
+.home-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
+  gap: var(--scene-gap);
+}
+
+.meta-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.deck-focus { grid-template-columns: 1fr; }
+.battlefield {
+  grid-template-columns: 1fr;
+  position: relative;
+  z-index: 1;
+}
+
+/* ─── Navigation ────────────────────────────────────────────────── */
+
+.nav-strip {
+  position: relative;
+  z-index: 6;
+  background: linear-gradient(135deg, rgba(15, 23, 44, 0.94), rgba(30, 47, 89, 0.88));
+  backdrop-filter: blur(12px);
+  flex: 0 0 auto;
+}
+
+.nav-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* ─── Bottom navigation ─────────────────────────────────────────────
+   Four destinations instead of six. The old bar split 360px into six columns
+   (~55px each) and shrank labels to 0.64rem and targets to 40px to make them
+   fit — both under the 44px touch floor. Settings moved to the top-bar account
+   menu, and Play was absorbed into the Home hub, which buys back the width.
+   The bar is `auto-fit` so adding a fifth destination degrades gracefully
+   instead of needing a new breakpoint. */
+.scene-rail {
+  position: relative;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: var(--space-1);
+  padding: var(--space-2);
+  padding-inline-start: calc(var(--space-2) + var(--safe-left));
+  padding-inline-end: calc(var(--space-2) + var(--safe-right));
+  /* The shell no longer pads its own bottom, so the rail owns the gesture-bar
+     inset. `max()` is deliberate: Safari reports safe-area-inset-bottom as 0
+     whenever the toolbar is hidden, so a bare env() would leave the rail flush
+     against the home indicator. */
+  padding-bottom: calc(var(--space-2) + max(var(--safe-bottom), var(--space-1)));
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  margin-inline: calc(var(--space-3) * -1);
+  z-index: 4;
+  background: rgba(10, 14, 28, 0.92);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(147, 197, 253, 0.12);
+  border-bottom: 0;
+  box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.34);
+}
+
+.scene-link {
+  position: relative;
+  /* 48px of tappable height at every viewport — never traded away to fit. */
+  min-height: 48px;
+  min-width: 0;
+  padding: var(--space-1) var(--space-1) 5px;
+  border-radius: var(--radius-md);
+  color: #9fb0d4;
+  text-align: center;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 3px;
+  background: transparent;
+  transition: color var(--motion-fast), background var(--motion-fast);
+}
+
+/* Glyphs are masked rather than used as background-image so `currentColor`
+   drives the tint — one asset covers both rest and active states. */
+.scene-link::before {
+  content: '';
+  width: 24px;
+  height: 24px;
+  background-color: currentColor;
+  -webkit-mask: var(--nav-glyph) center / contain no-repeat;
+  mask: var(--nav-glyph) center / contain no-repeat;
+  transition: transform var(--motion-base);
+}
+
+.scene-link[data-nav='home']       { --nav-glyph: url('/generated/ui/nav-home.svg'); }
+.scene-link[data-nav='collection'] { --nav-glyph: url('/generated/ui/nav-collection.svg'); }
+.scene-link[data-nav='social']     { --nav-glyph: url('/generated/ui/nav-social.svg'); }
+.scene-link[data-nav='shop']       { --nav-glyph: url('/generated/ui/nav-shop.svg'); }
+.scene-link[data-nav='settings']   { --nav-glyph: url('/generated/ui/nav-settings.svg'); }
+.scene-link[data-nav='play']       { --nav-glyph: url('/generated/ui/nav-battle.svg'); }
+
+.scene-link:hover,
+.scene-link:focus-visible {
+  color: #dbe6ff;
+}
+
+/* Active state reads from the glyph and label, not a filled pill. A solid
+   gradient block at this size crowds the icon and buries the label. */
+.scene-link.active {
+  color: #fff;
+}
+
+.scene-link.active::before {
+  transform: translateY(-1px) scale(1.06);
+}
+
+/* Indicator sits above the item, aligned to the icon rather than the label. */
+.scene-link.active::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  width: 22px;
+  height: 3px;
+  border-radius: 0 0 var(--radius-pill) var(--radius-pill);
+  background: linear-gradient(90deg, #38bdf8, #7c3aed);
+  box-shadow: 0 0 12px rgba(124, 58, 237, 0.6);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scene-link::before { transition: none; }
+  .scene-link.active::before { transform: none; }
+}
+
+.scene-link-label {
+  max-width: 100%;
+  /* Fixed, readable size. The old rule scaled this down to 0.64rem on small
+     phones; the bar now has the width to keep it legible everywhere. */
+  font-size: var(--font-xs);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ─── Main-menu nav tiles ───────────────────────────────────────── */
+
+.nav-tile-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.nav-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 16px 12px;
+  min-height: 124px;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(160deg, rgba(124, 58, 237, 0.18), rgba(37, 99, 235, 0.12));
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text);
+  text-align: center;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: transform var(--motion-base), box-shadow var(--motion-base), background var(--motion-base);
+}
+
+.nav-tile::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: 0.18;
+  z-index: 0;
+  transition: opacity 0.2s ease-out;
+}
+
+.nav-tile > * { position: relative; z-index: 1; }
+
+.nav-tile-alert {
+  box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.22), 0 10px 28px rgba(251, 191, 36, 0.18);
+}
+
+.nav-tile-notice {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--gold-light) 0%, var(--rarity-legendary) 65%, var(--gold-dark) 100%);
+  box-shadow: 0 0 0 4px rgba(251, 191, 36, 0.12), 0 0 16px rgba(251, 191, 36, 0.34);
+  animation: urgencyPulse 1.6s ease-in-out infinite;
+}
+
+.nav-tile-play::before { background-image: url('/generated/ui/tile-play.svg'); }
+.nav-tile-collection::before { background-image: url('/generated/ui/tile-collection.svg'); }
+.nav-tile-social::before { background-image: url('/generated/ui/tile-social.svg'); }
+.nav-tile-shop::before { background-image: url('/generated/ui/tile-shop.svg'); }
+.nav-tile-settings::before { background-image: url('/generated/ui/tile-settings.svg'); }
+
+.nav-tile:hover,
+.nav-tile:focus-visible {
+  transform: translateY(-4px);
+  background: linear-gradient(160deg, rgba(124, 58, 237, 0.28), rgba(37, 99, 235, 0.2));
+  box-shadow: 0 10px 28px rgba(124, 58, 237, 0.32);
+}
+
+.nav-tile:active {
+  transform: translateY(0) scale(0.97);
+}
+
+.nav-tile:hover::before,
+.nav-tile:focus-visible::before { opacity: 0.32; }
+
+.nav-tile-icon { font-size: 1.9rem; line-height: 1; }
+.nav-tile-label { font-size: 1rem; font-weight: 600; letter-spacing: 0.02em; }
+.nav-tile-description { font-size: 0.78rem; color: var(--muted); line-height: 1.3; }
+
+@media (prefers-reduced-motion: reduce) {
+  .nav-tile { transition: none; }
+  .nav-tile:hover, .nav-tile:focus-visible { transform: none; }
+}
+

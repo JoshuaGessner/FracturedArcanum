@@ -1,0 +1,184 @@
+/* ═══════════════════════════════════════════════════════════════════
+   Bottom sheets
+   ═══════════════════════════════════════════════════════════════════
+   Transient decisions layered over a screen rather than routed to their
+   own destination. Used by the battle launcher, which replaced the Play
+   screen when Home became the single hub.
+
+   Dismissal is deliberately redundant — scrim tap, drag handle, and Escape
+   all close it. Riot shipped an LoR mobile bug where a panel could only be
+   closed from the control that opened it; sheets make that easy to
+   reproduce, so every exit is wired up front. */
+
+.sheet-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 55;
+  display: grid;
+  align-items: end;
+  justify-items: center;
+  background: var(--backdrop);
+  backdrop-filter: blur(6px);
+  animation: sheetScrimIn var(--motion-base);
+}
+
+.sheet-panel {
+  /* Container for its contents: the sheet is capped well below the viewport,
+     so its children must ask the sheet how much room they have, not the
+     window. */
+  container-type: inline-size;
+  container-name: sheet;
+  width: min(100%, 560px);
+  /* Never taller than the visible viewport, and scrolls internally. Sized
+     from --app-h so the iOS toolbar and the keyboard both shrink it. */
+  max-height: calc(var(--app-h, 100svh) - var(--space-6));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: grid;
+  gap: var(--space-3);
+  align-content: start;
+  padding:
+    var(--space-2)
+    calc(var(--space-4) + var(--safe-right))
+    calc(var(--space-5) + max(var(--safe-bottom), var(--space-2)))
+    calc(var(--space-4) + var(--safe-left));
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  background: var(--modal-bg);
+  border: 1px solid var(--border);
+  border-bottom: 0;
+  box-shadow: 0 -18px 50px rgba(0, 0, 0, 0.5);
+  animation: sheetPanelIn var(--motion-slow);
+}
+
+/* The handle is a real button, not decoration — it is the most discoverable
+   dismiss target on a touch device. */
+.sheet-handle {
+  justify-self: center;
+  width: 56px;
+  height: 24px;
+  padding: 0;
+  background: transparent;
+  display: grid;
+  place-items: center;
+}
+
+.sheet-handle::before {
+  content: '';
+  width: 44px;
+  height: 4px;
+  border-radius: var(--radius-pill);
+  background: rgba(203, 213, 255, 0.35);
+  transition: background var(--motion-fast);
+}
+
+.sheet-handle:hover::before,
+.sheet-handle:focus-visible::before {
+  background: rgba(203, 213, 255, 0.6);
+}
+
+.sheet-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.sheet-head-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.sheet-head-copy strong {
+  font-size: var(--font-xl);
+  line-height: 1.1;
+  color: var(--text);
+}
+
+.sheet-head-copy .eyebrow {
+  margin: 0;
+}
+
+.sheet-notice {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  font-size: var(--font-sm);
+}
+
+.sheet-notice.warning {
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  background: rgba(245, 158, 11, 0.12);
+  color: #fde68a;
+}
+
+/* Modes stack vertically in the sheet. The old Play screen squeezed them
+   into three columns, which at 360px left ~110px per card and forced the
+   descriptions to be hidden by a media query. */
+.mode-card-grid-sheet {
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-2);
+}
+
+.mode-card-grid-sheet .mode-card {
+  grid-template-columns: minmax(0, 1fr);
+  min-height: 64px;
+  text-align: left;
+  align-content: center;
+  isolation: isolate;
+}
+
+/* The mode-card art is sized `cover` for the old three-across grid. Stretched
+   to full sheet width it sits directly behind the label and swamps it, so
+   here it becomes a contained motif tucked against the trailing edge. */
+.mode-card-grid-sheet .mode-card::before {
+  inset: 0 0 0 auto;
+  width: 38%;
+  background-size: contain;
+  background-position: right center;
+  opacity: 0.16;
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 55%);
+  mask-image: linear-gradient(to right, transparent, #000 55%);
+}
+
+.mode-card-grid-sheet .mode-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Three-across only once the SHEET is wide enough, not the window.
+   This was `@media (min-width: 560px)`, which is the wrong measurement: the
+   panel is capped at `min(100%, 560px)` and carries 16px of padding each side,
+   so at a 560px viewport its content box is ~528px. The old query switched to
+   three columns while the sheet still had 528px, giving each mode card 32px
+   less width than the layout assumed. */
+@container sheet (width >= 480px) {
+  .mode-card-grid-sheet {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .mode-card-grid-sheet .mode-card {
+    text-align: center;
+  }
+}
+
+@keyframes sheetScrimIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes sheetPanelIn {
+  from { transform: translateY(14px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sheet-scrim,
+  .sheet-panel {
+    animation: none;
+  }
+}
+

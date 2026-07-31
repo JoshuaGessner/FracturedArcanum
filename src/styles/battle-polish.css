@@ -1,0 +1,351 @@
+/* ─── Phase 3S — Battle polish: drag-to-play, attack arrow, hero reactions ── */
+
+.battlefield-stage {
+  position: relative;
+}
+
+/* Drag-to-play — lifted card follows the pointer with a subtle glow ring. */
+.hand-card.is-dragging {
+  opacity: 0.42;
+  filter: saturate(0.72) brightness(0.82);
+  outline: 2px solid rgba(253, 230, 138, 0.55);
+  outline-offset: -3px;
+  cursor: grabbing;
+  touch-action: none;
+}
+
+.battle-drag-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  pointer-events: none;
+}
+
+.battle-drag-ghost {
+  position: fixed;
+  margin: 0;
+  transform: rotate(0deg) scale(1.08);
+  transform-origin: center;
+  z-index: 1000;
+  opacity: 0.98;
+  box-shadow:
+    0 18px 36px rgba(0, 0, 0, 0.55),
+    0 0 0 2px rgba(253, 230, 138, 0.85),
+    0 0 28px rgba(253, 230, 138, 0.55);
+  filter: brightness(1.06);
+  transition: box-shadow 120ms ease-out, filter 120ms ease-out;
+  cursor: grabbing;
+}
+
+.hand-card.is-drag-sibling {
+  opacity: 0.78;
+  filter: saturate(0.85) brightness(0.92);
+  transition: opacity 160ms ease-out, filter 160ms ease-out;
+}
+
+/* Drop-target lanes pulse a gold ring while a card is in flight; occupied
+   player lanes desaturate to mark them invalid. */
+.slot.drop-target-active.drop-target-valid {
+  animation: dropTargetPulse 1100ms ease-in-out infinite;
+  box-shadow:
+    0 0 0 2px rgba(253, 230, 138, 0.7),
+    0 0 22px rgba(253, 230, 138, 0.45) inset;
+  border-color: rgba(253, 230, 138, 0.75);
+}
+
+.slot.drop-target-active.drop-target-invalid {
+  filter: saturate(0.55) brightness(0.78);
+}
+
+.slot.drop-target-hover.drop-target-valid {
+  box-shadow:
+    0 0 0 3px rgba(253, 230, 138, 0.92),
+    0 0 30px rgba(253, 230, 138, 0.58) inset,
+    0 10px 26px rgba(0, 0, 0, 0.28);
+  transform: translateY(-2px) scale(1.02);
+}
+
+.slot.drop-target-hover.drop-target-invalid {
+  box-shadow: 0 0 0 3px rgba(248, 113, 113, 0.72);
+  border-color: rgba(248, 113, 113, 0.72);
+}
+
+@keyframes dropTargetPulse {
+  0%, 100% {
+    box-shadow:
+      0 0 0 2px rgba(253, 230, 138, 0.5),
+      0 0 16px rgba(253, 230, 138, 0.32) inset;
+  }
+  50% {
+    box-shadow:
+      0 0 0 3px rgba(253, 230, 138, 0.95),
+      0 0 26px rgba(253, 230, 138, 0.55) inset;
+  }
+}
+
+/* Card slam — the lane the freshly-played card lands on briefly punches up. */
+.slot.is-slamming {
+  animation: cardSlam 380ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  z-index: 4;
+}
+
+.slot.is-slamming::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: inherit;
+  border: 2px solid rgba(253, 230, 138, 0.8);
+  animation: slamRing 400ms ease-out forwards;
+  pointer-events: none;
+}
+
+@keyframes cardSlam {
+  0%   { transform: scale(1); }
+  35%  { transform: scale(1.18); box-shadow: 0 0 0 4px rgba(253, 230, 138, 0.85), 0 0 32px rgba(253, 230, 138, 0.6) inset; }
+  70%  { transform: scale(0.98); }
+  100% { transform: scale(1); }
+}
+
+@keyframes slamRing {
+  0%   { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.3); }
+}
+
+/* Attack telegraph — defenders pulse red, invalid defenders desaturate. */
+.slot.is-valid-defender {
+  animation: defenderPulse 900ms ease-in-out infinite;
+  box-shadow:
+    0 0 0 2px rgba(248, 113, 113, 0.7),
+    0 0 18px rgba(220, 38, 38, 0.4) inset;
+}
+
+.slot.is-invalid-defender {
+  filter: saturate(0.5) brightness(0.8);
+}
+
+@keyframes defenderPulse {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(248, 113, 113, 0.55), 0 0 14px rgba(220, 38, 38, 0.32) inset; }
+  50%      { box-shadow: 0 0 0 3px rgba(252, 165, 165, 0.95), 0 0 24px rgba(248, 113, 113, 0.55) inset; }
+}
+
+/* Attack arrow — overlays the battlefield-stage and tracks the cursor. */
+.attack-arrow-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 70;
+  overflow: visible;
+  filter: drop-shadow(0 0 6px rgba(220, 38, 38, 0.6));
+}
+
+/* Hero portrait reactions — damage shake, heal halo, low-HP vignette pulse. */
+.battle-hero-anchor .hero-fx-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  object-fit: cover;
+  border-radius: inherit;
+}
+
+.battle-hero-anchor .hero-fx-cracks {
+  animation: heroCrackFlash 520ms ease-out forwards;
+  mix-blend-mode: screen;
+}
+
+.battle-hero-anchor .hero-fx-halo {
+  animation: heroHaloFlash 520ms ease-out forwards;
+}
+
+.battle-hero-anchor.is-damaged {
+  animation: heroShake 380ms cubic-bezier(0.36, 0.07, 0.19, 0.97);
+}
+
+.battle-hero-anchor.is-healed {
+  box-shadow:
+    0 0 0 2px rgba(74, 222, 128, 0.6),
+    0 0 22px rgba(34, 197, 94, 0.4);
+}
+
+.battle-hero-anchor.is-low-hp {
+  animation: heroLowHpVignette 1000ms ease-in-out infinite;
+}
+
+.battle-hero-anchor.is-low-hp::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background: radial-gradient(circle at center, rgba(220, 38, 38, 0) 40%, rgba(220, 38, 38, 0.55) 100%);
+  mix-blend-mode: multiply;
+}
+
+@keyframes heroShake {
+  10%, 90% { transform: translateX(-2px); }
+  20%, 80% { transform: translateX(3px); }
+  30%, 50%, 70% { transform: translateX(-4px); }
+  40%, 60% { transform: translateX(4px); }
+}
+
+@keyframes heroCrackFlash {
+  0%   { opacity: 0; transform: scale(1.05); }
+  20%  { opacity: 0.95; }
+  100% { opacity: 0; transform: scale(1); }
+}
+
+@keyframes heroHaloFlash {
+  0%   { opacity: 0; transform: scale(0.9); }
+  30%  { opacity: 0.95; transform: scale(1.05); }
+  100% { opacity: 0; transform: scale(1.1); }
+}
+
+@keyframes heroLowHpVignette {
+  0%, 100% { box-shadow: inset 0 0 18px rgba(220, 38, 38, 0.35); }
+  50%      { box-shadow: inset 0 0 30px rgba(220, 38, 38, 0.7); }
+}
+
+/* ─── Enhanced Battle Feedback (Phase F.3) ─────────────────────── */
+
+/* Turn-change edge pulse — a brief glow sweep along the battlefield
+   border when the turn switches. Applied by toggling `.turn-pulse`
+   on the board container for one animation cycle. */
+.battlefield-stage.turn-pulse-player {
+  animation: turnPulsePlayer 600ms ease-out;
+}
+
+.battlefield-stage.turn-pulse-enemy {
+  animation: turnPulseEnemy 600ms ease-out;
+}
+
+@keyframes turnPulsePlayer {
+  0%   { box-shadow: inset 0 0 0 0 rgba(37, 99, 235, 0); }
+  30%  { box-shadow: inset 0 0 24px 2px rgba(37, 99, 235, 0.35); }
+  100% { box-shadow: inset 0 0 0 0 rgba(37, 99, 235, 0); }
+}
+
+@keyframes turnPulseEnemy {
+  0%   { box-shadow: inset 0 0 0 0 rgba(220, 38, 38, 0); }
+  30%  { box-shadow: inset 0 0 24px 2px rgba(220, 38, 38, 0.3); }
+  100% { box-shadow: inset 0 0 0 0 rgba(220, 38, 38, 0); }
+}
+
+/* Mana spend sparkle — card-play animation gets an extra glow burst. */
+.slot.is-slamming .unit-portrait {
+  animation: manaSpendGlow 400ms ease-out;
+}
+
+@keyframes manaSpendGlow {
+  0%   { filter: brightness(1); }
+  25%  { filter: brightness(1.6) drop-shadow(0 0 8px rgba(253, 230, 138, 0.8)); }
+  100% { filter: brightness(1) drop-shadow(0 0 0 transparent); }
+}
+
+/* Attack telegraph — pulsing glow on the arrow line. */
+.attack-arrow-svg line {
+  animation: attackTelegraph 800ms ease-in-out infinite;
+}
+
+@keyframes attackTelegraph {
+  0%, 100% { filter: drop-shadow(0 0 4px rgba(220, 38, 38, 0.5)); stroke-width: 6; }
+  50%      { filter: drop-shadow(0 0 10px rgba(253, 230, 138, 0.7)); stroke-width: 8; }
+}
+
+/* Damage impact ripple — a brief expanding ring on units that take damage. */
+.slot.damage-flash::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: inherit;
+  border: 2px solid rgba(239, 68, 68, 0.7);
+  animation: damageRipple 450ms ease-out forwards;
+  pointer-events: none;
+}
+
+@keyframes damageRipple {
+  0%   { opacity: 1; transform: scale(0.95); }
+  100% { opacity: 0; transform: scale(1.15); }
+}
+
+/* Victory ambient intensification — battlefield glows brighter. */
+.battlefield.active.has-winner::after {
+  opacity: 1.5;
+  filter: brightness(1.3) saturate(1.4);
+  transition: filter 800ms ease, opacity 800ms ease;
+}
+
+/* Turn indicator chip — animate on turn swap. */
+.battle-center-phase.is-player-turn {
+  animation: turnChipFlash 500ms ease-out;
+}
+
+.battle-center-phase.is-enemy-turn {
+  animation: turnChipFlash 500ms ease-out;
+}
+
+@keyframes turnChipFlash {
+  0%   { opacity: 0; transform: scale(0.85); filter: brightness(1.5); }
+  40%  { opacity: 1; transform: scale(1.08); }
+  100% { opacity: 1; transform: scale(1); filter: brightness(1); }
+}
+
+/* Reduced motion — collapse every animation in this section to a no-op. */
+@media (prefers-reduced-motion: reduce) {
+  .hand-card.is-dragging,
+  .battle-drag-ghost,
+  .hand-card.is-drag-sibling,
+  .slot.drop-target-active.drop-target-valid,
+  .slot.drop-target-active.drop-target-invalid,
+  .slot.is-slamming,
+  .slot.is-valid-defender,
+  .slot.is-invalid-defender,
+  .slot.selected,
+  .enemy-turn-banner-inner,
+  .battle-hero-anchor.is-damaged,
+  .battle-hero-anchor.is-healed,
+  .battle-hero-anchor.is-low-hp,
+  .battle-hero-anchor .hero-fx-cracks,
+  .battle-hero-anchor .hero-fx-halo,
+  .battlefield-stage.turn-pulse-player,
+  .battlefield-stage.turn-pulse-enemy,
+  .slot.is-slamming .unit-portrait,
+  .attack-arrow-svg line,
+  .slot.damage-flash::after,
+  .battle-center-phase.is-player-turn,
+  .battle-center-phase.is-enemy-turn {
+    animation: none !important;
+    transition: none !important;
+  }
+  .battle-hero-anchor.is-low-hp::after { background: rgba(220, 38, 38, 0.18); }
+  .slot.is-slamming::after { display: none; }
+  .slot.damage-flash::after { display: none; }
+  .battle-drag-ghost { transform: rotate(0deg) scale(1.04); }
+}
+
+/* ─── Reduced motion ─────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .toast,
+  .modal,
+  .modal-backdrop,
+  .spinner,
+  .thinking-dots::after,
+  .queue-portal-ring,
+  .intro-vs-art,
+  .screen-panel.active,
+  .nav-tile-notice,
+  .reward-vault-card.claim-ready .primary,
+  .streak-badge::after,
+  .streak-badge::before,
+  .streak-badge.streak-inferno,
+  .rarity-chip.rarity-celebrate { animation: none !important; }
+  .hand-card.unplayable::after,
+  .mode-card,
+  .nav-tile,
+  .primary,
+  .secondary,
+  .ghost { transition: none !important; }
+}
+
