@@ -22,20 +22,20 @@
 
 .intro-side {
   display: grid;
-  gap: 6px;
+  gap: var(--space-1-5);
   justify-items: center;
   text-align: center;
 }
 
 .intro-side-card {
-  padding: 10px 12px;
+  padding: var(--space-2-5) var(--space-3);
   border-radius: var(--radius-lg);
   border: 1px solid rgba(147, 197, 253, 0.18);
   background: linear-gradient(135deg, rgba(11, 18, 34, 0.84), rgba(34, 36, 68, 0.78));
 }
 
 .intro-callout {
-  margin-top: 10px;
+  margin-top: var(--space-2-5);
 }
 
 .intro-vs-art {
@@ -75,7 +75,7 @@
 /* ─── Matchmaking ───────────────────────────────────────────────── */
 
 .queue-pill {
-  padding: 6px 10px;
+  padding: var(--space-1-5) var(--space-2-5);
   border-radius: var(--radius-pill);
   font-size: 0.84rem;
   color: #eff3ff;
@@ -90,12 +90,12 @@
 .theme-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 10px;
+  gap: var(--space-2-5);
 }
 
 .theme-offer-card {
   display: grid;
-  gap: 10px;
+  gap: var(--space-2-5);
   padding: var(--space-3);
   border-radius: 16px;
   border: 1px solid rgba(147, 197, 253, 0.18);
@@ -186,7 +186,7 @@
   gap: var(--space-3);
   align-items: center;
   min-width: 0;
-  padding: 10px 12px;
+  padding: var(--space-2-5) var(--space-3);
   border-radius: var(--radius-md);
   border: 1px solid rgba(147, 197, 253, 0.16);
   background: linear-gradient(135deg, #070c1a, #171f39);
@@ -219,7 +219,7 @@
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
-  gap: 6px;
+  gap: var(--space-1-5);
   min-width: 0;
 }
 
@@ -283,7 +283,7 @@
 
 .settings-section-panel {
   display: grid;
-  gap: 10px;
+  gap: var(--space-2-5);
   width: 100%;
   max-width: 100%;
   min-width: 0;
@@ -324,7 +324,7 @@
   align-items: center;
   gap: var(--space-3);
   min-height: 50px;
-  padding: 10px 12px;
+  padding: var(--space-2-5) var(--space-3);
   border-radius: var(--radius-sm);
   background: linear-gradient(135deg, #040812, #0d1222);
   border: 1px solid rgba(147, 197, 253, 0.16);
@@ -435,8 +435,8 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 10px;
-  padding: 10px;
+  gap: var(--space-2-5);
+  padding: var(--space-2-5);
   border: 1px solid rgba(148, 163, 184, 0.22);
   border-radius: var(--radius-sm);
   background: linear-gradient(135deg, #070c1a, #0d1222);
@@ -492,7 +492,7 @@
 
 .settings-account-block {
   display: grid;
-  gap: 10px;
+  gap: var(--space-2-5);
   align-content: start;
   padding: var(--space-3);
   border: 1px solid rgba(148, 163, 184, 0.22);
@@ -571,7 +571,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: var(--space-2-5);
 }
 
 .admin-console-head .mini {
@@ -585,7 +585,7 @@
 }
 
 .maintenance-toggle {
-  padding: 10px 12px;
+  padding: var(--space-2-5) var(--space-3);
   border-radius: 12px;
   border: 1px solid rgba(248, 113, 113, 0.2);
   background: rgba(58, 25, 25, 0.34);

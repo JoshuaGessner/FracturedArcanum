@@ -25,7 +25,7 @@
   animation: onboardingCaptionIn 260ms ease-out;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--space-2-5);
 }
 .onboarding-tour-caption.centered {
   top: 50%;
@@ -46,7 +46,7 @@
 
 .onboarding-tour-progress {
   display: flex;
-  gap: 6px;
+  gap: var(--space-1-5);
   justify-content: center;
   margin-top: var(--space-1);
 }
@@ -64,8 +64,8 @@
 .onboarding-tour-controls {
   display: flex;
   justify-content: space-between;
-  gap: 10px;
-  margin-top: 6px;
+  gap: var(--space-2-5);
+  margin-top: var(--space-1-5);
 }
 .onboarding-tour-controls button {
   min-height: 44px;

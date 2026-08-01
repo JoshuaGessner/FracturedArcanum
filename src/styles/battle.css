@@ -4,8 +4,8 @@
   position: relative;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto auto auto;
-  gap: 6px;
-  padding: 10px;
+  gap: var(--space-1-5);
+  padding: var(--space-2-5);
   overflow: hidden;
   background: linear-gradient(180deg, rgba(10, 16, 31, 0.96), rgba(31, 45, 88, 0.92));
   backdrop-filter: blur(12px);
@@ -108,7 +108,7 @@
 /* ─── Action Dock ──────────────────────────────────────────────── */
 .battle-action-dock {
   display: flex;
-  gap: 6px;
+  gap: var(--space-1-5);
   z-index: 3;
 }
 
@@ -163,7 +163,7 @@
 
 .enemy-turn-banner {
   width: min(calc(100% - 24px), 330px);
-  padding: 8px 12px;
+  padding: var(--space-2) var(--space-3);
   background: linear-gradient(135deg, rgba(124, 58, 237, 0.94), rgba(192, 38, 211, 0.9));
   border: 1px solid rgba(233, 213, 255, 0.34);
   border-radius: var(--radius-lg);
@@ -181,7 +181,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: var(--space-2-5);
 }
 
 .enemy-turn-crest {
@@ -261,7 +261,7 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 10px;
+  gap: var(--space-2-5);
 }
 
 .summary-popup-head h2 {
@@ -291,7 +291,7 @@
 .board-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
+  gap: var(--space-2-5);
 }
 
 .battlefield-stage {
@@ -343,7 +343,7 @@
 .battle-center-hero-button {
   min-width: 88px;
   min-height: 28px;
-  padding: 4px 8px;
+  padding: var(--space-1) var(--space-2);
   border-radius: var(--radius-sm);
   border: 1px solid rgba(251, 191, 36, 0.42);
   background: linear-gradient(135deg, rgba(180, 83, 9, 0.58), rgba(127, 29, 29, 0.52));
@@ -426,7 +426,7 @@
   justify-content: space-between;
   background: linear-gradient(to top, rgba(0, 0, 0, 0.88) 0%, transparent 100%);
   padding: 12px 5px 4px;
-  border-radius: 0 0 10px 10px;
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
   gap: 3px;
   font-size: 0.6rem;
 }
@@ -434,7 +434,7 @@
 .slot {
   position: relative;
   min-height: 70px;
-  padding: 8px 10px;
+  padding: var(--space-2) var(--space-2-5);
   text-align: left;
   display: flex;
   flex-direction: column;

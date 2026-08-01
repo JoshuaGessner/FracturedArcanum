@@ -32,7 +32,7 @@
     padding: 10px 10px 0;
   }
   .topbar-home {
-    gap: 6px;
+    gap: var(--space-1-5);
   }
   .brand-wordmark {
     font-size: clamp(1.35rem, 6.2vw, 1.8rem);
@@ -60,9 +60,9 @@
     border-radius: var(--radius-lg);
     box-shadow: 0 10px 26px rgba(10, 14, 30, 0.22);
   }
-  .section-head { gap: 6px; }
-  .nav-strip { padding: 10px; }
-  .play-live-strip { flex-wrap: wrap; gap: 6px; padding: 4px 6px; margin-top: 6px; font-size: 0.72rem; }
+  .section-head { gap: var(--space-1-5); }
+  .nav-strip { padding: var(--space-2-5); }
+  .play-live-strip { flex-wrap: wrap; gap: var(--space-1-5); padding: 4px 6px; margin-top: var(--space-1-5); font-size: 0.72rem; }
   .play-live-stat { margin-left: 0; }
 
   /* (nav sizing intentionally not overridden — see .scene-link) */
@@ -122,7 +122,7 @@
   .nav-tile-row {
     grid-template-columns: repeat(3, 1fr);
     gap: var(--space-2);
-    margin-top: 10px;
+    margin-top: var(--space-2-5);
   }
   .nav-tile {
     min-height: 80px;
@@ -149,7 +149,7 @@
 
   .quest-ledger-hero {
     grid-template-columns: auto 1fr;
-    gap: 10px;
+    gap: var(--space-2-5);
     padding: 8px 10px;
   }
 
@@ -214,7 +214,7 @@
   .queue-portal-core { font-size: 0.8rem; }
   .queue-portal-copy { gap: 5px; }
   .queue-portal-copy h3 { font-size: 0.96rem; }
-  .live-status-grid { gap: 6px; margin-top: 0; }
+  .live-status-grid { gap: var(--space-1-5); margin-top: 0; }
   .live-status-grid > div { padding: 6px 8px; }
   .live-status-grid .note { margin: 0; font-size: 0.66rem; }
   .queue-leave-btn { min-height: 32px; padding: 5px 10px; font-size: 0.72rem; }
@@ -223,11 +223,11 @@
   .slot { min-height: 88px; padding: 7px; }
   .battle-arena-frame {
     padding: var(--space-2);
-    gap: 6px;
+    gap: var(--space-1-5);
   }
   .battle-hero-anchor {
     padding: 4px 8px;
-    gap: 6px;
+    gap: var(--space-1-5);
     min-height: 30px;
   }
   .battle-hero-name {
@@ -242,7 +242,7 @@
   }
   .battle-board-stack {
     min-height: clamp(200px, 38svh, 300px);
-    gap: 6px;
+    gap: var(--space-1-5);
   }
   .board-grid-battle .slot {
     min-height: 68px;
@@ -258,7 +258,7 @@
     flex-direction: row;
     align-items: center;
     padding: 3px 6px;
-    gap: 6px;
+    gap: var(--space-1-5);
   }
   .battle-center-hero-slot {
     min-width: 72px;
@@ -339,16 +339,16 @@
     overflow-y: visible;
   }
   .deck-roster-list { grid-template-columns: 1fr; gap: var(--space-1); }
-  .builder-toolbar { padding: 4px 8px; gap: 6px; }
-  .deck-stats { padding: 4px 8px; gap: 6px; }
-  .builder-grid { gap: 6px; }
+  .builder-toolbar { padding: 4px 8px; gap: var(--space-1-5); }
+  .deck-stats { padding: 4px 8px; gap: var(--space-1-5); }
+  .builder-grid { gap: var(--space-1-5); }
   .collection-action-row { margin: 6px 0 4px; }
   .collection-quick-strip { padding: 4px 8px; }
 
   /* Social density — compact hero, segmented scroll areas */
   .leaderboard-list,
   .social-list {
-    margin-top: 6px;
+    margin-top: var(--space-1-5);
     gap: var(--space-1);
     max-height: none;
     overflow-y: visible;
@@ -385,17 +385,17 @@
 
   .social-clan-block {
     padding: var(--space-2);
-    margin-top: 6px;
+    margin-top: var(--space-1-5);
     max-height: none;
     overflow-y: visible;
   }
   .social-trade-block {
     padding: var(--space-2);
-    margin-top: 6px;
+    margin-top: var(--space-1-5);
     max-height: none;
     overflow-y: visible;
   }
-  .social-row { padding: 6px 8px; gap: 6px; }
+  .social-row { padding: 6px 8px; gap: var(--space-1-5); }
 
   /* Shop density — compact hero, convert offer stacks to rails */
   .shop-market-ledger {
@@ -430,7 +430,7 @@
   .social-nav-strip {
     display: flex;
     flex-wrap: wrap;
-    gap: 6px;
+    gap: var(--space-1-5);
   }
 
   .social-nav-strip button {
@@ -482,20 +482,20 @@
   }
 
   .reward-vault-console {
-    gap: 10px;
+    gap: var(--space-2-5);
     width: 100%;
-    padding: 10px;
+    padding: var(--space-2-5);
   }
 
   .reward-vault-stage {
     grid-template-columns: 1fr;
-    gap: 10px;
+    gap: var(--space-2-5);
     text-align: center;
   }
 
   .reward-vault-medallion {
     width: min(132px, 44vw);
-    padding: 10px;
+    padding: var(--space-2-5);
   }
 
   .reward-vault-copy {
@@ -568,7 +568,7 @@
     }
 
     .reward-vault-action-center {
-      gap: 6px;
+      gap: var(--space-1-5);
     }
 
     .reward-vault-action-center button {
@@ -594,7 +594,7 @@
 
   .shop-section-toolbar {
     grid-template-columns: auto minmax(0, 1fr) auto;
-    gap: 6px;
+    gap: var(--space-1-5);
   }
 
   .shop-section-toolbar .badge {
@@ -616,7 +616,7 @@
     width: 100%;
     flex: initial;
     padding: var(--space-2);
-    gap: 6px;
+    gap: var(--space-1-5);
   }
   .pack-reveal-grid {
     display: grid;
@@ -651,13 +651,13 @@
 
   .settings-status-chip {
     min-height: 27px;
-    padding: 4px 8px;
+    padding: var(--space-1) var(--space-2);
     font-size: 0.72rem;
   }
 
   .settings-nav-strip {
     grid-template-columns: repeat(auto-fit, minmax(min(100%, 96px), 1fr));
-    gap: 6px;
+    gap: var(--space-1-5);
   }
 
   .settings-nav-strip button,
@@ -676,7 +676,7 @@
   }
 
   .settings-toggle-list {
-    gap: 6px;
+    gap: var(--space-1-5);
     margin: 0;
   }
 
@@ -715,7 +715,7 @@
     min-width: 72px;
     max-width: 128px;
     min-height: 38px;
-    padding-inline: 10px;
+    padding-inline: var(--space-2-5);
     font-size: 0.76rem;
   }
 
@@ -778,7 +778,7 @@
 
 @media (max-width: 720px) and (max-height: 760px) {
   .app-shell {
-    gap: 6px;
+    gap: var(--space-1-5);
   }
 
   .topbar-home.topbar-art {
@@ -819,7 +819,7 @@
   }
 
   .home-command-card {
-    gap: 6px;
+    gap: var(--space-1-5);
     padding: 7px;
   }
 

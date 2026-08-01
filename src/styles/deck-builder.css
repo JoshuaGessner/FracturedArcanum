@@ -12,10 +12,10 @@
 }
 
 .builder-grid {
-  margin-top: 6px;
+  margin-top: var(--space-1-5);
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 10px;
+  gap: var(--space-2-5);
   min-width: 0;
 }
 
@@ -46,7 +46,7 @@
   padding: var(--space-2);
   display: grid;
   grid-template-rows: minmax(0, 1fr) auto;
-  gap: 6px;
+  gap: var(--space-1-5);
   overflow: hidden;
   background: linear-gradient(180deg, rgba(30, 35, 64, 0.98), rgba(18, 21, 41, 0.98));
   border-radius: 16px;
@@ -200,7 +200,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 6px;
+  gap: var(--space-1-5);
   min-width: 0;
 }
 

@@ -107,7 +107,7 @@
 .brand-block {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-2-5);
   min-width: 0;
 }
 
@@ -168,7 +168,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: var(--space-2-5);
 }
 
 .slot-head strong {
@@ -296,7 +296,7 @@
 .scene-header-shortcut-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr));
-  gap: 10px;
+  gap: var(--space-2-5);
 }
 
 .scene-header-shortcut {

@@ -33,9 +33,16 @@
      wholesale — they continue to work as-is.
      ─────────────────────────────────────────────────────────────── */
 
-  /* Spacing — 4 px base scale. */
+  /* Spacing — 4 px base scale, with two half steps.
+     6px and 10px were already load-bearing before they were tokens: a padding
+     audit found 10px used 30 times and 6px 13 times, almost always paired with
+     a value that was on the scale (`padding: 8px 10px`). Naming them turns
+     those into whole-token declarations instead of half-converted ones. They
+     are half steps, not new stops — reach for the 4px scale first. */
   --space-1: 4px;
+  --space-1-5: 6px;
   --space-2: 8px;
+  --space-2-5: 10px;
   --space-3: 12px;
   --space-4: 16px;
   --space-5: 20px;

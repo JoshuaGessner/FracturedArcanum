@@ -221,7 +221,7 @@ button.danger:disabled { opacity: 0.55; transform: none; box-shadow: none; }
 .trade-chip {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-1-5);
   padding: 4px 8px 4px 6px;
   border-radius: var(--radius-pill);
   background: rgba(124, 58, 237, 0.18);

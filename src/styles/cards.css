@@ -79,7 +79,7 @@
   text-transform: capitalize;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-1-5);
   margin-bottom: 2px;
 }
 
@@ -92,13 +92,13 @@
 .deck-rarity-summary {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-1-5);
 }
 
 .card-meta-row {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-1-5);
   margin-top: 2px;
   /* Carries the rarity gem on collection cards — same reason .card-top sits
      above .card-frame. */
@@ -111,7 +111,7 @@
 .effect-badge {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-1-5);
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -206,7 +206,7 @@
 }
 
 .hand-card .card-top {
-  gap: 6px;
+  gap: var(--space-1-5);
 }
 
 /* ─── Hand Cards ────────────────────────────────────────────────── */
@@ -251,7 +251,7 @@
 .hand-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
-  gap: 10px;
+  gap: var(--space-2-5);
 }
 
 .hand-fan-grid {
@@ -498,7 +498,7 @@
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
-  gap: 6px;
+  gap: var(--space-1-5);
 }
 
 .shop-resource-chip {
@@ -527,7 +527,7 @@
 
 .shop-nav-strip {
   display: flex;
-  gap: 6px;
+  gap: var(--space-1-5);
   overflow-x: auto;
   padding: 2px 0 4px;
   scrollbar-width: none;
@@ -755,7 +755,7 @@
 
 .reward-vault-copy {
   display: grid;
-  gap: 6px;
+  gap: var(--space-1-5);
   min-width: 0;
 }
 
@@ -784,7 +784,7 @@
 
 .reward-vault-action-center {
   width: min(100%, 560px);
-  gap: 10px;
+  gap: var(--space-2-5);
 }
 
 .reward-vault-action-center button {
@@ -831,7 +831,7 @@
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   grid-auto-rows: minmax(108px, 1fr);
-  gap: 10px;
+  gap: var(--space-2-5);
 }
 
 @media (min-width: 820px) {
@@ -852,7 +852,7 @@
   position: relative;
   overflow: hidden;
   display: grid;
-  gap: 6px;
+  gap: var(--space-1-5);
   min-height: 108px;
   align-content: start;
   text-align: left;
@@ -1041,8 +1041,8 @@
 .pack-reveal-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 10px;
-  margin-top: 10px;
+  gap: var(--space-2-5);
+  margin-top: var(--space-2-5);
 }
 
 .pack-reveal-card {
@@ -1050,7 +1050,7 @@
   overflow: hidden;
   display: grid;
   gap: var(--space-2);
-  padding: 10px;
+  padding: var(--space-2-5);
   border-radius: var(--radius-lg);
   border: 1px solid var(--rarity-color, var(--border));
   background: linear-gradient(180deg, rgba(22, 24, 46, 0.96), rgba(12, 16, 32, 0.96));
