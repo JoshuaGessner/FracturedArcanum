@@ -181,6 +181,23 @@ Read these before touching layout CSS — each cost real debugging time:
 - **Safari reports `safe-area-inset-bottom: 0`** whenever the toolbar is hidden,
   which is exactly when the nav bar needs the padding. Use
   `max(var(--safe-bottom), …)`.
+- **`flex: 1 1 auto` with `min-height: 0` silently crushes content.** The pair
+  reads as "fill surplus height", but the `1` shrink factor plus a zeroed
+  min-height also lets the item shrink *below its own content* on a short
+  screen. Whatever is inside with `overflow: hidden` then eats the difference
+  with no scrollbar and no ellipsis, and — worse — the screen panel's
+  `overflow-y: auto` never sees content taller than its box, so nothing
+  scrolls and the clipped content is unreachable.
+
+  This produced every layout failure in the device matrix at once: the home
+  hub crushed its quest board to 93px around 342px of content, hiding the
+  "Open Rewards Ledger" button entirely; the shop hub's panel grid was squeezed
+  to 31px around 224px, clipping a line of text from every panel.
+
+  Use **`flex: 1 0 auto` with `min-height: auto`** to fill surplus without ever
+  shrinking below content. Only use the shrinking form when the element is a
+  deliberate contained rail that owns its own scroller — as
+  `.home-view-quests` does with `.quest-ledger-panel` inside it.
 
 ### Assets and audio
 - New visual assets go through `scripts/generate-brand-assets.mjs` and are

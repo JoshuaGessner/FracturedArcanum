@@ -130,6 +130,23 @@ Two things about this script are worth knowing:
   exist — every run would have failed at sign-in. Two copies of an auth flow
   drift, and the drift is silent until the day you need the tool.
 
+## What the sweep does and does not call a failure
+
+`qa:viewport`'s clipped-text check ignores truncation the CSS asked for.
+`-webkit-line-clamp: N` is implemented as `overflow: hidden` plus content
+taller than the box, so a naive "scrollHeight > clientHeight" test flags every
+clamped element that actually wraps — permanently, and wrongly. Same for
+`text-overflow: ellipsis` horizontally.
+
+The exclusions are per-axis, because each mechanism only handles one direction.
+A line-clamped element overflowing *horizontally* is still a real bug, and an
+ellipsised one overflowing *vertically* is too.
+
+This matters more than it sounds: before the fix, `.card-name` in battle
+accounted for a standing set of failures that were the clamp working correctly.
+A check that cries wolf gets ignored, and the genuine clipping sitting next to
+it gets ignored with it.
+
 ## Shared definitions
 
 `scripts/lib/appStates.mjs` holds the viewports, the states, and the navigation

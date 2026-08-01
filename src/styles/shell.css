@@ -150,8 +150,22 @@
   min-height: 0;
 }
 
+/* The command hub must never be shrunk below its own content.
+
+   It inherits `min-height: 0` from the `.section-card` rule above, and with
+   `flex-shrink: 1` that let a short phone crush it: at 360x584 the quest board
+   inside became a 93px box holding 342px of content. The board clips to its
+   rounded corners with `overflow: hidden`, so the missing 249px — including
+   the "Open Rewards Ledger" button — was silently cut off. Worse, absorbing the
+   overflow there meant the screen panel's `overflow-y: auto` never saw content
+   taller than its box, so nothing scrolled and the button was unreachable.
+
+   `flex-shrink: 0` plus `min-height: auto` keeps the hub at its content height
+   and hands the overflow back to the screen panel, which is the one scroll
+   owner this screen is supposed to have. */
 .home-screen:not(.social-screen).screen-panel.active > .home-command-card {
-  flex: 0 1 auto;
+  flex: 0 0 auto;
+  min-height: auto;
 }
 
 .home-screen:not(.social-screen).screen-panel.active > .home-command-card.home-view-quests {
@@ -159,12 +173,23 @@
   min-height: 0;
 }
 
-/* Shop / social / settings: first article fills when content is sparse. */
+/* Shop / social / settings: first article fills when content is sparse — but
+   is never crushed when content is plentiful.
+
+   `flex: 1 1 auto` with `min-height: 0` did both: it grew to absorb surplus AND
+   shrank below its own content on short screens. At 360x584 that squeezed the
+   shop hub's panel grid into a 31px box holding 224px of content, so its rows
+   compressed to their 108px minimum and every panel clipped its last line of
+   text. The settings screens failed the same way.
+
+   `flex-shrink: 0` with `min-height: auto` keeps the fill behaviour and drops
+   the crush, handing overflow back to the screen panel's `overflow-y: auto` —
+   the one scroll owner these screens are supposed to have. */
 .shop-market.shop-screen.screen-panel.active > article:first-child,
 .home-screen.social-screen.screen-panel.active > .home-cards,
 .settings-screen.screen-panel.active > article:first-child {
-  flex: 1 1 auto;
-  min-height: 0;
+  flex: 1 0 auto;
+  min-height: auto;
 }
 
 /* Battle: the active arena should own the remaining height while banners

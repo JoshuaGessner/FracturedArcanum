@@ -311,14 +311,37 @@ async function collectLayoutMetrics(page, contextLabel) {
       .slice(0, 12)
       .map(summarize)
 
+    /**
+     * Text cut off *unintentionally*.
+     *
+     * Truncation that the CSS asks for is not a bug, and the two mechanisms
+     * for it look identical to a naive overflow check:
+     *
+     *   - `-webkit-line-clamp: N` clamps to N lines and appends an ellipsis.
+     *     Its whole implementation is `overflow: hidden` plus content taller
+     *     than the box, so every clamped element that actually wraps reports
+     *     `scrollHeight > clientHeight` forever.
+     *   - `text-overflow: ellipsis` does the same horizontally.
+     *
+     * The exclusions are per-axis, because each mechanism only handles one.
+     * A line-clamped element overflowing *horizontally* is still a bug, and an
+     * ellipsised one overflowing *vertically* is too.
+     */
     const clippedText = [...document.querySelectorAll(textSelector)]
       .filter((element) => {
         if (!visible(element)) return false
         const text = (element.textContent || '').trim()
         if (text.length < 2) return false
         const style = getComputedStyle(element)
-        return (isClippingX(style) && element.scrollWidth > element.clientWidth + 2)
-          || (isClippingY(style) && element.scrollHeight > element.clientHeight + 2)
+
+        const lineClamp = style.webkitLineClamp ?? style.getPropertyValue('-webkit-line-clamp')
+        const clampsVertically = Boolean(lineClamp) && lineClamp !== 'none'
+        const clipsHorizontallyOnPurpose = style.textOverflow === 'ellipsis'
+
+        const overflowsX = isClippingX(style) && element.scrollWidth > element.clientWidth + 2
+        const overflowsY = isClippingY(style) && element.scrollHeight > element.clientHeight + 2
+
+        return (overflowsX && !clipsHorizontallyOnPurpose) || (overflowsY && !clampsVertically)
       })
       .slice(0, 16)
       .map(summarize)
