@@ -1,36 +1,25 @@
 import { useProfileState, type ProfileStateValue } from './ProfileProvider'
+import { usePlayerState, type PlayerStateValue } from './PlayerProvider'
 import { useAppShellContext, type AppShellContextValue } from '../AppShellContext'
 
 /**
  * Player identity, decks, collection, cosmetics, daily reward, derived rank.
  *
- * Composes `useProfileState()` (real provider) + derived/handlers from
- * AppShellContext.
+ * Three sources, each contributing what it owns:
+ *
+ *   - `useProfileState()` — client-side deck, collection and shop state.
+ *   - `usePlayerState()` — the server-authoritative record and everything
+ *     derived from it. Spread wholesale rather than listed field by field:
+ *     all of it belongs to this slice, so naming each one would only create a
+ *     second place to edit when a field is added.
+ *   - `useAppShellContext()` — the handlers, which need deps from several
+ *     providers at once and so still live in AppShell.
  */
 export type ProfileContextValue = ProfileStateValue &
+  PlayerStateValue &
   Pick<
     AppShellContextValue,
-    | 'serverProfile'
-    | 'setServerProfile'
-    | 'shards'
-    | 'seasonRating'
-    | 'record'
-    | 'ownedThemes'
-    | 'selectedTheme'
-    | 'ownedCardBorders'
-    | 'selectedCardBorder'
-    | 'lastDailyClaim'
-    | 'accountRole'
-    | 'isAdminRole'
-    | 'isOwnerRole'
-    | 'rankLabel'
-    | 'totalGames'
-    | 'winRate'
-    | 'rankProgress'
-    | 'nextRankTarget'
     | 'nextRewardLabel'
-    | 'todayKey'
-    | 'canClaimDailyReward'
     | 'totalOwnedCards'
     | 'selectedDeckSize'
     | 'deckReady'
@@ -51,30 +40,12 @@ export type ProfileContextValue = ProfileStateValue &
 
 export function useProfile(): ProfileContextValue {
   const profile = useProfileState()
+  const player = usePlayerState()
   const shell = useAppShellContext()
   return {
     ...profile,
-    serverProfile: shell.serverProfile,
-    setServerProfile: shell.setServerProfile,
-    shards: shell.shards,
-    seasonRating: shell.seasonRating,
-    record: shell.record,
-    ownedThemes: shell.ownedThemes,
-    selectedTheme: shell.selectedTheme,
-    ownedCardBorders: shell.ownedCardBorders,
-    selectedCardBorder: shell.selectedCardBorder,
-    lastDailyClaim: shell.lastDailyClaim,
-    accountRole: shell.accountRole,
-    isAdminRole: shell.isAdminRole,
-    isOwnerRole: shell.isOwnerRole,
-    rankLabel: shell.rankLabel,
-    totalGames: shell.totalGames,
-    winRate: shell.winRate,
-    rankProgress: shell.rankProgress,
-    nextRankTarget: shell.nextRankTarget,
+    ...player,
     nextRewardLabel: shell.nextRewardLabel,
-    todayKey: shell.todayKey,
-    canClaimDailyReward: shell.canClaimDailyReward,
     totalOwnedCards: shell.totalOwnedCards,
     selectedDeckSize: shell.selectedDeckSize,
     deckReady: shell.deckReady,

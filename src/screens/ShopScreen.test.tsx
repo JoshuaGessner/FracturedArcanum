@@ -7,13 +7,46 @@ import { AppShellContext, type AppShellContextValue } from '../AppShellContext'
 import { QueueProvider } from '../contexts/QueueProvider'
 import { ProfileProvider } from '../contexts/ProfileProvider'
 import { GameProvider } from '../contexts/GameProvider'
+import { PlayerProvider } from '../contexts/PlayerProvider'
 import { createGame } from '../game'
 import { createPwaInstallState } from '../pwa'
-import type { AppScreen, CosmeticTheme, CardBorder, SavedDeck } from '../types'
+import type { AppScreen, SavedDeck, ServerProfile } from '../types'
 
 const starterDecks: SavedDeck[] = [
   { id: 'd1', name: 'Starter', deckConfig: {}, isActive: true, createdAt: '', updatedAt: '' },
 ]
+
+/**
+ * The record `PlayerProvider` derives from — stated once, where the old
+ * fixture stated it and then restated all eighteen values read off it.
+ *
+ * `lastDaily` is today's key so the default render reads as "already claimed",
+ * matching what the hand-written mock asserted. Pass `{ lastDaily: '' }` for a
+ * claimable one.
+ */
+const TODAY_KEY = new Date().toISOString().slice(0, 10)
+
+function buildPlayerProfile(overrides: Partial<ServerProfile> = {}): ServerProfile {
+  return {
+    accountId: 'acct-1',
+    username: 'josh',
+    displayName: 'Josh',
+    role: 'user',
+    shards: 180,
+    seasonRating: 1210,
+    wins: 3,
+    losses: 2,
+    streak: 1,
+    deckConfig: {},
+    ownedThemes: ['royal'],
+    selectedTheme: 'royal',
+    ownedCardBorders: ['default'],
+    selectedCardBorder: 'default',
+    lastDaily: TODAY_KEY,
+    totalEarned: 0,
+    ...overrides,
+  }
+}
 
 function buildShellValue(overrides: Partial<AppShellContextValue> = {}): AppShellContextValue {
   const noop = () => {}
@@ -38,27 +71,7 @@ function buildShellValue(overrides: Partial<AppShellContextValue> = {}): AppShel
     handleAuth: asyncNoop,
     handlePasskeyLogin: asyncNoop,
     handleLogout: noop,
-    serverProfile: { accountId: 'acct-1', username: 'josh', displayName: 'Josh', role: 'user', shards: 180, seasonRating: 1210, wins: 3, losses: 2, streak: 1, deckConfig: {}, ownedThemes: ['royal'], selectedTheme: 'royal', ownedCardBorders: ['default'], selectedCardBorder: 'default', lastDaily: '', totalEarned: 0 },
-    setServerProfile: noop,
-    shards: 180,
-    seasonRating: 1210,
-    record: { wins: 3, losses: 2, streak: 1 },
-    ownedThemes: ['royal'] as CosmeticTheme[],
-    selectedTheme: 'royal' as CosmeticTheme,
-    ownedCardBorders: ['default'] as CardBorder[],
-    selectedCardBorder: 'default' as CardBorder,
-    lastDailyClaim: '',
-    accountRole: 'user',
-    isAdminRole: false,
-    isOwnerRole: false,
-    rankLabel: 'Silver',
-    totalGames: 5,
-    winRate: 60,
-    rankProgress: 40,
-    nextRankTarget: 1300,
     nextRewardLabel: 'Silver Cache',
-    todayKey: '2026-04-18',
-    canClaimDailyReward: false,
     justClaimedDaily: false,
     totalOwnedCards: 10,
     passkeys: [],
@@ -232,18 +245,23 @@ function buildShellValue(overrides: Partial<AppShellContextValue> = {}): AppShel
   }
 }
 
-function renderShopScreen(valueOverrides: Partial<AppShellContextValue> = {}) {
+function renderShopScreen(
+  valueOverrides: Partial<AppShellContextValue> = {},
+  profileOverrides: Partial<ServerProfile> = {},
+) {
   const value = buildShellValue(valueOverrides)
   return render(
-    <QueueProvider>
-      <ProfileProvider seed={{ savedDecks: starterDecks, activeDeckId: 'd1' }}>
-        <GameProvider>
-          <AppShellContext.Provider value={value}>
-            <ShopScreen />
-          </AppShellContext.Provider>
-        </GameProvider>
-      </ProfileProvider>
-    </QueueProvider>,
+    <PlayerProvider seed={buildPlayerProfile(profileOverrides)}>
+      <QueueProvider>
+        <ProfileProvider seed={{ savedDecks: starterDecks, activeDeckId: 'd1' }}>
+          <GameProvider>
+            <AppShellContext.Provider value={value}>
+              <ShopScreen />
+            </AppShellContext.Provider>
+          </GameProvider>
+        </ProfileProvider>
+      </QueueProvider>
+    </PlayerProvider>,
   )
 }
 
@@ -285,7 +303,7 @@ describe('ShopScreen hub flow', () => {
   })
 
   it('uses one compact bazaar ledger instead of separate bazaar signals chrome', () => {
-    const { container } = renderShopScreen({ canClaimDailyReward: true })
+    const { container } = renderShopScreen({}, { lastDaily: '' })
 
     expect(screen.getByText(/merchant's bazaar/i)).toBeTruthy()
     expect(screen.queryByText(/bazaar signals/i)).toBeNull()
@@ -297,7 +315,7 @@ describe('ShopScreen hub flow', () => {
   })
 
   it('reflects current shard reward rules in the hub and vault claim surfaces', () => {
-    const { container } = renderShopScreen({ canClaimDailyReward: true })
+    const { container } = renderShopScreen({}, { lastDaily: '' })
 
     expect(screen.getByRole('button', { name: /claim \+25/i })).toBeTruthy()
     expect(container.textContent).toMatch(/\+25/)

@@ -4,13 +4,18 @@ The client is organized around a thin provider tree, typed slice hooks, and seve
 
 ## Provider and shell structure
 
+The providers are siblings, not a hierarchy — none reads another, so the
+nesting order below carries no meaning.
+
 ```text
 App
-└── QueueProvider
-    └── ProfileProvider
-        └── SocialProvider
-            └── GameProvider
-                └── AppShell
+└── AccountProvider          identity: sign-in, passkeys, recovery, sessions
+    └── PlayerProvider       the server-authoritative record + all 18 derivations
+        └── QueueProvider
+            └── ProfileProvider   client-side decks, collection, shop
+                └── SocialProvider
+                    └── GameProvider
+                        └── AppShell
                     ├── TopBar
                     ├── BattleIntroOverlay
                     ├── RewardCinemaOverlay
@@ -23,10 +28,11 @@ App
 
 ### Core files
 
-| File | Lines | Purpose |
-|------|------|
+| File | Purpose |
+|------|---------|
 | `src/App.tsx` | Provider composition, AppShell state/effects, screen routing, reconnect recovery, and shared handler wiring |
 | `src/AppShellContext.ts` | Shared shell context type and access |
+| `src/contexts/PlayerProvider.tsx` | `serverProfile` and everything read off it — shards, rank, record, cosmetics, role |
 | `src/constants.ts` | Static UI data and semantic asset registry |
 | `src/utils.ts` | Pure helpers for asset lookups, transitions, completion, severity, streaks, and hand fan tilt |
 | `src/audio.ts` | Synthesized sound library |

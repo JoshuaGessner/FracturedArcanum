@@ -93,6 +93,12 @@ Every new card must pass the balance audit checklist before merging.
   introduce app state inside screens or components.
 - New shared UI primitives go in `src/components/`; new full screens in
   `src/screens/`, wired into AppShell's screen-panel switch.
+- **A value derived from `serverProfile` belongs in `PlayerProvider`, not in
+  AppShell.** Deriving it in the shell and republishing it on
+  `AppShellContextValue` makes the shell context the transport for state it
+  does not own, and every such value costs an edit in five files instead of
+  one. `useProfile()` spreads the whole player slice, so nothing has to be
+  listed twice.
 - When adding shared AppShell state, add the key to `AppShellContextValue` in
   `src/AppShellContext.ts` and to the `appCtx` literal in App.tsx. Prefer the
   Game/Profile/Social/Queue providers when the state belongs to one domain.
@@ -218,7 +224,7 @@ Read these before touching layout CSS — each cost real debugging time:
 |------|------|-----------|
 | `src/game.ts` | Game engine — single source of truth for mechanics | Pure functions only. After edit: `npm run build:engine` |
 | `src/App.tsx` | `App` (provider tree) + `AppShell` (effects, handlers, refs, builds `AppShellContextValue`) | AppShell-owned refs/handlers live here; domain state lives in providers |
-| `src/contexts/` | Providers + typed slice hooks: `useGame`, `useProfile`, `useSocial`, `useQueue`, `useAppShell`, plus `AccountProvider` for identity | Screens import slice hooks; AppShell and the domain hooks use the internal `use*State()` hooks |
+| `src/contexts/` | Providers + typed slice hooks: `useGame`, `useProfile`, `useSocial`, `useQueue`, `useAppShell`, plus `AccountProvider` (identity) and `PlayerProvider` (the server-authoritative record) | Screens import slice hooks; AppShell and the domain hooks use the internal `use*State()` hooks |
 | `src/AppShellContext.ts` | `AppShellContextValue` + context for auth/nav/toasts/admin | Update when adding shared AppShell-only state |
 | `src/screens/` | Presentational screens: Home, Collection, Battle, Social, Shop, Settings | Propless — read state via slice hooks |
 | `src/components/` | Shared UI primitives (modals, nav, overlays, badges, ceremonies) | Prop-driven only |

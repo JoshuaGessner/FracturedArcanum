@@ -35,8 +35,8 @@ import type {
  * GameProvider and ProfileProvider.
  *
  * Deliberately NOT here: `serverProfile` and the economy values derived from
- * it (shards, rank, record). Those are read by three screens and five shared
- * components, so moving them is a wider change and belongs in its own pass.
+ * it (shards, rank, record). This provider is about *getting in*; what the
+ * account owns lives in `PlayerProvider`.
  *
  * The two refs are in-flight guards for ceremonies that must not overlap —
  * `useRef` identity is already stable, so they live here with the state they

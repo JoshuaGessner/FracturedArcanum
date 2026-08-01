@@ -4,6 +4,7 @@ import { cleanup, render } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { AppShellContext, type AppShellContextValue } from '../AppShellContext'
 import { GameProvider } from './GameProvider'
+import { PlayerProvider } from './PlayerProvider'
 import { ProfileProvider } from './ProfileProvider'
 import { QueueProvider } from './QueueProvider'
 import { SocialProvider } from './SocialProvider'
@@ -38,13 +39,15 @@ function markerShell(): AppShellContextValue {
 function wrap(children: ReactNode, shell: AppShellContextValue = markerShell()) {
   return (
     <AppShellContext.Provider value={shell}>
-      <ProfileProvider>
-        <GameProvider>
-          <SocialProvider>
-            <QueueProvider>{children}</QueueProvider>
-          </SocialProvider>
-        </GameProvider>
-      </ProfileProvider>
+      <PlayerProvider>
+        <ProfileProvider>
+          <GameProvider>
+            <SocialProvider>
+              <QueueProvider>{children}</QueueProvider>
+            </SocialProvider>
+          </GameProvider>
+        </ProfileProvider>
+      </PlayerProvider>
     </AppShellContext.Provider>
   )
 }
@@ -127,6 +130,23 @@ describe('useProfile and useSocial', () => {
     expect(typeof slice.savedDecks).not.toBe('function')
     expect(slice.savedDecks).toEqual([])
     expect(slice.activeDeckId).toBeNull()
+  })
+
+  /**
+   * The player record and its derivations come from PlayerProvider now, not
+   * from the shell. Same check as the decks above: the marker shell answers
+   * every key with a function, so a real number here proves the value did not
+   * arrive by way of AppShellContext.
+   */
+  it('reads the player record and its derivations from PlayerProvider', () => {
+    const slice = readSlice(useProfile)
+
+    expect(slice.serverProfile).toBeNull()
+    expect(slice.shards).toBe(0)
+    expect(slice.seasonRating).toBe(1200)
+    expect(slice.rankLabel).toBe('Silver')
+    expect(slice.record).toEqual({ wins: 0, losses: 0, streak: 0 })
+    expect(slice.isOwnerRole).toBe(false)
   })
 
   it('useSocial surfaces the social slice', () => {

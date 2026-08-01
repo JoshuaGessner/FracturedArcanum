@@ -7,9 +7,42 @@ import { QueueProvider } from '../contexts/QueueProvider'
 import { ProfileProvider } from '../contexts/ProfileProvider'
 import { SocialProvider } from '../contexts/SocialProvider'
 import { GameProvider } from '../contexts/GameProvider'
+import { PlayerProvider } from '../contexts/PlayerProvider'
 import { createGame } from '../game'
 import { createPwaInstallState } from '../pwa'
-import type { AdminOverview, AppScreen, CardBorder, CosmeticTheme, SettingsSubview } from '../types'
+import type { AdminOverview, AppScreen, ServerProfile, SettingsSubview } from '../types'
+
+/**
+ * The record `PlayerProvider` derives from — stated once, where the old
+ * fixture stated it and then restated all eighteen values read off it.
+ *
+ * `lastDaily` is today's key so the default render reads as "already claimed",
+ * matching what the hand-written mock asserted. Pass `{ lastDaily: '' }` for a
+ * claimable one.
+ */
+const TODAY_KEY = new Date().toISOString().slice(0, 10)
+
+function buildPlayerProfile(overrides: Partial<ServerProfile> = {}): ServerProfile {
+  return {
+    accountId: 'acct-1',
+    username: 'josh',
+    displayName: 'Josh',
+    role: 'user',
+    shards: 180,
+    seasonRating: 1210,
+    wins: 3,
+    losses: 2,
+    streak: 1,
+    deckConfig: {},
+    ownedThemes: ['royal'],
+    selectedTheme: 'royal',
+    ownedCardBorders: ['default'],
+    selectedCardBorder: 'default',
+    lastDaily: TODAY_KEY,
+    totalEarned: 0,
+    ...overrides,
+  }
+}
 
 function buildShellValue(overrides: Partial<AppShellContextValue> = {}): AppShellContextValue {
   const noop = () => {}
@@ -34,27 +67,7 @@ function buildShellValue(overrides: Partial<AppShellContextValue> = {}): AppShel
     handleAuth: asyncNoop,
     handlePasskeyLogin: asyncNoop,
     handleLogout: noop,
-    serverProfile: { accountId: 'acct-1', username: 'josh', displayName: 'Josh', role: 'user', shards: 180, seasonRating: 1210, wins: 3, losses: 2, streak: 1, deckConfig: {}, ownedThemes: ['royal'], selectedTheme: 'royal', ownedCardBorders: ['default'], selectedCardBorder: 'default', lastDaily: '', totalEarned: 0 },
-    setServerProfile: noop,
-    shards: 180,
-    seasonRating: 1210,
-    record: { wins: 3, losses: 2, streak: 1 },
-    ownedThemes: ['royal'] as CosmeticTheme[],
-    selectedTheme: 'royal' as CosmeticTheme,
-    ownedCardBorders: ['default'] as CardBorder[],
-    selectedCardBorder: 'default' as CardBorder,
-    lastDailyClaim: '',
-    accountRole: 'user',
-    isAdminRole: false,
-    isOwnerRole: false,
-    rankLabel: 'Silver',
-    totalGames: 5,
-    winRate: 60,
-    rankProgress: 40,
-    nextRankTarget: 1300,
     nextRewardLabel: 'Silver Cache',
-    todayKey: '2026-04-18',
-    canClaimDailyReward: false,
     justClaimedDaily: false,
     totalOwnedCards: 10,
     passkeys: [],
@@ -228,49 +241,38 @@ function buildShellValue(overrides: Partial<AppShellContextValue> = {}): AppShel
   }
 }
 
-function renderSettingsScreen(valueOverrides: Partial<AppShellContextValue> = {}) {
+function renderSettingsScreen(
+  valueOverrides: Partial<AppShellContextValue> = {},
+  profileOverrides: Partial<ServerProfile> = {},
+) {
   const value = buildShellValue(valueOverrides)
   return render(
-    <QueueProvider>
-      <ProfileProvider>
-        <SocialProvider>
-          <GameProvider>
-            <AppShellContext.Provider value={value}>
-              <SettingsScreen />
-            </AppShellContext.Provider>
-          </GameProvider>
-        </SocialProvider>
-      </ProfileProvider>
-    </QueueProvider>,
+    <PlayerProvider seed={buildPlayerProfile(profileOverrides)}>
+      <QueueProvider>
+        <ProfileProvider>
+          <SocialProvider>
+            <GameProvider>
+              <AppShellContext.Provider value={value}>
+                <SettingsScreen />
+              </AppShellContext.Provider>
+            </GameProvider>
+          </SocialProvider>
+        </ProfileProvider>
+      </QueueProvider>
+    </PlayerProvider>,
   )
 }
 
-function buildOwnerAdminOverrides(overrides: Partial<AppShellContextValue> = {}): Partial<AppShellContextValue> {
-  return {
-    settingsSubview: 'admin',
-    accountRole: 'owner',
-    isAdminRole: true,
-    isOwnerRole: true,
-    serverProfile: {
-      accountId: 'acct-owner',
-      username: 'josh',
-      displayName: 'Josh',
-      role: 'owner',
-      shards: 180,
-      seasonRating: 1210,
-      wins: 3,
-      losses: 2,
-      streak: 1,
-      deckConfig: {},
-      ownedThemes: ['royal'] as CosmeticTheme[],
-      selectedTheme: 'royal' as CosmeticTheme,
-      ownedCardBorders: ['default'] as CardBorder[],
-      selectedCardBorder: 'default' as CardBorder,
-      lastDaily: '',
-      totalEarned: 0,
-    },
-    ...overrides,
-  }
+/**
+ * The admin console renders off `isOwnerRole`, which PlayerProvider derives
+ * from the record's `role`. Seeding the role is the only way in now — which is
+ * the point: a test can no longer claim owner powers the server never granted.
+ */
+function renderOwnerAdminScreen(overrides: Partial<AppShellContextValue> = {}) {
+  return renderSettingsScreen(
+    { settingsSubview: 'admin', ...overrides },
+    { accountId: 'acct-owner', role: 'owner' },
+  )
 }
 
 function buildAdminOverview(): AdminOverview {
@@ -455,14 +457,14 @@ describe('SettingsScreen sections', () => {
   })
 
   it('shows admin navigation for the owner account', () => {
-    renderSettingsScreen(buildOwnerAdminOverrides({ settingsSubview: 'preferences' }))
+    renderOwnerAdminScreen({ settingsSubview: 'preferences' })
 
     expect(screen.getByRole('button', { name: /^admin$/i })).toBeTruthy()
     expect(screen.queryByRole('button', { name: /overview/i })).toBeNull()
   })
 
   it('adds a recovery tab to the owner admin console', () => {
-    renderSettingsScreen(buildOwnerAdminOverrides({ adminOverview: buildAdminOverview() }))
+    renderOwnerAdminScreen({ adminOverview: buildAdminOverview() })
 
     expect(screen.getByRole('tab', { name: /^recovery$/i })).toBeTruthy()
     expect(screen.queryByRole('button', { name: /overview/i })).toBeNull()
@@ -470,7 +472,7 @@ describe('SettingsScreen sections', () => {
 
   it('keeps account recovery requests in the recovery dashboard with response actions', () => {
     const handleUpdateComplaintStatus = vi.fn(async () => {})
-    renderSettingsScreen(buildOwnerAdminOverrides({ adminOverview: buildAdminOverview(), handleUpdateComplaintStatus }))
+    renderOwnerAdminScreen({ adminOverview: buildAdminOverview(), handleUpdateComplaintStatus })
 
     fireEvent.click(screen.getByRole('tab', { name: /^recovery$/i }))
 
@@ -484,7 +486,7 @@ describe('SettingsScreen sections', () => {
   })
 
   it('excludes account recovery requests from the general complaints tab', () => {
-    renderSettingsScreen(buildOwnerAdminOverrides({ adminOverview: buildAdminOverview() }))
+    renderOwnerAdminScreen({ adminOverview: buildAdminOverview() })
 
     fireEvent.click(screen.getByRole('tab', { name: /^complaints$/i }))
 
@@ -494,7 +496,7 @@ describe('SettingsScreen sections', () => {
 
   it('auto-loads the admin console when an owner opens it', async () => {
     const refreshAdminOverview = vi.fn(async () => {})
-    renderSettingsScreen(buildOwnerAdminOverrides({ refreshAdminOverview }))
+    renderOwnerAdminScreen({ refreshAdminOverview })
 
     await waitFor(() => expect(refreshAdminOverview).toHaveBeenCalledTimes(1))
   })

@@ -193,20 +193,43 @@ export function makeLobbyCode(): string {
   return `RUNE-${Math.random().toString(36).slice(2, 6).toUpperCase()}`
 }
 
+/**
+ * The rank ladder, in ascending order.
+ *
+ * These thresholds used to be written twice: once as the label ladder in this
+ * function, once as a `previousRankTarget`/`nextRankTarget` ternary chain in
+ * AppShell that drove the progress bar. The two agreed, but nothing made them
+ * agree — adding a tier meant remembering both, and a mismatch would have shown
+ * up as a bar filling against the wrong band.
+ *
+ * The first `floor` and the last `ceiling` are the ends of the bar, not limits
+ * on the rating itself.
+ */
+const RANK_BANDS = [
+  { label: 'Bronze', floor: 1000, ceiling: 1150 },
+  { label: 'Silver', floor: 1150, ceiling: 1300 },
+  { label: 'Gold', floor: 1300, ceiling: 1500 },
+  { label: 'Diamond', floor: 1500, ceiling: 1700 },
+] as const
+
+export type RankBand = {
+  label: string
+  /** Rating at which this band starts — 0% on the bar. */
+  floor: number
+  /** Rating at which the next band starts — 100% on the bar. */
+  ceiling: number
+  /** Position within the band, clamped to 0–100. */
+  progress: number
+}
+
+export function getRankBand(rating: number): RankBand {
+  const band = RANK_BANDS.reduce((best, candidate) => (rating >= candidate.floor ? candidate : best), RANK_BANDS[0])
+  const progress = Math.max(0, Math.min(100, Math.round(((rating - band.floor) / (band.ceiling - band.floor)) * 100)))
+  return { label: band.label, floor: band.floor, ceiling: band.ceiling, progress }
+}
+
 export function getRankLabel(rating: number): string {
-  if (rating >= 1500) {
-    return 'Diamond'
-  }
-
-  if (rating >= 1300) {
-    return 'Gold'
-  }
-
-  if (rating >= 1150) {
-    return 'Silver'
-  }
-
-  return 'Bronze'
+  return getRankBand(rating).label
 }
 
 export function getRankAssetPath(rankOrRating: string | number): string {

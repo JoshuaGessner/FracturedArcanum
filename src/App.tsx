@@ -104,6 +104,7 @@ import { QueueProvider, useQueueState } from './contexts/QueueProvider'
 import { ProfileProvider, useProfileState } from './contexts/ProfileProvider'
 import { SocialProvider, useSocialState } from './contexts/SocialProvider'
 import { GameProvider, useGameState } from './contexts/GameProvider'
+import { PlayerProvider, usePlayerState } from './contexts/PlayerProvider'
 import './App.css'
 
 
@@ -114,22 +115,28 @@ import './App.css'
  *
  * Phase 1F added `QueueProvider`. Phase 1D added `ProfileProvider`.
  * Phase 1E added `SocialProvider`. Phase 1C added `GameProvider`
- * (active battle/game presentation state). Refs and handlers remain in
- * `AppShell` because they are tightly coupled to socket/auth/profile
- * context that hasn’t been lifted yet.
+ * (active battle/game presentation state). `PlayerProvider` took the
+ * server-authoritative player record. Refs and handlers remain in `AppShell`
+ * because they are tightly coupled to socket context that hasn’t been lifted
+ * yet.
+ *
+ * The providers are siblings, not a hierarchy — none reads another, so the
+ * nesting order carries no meaning.
  */
 function App() {
   return (
     <AccountProvider>
-      <QueueProvider>
-        <ProfileProvider>
-          <SocialProvider>
-            <GameProvider>
-              <AppShell />
-            </GameProvider>
-          </SocialProvider>
-        </ProfileProvider>
-      </QueueProvider>
+      <PlayerProvider>
+        <QueueProvider>
+          <ProfileProvider>
+            <SocialProvider>
+              <GameProvider>
+                <AppShell />
+              </GameProvider>
+            </SocialProvider>
+          </ProfileProvider>
+        </QueueProvider>
+      </PlayerProvider>
     </AccountProvider>
   )
 }
@@ -213,8 +220,21 @@ function AppShell() {
     setupLoading, 
   } = useAccountState()
 
-  // ─── Server-authoritative player state ────────────────────────────────
-  const [serverProfile, setServerProfile] = useState<ServerProfile | null>(null)
+  // ─── Server-authoritative player state lives in PlayerProvider ────────
+  // The record itself plus everything read straight off it: balances, rank,
+  // record, cosmetics, role.
+  // Only what AppShell's own handlers and JSX need. Screens read the rest of
+  // the slice straight from `useProfile()`, so it does not pass through here.
+  const {
+    serverProfile, setServerProfile,
+    shards, seasonRating, rankLabel,
+    ownedThemes, selectedTheme, ownedCardBorders,
+    isAdminRole, isOwnerRole,
+    todayKey, canClaimDailyReward,
+  } = usePlayerState()
+
+  // Account readiness stays here: it reads the profile but decides with
+  // AccountProvider's state, so it belongs to neither provider alone.
   const accountReadiness = serverProfile?.accountReadiness ?? null
   const accountRequirements = accountReadiness?.requirements ?? []
   const accountSetupRequired = serverProfile?.accountSetupRequired === true || accountReadiness?.setupRequired === true
@@ -223,17 +243,6 @@ function AppShell() {
   const hasRecoverySetupRequirement = accountRequirements.some((item) => item.id === 'recovery_codes' || item.id === 'recovery_codes_saved')
   const incomingPasskeyDeviceLinkActive = setupRequired === false && Boolean(incomingPasskeyDeviceLinkToken)
   const forcedAccountGateActive = incomingPasskeyDeviceLinkActive || (loggedIn && (pendingRecoveryCodes.length > 0 || (accountSetupRequired && accountRequirements.length > 0)))
-  const shards = serverProfile?.shards ?? 0
-  const seasonRating = serverProfile?.seasonRating ?? 1200
-  const record = { wins: serverProfile?.wins ?? 0, losses: serverProfile?.losses ?? 0, streak: serverProfile?.streak ?? 0 }
-  const ownedThemes = serverProfile?.ownedThemes ?? ['royal'] as CosmeticTheme[]
-  const selectedTheme = (serverProfile?.selectedTheme ?? 'royal') as CosmeticTheme
-  const ownedCardBorders: CardBorder[] = serverProfile?.ownedCardBorders ?? ['default']
-  const selectedCardBorder: CardBorder = serverProfile?.selectedCardBorder ?? 'default'
-  const lastDailyClaim = serverProfile?.lastDaily ?? ''
-  const accountRole = serverProfile?.role ?? 'user'
-  const isAdminRole = accountRole === 'admin' || accountRole === 'owner'
-  const isOwnerRole = accountRole === 'owner'
 
   // ─── Phase 1D — deck/collection/shop state lives in ProfileProvider ──
   const {
@@ -1768,23 +1777,13 @@ function AppShell() {
   const selectedDeckSize = getDeckSize(deckConfig)
   const deckReady = selectedDeckSize >= MIN_DECK_SIZE
   const defenderHasGuard = boardHasGuard(defendingPlayer.board)
-  const rankLabel = getRankLabel(seasonRating)
   const resolvedAIDifficulty = aiDifficultySetting === 'auto' ? getRecommendedAIDifficulty(seasonRating) : aiDifficultySetting
   // liveQueueLabel comes from QueueProvider via useQueueState above.
+  // rankLabel, totalGames, winRate, rankProgress, nextRankTarget, todayKey and
+  // canClaimDailyReward come from usePlayerState() above — they are arithmetic
+  // over the server profile and nothing else.
   const totalOwnedCards = Object.values(collection).reduce((sum, count) => sum + count, 0)
-  const totalGames = record.wins + record.losses
-  const winRate = totalGames > 0 ? Math.round((record.wins / totalGames) * 100) : 0
-  const previousRankTarget =
-    seasonRating < 1150 ? 1000 : seasonRating < 1300 ? 1150 : seasonRating < 1500 ? 1300 : 1500
-  const nextRankTarget =
-    seasonRating < 1150 ? 1150 : seasonRating < 1300 ? 1300 : seasonRating < 1500 ? 1500 : 1700
-  const rankProgress = Math.min(
-    100,
-    Math.round(((seasonRating - previousRankTarget) / (nextRankTarget - previousRankTarget)) * 100),
-  )
   const nextRewardLabel = '25 Shards'
-  const todayKey = new Date().toISOString().slice(0, 10)
-  const canClaimDailyReward = lastDailyClaim !== todayKey
 
   const screenTitle = SCREEN_TITLES[activeScreen]
   const isBattleScreen = activeScreen === 'battle'
@@ -2674,12 +2673,8 @@ function AppShell() {
     loggedIn,
     setupRequired, setupForm, setSetupForm, setupError, setupLoading,
     handleSetup, handleAuth, handlePasskeyLogin, handleLogout,
-    // Profile (derived; raw state lives in AppShell)
-    serverProfile, setServerProfile, shards, seasonRating, record,
-    ownedThemes, selectedTheme, ownedCardBorders, selectedCardBorder,
-    lastDailyClaim, accountRole, isAdminRole, isOwnerRole,
-    rankLabel, totalGames, winRate, rankProgress, nextRankTarget, nextRewardLabel,
-    todayKey, canClaimDailyReward, justClaimedDaily, totalOwnedCards,
+    // Rewards + collection (the player record itself is in PlayerProvider)
+    nextRewardLabel, justClaimedDaily, totalOwnedCards,
     passkeys, passkeySupported, passkeyLoading, passkeyStatus,
     accountSessions, accountActionStatus, accountActionLoading, recoveryStatus, passkeyDeviceLink,
     refreshPasskeys, refreshAccountSessions, refreshRecoveryStatus, handleGenerateRecoveryCodes,

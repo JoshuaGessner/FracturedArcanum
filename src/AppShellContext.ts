@@ -25,7 +25,6 @@ import type {
   InstallPromptEvent,
   PasskeyDeviceLink,
   PasskeySummary,
-  ServerProfile,
   SavedDeck,
   ToastEntry,
   ToastSeverity,
@@ -69,28 +68,11 @@ export type AppShellContextValue = {
   handlePasskeyLogin: () => Promise<void>
   handleLogout: () => void
 
-  // ─── Derived profile (owned by AppShell, sourced from serverProfile) ──
-  serverProfile: ServerProfile | null
-  setServerProfile: React.Dispatch<React.SetStateAction<ServerProfile | null>>
-  shards: number
-  seasonRating: number
-  record: { wins: number; losses: number; streak: number }
-  ownedThemes: CosmeticTheme[]
-  selectedTheme: CosmeticTheme
-  ownedCardBorders: CardBorder[]
-  selectedCardBorder: CardBorder
-  lastDailyClaim: string
-  accountRole: 'user' | 'admin' | 'owner'
-  isAdminRole: boolean
-  isOwnerRole: boolean
-  rankLabel: string
-  totalGames: number
-  winRate: number
-  rankProgress: number
-  nextRankTarget: number
+  // ─── Reward + collection surfaces ─────────────────────────────────────
+  // The server-authoritative player record and everything derived from it now
+  // live in PlayerProvider. What is left here is the daily-claim animation
+  // flag and a count over the local collection — neither reads that record.
   nextRewardLabel: string
-  todayKey: string
-  canClaimDailyReward: boolean
   justClaimedDaily: boolean
   totalOwnedCards: number
   passkeys: PasskeySummary[]

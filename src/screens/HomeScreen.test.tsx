@@ -7,9 +7,42 @@ import { QueueProvider } from '../contexts/QueueProvider'
 import { ProfileProvider } from '../contexts/ProfileProvider'
 import { SocialProvider } from '../contexts/SocialProvider'
 import { GameProvider } from '../contexts/GameProvider'
+import { PlayerProvider } from '../contexts/PlayerProvider'
 import { createGame } from '../game'
 import { createPwaInstallState } from '../pwa'
-import type { AppScreen, CosmeticTheme, CardBorder } from '../types'
+import type { AppScreen, ServerProfile } from '../types'
+
+/**
+ * The record `PlayerProvider` derives from — stated once, where the old
+ * fixture stated it and then restated all eighteen values read off it.
+ *
+ * `lastDaily` is today's key so the default render reads as "already claimed",
+ * matching what the hand-written mock asserted. Pass `{ lastDaily: '' }` for a
+ * claimable one.
+ */
+const TODAY_KEY = new Date().toISOString().slice(0, 10)
+
+function buildPlayerProfile(overrides: Partial<ServerProfile> = {}): ServerProfile {
+  return {
+    accountId: 'acct-1',
+    username: 'josh',
+    displayName: 'josh',
+    role: 'user',
+    shards: 180,
+    seasonRating: 1210,
+    wins: 3,
+    losses: 2,
+    streak: 1,
+    deckConfig: {},
+    ownedThemes: ['royal'],
+    selectedTheme: 'royal',
+    ownedCardBorders: ['default'],
+    selectedCardBorder: 'default',
+    lastDaily: TODAY_KEY,
+    totalEarned: 0,
+    ...overrides,
+  }
+}
 
 function buildShellValue(overrides: Partial<AppShellContextValue> = {}): AppShellContextValue {
   const noop = () => {}
@@ -34,27 +67,7 @@ function buildShellValue(overrides: Partial<AppShellContextValue> = {}): AppShel
     handleAuth: asyncNoop,
     handlePasskeyLogin: asyncNoop,
     handleLogout: noop,
-    serverProfile: { accountId: 'acct-1', username: 'josh', displayName: 'josh', role: 'user', shards: 180, seasonRating: 1210, wins: 3, losses: 2, streak: 1, deckConfig: {}, ownedThemes: ['royal'], selectedTheme: 'royal', ownedCardBorders: ['default'], selectedCardBorder: 'default', lastDaily: '', totalEarned: 0 },
-    setServerProfile: noop,
-    shards: 180,
-    seasonRating: 1210,
-    record: { wins: 3, losses: 2, streak: 1 },
-    ownedThemes: ['royal'] as CosmeticTheme[],
-    selectedTheme: 'royal' as CosmeticTheme,
-    ownedCardBorders: ['default'] as CardBorder[],
-    selectedCardBorder: 'default' as CardBorder,
-    lastDailyClaim: '',
-    accountRole: 'user',
-    isAdminRole: false,
-    isOwnerRole: false,
-    rankLabel: 'Silver',
-    totalGames: 5,
-    winRate: 60,
-    rankProgress: 40,
-    nextRankTarget: 1300,
     nextRewardLabel: 'Silver Cache',
-    todayKey: '2026-04-18',
-    canClaimDailyReward: false,
     justClaimedDaily: false,
     totalOwnedCards: 10,
     passkeys: [],
@@ -228,20 +241,25 @@ function buildShellValue(overrides: Partial<AppShellContextValue> = {}): AppShel
   }
 }
 
-function renderHomeScreen(valueOverrides: Partial<AppShellContextValue> = {}) {
+function renderHomeScreen(
+  valueOverrides: Partial<AppShellContextValue> = {},
+  profileOverrides: Partial<ServerProfile> = {},
+) {
   const value = buildShellValue(valueOverrides)
   return render(
-    <QueueProvider>
-      <ProfileProvider>
-        <SocialProvider>
-          <GameProvider>
-            <AppShellContext.Provider value={value}>
-              <HomeScreen />
-            </AppShellContext.Provider>
-          </GameProvider>
-        </SocialProvider>
-      </ProfileProvider>
-    </QueueProvider>,
+    <PlayerProvider seed={buildPlayerProfile(profileOverrides)}>
+      <QueueProvider>
+        <ProfileProvider>
+          <SocialProvider>
+            <GameProvider>
+              <AppShellContext.Provider value={value}>
+                <HomeScreen />
+              </AppShellContext.Provider>
+            </GameProvider>
+          </SocialProvider>
+        </ProfileProvider>
+      </QueueProvider>
+    </PlayerProvider>,
   )
 }
 
@@ -285,7 +303,7 @@ describe('HomeScreen navigation and footer', () => {
   })
 
   it('shows the core home progress details in the unified header', () => {
-    const { container, getByText } = renderHomeScreen({ canClaimDailyReward: true, nextRewardLabel: 'Reward Ready' })
+    const { container, getByText } = renderHomeScreen({ nextRewardLabel: 'Reward Ready' }, { lastDaily: '' })
 
     expect(container.textContent).toMatch(/league/i)
     expect(container.textContent).toMatch(/deck/i)

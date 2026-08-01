@@ -34,8 +34,9 @@ import { readStoredValue } from '../utils'
  * socket-driven payloads.
  *
  * `serverProfile` and the values derived from it (`shards`, `seasonRating`,
- * `rankLabel`, etc.) intentionally remain in AppShell for now — they will
- * migrate when the AppContext (auth/profile root) split lands.
+ * `rankLabel`, etc.) live in `PlayerProvider`. The split is client-side versus
+ * server-authoritative: decks and the collection are edited here and pushed;
+ * the record is owned by the server and only mirrored.
  */
 
 export type BuilderFilter = {

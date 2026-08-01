@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatPasskeyCeremonyError, getCompletionPercent, getComplaintSeverityTone, getEffectIconPath, getHandFanTilt, getPackArtPath, getPasskeyOriginRequirementMessage, getRankAssetPath, getRarityCompletion, getRarityGemPath, getScreenTransitionClass, getScreenTransitionSound, getStreakTier, shouldPresentScopedReward } from './utils'
+import { formatPasskeyCeremonyError, getCompletionPercent, getComplaintSeverityTone, getEffectIconPath, getHandFanTilt, getPackArtPath, getPasskeyOriginRequirementMessage, getRankAssetPath, getRankBand, getRankLabel, getRarityCompletion, getRarityGemPath, getScreenTransitionClass, getScreenTransitionSound, getStreakTier, shouldPresentScopedReward } from './utils'
 
 describe('UI asset helpers', () => {
   it('resolves rank insignia from labels and ratings', () => {
@@ -108,5 +108,73 @@ describe('UI asset helpers', () => {
     expect(formatPasskeyCeremonyError(securityError, 'Passkey login failed.')).toBe('Passkey prompt is blocked because the app domain does not match the passkey domain. Open the canonical app URL and check passkey server configuration.')
     expect(formatPasskeyCeremonyError(timedOut, 'Passkey login failed.')).toBe('Passkey prompt timed out.')
     expect(formatPasskeyCeremonyError(new Error('Unknown local failure'), 'Passkey login failed.')).toBe('Passkey login failed.')
+  })
+})
+
+/**
+ * The rank ladder is the one place the tier thresholds are written. It used to
+ * be two places — the label chain inside `getRankLabel` and a
+ * `previousRankTarget`/`nextRankTarget` ternary in AppShell that drove the
+ * progress bar — which is a mismatch waiting to happen the next time a tier
+ * moves.
+ */
+describe('getRankBand', () => {
+  it('names each tier at its own floor', () => {
+    expect(getRankBand(1000).label).toBe('Bronze')
+    expect(getRankBand(1150).label).toBe('Silver')
+    expect(getRankBand(1300).label).toBe('Gold')
+    expect(getRankBand(1500).label).toBe('Diamond')
+  })
+
+  it('promotes on the threshold, not one point past it', () => {
+    expect(getRankBand(1149).label).toBe('Bronze')
+    expect(getRankBand(1299).label).toBe('Silver')
+    expect(getRankBand(1499).label).toBe('Gold')
+  })
+
+  /**
+   * Bands are half-open: the ceiling belongs to the next tier. A player who
+   * hits 1300 is Gold at 0%, never Silver at 100% — the bar resets as the
+   * label changes, which is what the promotion should look like.
+   */
+  it('starts each band at 0% and approaches, without reaching, its ceiling', () => {
+    expect(getRankBand(1150).progress).toBe(0)
+    expect(getRankBand(1299).progress).toBe(99)
+    expect(getRankBand(1300)).toMatchObject({ label: 'Gold', progress: 0 })
+  })
+
+  it('measures progress against the band the rating is actually in', () => {
+    // 60 of the 150 points between Silver's 1150 and Gold's 1300.
+    expect(getRankBand(1210).progress).toBe(40)
+    // 100 of the 200 between Gold's 1300 and Diamond's 1500.
+    expect(getRankBand(1400).progress).toBe(50)
+  })
+
+  it('points at the next tier, so the bar and the label agree', () => {
+    expect(getRankBand(1210).ceiling).toBe(1300)
+    expect(getRankBand(1400).ceiling).toBe(1500)
+  })
+
+  /**
+   * Below the ladder the old arithmetic went negative, and two components
+   * clamped it independently on the way to the bar. Clamping at the source
+   * means neither has to.
+   */
+  it('clamps a rating under the ladder to zero rather than going negative', () => {
+    expect(getRankBand(900).progress).toBe(0)
+    expect(getRankBand(0).progress).toBe(0)
+  })
+
+  it('clamps a rating past the top of the ladder to full', () => {
+    expect(getRankBand(1700).label).toBe('Diamond')
+    expect(getRankBand(2400).progress).toBe(100)
+  })
+})
+
+describe('getRankLabel', () => {
+  it('is the band label and nothing else', () => {
+    for (const rating of [0, 999, 1000, 1149, 1150, 1299, 1300, 1499, 1500, 2400]) {
+      expect(getRankLabel(rating)).toBe(getRankBand(rating).label)
+    }
   })
 })
