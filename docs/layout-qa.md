@@ -54,13 +54,20 @@ container which is correct in CSS but unreachable in practice, and it separates
 "covered by another element" from "ignores the wheel" because those have
 completely different fixes.
 
-A scroller covered by an **open overlay** is a third case, and the check flips
-rather than skipping. A modal is *supposed* to seal off what is behind it, so
-the assertion becomes the opposite one: wheel at the covered scroller and
-require that it did **not** move. A background that moves means scroll chaining
-leaked past the overlay — the page sliding around under a dialog the player is
-trying to read. Those scrollers are counted and reported as "held inert behind
-an open overlay", never silently dropped.
+"Covered" means **nine sampled points**, not one. A modal covers a scroller
+everywhere; a toast covers one corner. Judging from the centre alone made a
+notification that happened to be up read as "the wheel will never reach it" — a
+finding that failed on one run and passed the next, which is how a check trains
+you to ignore it. The wheel is dispatched at the first reachable point; if the
+centre was not it, the record says what was in the way.
+
+A scroller covered at *every* point by an **open overlay** is a third case, and
+the check flips rather than skipping. A modal is *supposed* to seal off what is
+behind it, so the assertion becomes the opposite one: wheel at the covered
+scroller and require that it did **not** move. A background that moves means
+scroll chaining leaked past the overlay — the page sliding around under a dialog
+the player is trying to read. Those scrollers are counted and reported as "held
+inert behind an open overlay", never silently dropped.
 
 What counts as an overlay is `OVERLAY_SCOPE` in
 `scripts/lib/layoutInvariants.mjs`, shared with the overlay check so the two

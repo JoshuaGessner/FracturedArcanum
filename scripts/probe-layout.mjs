@@ -344,9 +344,9 @@ async function checkWheel(page, cdp, documentNodeId) {
         check: 'wheel',
         kind: 'scroller-covered',
         severity: 'fail',
-        summary: `${candidate.selector} is covered at its centre by ${candidate.hitSelector} — the wheel will never reach it`,
+        summary: `${candidate.selector} is covered by ${candidate.hitSelector} at all ${candidate.pointsTried} sampled points — the wheel cannot reach it anywhere`,
         detail: [
-          `probe point (${candidate.point.x}, ${candidate.point.y}) hit-tests to ${candidate.hitSelector}`,
+          `centre (${candidate.point.x}, ${candidate.point.y}) hit-tests to ${candidate.centreHitSelector}`,
           'The covering element is not an overlay, so nothing is meant to be blocking this.',
         ],
         attributions: (await attribute(cdp, documentNodeId, selector, ['overflow-y', 'pointer-events', 'z-index'])) ?? [],
@@ -361,6 +361,13 @@ async function checkWheel(page, cdp, documentNodeId) {
         selector: candidate.selector,
         scrolled: `${before} -> ${after}`,
         content: `${candidate.scrollHeight}/${candidate.clientHeight}`,
+        // Recorded, not reported as a failure: the scroller works, but its
+        // centre was under something. Usually a toast, which is transient and
+        // deliberately clickable — worth seeing in the record if it ever turns
+        // out to be something permanent instead.
+        ...(candidate.usedFallbackPoint
+          ? { centreCoveredBy: candidate.centreHitSelector, wheeledAt: candidate.point }
+          : {}),
       })
     }
 
@@ -480,9 +487,10 @@ async function probeState({ page, cdp, app, viewport, state, checks, options }) 
   // this the quests view leaks into the next state and its entry selector is
   // silently absent.
   await timed('reset', () => resetToShell(page, app, viewport))
-  await timed('enter', async () => {
-    await state.enter(page)
+  const entryTrace = await timed('enter', async () => {
+    const trace = await state.enter(page)
     await waitForSettled(page)
+    return Array.isArray(trace) ? trace : []
   })
 
   // The document node must be re-fetched after DOM changes, or
@@ -506,7 +514,9 @@ async function probeState({ page, cdp, app, viewport, state, checks, options }) 
       kind: 'state-not-reached',
       severity: 'blocked',
       summary: `state "${state.name}" was never reached — "${state.expect}" is absent, so its checks proved nothing`,
-      detail: ['Navigation is best-effort; the entry control was missing or did not respond.'],
+      detail: entryTrace.length > 0
+        ? ['Entry steps, in order:', ...entryTrace.map((line) => `  ${line}`)]
+        : ['Navigation is best-effort; the entry control was missing or did not respond.'],
       attributions: [],
     })
   }

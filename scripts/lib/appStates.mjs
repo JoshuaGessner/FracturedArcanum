@@ -29,7 +29,27 @@ export const VIEWPORTS = [
  * bookkeeping: navigation clicks are best-effort, so without a positive
  * assertion a state that silently failed to open reports zero findings — or
  * captures a screenshot of the wrong screen — and looks like a pass.
+ *
+ * A multi-step `enter` also returns a trace: one line per step saying what it
+ * found. Every step swallows its own failure by design — a missing control must
+ * not abort the run — which used to mean a failed state reported the single
+ * word "absent" and nothing about which of four steps produced it. The trace is
+ * printed with the `state-not-reached` finding, so an intermittent failure
+ * arrives already diagnosed instead of needing to be reproduced first.
  */
+
+/** Trimmed text of the first match, or a marker when the node is absent. */
+async function textOf(page, selector) {
+  const node = page.locator(selector).first()
+  if (await node.count() === 0) return '(absent)'
+  return ((await node.textContent().catch(() => '')) ?? '').replace(/\s+/g, ' ').trim() || '(empty)'
+}
+
+/** Wait for a selector, reporting whether it arrived rather than throwing. */
+async function appeared(page, selector, timeout) {
+  return page.waitForSelector(selector, { timeout }).then(() => true).catch(() => false)
+}
+
 export const STATES = [
   {
     name: 'home',
@@ -41,8 +61,12 @@ export const STATES = [
     expect: '.quest-ledger-panel',
     enter: async (page) => {
       await gotoScreen(page, 'home')
-      await clickIfPresent(page, '.home-open-ledger-cta')
-      await page.waitForSelector('.quest-ledger-panel', { timeout: 4_000 }).catch(() => {})
+      const clicked = await clickIfPresent(page, '.home-open-ledger-cta')
+      const opened = await appeared(page, '.quest-ledger-panel', 4_000)
+      return [
+        `.home-open-ledger-cta clicked: ${clicked}`,
+        `.quest-ledger-panel appeared: ${opened}`,
+      ]
     },
   },
   {
@@ -50,8 +74,14 @@ export const STATES = [
     expect: '.sheet-panel',
     enter: async (page) => {
       await gotoScreen(page, 'home')
-      await clickIfPresent(page, '.home-battle-cta')
-      await page.waitForSelector('.sheet-panel', { timeout: 4_000 }).catch(() => {})
+      const label = await textOf(page, '.home-battle-cta-label')
+      const clicked = await clickIfPresent(page, '.home-battle-cta')
+      const opened = await appeared(page, '.sheet-panel', 4_000)
+      return [
+        `home battle CTA reads "${label}" — "Resume" means a match survived the reset`,
+        `.home-battle-cta clicked: ${clicked}`,
+        `.sheet-panel appeared: ${opened}`,
+      ]
     },
   },
   {
@@ -84,16 +114,29 @@ export const STATES = [
     volatile: true,
     enter: async (page) => {
       await gotoScreen(page, 'home')
-      await clickIfPresent(page, '.home-battle-cta')
-      await page.waitForSelector('.sheet-panel', { timeout: 4_000 }).catch(() => {})
+      const label = await textOf(page, '.home-battle-cta-label')
+      const ctaClicked = await clickIfPresent(page, '.home-battle-cta')
+      const sheetOpened = await appeared(page, '.sheet-panel', 4_000)
+
+      // Four distinct ways this fails, and they need four different fixes: a
+      // match survived the reset so the CTA resumes instead of opening the
+      // sheet; the sheet never opened; the AI card is disabled because the deck
+      // is short; or the match itself never started.
       const ai = page.locator('.mode-card-ai').first()
-      if (await ai.count()) {
-        const blocked = await ai.evaluate(
-          (el) => el.hasAttribute('disabled') || el.getAttribute('aria-disabled') === 'true',
-        )
-        if (!blocked) await ai.click()
-      }
-      await page.waitForSelector('.battlefield.active', { timeout: 8_000 }).catch(() => {})
+      const present = await ai.count() > 0
+      const blocked = present
+        ? await ai.evaluate((el) => el.hasAttribute('disabled') || el.getAttribute('aria-disabled') === 'true')
+        : false
+      if (present && !blocked) await ai.click({ timeout: 3_000 }).catch(() => {})
+      const started = await appeared(page, '.battlefield.active', 8_000)
+
+      return [
+        `home battle CTA reads "${label}" — "Resume" means a match survived the reset`,
+        `.home-battle-cta clicked: ${ctaClicked}`,
+        `.sheet-panel appeared: ${sheetOpened}`,
+        `.mode-card-ai present: ${present}, disabled: ${blocked}`,
+        `.battlefield.active appeared within 8s: ${started}`,
+      ]
     },
   },
 ]

@@ -369,9 +369,14 @@ depends on:
   cannot reach, content clipped in a non-scrolling overlay.
 - **wheel** — dispatches a real wheel event and asserts `scrollTop` moved.
   Distinguishes "covered by another element" from "ignores the wheel", because
-  those have completely different fixes. A scroller covered by an *open
-  overlay* inverts the assertion instead of skipping: the background must stay
-  still, or scroll chaining has leaked past the modal.
+  those have completely different fixes. "Covered" means nine sampled points,
+  so a transient toast over one corner is not mistaken for a blocked scroller.
+  A scroller covered at every point by an *open overlay* inverts the assertion
+  instead of skipping: the background must stay still, or scroll chaining has
+  leaked past the modal.
+- A state that fails to open reports the **entry steps that got it there**, one
+  line each. Navigation is best-effort by design, so without the trace an
+  intermittent failure has to be reproduced before it can be read.
 
 Shared definitions live in `scripts/lib/appStates.mjs` (viewports, states,
 navigation) so both tools stay in sync. Add a new screen there once and both

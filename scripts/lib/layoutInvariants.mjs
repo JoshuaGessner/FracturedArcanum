@@ -344,6 +344,29 @@ export function installProbe() {
   }
 
   /**
+   * Points to try putting a pointer on, centre first.
+   *
+   * Nine samples across the middle of the box. Enough that a transient layer
+   * covering part of a scroller — a toast, a floating badge — does not read as
+   * the whole thing being unreachable, and few enough that hit-testing them all
+   * stays free. The edges are deliberately avoided: a point on the boundary
+   * hit-tests to the neighbour often enough to be its own source of noise.
+   */
+  const probePoints = (shown) => {
+    const fractions = [0.5, 0.3, 0.7]
+    const points = []
+    for (const fy of fractions) {
+      for (const fx of fractions) {
+        points.push({
+          x: round(shown.left + shown.width * fx),
+          y: round(shown.top + shown.height * fy),
+        })
+      }
+    }
+    return points
+  }
+
+  /**
    * The overlay an element belongs to, if any.
    *
    * Deliberately shares `OVERLAY_SCOPE` and `isAppFrame` with the overlay
@@ -374,10 +397,25 @@ export function installProbe() {
 
       const shown = visibleRect(el)
       const reachable = shown.width >= 8 && shown.height >= 8
-      const pointX = round(shown.left + shown.width / 2)
-      const pointY = round(shown.top + shown.height / 2)
-      const hit = reachable ? document.elementFromPoint(pointX, pointY) : null
-      const hitIsSelfOrDescendant = Boolean(hit && (hit === el || el.contains(hit)))
+      const points = probePoints(shown)
+
+      // Find any point a user could actually put the pointer on. Sampling only
+      // the centre cannot tell a modal from a toast: a modal covers the whole
+      // scroller, a notification covers one corner. Judging from one sample
+      // turned a toast that happened to be up into "the wheel will never reach
+      // it" — a finding that failed on one run and passed on the next, which is
+      // how a check trains you to ignore it.
+      let reached = null
+      if (reachable) {
+        for (const point of points) {
+          const at = document.elementFromPoint(point.x, point.y)
+          if (at && (at === el || el.contains(at))) { reached = { point, at }; break }
+        }
+      }
+      const centreHit = reachable ? document.elementFromPoint(points[0].x, points[0].y) : null
+      const point = reached?.point ?? points[0]
+      const hit = reached?.at ?? centreHit
+      const hitIsSelfOrDescendant = Boolean(reached)
 
       // Something on top of a scroller is usually a bug — but not when the
       // something is an open modal, which is *supposed* to take the screen.
@@ -392,7 +430,12 @@ export function installProbe() {
         box: boxOf(el),
         visible: shown,
         reachable,
-        point: { x: pointX, y: pointY },
+        point,
+        pointsTried: reachable ? points.length : 0,
+        // True when the centre was blocked but somewhere else was not — a
+        // partial cover, worth seeing even though it is not a failure.
+        usedFallbackPoint: Boolean(reached && reached.point !== points[0]),
+        centreHitSelector: label(centreHit),
         scrollHeight: el.scrollHeight,
         clientHeight: el.clientHeight,
         overflowY: style.overflowY,
