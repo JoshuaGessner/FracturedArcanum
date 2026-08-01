@@ -369,7 +369,9 @@ depends on:
   cannot reach, content clipped in a non-scrolling overlay.
 - **wheel** — dispatches a real wheel event and asserts `scrollTop` moved.
   Distinguishes "covered by another element" from "ignores the wheel", because
-  those have completely different fixes.
+  those have completely different fixes. A scroller covered by an *open
+  overlay* inverts the assertion instead of skipping: the background must stay
+  still, or scroll chaining has leaked past the modal.
 
 Shared definitions live in `scripts/lib/appStates.mjs` (viewports, states,
 navigation) so both tools stay in sync. Add a new screen there once and both

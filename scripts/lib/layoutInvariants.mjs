@@ -343,6 +343,24 @@ export function installProbe() {
     return { view: port, overlays: results }
   }
 
+  /**
+   * The overlay an element belongs to, if any.
+   *
+   * Deliberately shares `OVERLAY_SCOPE` and `isAppFrame` with the overlay
+   * check above. The wheel check needs the same answer to "is this a transient
+   * layer or the app itself?", and two lists would drift into disagreeing.
+   */
+  const overlayLayerOf = (el) => {
+    let current = el
+    while (current && current !== document.documentElement) {
+      if (typeof current.matches === 'function' && current.matches(OVERLAY_SCOPE) && !isAppFrame(current)) {
+        return current
+      }
+      current = current.parentElement
+    }
+    return null
+  }
+
   // ── Scroll candidates ────────────────────────────────────────────────────
   // Every element that declares vertical scrolling and has content to scroll.
   // The verdict for each is decided by the driver after a real wheel event.
@@ -359,6 +377,14 @@ export function installProbe() {
       const pointX = round(shown.left + shown.width / 2)
       const pointY = round(shown.top + shown.height / 2)
       const hit = reachable ? document.elementFromPoint(pointX, pointY) : null
+      const hitIsSelfOrDescendant = Boolean(hit && (hit === el || el.contains(hit)))
+
+      // Something on top of a scroller is usually a bug — but not when the
+      // something is an open modal, which is *supposed* to take the screen.
+      // The layer has to be one the scroller is not inside: an overlay
+      // covering its own scroll container is a genuine overlap.
+      const coveringLayer = !hitIsSelfOrDescendant && hit ? overlayLayerOf(hit) : null
+      const behindOverlay = Boolean(coveringLayer && !coveringLayer.contains(el))
 
       results.push({
         id: tag(el, 'data-qa-scroll-id'),
@@ -375,7 +401,9 @@ export function installProbe() {
         // What is actually at the probe point — the difference between "this
         // does not scroll" and "something is sitting on top of it".
         hitSelector: label(hit),
-        hitIsSelfOrDescendant: Boolean(hit && (hit === el || el.contains(hit))),
+        hitIsSelfOrDescendant,
+        behindOverlay,
+        coveringLayer: coveringLayer ? label(coveringLayer) : null,
       })
     }
     return results

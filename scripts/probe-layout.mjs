@@ -245,6 +245,36 @@ async function checkOverlays(page, cdp, documentNodeId) {
  * a real wheel event through the browser's input pipeline, which is the only way
  * to tell "declared scrollable" apart from "scrollable by a mouse".
  */
+/**
+ * Reset a scroller, dispatch one real wheel event over it, and report whether
+ * it moved.
+ *
+ * Wheel scrolling is composited and async — `mouse.wheel()` resolves when the
+ * event is dispatched, not when the scroll is applied. Polling for the change
+ * is what keeps this from flaking. A negative result therefore costs the full
+ * settle timeout, which is the honest price of proving something did *not*
+ * happen.
+ */
+async function wheelOver(page, candidate) {
+  await page.evaluate((id) => window.__qaProbe.resetScrollTop(id), candidate.id)
+  const before = await page.evaluate((id) => window.__qaProbe.readScrollTop(id), candidate.id)
+
+  await page.mouse.move(candidate.point.x, candidate.point.y)
+  await page.mouse.wheel(0, WHEEL_DELTA)
+
+  const moved = await page
+    .waitForFunction(
+      ({ id, from }) => window.__qaProbe.readScrollTop(id) !== from,
+      { id: candidate.id, from: before },
+      { timeout: WHEEL_SETTLE_MS, polling: 50 },
+    )
+    .then(() => true)
+    .catch(() => false)
+
+  const after = await page.evaluate((id) => window.__qaProbe.readScrollTop(id), candidate.id)
+  return { moved, before, after }
+}
+
 async function checkWheel(page, cdp, documentNodeId) {
   const candidates = await page.evaluate(() => window.__qaProbe.scrollCandidates())
   const findings = []
@@ -252,6 +282,9 @@ async function checkWheel(page, cdp, documentNodeId) {
   // scroll containers at all is indistinguishable from one where every
   // container scrolled correctly — and those need very different follow-up.
   const passed = []
+  // Scrollers deliberately sealed off behind an open modal. Neither passed nor
+  // failed, and counted separately so "covered" never silently means "skipped".
+  const inert = []
 
   for (const candidate of candidates) {
     const selector = `[data-qa-scroll-id="${candidate.id}"]`
@@ -268,6 +301,42 @@ async function checkWheel(page, cdp, documentNodeId) {
       continue
     }
 
+    /**
+     * A scroller sealed off by an open modal is not broken — it is doing what
+     * a modal is for. The interesting question flips: the background must stay
+     * *still*. A wheel that reaches it means scroll chaining leaked past the
+     * overlay, which players see as the page sliding around underneath a
+     * dialog they are trying to read.
+     *
+     * This catches an overlay nested inside the shell, where the background is
+     * a real scroll-chain ancestor. It cannot catch one that is portalled to
+     * `<body>` — chaining follows the DOM ancestor chain, not paint order, so
+     * a portalled overlay has no path to the shell's scrollers and passes for
+     * free. That is still worth asserting: it is exactly what stops holding if
+     * an overlay is ever moved back inside the shell.
+     */
+    if (candidate.behindOverlay) {
+      const { moved, before, after } = await wheelOver(page, candidate)
+      if (moved) {
+        findings.push({
+          check: 'wheel',
+          kind: 'background-scrolls-behind-overlay',
+          severity: 'fail',
+          summary: `${candidate.selector} scrolls behind the open ${candidate.coveringLayer} — the wheel leaks past the overlay`,
+          detail: [
+            `scrollTop ${before} -> ${after} after a ${WHEEL_DELTA}px wheel at (${candidate.point.x}, ${candidate.point.y})`,
+            `overscroll-behavior-y=${candidate.overscrollBehaviorY} on the scroller; the overlay should contain the chain`,
+          ],
+          attributions: (await attribute(cdp, documentNodeId, selector, [
+            'overscroll-behavior-y', 'overflow-y',
+          ])) ?? [],
+        })
+      } else {
+        inert.push({ selector: candidate.selector, coveredBy: candidate.coveringLayer })
+      }
+      continue
+    }
+
     // Distinct verdict, as promised: something sitting on top of the scroller
     // has a completely different fix from a scroller that ignores the wheel.
     if (!candidate.hitIsSelfOrDescendant) {
@@ -276,31 +345,16 @@ async function checkWheel(page, cdp, documentNodeId) {
         kind: 'scroller-covered',
         severity: 'fail',
         summary: `${candidate.selector} is covered at its centre by ${candidate.hitSelector} — the wheel will never reach it`,
-        detail: [`probe point (${candidate.point.x}, ${candidate.point.y}) hit-tests to ${candidate.hitSelector}`],
+        detail: [
+          `probe point (${candidate.point.x}, ${candidate.point.y}) hit-tests to ${candidate.hitSelector}`,
+          'The covering element is not an overlay, so nothing is meant to be blocking this.',
+        ],
         attributions: (await attribute(cdp, documentNodeId, selector, ['overflow-y', 'pointer-events', 'z-index'])) ?? [],
       })
       continue
     }
 
-    await page.evaluate((id) => window.__qaProbe.resetScrollTop(id), candidate.id)
-    const before = await page.evaluate((id) => window.__qaProbe.readScrollTop(id), candidate.id)
-
-    await page.mouse.move(candidate.point.x, candidate.point.y)
-    await page.mouse.wheel(0, WHEEL_DELTA)
-
-    // Wheel scrolling is composited and async — `wheel()` resolves when the
-    // event is dispatched, not when the scroll is applied. Polling for the
-    // change is what keeps this from flaking.
-    const moved = await page
-      .waitForFunction(
-        ({ id, from }) => window.__qaProbe.readScrollTop(id) !== from,
-        { id: candidate.id, from: before },
-        { timeout: WHEEL_SETTLE_MS, polling: 50 },
-      )
-      .then(() => true)
-      .catch(() => false)
-
-    const after = await page.evaluate((id) => window.__qaProbe.readScrollTop(id), candidate.id)
+    const { moved, before, after } = await wheelOver(page, candidate)
 
     if (moved) {
       passed.push({
@@ -337,7 +391,7 @@ async function checkWheel(page, cdp, documentNodeId) {
     await page.evaluate((id) => window.__qaProbe.resetScrollTop(id), candidate.id)
   }
 
-  return { findings, checked: candidates.length, passed }
+  return { findings, checked: candidates.length, passed, inert }
 }
 
 // ── Reporting ─────────────────────────────────────────────────────────────
@@ -365,7 +419,14 @@ function report(results, options) {
 
   const states = results.length
   const checkedScrollers = results.reduce((sum, entry) => sum + (entry.scrollersChecked ?? 0), 0)
-  console.log(`\nProbed ${states} state(s); ${checkedScrollers} scroll container(s) wheel-tested.`)
+  const inertScrollers = results.reduce((sum, entry) => sum + (entry.scrollersInert?.length ?? 0), 0)
+  // Say the inert count out loud. A scroller skipped because a modal covers it
+  // is a judgement the run made, and a silent judgement is how a check quietly
+  // stops checking anything.
+  const inertNote = inertScrollers > 0
+    ? ` ${inertScrollers} held inert behind an open overlay, as intended.`
+    : ''
+  console.log(`\nProbed ${states} state(s); ${checkedScrollers} scroll container(s) wheel-tested.${inertNote}`)
 
   if (all.length === 0) {
     console.log('All invariants passed.\n')
@@ -435,6 +496,7 @@ async function probeState({ page, cdp, app, viewport, state, checks, options }) 
   const findings = []
   let scrollersChecked = 0
   let scrollersPassed = []
+  let scrollersInert = []
 
   // Prove we got where we meant to go before trusting any measurement.
   const reached = await reachedState(page, state)
@@ -460,6 +522,7 @@ async function probeState({ page, cdp, app, viewport, state, checks, options }) 
     findings.push(...wheel.findings)
     scrollersChecked = wheel.checked
     scrollersPassed = wheel.passed
+    scrollersInert = wheel.inert
   }
 
   if (options.shots) {
@@ -468,7 +531,7 @@ async function probeState({ page, cdp, app, viewport, state, checks, options }) 
     })
   }
 
-  return { findings, scrollersChecked, scrollersPassed, timings }
+  return { findings, scrollersChecked, scrollersPassed, scrollersInert, timings }
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────
@@ -536,8 +599,10 @@ async function main() {
             results.push({ viewport: viewport.name, state: state.name, ...outcome })
             const timingText = Object.entries(outcome.timings)
               .map(([name, ms]) => `${name}=${ms}ms`).join(' ')
+            const inertText = outcome.scrollersInert.length > 0
+              ? ` (${outcome.scrollersInert.length} inert behind an overlay)` : ''
             log(`${viewport.name} · ${state.name} → ${outcome.findings.length} finding(s), `
-              + `${outcome.scrollersPassed.length}/${outcome.scrollersChecked} scroller(s) ok  `
+              + `${outcome.scrollersPassed.length}/${outcome.scrollersChecked} scroller(s) ok${inertText}  `
               + `[${Date.now() - started}ms total; ${timingText}]`)
           } catch (error) {
             // A wedged state is a finding about the app or the harness, not a
@@ -555,6 +620,7 @@ async function main() {
               }],
               scrollersChecked: 0,
               scrollersPassed: [],
+              scrollersInert: [],
               timings: { total: Date.now() - started },
             })
             log(`${viewport.name} · ${state.name} → TIMED OUT after ${Date.now() - started}ms`)

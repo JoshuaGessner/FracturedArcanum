@@ -54,6 +54,25 @@ container which is correct in CSS but unreachable in practice, and it separates
 "covered by another element" from "ignores the wheel" because those have
 completely different fixes.
 
+A scroller covered by an **open overlay** is a third case, and the check flips
+rather than skipping. A modal is *supposed* to seal off what is behind it, so
+the assertion becomes the opposite one: wheel at the covered scroller and
+require that it did **not** move. A background that moves means scroll chaining
+leaked past the overlay — the page sliding around under a dialog the player is
+trying to read. Those scrollers are counted and reported as "held inert behind
+an open overlay", never silently dropped.
+
+What counts as an overlay is `OVERLAY_SCOPE` in
+`scripts/lib/layoutInvariants.mjs`, shared with the overlay check so the two
+cannot drift into disagreeing. A layer that covers a scroller it *contains* is
+still a plain failure — that is an overlay covering its own content.
+
+Know the limit before trusting a pass: chaining follows the DOM ancestor chain,
+not paint order. Overlays in this app are portalled to `<body>` (see
+`BattleLaunchSheet`), so they have no path to the shell's scrollers and pass the
+inertness assertion for free. It earns its keep the day an overlay is moved back
+inside the shell, where the background really is a chain ancestor.
+
 ## qa:snap — visual baselines
 
 ```bash
