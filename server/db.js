@@ -110,6 +110,7 @@ export {
   questPeriodKey,
   recordQuestEvent,
   recordQuestEvents,
+  sanitizeCardBorder,
   rerollQuest,
   resolveMatchResult,
   selectCardBorder,

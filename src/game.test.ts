@@ -7,6 +7,7 @@ import {
   STARTING_HEALTH,
   attack,
   castMomentumBurst,
+  createDuelGame,
   createGame,
   getDeathrattle,
   getDeckSize,
@@ -15,6 +16,7 @@ import {
   highestPlayableIndex,
   chooseEnemyTarget,
   playCard,
+  redactGameState,
   summonUnit,
   surrenderGame,
   type CardInstance,
@@ -38,6 +40,7 @@ function craftGame(playerHand: CardInstance[], enemyHand: CardInstance[] = []): 
     aiDifficulty: 'adept',
     player: {
       name: 'Tester',
+      cardBorder: 'default',
       health: STARTING_HEALTH,
       mana: 10,
       maxMana: 10,
@@ -48,6 +51,7 @@ function craftGame(playerHand: CardInstance[], enemyHand: CardInstance[] = []): 
     },
     enemy: {
       name: 'Dummy',
+      cardBorder: 'default',
       health: STARTING_HEALTH,
       mana: 0,
       maxMana: 0,
@@ -252,5 +256,35 @@ describe('Card effect resolution (data-driven)', () => {
     expect(result.player.health).toBe(STARTING_HEALTH)
     // Both the new Velara and the existing buddy get +2 attack
     expect((result.player.board[0] as Unit).attack).toBe(baseAttack + 2)
+  })
+})
+
+describe('cosmetic frames in redacted state', () => {
+  const duel = () => createDuelGame('One', DEFAULT_DECK_CONFIG, 'Two', DEFAULT_DECK_CONFIG, 'void', 'bronze')
+
+  it('gives each side its own owner frame from that side\'s perspective', () => {
+    // This is what makes a board unit wear its OWN owner's frame. Each client
+    // reads `player`/`enemy` identically, so the remap has to be what swaps
+    // them — if it did not, both players would see the host's frame on
+    // everything.
+    const fromOne = redactGameState(duel(), 'player')
+    expect(fromOne.player.cardBorder).toBe('void')
+    expect(fromOne.enemy.cardBorder).toBe('bronze')
+
+    const fromTwo = redactGameState(duel(), 'enemy')
+    expect(fromTwo.player.cardBorder).toBe('bronze')
+    expect(fromTwo.enemy.cardBorder).toBe('void')
+  })
+
+  it('leaves the AI on the standard frame while the player keeps theirs', () => {
+    const game = createGame('ai', DEFAULT_DECK_CONFIG, 'Nemesis', 'adept', 'solar')
+    expect(game.player.cardBorder).toBe('solar')
+    expect(game.enemy.cardBorder).toBe('default')
+  })
+
+  it('defaults both seats when no frame is supplied', () => {
+    const game = createGame('ai', DEFAULT_DECK_CONFIG)
+    expect(game.player.cardBorder).toBe('default')
+    expect(game.enemy.cardBorder).toBe('default')
   })
 })

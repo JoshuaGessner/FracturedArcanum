@@ -4,7 +4,7 @@ import {
   RARITY_COLORS,
   type CardInstance,
 } from '../game'
-import { cardArtPath, getHandFanTilt, handleCardArtError, pulseFeedback } from '../utils'
+import { asCardBorder, cardArtPath, getHandFanTilt, handleCardArtError, pulseFeedback } from '../utils'
 import { ECONOMY_REWARDS, UI_ASSETS } from '../constants'
 import { playSound, startLoopingSound } from '../audio'
 import { EffectBadge, RarityBadge, StatIcon } from '../components/AssetBadge'
@@ -12,8 +12,10 @@ import { SummaryPopup } from '../components/SummaryPopup'
 import { useAppShell, useGame, useProfile } from '../contexts'
 import type { InspectedCard } from '../types'
 
-function toInspectPayload(card: CardInstance): InspectedCard {
-  return { name: card.name, icon: card.icon, id: card.id, cost: card.cost, attack: card.attack, health: card.health, rarity: card.rarity, tribe: card.tribe, text: card.text, effect: card.effect ?? null }
+/** `cardBorder` is the frame the inspect modal wears — the hand is always the
+    local player's, so callers pass their own equipped frame. */
+function toInspectPayload(card: CardInstance, cardBorder: InspectedCard['cardBorder']): InspectedCard {
+  return { name: card.name, icon: card.icon, id: card.id, cost: card.cost, attack: card.attack, health: card.health, rarity: card.rarity, tribe: card.tribe, text: card.text, effect: card.effect ?? null, cardBorder }
 }
 
 const BattleFxCanvas = lazy(() =>
@@ -85,6 +87,17 @@ export function BattleScreen() {
     startMatch,
   } = useGame()
   const { selectedCardBorder, rankLabel, seasonRating, winRate } = useProfile()
+
+  // Every unit on the board wears its OWN owner's frame.
+  //
+  // The local side reads from the profile rather than the game state: it is
+  // the same value, but it is correct on the very first paint instead of
+  // popping a frame later when the server view lands. The enemy side can only
+  // come from the state — `redactGameState` has already remapped it, so
+  // `enemy.cardBorder` is the opponent's actual purchase in a duel, and stays
+  // 'default' against the AI and in pass-and-play, where the other seat is not
+  // an account that owns anything.
+  const enemyCardBorder = asCardBorder(game?.enemy?.cardBorder)
 
   const isBattle = activeScreen === 'battle'
   const battleModeLabel = isRankedBattle
@@ -738,6 +751,7 @@ export function BattleScreen() {
                     className={[
                       'slot',
                       `rarity-${unit.rarity}`,
+                      `border-${enemyCardBorder}`,
                       unit.effect === 'guard' ? 'guard' : '',
                       unit.exhausted ? 'exhausted' : '',
                       isSelected ? 'selected' : '',
@@ -755,7 +769,7 @@ export function BattleScreen() {
                       if (isSelectable) handleSelectAttacker(index)
                       else handleAttackTarget(index)
                     }}
-                    {...getLongPressProps({ name: unit.name, icon: unit.icon, id: unit.id, cost: unit.cost, attack: unit.attack, health: unit.health, currentHealth: unit.currentHealth, rarity: unit.rarity, tribe: unit.tribe, text: unit.text, effect: unit.effect ?? null })}
+                    {...getLongPressProps({ name: unit.name, icon: unit.icon, id: unit.id, cost: unit.cost, attack: unit.attack, health: unit.health, currentHealth: unit.currentHealth, rarity: unit.rarity, tribe: unit.tribe, text: unit.text, effect: unit.effect ?? null, cardBorder: enemyCardBorder })}
                     aria-disabled={Boolean(game.winner) || (isSelectable ? unit.exhausted : selectedAttacker === null)}
                     title="Long press to inspect"
                   >
@@ -769,6 +783,7 @@ export function BattleScreen() {
                         <span><StatIcon kind="health" />{unit.currentHealth}</span>
                       </span>
                     </div>
+                    <span className="card-frame" aria-hidden="true" />
                     <RarityBadge rarity={unit.rarity} iconOnly className="battle-slot-rarity" />
                     {unit.effect && <EffectBadge effect={unit.effect} compact iconOnly className="battle-slot-effect" />}
                   </button>
@@ -818,7 +833,7 @@ export function BattleScreen() {
                 const isSelectable = game.turn === 'player'
                 const isSelected = isSelectable && selectedAttacker === index
                 const canAttack = isSelectable && !unit.exhausted && isMyTurn && !game.winner
-                const unitInspectPayload = { name: unit.name, icon: unit.icon, id: unit.id, cost: unit.cost, attack: unit.attack, health: unit.health, currentHealth: unit.currentHealth, rarity: unit.rarity, tribe: unit.tribe, text: unit.text, effect: unit.effect ?? null }
+                const unitInspectPayload = { name: unit.name, icon: unit.icon, id: unit.id, cost: unit.cost, attack: unit.attack, health: unit.health, currentHealth: unit.currentHealth, rarity: unit.rarity, tribe: unit.tribe, text: unit.text, effect: unit.effect ?? null, cardBorder: selectedCardBorder }
                 const longPress = (getLongPressProps(unitInspectPayload) ?? {}) as Partial<{
                   onPointerDown: (event: React.PointerEvent<HTMLElement>) => void
                   onPointerMove: (event: React.PointerEvent<HTMLElement>) => void
@@ -833,6 +848,7 @@ export function BattleScreen() {
                     className={[
                       'slot',
                       `rarity-${unit.rarity}`,
+                      `border-${selectedCardBorder}`,
                       unit.effect === 'guard' ? 'guard' : '',
                       unit.exhausted ? 'exhausted' : '',
                       isSelected ? 'selected' : '',
@@ -891,6 +907,7 @@ export function BattleScreen() {
                         <span><StatIcon kind="health" />{unit.currentHealth}</span>
                       </span>
                     </div>
+                    <span className="card-frame" aria-hidden="true" />
                     <RarityBadge rarity={unit.rarity} iconOnly className="battle-slot-rarity" />
                     {unit.effect && <EffectBadge effect={unit.effect} compact iconOnly className="battle-slot-effect" />}
                   </button>
@@ -967,7 +984,7 @@ export function BattleScreen() {
 
                 const fanTilt = getHandFanTilt(index, activePlayer.hand.length)
                 const isDragging = dragActive && dragHandIndex === index
-                const inspectCard = toInspectPayload(card)
+                const inspectCard = toInspectPayload(card, selectedCardBorder)
                 const composed = composeHandlers(inspectCard, index, canPlay)
                 return (
                   <button

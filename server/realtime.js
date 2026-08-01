@@ -375,18 +375,21 @@ export function createRealtime({ io, matchIdleTimeoutMs }) {
       playerSocket.join(roomId)
       otherSocket.join(roomId)
 
+      // cardBorder was whitelisted when the player joined the queue.
       room.start(
         {
           socketId: playerEntry.id,
           accountId: playerEntry.accountId,
           name: playerEntry.profile.name,
           deckConfig: playerEntry.deckConfig,
+          cardBorder: playerEntry.cardBorder,
         },
         {
           socketId: matchedPlayer.id,
           accountId: matchedPlayer.accountId,
           name: matchedPlayer.profile.name,
           deckConfig: matchedPlayer.deckConfig,
+          cardBorder: matchedPlayer.cardBorder,
         },
       )
 

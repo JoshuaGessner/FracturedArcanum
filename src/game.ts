@@ -88,6 +88,18 @@ export function hasKeyword(unit: Unit, kind: CardEffect): boolean {
 
 export type PlayerState = {
   name: string
+  /**
+   * Cosmetic frame id of the account playing this side.
+   *
+   * Opaque to the engine — nothing here ever reads it. It rides on PlayerState
+   * so `redactGameState` remaps it along with everything else, which is what
+   * lets a board unit wear its own owner's frame without the client having to
+   * know which physical player it is talking to. Typed `string` rather than the
+   * UI's CardBorder union on purpose: the engine has no business knowing the
+   * cosmetic catalogue, and the value is whitelisted at the server boundary
+   * before it ever reaches here.
+   */
+  cardBorder: string
   health: number
   mana: number
   maxMana: number
@@ -669,9 +681,10 @@ export function ensurePlayableOpeningHand(player: PlayerState): PlayerState {
   }
 }
 
-export function createPlayer(name: string, deckConfig: DeckConfig): PlayerState {
+export function createPlayer(name: string, deckConfig: DeckConfig, cardBorder: string = 'default'): PlayerState {
   const basePlayer: PlayerState = {
     name,
+    cardBorder,
     health: STARTING_HEALTH,
     mana: 0,
     maxMana: 0,
@@ -684,13 +697,22 @@ export function createPlayer(name: string, deckConfig: DeckConfig): PlayerState 
   return ensurePlayableOpeningHand(drawCards(basePlayer, STARTING_HAND))
 }
 
-export function createGame(mode: GameMode, deckConfig: DeckConfig, enemyName?: string, aiDifficulty: AIDifficulty = 'adept'): GameState {
+export function createGame(
+  mode: GameMode,
+  deckConfig: DeckConfig,
+  enemyName?: string,
+  aiDifficulty: AIDifficulty = 'adept',
+  cardBorder: string = 'default',
+): GameState {
   const resolvedDifficulty = mode === 'ai' ? aiDifficulty : 'legend'
 
   return {
     mode,
     aiDifficulty: resolvedDifficulty,
-    player: beginTurn(createPlayer(mode === 'duel' ? 'Player One' : 'You', deckConfig)),
+    player: beginTurn(createPlayer(mode === 'duel' ? 'Player One' : 'You', deckConfig, cardBorder)),
+    // The AI owns no cosmetics, and in local pass-and-play the second seat is a
+    // guest on the same device rather than an account — both keep the standard
+    // frame rather than borrowing the local player's.
     enemy: createPlayer(
       enemyName ?? (mode === 'duel' ? 'Player Two' : 'Nemesis AI'),
       mode === 'duel' ? deckConfig : AI_DIFFICULTY_DECKS[resolvedDifficulty],
@@ -711,12 +733,14 @@ export function createDuelGame(
   player1Deck: DeckConfig,
   player2Name: string,
   player2Deck: DeckConfig,
+  player1Border: string = 'default',
+  player2Border: string = 'default',
 ): GameState {
   return {
     mode: 'duel',
     aiDifficulty: 'legend',
-    player: beginTurn(createPlayer(player1Name, player1Deck)),
-    enemy: createPlayer(player2Name, player2Deck),
+    player: beginTurn(createPlayer(player1Name, player1Deck, player1Border)),
+    enemy: createPlayer(player2Name, player2Deck, player2Border),
     turn: 'player',
     turnNumber: 1,
     log: ['Duel ready. Prepare your strategy.'],
@@ -726,6 +750,8 @@ export function createDuelGame(
 
 export type RedactedPlayerState = {
   name: string
+  /** See PlayerState.cardBorder — remapped to this viewer's perspective. */
+  cardBorder: string
   health: number
   mana: number
   maxMana: number
@@ -755,6 +781,7 @@ export function redactGameState(state: GameState, forSide: BattleSide): Redacted
 
   const ownRedacted: RedactedPlayerState = {
     name: own.name,
+    cardBorder: own.cardBorder,
     health: own.health,
     mana: own.mana,
     maxMana: own.maxMana,
@@ -768,6 +795,7 @@ export function redactGameState(state: GameState, forSide: BattleSide): Redacted
 
   const oppRedacted: RedactedPlayerState = {
     name: opp.name,
+    cardBorder: opp.cardBorder,
     health: opp.health,
     mana: opp.mana,
     maxMana: opp.maxMana,

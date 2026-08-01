@@ -340,10 +340,11 @@ export function ShopScreen() {
                     const cardMeta = CARD_LIBRARY.find((entry) => entry.id === card.id)
                     return (
                       <article
-                        className={`pack-reveal-card rarity-${card.rarity}`}
+                        className={`pack-reveal-card rarity-${card.rarity} border-${selectedCardBorder}`}
                         key={`${card.id}-${index}`}
                         style={{ '--rarity-color': RARITY_COLORS[card.rarity as keyof typeof RARITY_COLORS] ?? '#9ca3af' } as React.CSSProperties}
                       >
+                        <span className="card-frame" aria-hidden="true" />
                         <div className={`pack-reveal-glow pack-reveal-glow-${card.rarity}`} aria-hidden="true" />
                         <div className="card-art-shell thumb pack-reveal-art-shell">
                           <img
@@ -443,6 +444,7 @@ export function ShopScreen() {
           soundEnabled={soundEnabled}
           hapticsEnabled={hapticsEnabled}
           packOpening={packOpening}
+          cardBorder={selectedCardBorder}
           onOpenAnother={handleCeremonyOpenAnother}
           onClose={handleCeremonyClose}
         />

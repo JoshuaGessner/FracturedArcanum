@@ -1,0 +1,162 @@
+/* ═══ Card frames, part two ═══════════════════════════════════════════
+   Extends the cosmetic frame system to the card surfaces the original pass
+   never reached: board units, the inspect modal, and pack reveals.
+
+   WHY THIS IS ITS OWN MODULE, and why it is imported last.
+
+   The base frame rules live in `collection.css`, which is imported at #21.
+   Two of the surfaces below are styled *after* that point — the pack ceremony
+   card in `ceremonies.css` (#22) and the reduced-motion frame overrides in
+   `onboarding.css` (#23). Bare `.border-*` selectors carry specificity (0,1,0),
+   the same as `.pack-ceremony-card-front`, so from #21 they lose the tie on
+   source order and simply cannot reach it. A module after both wins cleanly
+   without inflating any selector, which is what the cascade actually calls for
+   here.
+
+   Everything in this file assumes the base layer from `collection.css`:
+   `.card-frame` is the cosmetic element, the rarity `::before` hairline is the
+   system layer, and no frame may lay down a static continuous ring in a rarity
+   hue. See "The two frame channels" in `cards.css` for the contract.
+
+   ─── Board units ──────────────────────────────────────────────────────
+   Each unit wears ITS OWN OWNER's frame, not the local player's. The id
+   arrives per side on the redacted game state, so `enemy.cardBorder` is
+   genuinely the opponent's purchase. */
+
+/* The hairline rule in cards.css covers builder and hand cards only. Board
+   units need it for the same reason: once a frame owns the bezel, rarity has
+   to keep a ring the shop cannot paint over. */
+.slot:not(.border-default)::before {
+  border: 1px solid var(--rarity-color, var(--border));
+}
+
+/* A board unit is ~70px tall and up to six are on screen at once, against
+   damage flashes, guard glow and attack drags. The animated finishes keep
+   their motion so a frame still reads as itself, but at roughly half the
+   alpha they use in hand — the board is the focal plane, and the frame is not
+   the thing the player is meant to be reading there. */
+.slot.border-solar > .card-frame {
+  background: radial-gradient(120% 80% at 50% 108%, rgba(234, 88, 12, 0.22), transparent 62%);
+}
+
+.slot.border-void > .card-frame {
+  background: linear-gradient(115deg, transparent 42%, rgba(196, 149, 255, 0.2) 50%, transparent 58%) 0 0 / 300% 100% no-repeat;
+}
+
+/* ─── Card inspect modal ───────────────────────────────────────────────
+   The largest view of a card in the app. It used to declare
+   `border: 2px solid var(--rarity-color, var(--border))` while the element
+   never received a `rarity-*` class, so that variable never resolved and the
+   fallback did all the work — the card's rarity was invisible here. The class
+   is applied now, which makes that original declaration mean what it says.
+
+   The frame layer needs a non-scrolling home. `.card-inspect-modal` owns
+   `max-height: 85svh` + `overflow-y: auto`, and an `inset: 0` child of a
+   scroll container scrolls away with the content — the bezel would stay put
+   while the hairline and finish slid up out of the box. So the scrolling moves
+   one level in, to `.card-inspect-scroll`, and the modal keeps the frame.
+
+   This is the deliberate contained-scroller case the layout notes carve out:
+   `min-height: 0` on a flex child normally risks crushing content, but here
+   the child IS the scroll owner and the parent is height-capped, which is
+   exactly when the pattern is correct. */
+.card-inspect-modal {
+  position: relative;
+  /* Beats .queue-modal's `display: grid` — the grid moves to the scroller. */
+  display: flex;
+  flex-direction: column;
+  overflow: visible;
+}
+
+/* The modal was never part of the rarity `::before` group in cards.css, so a
+   frame here would have taken the bezel with nothing given back. Same contract
+   as everywhere else: the frame gets the outer ring, rarity keeps the inner
+   one. Safe against the scroller because that now lives one level in. */
+.card-inspect-modal:not(.border-default)::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 3;
+  border: 1px solid var(--rarity-color, var(--border));
+}
+
+.card-inspect-scroll {
+  display: grid;
+  /* Mirrors .queue-modal's own gap, which the scroller inherits the job of.
+     Literal rather than a token because the scale has no 14px step. */
+  gap: 14px;
+  align-content: start;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* The modal is a large, still surface, so the finishes run at full strength
+   here — this is the shot where a bought frame is meant to look bought. */
+
+/* ─── Pack reveal and ceremony ─────────────────────────────────────────
+   The reveal is where a cosmetic earns its price, so both the summary reveal
+   card and the flip ceremony carry the frame.
+
+   On the ceremony card the frame belongs to the FRONT face only. The back is
+   the pack backing before the flip, and a frame bleeding through a 3D
+   backface would show the card's identity early. */
+.pack-ceremony-card-front {
+  position: relative;
+}
+
+.pack-ceremony-card-front > .card-frame {
+  /* Above the art and meta, below .pack-ceremony-card-glow's legendary burst. */
+  z-index: 3;
+}
+
+/* This is the reason the module is imported last, made concrete.
+   `.pack-ceremony-card-front` declares `border: 2px solid var(--rarity-color)`
+   in ceremonies.css (#22), which outranks the bare `.border-*` rules back in
+   collection.css (#21) on source order alone. Without re-asserting it here the
+   ceremony card wore a frame's animated finish over a rarity-coloured bezel —
+   half-framed, and the only surface where the two channels disagreed. */
+.pack-ceremony-card-front.border-bronze { border-color: #8a6a45; }
+.pack-ceremony-card-front.border-frost  { border-color: #b9cad8; }
+.pack-ceremony-card-front.border-solar  { border-color: #7c2d12; }
+.pack-ceremony-card-front.border-void   { border-color: #241a33; }
+
+/* Rarity's hairline follows the bezel onto both pack surfaces, so the contract
+   is identical everywhere: a frame may take the outer ring, never the inner
+   one. `.pack-reveal-card::before` already exists as the rarity layer in
+   cards.css; the ceremony front needs the layer itself as well. */
+.pack-reveal-card:not(.border-default)::before {
+  border: 1px solid var(--rarity-color, var(--border));
+}
+
+.pack-ceremony-card-front:not(.border-default)::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 2;
+  border: 1px solid var(--rarity-color, var(--border));
+}
+
+/* ─── Reduced motion ───────────────────────────────────────────────────
+   Mirrors the treatment in onboarding.css for the surfaces added above: the
+   finish still reads, it just stops moving. */
+@media (prefers-reduced-motion: reduce) {
+  .slot.border-solar > .card-frame,
+  .pack-reveal-card.border-solar > .card-frame,
+  .pack-ceremony-card-front.border-solar > .card-frame,
+  .card-inspect-modal.border-solar > .card-frame {
+    animation: none !important;
+    opacity: 0.8;
+  }
+
+  .slot.border-void > .card-frame,
+  .pack-reveal-card.border-void > .card-frame,
+  .pack-ceremony-card-front.border-void > .card-frame,
+  .card-inspect-modal.border-void > .card-frame {
+    animation: none !important;
+    background-position: 30% 0 !important;
+  }
+}

@@ -945,6 +945,23 @@ export function listCardBorders() {
   return CARD_BORDER_CATALOG.map((entry) => ({ ...entry }))
 }
 
+/**
+ * Reduce any stored frame id to one the catalogue actually contains.
+ *
+ * A player's frame now travels in the game state and is rendered by the
+ * OPPONENT's client as a `border-<id>` class name. That makes it the one piece
+ * of profile data that crosses from one account to another, so it gets
+ * whitelisted on the way out rather than trusted because it came from our own
+ * table. An id retired from the catalogue also lands here and degrades to the
+ * standard frame instead of rendering as nothing.
+ *
+ * @param {unknown} value
+ * @returns {string} a catalogue id, never anything else
+ */
+export function sanitizeCardBorder(value) {
+  return CARD_BORDER_CATALOG.some((entry) => entry.id === value) ? String(value) : 'default'
+}
+
 const _setCardBorder = prepare(`
   UPDATE player_profiles
   SET selected_card_border = ?, updated_at = datetime('now')

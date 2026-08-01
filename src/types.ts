@@ -465,6 +465,13 @@ export type InspectedCard = {
   tribe: string
   text: string
   effect: string | null
+  /**
+   * Cosmetic frame the inspect modal should wear. Carried on the payload
+   * rather than read from the local profile so that long-pressing an ENEMY
+   * board unit shows that unit's owner's frame instead of your own. Omitted
+   * means the standard frame.
+   */
+  cardBorder?: CardBorder
 }
 
 export type AdminSettings = {

@@ -1,6 +1,6 @@
 import React from 'react'
-import { ARENA_URL, CARD_ART_ALIASES, EFFECT_ICONS, PACK_ART, RANK_INSIGNIA, RARITY_GEM_ICONS } from './constants'
-import type { AppScreen, ToastSeverity } from './types'
+import { ARENA_URL, CARD_ART_ALIASES, CARD_BORDER_OFFERS, EFFECT_ICONS, PACK_ART, RANK_INSIGNIA, RARITY_GEM_ICONS } from './constants'
+import type { AppScreen, CardBorder, ToastSeverity } from './types'
 
 export type RewardScope = 'battle' | 'pack' | 'daily' | 'rank' | 'generic'
 export type InstallAvailability = 'prompt' | 'ios-manual' | 'installed' | 'unavailable'
@@ -409,4 +409,17 @@ export function getCardName(cardId: string, library: Array<{ id: string; name: s
 export function getCardIcon(cardId: string, library: Array<{ id: string; icon: string }>): string {
   const card = library.find((entry) => entry.id === cardId)
   return card?.icon ?? '🃏'
+}
+
+/**
+ * Narrow an arbitrary frame id to one the client knows how to render.
+ *
+ * The opponent's frame reaches us over the socket and is interpolated straight
+ * into a `border-<id>` class name, so it is whitelisted here even though the
+ * server already ran `sanitizeCardBorder` on the way out. Two cheap checks on
+ * either side of the wire beat one, and this is also what keeps a frame added
+ * in a newer server build from rendering as a broken class on an older client.
+ */
+export function asCardBorder(value: unknown): CardBorder {
+  return CARD_BORDER_OFFERS.some((offer) => offer.id === value) ? (value as CardBorder) : 'default'
 }

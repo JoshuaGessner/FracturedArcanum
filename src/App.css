@@ -86,3 +86,9 @@
 
 /* Bottom sheets */
 @import './styles/sheets.css';
+
+/* Cosmetic frames on board units, the inspect modal and pack reveals. Last on
+   purpose — it must outrank the ceremony card in ceremonies.css and the
+   reduced-motion block in onboarding.css, which the base frame rules in
+   collection.css are imported too early to reach. */
+@import './styles/card-frames.css';

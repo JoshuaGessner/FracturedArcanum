@@ -281,6 +281,7 @@ describe('ShopScreen hub flow', () => {
         soundEnabled={false}
         hapticsEnabled={false}
         packOpening={null}
+        cardBorder="default"
         onOpenAnother={() => {}}
         onClose={() => {}}
       />,
@@ -352,6 +353,7 @@ describe('ShopScreen hub flow', () => {
         soundEnabled={false}
         hapticsEnabled={false}
         packOpening={null}
+        cardBorder="default"
         onOpenAnother={() => {}}
         onClose={() => {}}
       />, 
@@ -371,6 +373,7 @@ describe('ShopScreen hub flow', () => {
         soundEnabled={false}
         hapticsEnabled={false}
         packOpening={null}
+        cardBorder="default"
         onOpenAnother={() => {}}
         onClose={() => {}}
       />,

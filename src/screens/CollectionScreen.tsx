@@ -260,7 +260,7 @@ export function CollectionScreen() {
             const count = deckConfig[card.id] ?? 0
             const addDisabled = count >= Math.min(maxCopies, ownedCount)
             const tribeShortLabel = card.tribe.slice(0, 3)
-            const inspectCard = { name: card.name, icon: card.icon, id: card.id, cost: card.cost, attack: card.attack, health: card.health, rarity: card.rarity, tribe: card.tribe, text: card.text, effect: card.effect ?? null }
+            const inspectCard = { name: card.name, icon: card.icon, id: card.id, cost: card.cost, attack: card.attack, health: card.health, rarity: card.rarity, tribe: card.tribe, text: card.text, effect: card.effect ?? null, cardBorder: selectedCardBorder }
             return (
             <div
               className={`builder-card rarity-${card.rarity} border-${selectedCardBorder} ${ownedCount === 0 ? 'locked' : ''}`}

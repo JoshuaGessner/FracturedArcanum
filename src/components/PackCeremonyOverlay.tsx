@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { CARD_LIBRARY, RARITY_COLORS } from '../game'
-import type { CardCollection, OpenedPackCard } from '../types'
+import type { CardBorder, CardCollection, OpenedPackCard } from '../types'
 import { UI_ASSETS } from '../constants'
 import { cardArtPath, getPackArtPath, handleCardArtError, pulseFeedback } from '../utils'
 import { playSound } from '../audio'
@@ -17,6 +17,9 @@ type PackCeremonyOverlayProps = {
   soundEnabled: boolean
   hapticsEnabled: boolean
   packOpening: string | null
+  /** The opener's equipped frame — the reveal is where a bought frame earns
+      its price, so the cards you are pulling wear it as they flip. */
+  cardBorder: CardBorder
   onOpenAnother: () => void
   onClose: () => void
 }
@@ -35,6 +38,7 @@ export function PackCeremonyOverlay({
   soundEnabled,
   hapticsEnabled,
   packOpening,
+  cardBorder,
   onOpenAnother,
   onClose,
 }: PackCeremonyOverlayProps) {
@@ -275,7 +279,10 @@ export function PackCeremonyOverlay({
                           draggable={false}
                         />
                       </span>
-                      <span className="pack-ceremony-card-front">
+                      {/* The frame rides the front face only — on the back it
+                          would bleed through the flip and give the card away. */}
+                      <span className={`pack-ceremony-card-front border-${cardBorder}`}>
+                        <span className="card-frame" aria-hidden="true" />
                         <img
                           className={`pack-ceremony-card-glow glow-${card.rarity}`}
                           src={UI_ASSETS.glows[card.rarity as keyof typeof UI_ASSETS.glows] ?? UI_ASSETS.glows.common}

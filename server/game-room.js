@@ -60,8 +60,13 @@ class GameRoom {
   }
 
   /**
-   * @param {{ socketId: string, accountId: number, name: string, deckConfig: Record<string, number> }} player1
-   * @param {{ socketId: string, accountId: number, name: string, deckConfig: Record<string, number> }} player2
+   * `cardBorder` is each player's cosmetic frame. Callers pass it already
+   * whitelisted via `sanitizeCardBorder` — it is rendered by the *other*
+   * player's client as a class name, so it is validated at the socket boundary
+   * where the profile is read rather than trusted in here.
+   *
+   * @param {{ socketId: string, accountId: number, name: string, deckConfig: Record<string, number>, cardBorder?: string }} player1
+   * @param {{ socketId: string, accountId: number, name: string, deckConfig: Record<string, number>, cardBorder?: string }} player2
    */
   start(player1, player2) {
     this.sockets = { player: player1.socketId, enemy: player2.socketId }
@@ -72,6 +77,8 @@ class GameRoom {
       player1.deckConfig,
       player2.name,
       player2.deckConfig,
+      player1.cardBorder ?? 'default',
+      player2.cardBorder ?? 'default',
     )
     this.lastActivityAt = Date.now()
     this.pendingAiTurnBase = null
@@ -83,7 +90,7 @@ class GameRoom {
 
   /**
    * Start a server-authoritative single-player AI match.
-   * @param {{ socketId: string, accountId: number, name: string, deckConfig: Record<string, number> }} player
+   * @param {{ socketId: string, accountId: number, name: string, deckConfig: Record<string, number>, cardBorder?: string }} player
    * @param {{ enemyName?: string, difficulty?: 'novice'|'adept'|'veteran'|'legend' }} [options]
    */
   startAi(player, options = {}) {
@@ -96,7 +103,7 @@ class GameRoom {
     this.mode = 'ai'
     this.sockets = { player: player.socketId, enemy: null }
     this.accounts = { player: player.accountId, enemy: null }
-    this.state = createGame('ai', player.deckConfig, enemyName, difficulty)
+    this.state = createGame('ai', player.deckConfig, enemyName, difficulty, player.cardBorder ?? 'default')
     this.state = {
       ...this.state,
       player: { ...this.state.player, name: player.name },

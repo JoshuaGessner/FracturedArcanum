@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import type { InspectedCard } from '../types'
 import { EFFECT_DESCRIPTIONS } from '../constants'
+import { RARITY_COLORS } from '../game'
 import { cardArtPath, handleCardArtError } from '../utils'
 import { EffectBadge, RarityBadge, StatIcon } from './AssetBadge'
 
@@ -31,45 +32,54 @@ export function CardInspectModal({ card, onClose }: CardInspectModalProps) {
         if (e.key === 'Escape') onClose()
       }}
     >
-      <div className="queue-modal card-inspect-modal section-card" onClick={(e) => e.stopPropagation()}>
-        <div className="card-inspect-header">
-          <span className="cost-pill">{card.cost}</span>
-          <div>
-            <h2 id="card-inspect-name">
-              {card.icon} {card.name}
-            </h2>
-            <span className="badges">
-              <RarityBadge rarity={card.rarity} />
-              <span className="badge">{card.tribe}</span>
-            </span>
+      <div
+        className={`queue-modal card-inspect-modal section-card rarity-${card.rarity} border-${card.cardBorder ?? 'default'}`}
+        style={{ '--rarity-color': RARITY_COLORS[card.rarity as keyof typeof RARITY_COLORS] ?? '#9ca3af' } as React.CSSProperties}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <span className="card-frame" aria-hidden="true" />
+        {/* The scroller sits inside the frame, not around it — see the inspect
+            modal notes in styles/card-frames.css. */}
+        <div className="card-inspect-scroll">
+          <div className="card-inspect-header">
+            <span className="cost-pill">{card.cost}</span>
+            <div>
+              <h2 id="card-inspect-name">
+                {card.icon} {card.name}
+              </h2>
+              <span className="badges">
+                <RarityBadge rarity={card.rarity} />
+                <span className="badge">{card.tribe}</span>
+              </span>
+            </div>
           </div>
-        </div>
-        <div className="card-art-shell large">
-          <img
-            className="card-illustration"
-            src={cardArtPath(card.id)}
-            alt={card.name}
-            onError={handleCardArtError}
-            draggable={false}
-          />
-        </div>
-        <div className="card-inspect-stats">
-          <span><StatIcon kind="attack" /> Attack: {card.attack}</span>
-          <span><StatIcon kind="health" /> Health: {card.currentHealth ?? card.health}</span>
-          {card.currentHealth !== undefined && card.currentHealth !== card.health && (
-            <span className="note">(Base: {card.health})</span>
+          <div className="card-art-shell large">
+            <img
+              className="card-illustration"
+              src={cardArtPath(card.id)}
+              alt={card.name}
+              onError={handleCardArtError}
+              draggable={false}
+            />
+          </div>
+          <div className="card-inspect-stats">
+            <span><StatIcon kind="attack" /> Attack: {card.attack}</span>
+            <span><StatIcon kind="health" /> Health: {card.currentHealth ?? card.health}</span>
+            {card.currentHealth !== undefined && card.currentHealth !== card.health && (
+              <span className="note">(Base: {card.health})</span>
+            )}
+          </div>
+          <p className="card-text">{card.text}</p>
+          {card.effect && (
+            <div className="card-inspect-effect">
+              <EffectBadge effect={card.effect} />
+              <p className="note">{EFFECT_DESCRIPTIONS[card.effect] ?? ''}</p>
+            </div>
           )}
+          <button className="ghost" onClick={onClose}>
+            Close
+          </button>
         </div>
-        <p className="card-text">{card.text}</p>
-        {card.effect && (
-          <div className="card-inspect-effect">
-            <EffectBadge effect={card.effect} />
-            <p className="note">{EFFECT_DESCRIPTIONS[card.effect] ?? ''}</p>
-          </div>
-        )}
-        <button className="ghost" onClick={onClose}>
-          Close
-        </button>
       </div>
     </section>
   )

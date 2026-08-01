@@ -13,7 +13,7 @@
  */
 import { randomBytes, randomUUID } from 'node:crypto'
 import { Server } from 'socket.io'
-import { acknowledgeMatchSettlement, getLatestUnacknowledgedSettlement, getMatchSettlementForAccount, getProfile, getSocialOverview, isFriendOf, validateDeckForMatch } from '../db.js'
+import { acknowledgeMatchSettlement, getLatestUnacknowledgedSettlement, getMatchSettlementForAccount, getProfile, getSocialOverview, isFriendOf, sanitizeCardBorder, validateDeckForMatch } from '../db.js'
 import { RECONNECT_GRACE_MS, createRoom, destroyRoom, getRoom, getRoomByAccount, getRoomBySocket, handleDisconnect } from '../game-room.js'
 import { adminStore, debouncedSaveAdminStore, pushActivity } from '../admin-store.js'
 
@@ -254,6 +254,7 @@ io.on('connection', (socket) => {
         accountId,
         name: profile.display_name || socket.data.displayName || 'Rune Captain',
         deckConfig: validatedDeck.deckConfig,
+        cardBorder: sanitizeCardBorder(profile.selected_card_border),
       }, { enemyName, difficulty })
       socket.emit('game:start', room.getViewForSocket(socket.id))
       emitLiveArenaState()
@@ -301,6 +302,7 @@ io.on('connection', (socket) => {
       queuedAt: Date.now(),
       profile,
       deckConfig: validatedDeck.deckConfig,
+      cardBorder: sanitizeCardBorder(accountProfile.selected_card_border),
     })
 
     adminStore.totals.queueJoins += 1
@@ -458,18 +460,22 @@ io.on('connection', (socket) => {
       room = createRoom(roomId, 'unranked')
       challengerSocket.join(roomId)
       socket.join(roomId)
+      // Frames are read at accept time, not at challenge time, so a player who
+      // equips something new while the invite sits open goes in wearing it.
       room.start(
         {
           socketId: challengerSocket.id,
           accountId: challenge.fromAccountId,
           name: challenge.fromName,
           deckConfig: challenge.fromDeck,
+          cardBorder: sanitizeCardBorder(getProfile(challenge.fromAccountId)?.selected_card_border),
         },
         {
           socketId: socket.id,
           accountId: accountId,
           name: challenge.toName,
           deckConfig: deckCheck.deckConfig,
+          cardBorder: sanitizeCardBorder(getProfile(accountId)?.selected_card_border),
         },
       )
       const challengerView = room.getViewForSocket(challengerSocket.id)
