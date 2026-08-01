@@ -328,6 +328,38 @@ resolve_branch() {
   BRANCH="$current_branch"
 }
 
+# The backup stops the service, and it runs before the pull. So a branch the
+# remote does not have used to cost a full stop → backup → fail → restart cycle
+# before anything said why: a real outage window paid for a typo, or for a
+# checkout still sitting on a branch that has since been merged and deleted.
+#
+# Ask the remote first. One read-only round trip, before anything is touched.
+#
+# `ls-remote --exit-code` returns 2 for "no such ref" and 128 for "could not
+# reach the remote". Only the first is the deploy's fault, so a network blip
+# warns and lets the pull report the real error rather than aborting a good
+# update.
+verify_remote_branch() {
+  if [[ "$SKIP_PULL" -eq 1 || -z "$BRANCH" ]]; then
+    return 0
+  fi
+
+  local rc=0
+  log "Checking that origin has branch '$BRANCH'..."
+  git -C "$REPO_ROOT" ls-remote --exit-code --heads origin "$BRANCH" >/dev/null 2>&1 || rc=$?
+
+  if (( rc == 2 )); then
+    die "origin has no branch '$BRANCH'. This checkout is on a branch that was never pushed, or one that has since been merged and deleted. Switch to the deploy branch first (git checkout main), or pass --branch <name>."
+  fi
+
+  if (( rc != 0 )); then
+    warn "Could not reach origin to verify '$BRANCH' (exit ${rc}). Continuing; the pull will report the real error."
+    return 0
+  fi
+
+  log "origin/$BRANCH exists."
+}
+
 write_backup_metadata() {
   {
     printf 'app=%s\n' "$APP_NAME"
@@ -665,6 +697,7 @@ main() {
   detect_mode
   resolve_branch
   ensure_clean_repo
+  verify_remote_branch
 
   log "Starting safe update in $MODE mode from $REPO_ROOT"
 
