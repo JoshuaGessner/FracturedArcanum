@@ -3,6 +3,32 @@ export type AIDifficulty = 'novice' | 'adept' | 'veteran' | 'legend'
 export type AIDifficultyProfile = {
   id: AIDifficulty
   selectionMode: 'cheapest' | 'scored'
+  /**
+   * Choose cards by simulating the play and scoring the resulting position,
+   * rather than by scoring the card's own stat line.
+   *
+   * This is what lets the AI see *your* board. Every weight below judges a card
+   * in isolation, so without it the AI cannot tell that a Blast is excellent
+   * right now because you have two units on three health, or that its Guard is
+   * the only card that matters because it is facing lethal.
+   *
+   * A capability, not a number — which is the point. The measured spread across
+   * all ~24 weights was 18 points of win rate, and the top three difficulties
+   * sat within 2.4 of each other, because they were all running the same
+   * algorithm with different constants. Difficulty is what the AI can *do*.
+   */
+  readsBoard: boolean
+  /**
+   * Choose the whole attack sequence by search rather than lane by lane.
+   *
+   * Buys two things the per-lane loop cannot express: killing a blocker with
+   * the smallest attacker that can do it so the big one reaches the face, and
+   * finding lethal that only exists once damage from several attackers is
+   * added up. The tier that has this never misses lethal it can reach — not
+   * because anything checks for lethal, but because a winning line evaluates
+   * above every other line.
+   */
+  sequencesAttacks: boolean
   costWeight: number
   attackWeight: number
   healthWeight: number
@@ -356,6 +382,8 @@ export const AI_DIFFICULTY_PROFILES: Record<AIDifficulty, AIDifficultyProfile> =
   novice: {
     id: 'novice',
     selectionMode: 'cheapest',
+    readsBoard: false,
+    sequencesAttacks: false,
     costWeight: 0.7,
     attackWeight: 1.4,
     healthWeight: 0.7,
@@ -383,6 +411,8 @@ export const AI_DIFFICULTY_PROFILES: Record<AIDifficulty, AIDifficultyProfile> =
   adept: {
     id: 'adept',
     selectionMode: 'scored',
+    readsBoard: true,
+    sequencesAttacks: false,
     costWeight: 1.25,
     attackWeight: 2,
     healthWeight: 1,
@@ -410,6 +440,8 @@ export const AI_DIFFICULTY_PROFILES: Record<AIDifficulty, AIDifficultyProfile> =
   veteran: {
     id: 'veteran',
     selectionMode: 'scored',
+    readsBoard: true,
+    sequencesAttacks: true,
     costWeight: 1.35,
     attackWeight: 2.15,
     healthWeight: 1.1,
@@ -437,6 +469,8 @@ export const AI_DIFFICULTY_PROFILES: Record<AIDifficulty, AIDifficultyProfile> =
   legend: {
     id: 'legend',
     selectionMode: 'scored',
+    readsBoard: true,
+    sequencesAttacks: true,
     costWeight: 1.45,
     attackWeight: 2.3,
     healthWeight: 1.15,

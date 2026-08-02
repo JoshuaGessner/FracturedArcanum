@@ -7,10 +7,12 @@ import {
   evaluateBoard,
   maxPositionalSwing,
   opposingGuardLane,
+  planAttacks,
   unitValue,
 } from './ai'
 import {
   DEFAULT_DECK_CONFIG,
+  attack,
   createGame,
   type GameState,
   type Unit,
@@ -214,5 +216,107 @@ describe('search pre-filters', () => {
     const base = blankGame()
     const game: GameState = { ...base, player: { ...base.player, board: [makeUnit(), null, null] } }
     expect(opposingGuardLane(game, 'enemy')).toBe(-1)
+  })
+})
+
+describe('attack sequencing', () => {
+  /**
+   * The property that motivated the search.
+   *
+   * Three attackers for four each is lethal through twelve health, but no
+   * attacker is lethal alone, so every per-attacker check misses it. The old
+   * code had three partial heuristics for this — `player.health <= attacker.attack`,
+   * `lethalPressureBonus`, `burstHeroThreshold` — and still missed it, because
+   * none of them added damage across attackers.
+   *
+   * Nothing in `planAttacks` looks for lethal. The winning line simply
+   * evaluates to WIN and beats every alternative.
+   */
+  it('finds lethal that no single attacker could see', () => {
+    const base = blankGame()
+    const game: GameState = {
+      ...base,
+      turn: 'enemy',
+      player: { ...base.player, health: 12, board: [null, null, null] },
+      enemy: {
+        ...base.enemy,
+        board: [
+          makeUnit({ attack: 4, currentHealth: 4 }),
+          makeUnit({ attack: 4, currentHealth: 4 }),
+          makeUnit({ attack: 4, currentHealth: 4 }),
+        ],
+      },
+    }
+
+    const plan = planAttacks(game, 'enemy')
+    expect(plan).toHaveLength(3)
+    expect(plan.every((choice) => choice.target === 'hero')).toBe(true)
+
+    let result = game
+    for (const { lane, target } of plan) result = attack(result, 'enemy', lane, target)
+    expect(result.winner).toBe('enemy')
+  })
+
+  /**
+   * Ordering, which a lane-by-lane loop cannot express: the second decision is
+   * made before the first has happened, so it cannot know a lane is now clear.
+   *
+   * A 2/2 kills the 1/1 blocker; the 6/6 then reaches the face. Taking them in
+   * lane order sends the 6/6 into the blocker and wastes it.
+   */
+  it('clears a blocker with the smaller attacker so the bigger one gets through', () => {
+    const base = blankGame()
+    const game: GameState = {
+      ...base,
+      turn: 'enemy',
+      player: {
+        ...base.player,
+        health: 20,
+        board: [makeUnit({ attack: 1, currentHealth: 1, effect: 'guard' }), null, null],
+      },
+      enemy: {
+        ...base.enemy,
+        board: [makeUnit({ attack: 6, currentHealth: 6 }), makeUnit({ attack: 2, currentHealth: 2 }), null],
+      },
+    }
+
+    const plan = planAttacks(game, 'enemy')
+    // The small one goes into the guard first...
+    expect(plan[0]).toEqual({ lane: 1, target: 0 })
+    // ...and the big one is then free to hit the face.
+    expect(plan.some((choice) => choice.target === 'hero')).toBe(true)
+
+    let result = game
+    for (const { lane, target } of plan) result = attack(result, 'enemy', lane, target)
+    expect(result.player.health).toBeLessThan(20)
+  })
+
+  it('declines to attack when swinging only loses material', () => {
+    const base = blankGame()
+    const game: GameState = {
+      ...base,
+      turn: 'enemy',
+      player: {
+        ...base.player,
+        health: 24,
+        board: [makeUnit({ attack: 9, currentHealth: 9, effect: 'guard' }), null, null],
+      },
+      enemy: { ...base.enemy, board: [makeUnit({ attack: 1, currentHealth: 1 }), null, null] },
+    }
+
+    // The only legal swing is a 1/1 into a 9/9 guard: it dies and achieves
+    // nothing. Standing pat is the baseline every line has to beat.
+    expect(planAttacks(game, 'enemy')).toEqual([])
+  })
+
+  it('never plans more swings than it has attackers', () => {
+    const base = blankGame()
+    const game: GameState = {
+      ...base,
+      turn: 'enemy',
+      player: { ...base.player, health: 24 },
+      enemy: { ...base.enemy, board: [makeUnit({ attack: 3, currentHealth: 3 }), null, null] },
+    }
+    expect(planAttacks(game, 'enemy').length).toBeLessThanOrEqual(1)
   })
 })

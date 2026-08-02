@@ -209,6 +209,53 @@ function scorePlayableCard(card: CardInstance, profile: AIDifficultyProfile, nee
   return score
 }
 
+/**
+ * Pick the card whose resulting position is best — the whole of board reading.
+ *
+ * There is no new heuristic here, and that is the point. Rather than teaching
+ * the scorer another rule about when removal is good, this plays each card and
+ * looks at what the board becomes. A Blast is good when it kills something,
+ * which the evaluator can see and a stat line cannot.
+ *
+ * It also picks up a case no weight could express: a card that simply wins.
+ * If a play produces `winner === side`, `evaluateBoard` returns WIN and this
+ * chooses it over anything else, so lethal from a Charge body needs no special
+ * handling.
+ *
+ * Cheap by construction. The board caps at three lanes and hands are small, so
+ * this is a handful of pure-function calls per decision.
+ *
+ * Some card effects resolve randomly, so a simulation is a sample rather than a
+ * promise. That is deliberate and is why the AI plays one card and then decides
+ * again from the real state rather than committing to a whole turn up front:
+ * the randomness resolves for real before the next choice is made.
+ */
+function chooseCardByLookahead(
+  game: GameState,
+  side: BattleSide,
+  affordable: { card: CardInstance; index: number }[],
+): number {
+  let bestIndex = affordable[0].index
+  let bestScore = -Infinity
+
+  for (const { index } of affordable) {
+    const next = playCard(game, side, index)
+    // An unchanged state means the engine refused the play — a full board, a
+    // card needing a target that is not there. Not a candidate.
+    if (next === game) continue
+
+    const score = evaluateBoard(next, side)
+    // Strictly greater, so ties fall to the earliest card in hand and the
+    // choice stays deterministic for a given state.
+    if (score > bestScore) {
+      bestIndex = index
+      bestScore = score
+    }
+  }
+
+  return bestIndex
+}
+
 export function highestPlayableIndex(
   hand: CardInstance[],
   mana: number,
@@ -229,6 +276,10 @@ export function highestPlayableIndex(
   if (profile.selectionMode === 'cheapest') {
     affordable.sort((left, right) => left.card.cost - right.card.cost)
     return affordable[0].index
+  }
+
+  if (profile.readsBoard && game) {
+    return chooseCardByLookahead(game, side, affordable)
   }
 
   const actor = game?.[side]
@@ -359,17 +410,113 @@ export function runEnemyTurn(base: GameState): GameState {
     game = playCard(game, 'enemy', playableIndex)
   }
 
-  for (let index = 0; index < BOARD_SIZE; index += 1) {
-    const attacker = game.enemy.board[index]
-
-    if (!attacker || attacker.exhausted || game.winner) {
-      continue
+  if (getAIProfile(difficulty).sequencesAttacks) {
+    for (const { lane, target } of planAttacks(game, 'enemy')) {
+      if (game.winner) break
+      game = attack(game, 'enemy', lane, target)
     }
+  } else {
+    for (let index = 0; index < BOARD_SIZE; index += 1) {
+      const attacker = game.enemy.board[index]
 
-    game = attack(game, 'enemy', index, chooseEnemyTarget(game, attacker, difficulty))
+      if (!attacker || attacker.exhausted || game.winner) {
+        continue
+      }
+
+      game = attack(game, 'enemy', index, chooseEnemyTarget(game, attacker, difficulty))
+    }
   }
 
   return game.winner ? game : passTurn(game)
+}
+
+/** One swing: which lane attacks, and what it hits. */
+export type AttackChoice = { lane: number; target: number | 'hero' }
+
+/**
+ * The best swing to make next, searching all remaining orderings.
+ *
+ * The old loop walked lanes 0, 1, 2 and picked each target independently, which
+ * cannot express the two things that decide most combats:
+ *
+ *   - **Ordering.** Killing a blocker with the smallest attacker that can do it
+ *     leaves the big one free for the face. Per-lane choices cannot see that,
+ *     because the second decision is made before the first has happened.
+ *   - **Lethal across attackers.** Three units for four each is lethal through
+ *     twelve health; no single-attacker check finds it. The old code had three
+ *     partial heuristics for this and still missed it.
+ *
+ * Both fall out of searching instead of scoring. A sequence that kills the
+ * opponent ends in a position evaluating to WIN, which dominates everything, so
+ * "never misses lethal" is a property of the search rather than a rule that can
+ * rot. There is no lethal check anywhere in this function.
+ *
+ * Legality is delegated rather than duplicated: every candidate is handed to
+ * `attack`, and an unchanged state means the engine refused it. Guard forcing,
+ * exhaustion and range therefore need no second implementation here — one that
+ * could drift from the real rules.
+ *
+ * Bounded by the board: at most three attackers and four targets each, so the
+ * tree is tiny and exhaustive search is cheaper than being clever.
+ */
+function bestAttackSequence(
+  game: GameState,
+  side: BattleSide,
+): { score: number; first: AttackChoice | null } {
+  // Standing pat is always an option, and is the baseline every swing must beat.
+  let bestScore = evaluateBoard(game, side)
+  let bestFirst: AttackChoice | null = null
+
+  if (game.winner) return { score: bestScore, first: null }
+
+  const targets: (number | 'hero')[] = ['hero']
+  for (let lane = 0; lane < BOARD_SIZE; lane += 1) targets.push(lane)
+
+  for (let lane = 0; lane < BOARD_SIZE; lane += 1) {
+    const attacker = game[side].board[lane]
+    if (!attacker || attacker.exhausted) continue
+
+    for (const target of targets) {
+      const next = attack(game, side, lane, target)
+      if (next === game) continue
+
+      const { score } = bestAttackSequence(next, side)
+      if (score > bestScore) {
+        bestScore = score
+        bestFirst = { lane, target }
+      }
+    }
+  }
+
+  return { score: bestScore, first: bestFirst }
+}
+
+/**
+ * Attack choices for a whole turn, in the order they should be made.
+ *
+ * Re-searches after each swing rather than committing to a plan up front:
+ * some combat outcomes resolve randomly, so a sequence chosen at the start can
+ * describe a board that never happens.
+ */
+export function planAttacks(startState: GameState, side: BattleSide): AttackChoice[] {
+  const plan: AttackChoice[] = []
+  let game = startState
+
+  // Bounded by the board — one swing per attacker, and a guard against any
+  // future rule that could let a unit attack twice.
+  for (let swing = 0; swing < BOARD_SIZE; swing += 1) {
+    const { first } = bestAttackSequence(game, side)
+    if (!first) break
+
+    const next = attack(game, side, first.lane, first.target)
+    if (next === game) break
+
+    plan.push(first)
+    game = next
+    if (game.winner) break
+  }
+
+  return plan
 }
 
 export type EnemyStep = { state: GameState; label: string }
@@ -398,13 +545,26 @@ export function generateEnemyTurnSteps(base: GameState): EnemyStep[] {
     steps.push({ state: game, label: `${game.enemy.name} plays ${card.icon} ${card.name}.` })
   }
 
-  for (let index = 0; index < BOARD_SIZE; index += 1) {
-    const attacker = game.enemy.board[index]
-    if (!attacker || attacker.exhausted || game.winner) continue
-    const target = chooseEnemyTarget(game, attacker, difficulty)
-    game = attack(game, 'enemy', index, target)
-    const targetLabel = target === 'hero' ? 'your hero' : `lane ${target + 1}`
-    steps.push({ state: game, label: `${attacker.name} attacks ${targetLabel}!` })
+  // Same decisions as runEnemyTurn, narrated. These two must not drift: one
+  // drives the animation, the other is what the server actually resolves.
+  if (getAIProfile(difficulty).sequencesAttacks) {
+    for (const { lane, target } of planAttacks(game, 'enemy')) {
+      if (game.winner) break
+      const attacker = game.enemy.board[lane]
+      if (!attacker) continue
+      game = attack(game, 'enemy', lane, target)
+      const targetLabel = target === 'hero' ? 'your hero' : `lane ${target + 1}`
+      steps.push({ state: game, label: `${attacker.name} attacks ${targetLabel}!` })
+    }
+  } else {
+    for (let index = 0; index < BOARD_SIZE; index += 1) {
+      const attacker = game.enemy.board[index]
+      if (!attacker || attacker.exhausted || game.winner) continue
+      const target = chooseEnemyTarget(game, attacker, difficulty)
+      game = attack(game, 'enemy', index, target)
+      const targetLabel = target === 'hero' ? 'your hero' : `lane ${target + 1}`
+      steps.push({ state: game, label: `${attacker.name} attacks ${targetLabel}!` })
+    }
   }
 
   if (!game.winner) {
