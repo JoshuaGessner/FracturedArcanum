@@ -46,6 +46,35 @@ const DIFFICULTIES = ['novice', 'adept', 'veteran', 'legend']
 /** A game that reaches this many turns is a stall, not a game; call it a draw. */
 const TURN_LIMIT = 60
 
+/**
+ * A deck an experienced player would actually build: aggressive tempo, three
+ * copies of the best one-drop, charge for reach, removal for the lanes.
+ *
+ * The starter deck alone is not enough to tune against. Everything above
+ * novice beats it around 93%, so the top three difficulties pile up against a
+ * ceiling and become indistinguishable — which is exactly the state that let
+ * Legend be no harder than Adept without anyone noticing. Separation at the
+ * top only becomes visible against an opponent that can punish a bad draw.
+ *
+ * This is also the closer analogue of the person who filed the report: they
+ * beat Legend consistently, and they were not playing the starter deck.
+ */
+const STRONG_REFERENCE_DECK = {
+  'spark-imp': 3,
+  'blaze-runner': 2,
+  'hex-spider': 2,
+  'shade-fox': 2,
+  'sky-raider': 2,
+  'thunder-hawk': 2,
+  'ember-witch': 2,
+  'war-mammoth': 1,
+}
+
+const REFERENCE_DECKS = {
+  starter: DEFAULT_DECK_CONFIG,
+  strong: STRONG_REFERENCE_DECK,
+}
+
 // ── Seeded randomness ─────────────────────────────────────────────────────
 // The engine shuffles with Math.random. Replacing it for the duration of a run
 // makes results reproducible; without that, "win rate moved 4 points" could
@@ -172,8 +201,8 @@ function playReferenceTurn(startState) {
 /**
  * @returns {{winner: string, turns: number, aiFirstPlayTurn: number|null, aiManaWasted: number}}
  */
-function playGame(difficulty, deckSource = difficulty) {
-  let game = createGame('ai', DEFAULT_DECK_CONFIG, 'Nemesis AI', difficulty)
+function playGame(difficulty, deckSource = difficulty, referenceDeck = DEFAULT_DECK_CONFIG) {
+  let game = createGame('ai', referenceDeck, 'Nemesis AI', difficulty)
   // Deck and reasoning are separate levers, and a single win rate cannot tell
   // you which one is costing games. Playing a difficulty's weights against
   // another difficulty's deck separates them in one measurement.
@@ -285,9 +314,10 @@ function reportDecks() {
   }
 }
 
-function reportGames(games, only) {
+function reportGames(games, only, referenceName) {
   const targets = only ? [only] : DIFFICULTIES
-  console.log(`\nAI vs the starter deck — ${games} games each, seeded`)
+  const referenceDeck = REFERENCE_DECKS[referenceName]
+  console.log(`\nAI vs the ${referenceName} deck — ${games} games each, seeded`)
   console.log('  difficulty   AI wins   draws   avg turns   first play   mana idle/turn')
 
   const results = []
@@ -300,7 +330,7 @@ function reportGames(games, only) {
     let manaSum = 0
 
     for (let i = 0; i < games; i += 1) {
-      const result = withSeed(i + 1, () => playGame(difficulty))
+      const result = withSeed(i + 1, () => playGame(difficulty, difficulty, referenceDeck))
       if (result.winner === 'enemy') aiWins += 1
       if (result.winner === 'draw') draws += 1
       turnSum += result.turns
@@ -387,8 +417,20 @@ function main() {
     throw new Error(`Unknown difficulty "${only}". Known: ${DIFFICULTIES.join(', ')}`)
   }
 
+  const reference = value('reference', null)
+  if (reference && !REFERENCE_DECKS[reference]) {
+    throw new Error(`Unknown reference "${reference}". Known: ${Object.keys(REFERENCE_DECKS).join(', ')}`)
+  }
+
   reportDecks()
-  if (!args.includes('--decks')) reportGames(games, only)
+  if (!args.includes('--decks')) {
+    // Both yardsticks by default. One is not enough: the starter deck cannot
+    // tell the top three difficulties apart, and the strong deck flatters
+    // nobody at the bottom.
+    for (const name of reference ? [reference] : Object.keys(REFERENCE_DECKS)) {
+      reportGames(games, only, name)
+    }
+  }
   if (args.includes('--matrix')) reportMatrix(games)
   console.log('')
 }

@@ -334,6 +334,27 @@ The bottom nav has four destinations: Home, Cards, Shop, Social.
 | `npm test` | Vitest suite |
 | `npm run release:check` | Test + lint + build |
 
+### AI balance
+
+`npm run ai:arena` plays the AI headlessly against two fixed reference decks
+and reports win rate, game length and mana efficiency per difficulty. Run it
+after **any** change to `AI_DIFFICULTY_DECKS`, `AI_DIFFICULTY_PROFILES`, or the
+enemy-turn logic — "it feels harder" is not a result.
+
+```bash
+npm run ai:arena                        # both references, 400 games each
+npm run ai:arena -- --games=2000        # tighter numbers
+npm run ai:arena -- --matrix            # weights × deck: which lever matters
+npm run ai:arena -- --decks             # deck shape only, no games
+```
+
+Two references on purpose. The starter deck cannot tell the top three
+difficulties apart — everything decent beats it — and the strong deck flatters
+nobody at the bottom. A ladder is only real if it is monotonic against both.
+
+**Difficulty is deck, five to one.** The `--matrix` run measured deck choice
+moving the win rate 89 points against weights' 18. Tune decks before weights.
+
 ### Layout QA
 
 Four tools, in increasing cost. Pick the cheapest that answers the question.

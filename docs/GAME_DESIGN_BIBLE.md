@@ -192,12 +192,12 @@ Tokens are units created by Summon effects. They cannot exist in decks or hands.
 
 ### Difficulty Tiers
 
-| Difficulty | Rating Range | Deck Quality | Behavior |
-|------------|-------------|--------------|----------|
-| Novice | < 1150 | 7 commons only | Plays cards by highest index; no burst strategy |
-| Adept | 1150–1324 | 12 mixed cards | Standard play logic; occasional burst |
-| Veteran | 1325–1499 | 12 cards with rares | Smarter targeting; uses burst when ahead |
-| Legend | ≥ 1500 | 14 cards with epics | Full scoring AI; priority targeting; strategic burst |
+| Difficulty | Rating Range | Deck | Avg cost | Behavior |
+|------------|-------------|------|----------|----------|
+| Novice | < 1150 | 11 commons, bodies and 1 blocker | 2.00 | Cheapest playable card; no burst strategy |
+| Adept | 1150–1324 | 15 commons + 1 rare | 2.60 | Scored play; occasional burst |
+| Veteran | 1325–1499 | 13 with rares, Charge + removal | 2.69 | Smarter targeting; burst when ahead |
+| Legend | ≥ 1500 | 16 with epics, aggro-tempo | 2.81 | Full scoring; priority targeting; strategic burst |
 
 ### AI Deck Design Rules
 
@@ -205,6 +205,34 @@ Tokens are units created by Summon effects. They cannot exist in decks or hands.
 - Adept decks: mix of commons and a few rares, basic keywords
 - Veteran decks: stronger rares, some synergy pairs
 - Legend decks: epics included, coherent archetype (aggro or midrange)
+
+**Difficulty is power and consistency, never mana cost.** Measured with
+`npm run ai:arena`: swapping only the AI's deck moves its win rate by 89
+points, swapping only its ~24 tuning weights moves it by 18. The deck is the
+difficulty, roughly five to one.
+
+That makes the clock the binding constraint. One mana per turn, a three-card
+opening hand, three lanes and 24 health mean games end around turn eight, so a
+deck averaging four mana spends the first half of the game holding cards it
+cannot cast. Every AI deck stays under 3.5 average cost, and the spread from
+Novice to Legend is under one full mana.
+
+The AI also plays *greedily* — highest-scoring affordable card, then attacks
+lane by lane, with no curve planning or attack sequencing. That is a poor
+control player and an adequate aggressive one, so every tier runs the same
+forward plan at increasing power rather than a strategy the AI cannot execute.
+Veteran and Legend need Charge specifically: it converts late mana into damage
+instead of into a body that spends a turn doing nothing.
+
+Two failure modes are pinned by `src/ai-decks.test.ts` because both shipped:
+
+- **Expensive singletons.** Legend was fourteen singletons averaging 4.21 mana
+  and was the *third best* of the four decks — every difficulty's weights did
+  worse holding it than holding Adept's.
+- **Blocker stalls.** A Novice rebuild with four Guard bodies drew 27 games in
+  200 and averaged 21 turns, because a starter deck cannot chew through 1/4 and
+  2/4 walls. A difficulty nobody can lose to and nobody can beat is not easy,
+  it is dull. Novice runs at most two blockers.
 
 ---
 
