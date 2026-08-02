@@ -3,7 +3,7 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 COPY . .
-RUN node scripts/generate-brand-assets.mjs && npm run build
+RUN npm run assets:generate && npm run build
 
 FROM node:20-alpine AS runtime
 WORKDIR /app
