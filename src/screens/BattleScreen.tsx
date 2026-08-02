@@ -107,6 +107,14 @@ export function BattleScreen() {
       : battleKind === 'local'
         ? 'Pass and play'
         : 'AI skirmish'
+  // Against a real account the name is the identification, so the static
+  // "You"/"Enemy" chips add nothing and cost the one thing the name is short
+  // of: horizontal room. `.battle-hero-name` is the only shrinkable item in
+  // its row, so on a phone those chips are what push a real player's name into
+  // an ellipsis — leaving a bare "ENEMY" reading like the opponent's name.
+  // AI and pass-and-play keep them: there the seat needs naming, because
+  // "Nemesis AI" and "Player Two" describe a role rather than a person.
+  const showHeroSideLabels = !isRankedBattle && battleKind !== 'friend'
   const authoritativeResult = serverMatch.phase === 'terminal' ? serverMatch.outcome.result : null
   const displayedWinner = authoritativeResult === 'win'
     ? 'player'
@@ -716,7 +724,7 @@ export function BattleScreen() {
               enemyHeroFx === 'healed' ? 'is-healed' : '',
             ].filter(Boolean).join(' ')}
           >
-            <span className="battle-hero-side">Enemy</span>
+            {showHeroSideLabels && <span className="battle-hero-side">Enemy</span>}
             <strong className="battle-hero-name">{game.enemy.name}</strong>
             <span className="battle-hero-hp"><StatIcon kind="health" /> {game.enemy.health}</span>
             {enemyHeroFx === 'damaged' && (
@@ -928,7 +936,7 @@ export function BattleScreen() {
               playerLowHp ? 'is-low-hp' : '',
             ].filter(Boolean).join(' ')}
           >
-            <span className="battle-hero-side">You</span>
+            {showHeroSideLabels && <span className="battle-hero-side">You</span>}
             <strong className="battle-hero-name">{game.player.name}</strong>
             <span className="battle-hero-resource momentum" aria-label={`Momentum ${activePlayer.momentum} of 10`}>
               M {activePlayer.momentum}/10

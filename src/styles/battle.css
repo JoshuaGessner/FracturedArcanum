@@ -57,13 +57,18 @@
   color: rgba(254, 202, 202, 0.72);
 }
 
+/* The name is the only shrinkable item in the hero row — every sibling here
+   is `flex-shrink: 0` — so with `min-width: 0` it absorbed the whole overflow
+   and could ellipsize down to nothing at phone widths, hiding the opponent
+   entirely. `min-width: 5ch` gives it a floor: it still truncates, but it
+   always renders enough to identify who is on the other side. */
 .battle-hero-name {
   font-size: 0.82rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  min-width: 0;
-  flex: 1 1 0;
+  min-width: 5ch;
+  flex: 1 1 auto;
 }
 
 .battle-hero-hp {

@@ -400,6 +400,43 @@ describe('BattleScreen mobile layout', () => {
     expect(handleLeaveBattle).toHaveBeenCalledTimes(1)
   })
 
+  it('names the real opponent in a live duel instead of labelling the seat', () => {
+    // The static "You"/"Enemy" chips are the only siblings the hero name can
+    // lose space to, and against a real account they say nothing the name does
+    // not. Leaving them in is how a squeezed phone row rendered a bare "ENEMY"
+    // where the opponent's name should have been.
+    const rankedGame = createGame('duel', {})
+    rankedGame.player.name = 'Rune Herald'
+    rankedGame.enemy.name = 'Stormcaller'
+
+    renderBattleScreen({ isRankedBattle: true }, { game: rankedGame, battleKind: 'ranked' })
+
+    const anchors = document.querySelectorAll('.battle-hero-anchor')
+    expect(anchors).toHaveLength(2)
+    expect(document.querySelectorAll('.battle-hero-side')).toHaveLength(0)
+    expect(screen.getByText('Stormcaller')).toBeTruthy()
+    expect(screen.getByText('Rune Herald')).toBeTruthy()
+  })
+
+  it('drops the seat labels for a friend duel too', () => {
+    const friendGame = createGame('duel', {})
+    friendGame.enemy.name = 'Emberwright'
+
+    renderBattleScreen({}, { game: friendGame, battleKind: 'friend' })
+
+    expect(document.querySelectorAll('.battle-hero-side')).toHaveLength(0)
+    expect(screen.getByText('Emberwright')).toBeTruthy()
+  })
+
+  it('keeps the seat labels when the other seat is a role rather than a person', () => {
+    // "Nemesis AI" and pass-and-play's "Player Two" describe a seat, not an
+    // account, so the label is still doing work there.
+    renderBattleScreen({}, { game: createGame('ai', {}), battleKind: 'ai' })
+
+    const labels = [...document.querySelectorAll('.battle-hero-side')].map((node) => node.textContent)
+    expect(labels).toEqual(['Enemy', 'You'])
+  })
+
   it('moves strike hero into the centerline target control', () => {
     const activeGame = createGame('ai', {})
     activeGame.player.board[0] = {

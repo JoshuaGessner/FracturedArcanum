@@ -10,7 +10,19 @@ import { db, prepare, transaction } from './connection.js'
 
 // ─── Player profile operations ───────────────────────────────────────────────
 
-export const _getProfile = prepare(`SELECT * FROM player_profiles WHERE account_id = ?`)
+// `display_name` lives on `accounts`, not here, so a bare `SELECT *` returns a
+// row with no name on it at all. Callers still reach for `profile.display_name`
+// — every one of them did — so the join supplies it rather than leaving four
+// call sites to invent four different fallbacks for an always-undefined field.
+// The COALESCE is character-for-character the one the session queries use in
+// accounts.js, so a player's name resolves identically whether it arrives via a
+// session handshake or a profile read.
+export const _getProfile = prepare(`
+  SELECT p.*, COALESCE(NULLIF(TRIM(a.display_name), ''), a.username) AS display_name
+  FROM player_profiles p
+  JOIN accounts a ON a.id = p.account_id
+  WHERE p.account_id = ?
+`)
 
 export function buildStarterCollection() {
   const starter = {}

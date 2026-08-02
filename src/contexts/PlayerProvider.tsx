@@ -74,10 +74,14 @@ const PlayerContext = createContext<PlayerStateValue | null>(null)
 /**
  * Starting profile, mirroring `ProfileProviderSeed`.
  *
- * Production never passes one — the record arrives from `/api/profile` after
+ * Production never passes one — the record arrives from `/api/me` after
  * sign-in and is `null` until then. It exists so a screen test can render at a
  * given rank or role without an effect and a round of `act()`. Only the
  * initial value is settable; the provider still owns every update after that.
+ *
+ * (This comment said `/api/profile` when it was written, which was wrong: that
+ * endpoint served live-service settings and has since been renamed
+ * `/api/live-settings` for exactly that reason.)
  */
 export function PlayerProvider({ children, seed }: { children: ReactNode; seed?: ServerProfile | null }) {
   const [serverProfile, setServerProfile] = useState<ServerProfile | null>(seed ?? null)

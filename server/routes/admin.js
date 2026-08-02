@@ -17,8 +17,13 @@ import { adminDeleteAccount, adminIssueRecoveryGrant, adminResetAccountCredentia
 export function registerAdminRoutes(app, ctx) {
   const {
     DIST_DIR,
+    adminStore,
+    buildAdminOverview,
     clientIp,
+    debouncedSaveAdminStore,
     disconnectAccountSockets,
+    getComplaintCounts,
+    getLiveArenaSnapshot,
     io,
     loadServerConfig,
     pushActivity,
@@ -26,8 +31,112 @@ export function registerAdminRoutes(app, ctx) {
     requireOwnerRecoveryKey,
     requireOwnerRole,
     requireRecentPasskeyAuth,
+    saveAdminStore,
     saveServerConfig,
   } = ctx
+
+// ─── Operations dashboard ───────────────────────────────────────────────────
+
+app.get('/api/admin/overview', requireAdminRole, (request, response) => {
+  response.json({
+    ...buildAdminOverview(),
+    viewer: { accountId: request.accountId, role: request.role, displayName: request.displayName },
+  })
+})
+
+/**
+ * The operational figures `/api/health` used to publish to anyone.
+ *
+ * They are worth having — queue depth and connected players are the first
+ * thing to check when the arena feels empty — but they describe the business,
+ * not whether the process is alive, so they answer to a role check while the
+ * liveness probe stays open.
+ */
+app.get('/api/admin/health', requireAdminRole, (_request, response) => {
+  const complaintCounts = getComplaintCounts()
+  const liveSnapshot = getLiveArenaSnapshot()
+
+  response.json({
+    ok: true,
+    service: 'Fractured Arcanum Arena Service',
+    queueSize: liveSnapshot.queueSize,
+    connectedPlayers: liveSnapshot.connectedPlayers,
+    rankedAvailable: liveSnapshot.rankedAvailable,
+    complaintsOpen: complaintCounts.open,
+    uniqueVisitors: adminStore.totals.uniqueVisitors,
+  })
+})
+
+app.post('/api/admin/settings', requireAdminRole, (request, response) => {
+  adminStore.settings = {
+    motd: String(request.body?.motd ?? adminStore.settings.motd).slice(0, 160),
+    quest: String(request.body?.quest ?? adminStore.settings.quest).slice(0, 120),
+    featuredMode: String(request.body?.featuredMode ?? adminStore.settings.featuredMode).slice(0, 60),
+    maintenanceMode: Boolean(request.body?.maintenanceMode),
+  }
+
+  pushActivity('admin_settings_updated', {
+    route: 'admin',
+    anonymousUser: request.accountId ?? 'admin',
+    meta: {
+      maintenanceMode: adminStore.settings.maintenanceMode,
+      featuredMode: adminStore.settings.featuredMode,
+    },
+  })
+  recordAudit(request.accountId, null, 'settings_updated', {
+    maintenanceMode: adminStore.settings.maintenanceMode,
+    featuredMode: adminStore.settings.featuredMode,
+    motd: adminStore.settings.motd.slice(0, 60),
+  }, hashIp(clientIp(request)))
+  saveAdminStore()
+  // Named for what it carries: the live-service settings, not a player record.
+  io.emit('server:settingsUpdated', adminStore.settings)
+  debouncedSaveAdminStore()
+
+  response.json({
+    ok: true,
+    settings: adminStore.settings,
+  })
+})
+
+app.post('/api/admin/complaints/:id', requireAdminRole, (request, response) => {
+  const complaint = adminStore.complaints.find((item) => item.id === request.params.id)
+
+  if (!complaint) {
+    response.status(404).json({
+      ok: false,
+      message: 'Complaint not found.',
+    })
+    return
+  }
+
+  const nextStatus = String(request.body?.status ?? complaint.status)
+  const note = String(request.body?.note ?? '').trim().slice(0, 240)
+
+  complaint.status = nextStatus
+
+  if (note) {
+    complaint.updates.unshift({
+      at: new Date().toISOString(),
+      note,
+    })
+  }
+
+  pushActivity('complaint_status_updated', {
+    route: 'admin',
+    anonymousUser: 'admin',
+    meta: {
+      complaintId: complaint.id,
+      status: nextStatus,
+    },
+  })
+  saveAdminStore()
+
+  response.json({
+    ok: true,
+    complaint,
+  })
+})
 
 // ─── Role management (admin + owner) ────────────────────────────────────────
 

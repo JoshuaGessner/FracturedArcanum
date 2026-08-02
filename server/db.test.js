@@ -275,6 +275,26 @@ describe('schema migration compatibility', () => {
     expect(db.getProfile(accountId)).toBeTruthy()
   })
 
+  it('resolves a display name through getProfile, falling back to the username', () => {
+    // `display_name` lives on `accounts`, not `player_profiles`, so the old bare
+    // `SELECT * FROM player_profiles` returned a row with no name on it at all.
+    // Four socket handlers read `profile.display_name` anyway and each invented
+    // its own tail for the always-undefined value — which is how a friend duel
+    // came to ship the literal string "Friend" as a player's name, into both
+    // HUDs and the match log. Guard the field itself, not the call sites.
+    const accountId = makeAccount('profilenamed')
+    const { username } = db.default.prepare(`SELECT username FROM accounts WHERE id = ?`).get(accountId)
+
+    db.default.prepare(`UPDATE accounts SET display_name = ? WHERE id = ?`).run('Rune Herald', accountId)
+    expect(db.getProfile(accountId).display_name).toBe('Rune Herald')
+
+    // Whitespace-only is the case the session queries already COALESCE away;
+    // profile reads must agree with them, or the same player gets two names
+    // depending on which lookup happened to run.
+    db.default.prepare(`UPDATE accounts SET display_name = ? WHERE id = ?`).run('   ', accountId)
+    expect(db.getProfile(accountId).display_name).toBe(username)
+  })
+
   it('keeps production signup cluster limits unless an explicit local QA bypass is passed', () => {
     expect(createClusteredAccount('clusterlimit1').ok).toBe(true)
     expect(createClusteredAccount('clusterlimit2').ok).toBe(true)

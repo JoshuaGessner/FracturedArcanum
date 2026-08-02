@@ -853,7 +853,7 @@ function AppShell() {
     })
 
     socket.on(
-      'server:profileUpdated',
+      'server:settingsUpdated',
       (payload: { motd?: string; quest?: string; featuredMode?: string; maintenanceMode?: boolean }) => {
         if (payload.motd) {
           setMotd(payload.motd)
@@ -1073,7 +1073,10 @@ function AppShell() {
       setToastMessage(payload.error ?? 'This match is active in another tab or device.')
     })
 
-    void fetch(`${ARENA_URL}/api/profile`)
+    // Live-service settings — MOTD, featured mode, maintenance flag. Called
+    // `/api/profile` until it was renamed for what it returns; the player
+    // record has always been `/api/me`.
+    void fetch(`${ARENA_URL}/api/live-settings`)
       .then((response) => response.json())
       .then(
         (data: {
@@ -1104,7 +1107,13 @@ function AppShell() {
         },
       )
       .catch(() => {
-        setBackendOnline(false)
+        // Deliberately does NOT touch `backendOnline`. These settings are
+        // decoration — a message of the day and a featured-mode label — and
+        // this fetch failing says nothing about whether the arena is up. It
+        // used to flip the whole app to "offline", which meant renaming the
+        // endpoint would have shown every cached client a false outage while
+        // the server was perfectly healthy. Liveness is `/api/health`'s job
+        // and the socket's; this one keeps its defaults and stays quiet.
       })
 
     return () => {

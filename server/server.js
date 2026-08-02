@@ -141,6 +141,7 @@ import { registerAccountRoutes } from './routes/account.js'
 import { registerProfileRoutes } from './routes/profile.js'
 import { registerShopRoutes } from './routes/shop.js'
 import { registerTradingRoutes } from './routes/trading.js'
+import { registerSystemRoutes } from './routes/system.js'
 import { registerAdminRoutes } from './routes/admin.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -633,6 +634,7 @@ registerAccountRoutes(app, routeContext)
 registerProfileRoutes(app, routeContext)
 registerShopRoutes(app, routeContext)
 registerTradingRoutes(app, routeContext)
+registerSystemRoutes(app, routeContext)
 registerAdminRoutes(app, routeContext)
 
 

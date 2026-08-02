@@ -17,6 +17,28 @@ import { acknowledgeMatchSettlement, getLatestUnacknowledgedSettlement, getMatch
 import { RECONNECT_GRACE_MS, createRoom, destroyRoom, getRoom, getRoomByAccount, getRoomBySocket, handleDisconnect } from '../game-room.js'
 import { adminStore, debouncedSaveAdminStore, pushActivity } from '../admin-store.js'
 
+/**
+ * The one place a player's battle-facing name is decided.
+ *
+ * Four handlers used to spell this out inline, and because each wrote its own
+ * tail the same broken lookup failed four different ways: three happened to
+ * land on the socket's own session name, while the challenge target — the only
+ * lookup for an account that is *not* this socket, and so the only one with no
+ * session to fall back on — bottomed out at the literal string "Friend" and
+ * shipped that into the duel, the match log, and both players' HUDs.
+ *
+ * `socketData` is therefore optional by design: pass it only when the account
+ * being named owns this socket. The profile lookup is authoritative either way.
+ */
+function resolvePlayerName(profile, socketData = null) {
+  return (
+    profile?.display_name
+    || socketData?.displayName
+    || socketData?.username
+    || 'Rune Captain'
+  )
+}
+
 export function registerConnectionHandler(ctx) {
   const {
     io,
@@ -252,7 +274,7 @@ io.on('connection', (socket) => {
       room.startAi({
         socketId: socket.id,
         accountId,
-        name: profile.display_name || socket.data.displayName || 'Rune Captain',
+        name: resolvePlayerName(profile, socket.data),
         deckConfig: validatedDeck.deckConfig,
         cardBorder: sanitizeCardBorder(profile.selected_card_border),
       }, { enemyName, difficulty })
@@ -282,7 +304,7 @@ io.on('connection', (socket) => {
       socket.emit('queue:error', { error: validatedDeck.error ?? 'No valid deck available. Build a deck first.' })
       return
     }
-    const name = accountProfile.display_name || socket.data.displayName || socket.data.username || 'Rune Captain'
+    const name = resolvePlayerName(accountProfile, socket.data)
     const rating = Number(accountProfile.season_rating ?? 1200)
     const rank = `${getRuntimeRankLabel(rating)} Division`
 
@@ -369,8 +391,10 @@ io.on('connection', (socket) => {
       id: `chal-${randomBytes(8).toString('hex')}`,
       fromAccountId,
       toAccountId,
-      fromName: fromProfile.display_name || socket.data.displayName || 'Challenger',
-      toName: toProfile.display_name || 'Friend',
+      fromName: resolvePlayerName(fromProfile, socket.data),
+      // No `socket.data` here on purpose: this socket belongs to the challenger,
+      // so the target's session name is not ours to borrow.
+      toName: resolvePlayerName(toProfile),
       fromDeck: deckCheck.deckConfig,
       createdAt: Date.now(),
       status: 'pending',
@@ -462,32 +486,41 @@ io.on('connection', (socket) => {
       socket.join(roomId)
       // Frames are read at accept time, not at challenge time, so a player who
       // equips something new while the invite sits open goes in wearing it.
+      const challengerProfile = getProfile(challenge.fromAccountId)
+      const accepterProfile = getProfile(accountId)
+      // A friend duel is unranked, but both players still hold a division, and
+      // showing it is exactly what the ranked match card does. The literal
+      // 'Friend' that used to sit here put a second, unrelated "Friend" on
+      // screen right beside a name that was already reading "Friend" for its
+      // own reasons — two separate bugs that looked like one.
+      const divisionFor = (profile) =>
+        `${getRuntimeRankLabel(Number(profile?.season_rating ?? 1200))} Division`
       room.start(
         {
           socketId: challengerSocket.id,
           accountId: challenge.fromAccountId,
           name: challenge.fromName,
           deckConfig: challenge.fromDeck,
-          cardBorder: sanitizeCardBorder(getProfile(challenge.fromAccountId)?.selected_card_border),
+          cardBorder: sanitizeCardBorder(challengerProfile?.selected_card_border),
         },
         {
           socketId: socket.id,
           accountId: accountId,
           name: challenge.toName,
           deckConfig: deckCheck.deckConfig,
-          cardBorder: sanitizeCardBorder(getProfile(accountId)?.selected_card_border),
+          cardBorder: sanitizeCardBorder(accepterProfile?.selected_card_border),
         },
       )
       const challengerView = room.getViewForSocket(challengerSocket.id)
       const accepterView = room.getViewForSocket(socket.id)
       challengerSocket.emit('challenge:matched', {
         roomId,
-        opponent: { name: challenge.toName, accountId: accountId, isBot: false, rank: 'Friend', style: 'Unranked', ping: 0 },
+        opponent: { name: challenge.toName, accountId: accountId, isBot: false, rank: divisionFor(accepterProfile), style: 'Friend Duel', ping: 0 },
         mode: 'unranked',
       })
       socket.emit('challenge:matched', {
         roomId,
-        opponent: { name: challenge.fromName, accountId: challenge.fromAccountId, isBot: false, rank: 'Friend', style: 'Unranked', ping: 0 },
+        opponent: { name: challenge.fromName, accountId: challenge.fromAccountId, isBot: false, rank: divisionFor(challengerProfile), style: 'Friend Duel', ping: 0 },
         mode: 'unranked',
       })
       challengerSocket.emit('game:start', challengerView)
