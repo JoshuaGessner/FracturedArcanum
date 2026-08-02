@@ -99,7 +99,7 @@ All 70 cards below belong to the **Core Set**. Core set cards are permanent — 
 | 1 | nether-witch | Void Witch | 5 | 4/5 | 9 | 11 | Blast 2 | Draw 1 | Arcane | 0 | Blast −2 + Draw −1.5 + multi −1 |
 | 2 | sunforged-giant | Hollow-Sun Giant | 6 | 6/7 | 13 | 13 | — | — | Elemental | 0 | Vanilla epic; stat stick |
 | 3 | abyssal-tyrant | Deep Tyrant | 6 | 5/6 | 11 | 13 | Silence | Blast 2 | Demon | 0 | Silence −2 + Blast −2 + multi −1 |
-| 4 | phoenix-ascendant | Ashborn Reborn | 6 | 5/5 | 10 | 13 | Charge | DR: 3 hero | Elemental | −1 | Charge −2 + DR −1 + multi −1 |
+| 4 | phoenix-ascendant | Pyre Revenant | 6 | 5/5 | 10 | 13 | Charge | DR: 3 hero | Elemental | −1 | Charge −2 + DR −1 + multi −1 |
 | 5 | glacial-colossus | Rimebound Colossus | 7 | 4/10 | 14 | 15 | Frostbite-all | Guard | Elemental | 0 | FrostAll −3 + Guard −1 + multi −1 |
 | 6 | blood-queen | Crimson Matron | 6 | 5/5 | 10 | 13 | Siphon 3 | Lifesteal | Undead | 0 | Siphon −3 + Lifesteal −2 + multi −1 |
 | 7 | iron-juggernaut | Iron Juggernaut | 7 | 7/7 | 14 | 15 | Overwhelm | — | Mech | 0 | Overwhelm −1 tax |
