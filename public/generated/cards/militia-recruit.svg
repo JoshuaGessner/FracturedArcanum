@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 340 220" role="img" aria-label="Cult Acolyte illustration">
+  <defs>
+    <linearGradient id="sky-militia-recruit" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0d0e15"/>
+      <stop offset="100%" stop-color="#040407"/>
+    </linearGradient>
+    <radialGradient id="drown-militia-recruit" cx="50%" cy="46%" r="62%">
+      <stop offset="0%" stop-color="#d9a866" stop-opacity="0.2"/>
+      <stop offset="60%" stop-color="#d9a866" stop-opacity="0.06"/>
+      <stop offset="100%" stop-color="#d9a866" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="vig-militia-recruit" cx="50%" cy="50%" r="72%">
+      <stop offset="0%" stop-color="#000" stop-opacity="0"/>
+      <stop offset="76%" stop-color="#000" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000" stop-opacity="0.5"/>
+    </radialGradient>
+  </defs>
+  <rect width="340" height="220" rx="28" fill="url(#sky-militia-recruit)"/>
+  <rect width="340" height="220" rx="28" fill="url(#drown-militia-recruit)"/>
+  <circle cx="58" cy="30" r="1.05" fill="#b8c4d9" opacity="0.12"/><circle cx="70" cy="32" r="1.40" fill="#b8c4d9" opacity="0.12"/><circle cx="82" cy="34" r="0.70" fill="#b8c4d9" opacity="0.12"/><circle cx="94" cy="36" r="1.05" fill="#b8c4d9" opacity="0.12"/><circle cx="106" cy="38" r="1.40" fill="#b8c4d9" opacity="0.12"/><circle cx="118" cy="40" r="0.70" fill="#b8c4d9" opacity="0.12"/><circle cx="130" cy="42" r="1.05" fill="#b8c4d9" opacity="0.12"/><circle cx="142" cy="44" r="1.40" fill="#b8c4d9" opacity="0.12"/><circle cx="154" cy="46" r="0.70" fill="#b8c4d9" opacity="0.12"/>
+  
+    <circle cx="170" cy="88" r="50" fill="none" stroke="#d9a866" stroke-width="2.5" opacity=".38"
+      stroke-dasharray="220 95"/>
+    <circle cx="170" cy="88" r="43" fill="none" stroke="#b8c4d9" stroke-width="1" opacity=".2"/>
+  
+  <g fill="#1e2431" opacity=".5">
+    <path d="M66 178 L88 108 L96 176 Z"/>
+    <path d="M262 178 L268 96 L296 174 Z"/>
+    <path d="M302 180 L310 132 L324 178 Z"/>
+  </g>
+  <g stroke="#d9a866" stroke-width="1" opacity=".18" fill="none">
+    <path d="M74 150 h12 M270 132 h10 M273 148 h12"/>
+  </g>
+  <path d="M-4 172 C60 164 130 180 190 172 C250 164 300 180 344 168 V206 H-4 Z" fill="#b8c4d9" opacity="0.05"/>
+  
+  
+      <path d="M138 192 C138 158 148 136 170 128 C192 136 202 158 202 192 Z" fill="#414a5c"/>
+      <path d="M170 128 C161 121 158 112 161 102 C167 108 173 108 179 102 C182 112 179 121 170 128 Z" fill="#1e2431"/>
+      <path d="M148 158 C140 150 136 140 138 128 L152 144 Z" fill="#414a5c"/>
+      <path d="M192 150 L206 122 L210 126 L200 152 Z" fill="#b8c4d9" opacity=".8"/>
+      <rect x="112" y="168" width="6" height="20" fill="#1e2431"/>
+      <rect x="222" y="164" width="6" height="24" fill="#1e2431"/>
+      <path d="M115 162 C113 157 113 153 115 149 C117 153 117 157 115 162 Z M225 158 C223 153 223 149 225 145 C227 149 227 153 225 158 Z" fill="#ffd9a0"/>
+      <circle cx="115" cy="156" r="8" fill="#ffd9a0" opacity=".14"/>
+      <circle cx="225" cy="152" r="8" fill="#ffd9a0" opacity=".14"/>
+      <g>
+    <circle cx="164" cy="114" r="3.7800000000000002" fill="#ffd9a0" opacity=".14"/>
+    <circle cx="176" cy="114" r="3.7800000000000002" fill="#ffd9a0" opacity=".14"/>
+    <circle cx="164" cy="114" r="1.8" fill="#ffd9a0"/>
+    <circle cx="176" cy="114" r="1.8" fill="#ffd9a0"/>
+  </g>
+  <path d="M-4 190 C60 184 130 196 190 190 C250 184 300 196 344 187 V224 H-4 Z" fill="#b8c4d9" opacity="0.07"/>
+  
+  <path d="M0 196 C60 186 120 194 170 190 C230 185 290 194 340 187 V220 H0 Z" fill="#040407" opacity=".9"/>
+  <path d="M8 220 C9 201 5 197 2 191" stroke="#1e2431" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M40 220 C41 200 38 196 36 190" stroke="#1e2431" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M72 220 C73 199 71 195 70 189" stroke="#1e2431" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M104 220 C105 198 104 194 104 188" stroke="#1e2431" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M136 220 C137 197 137 193 138 187" stroke="#1e2431" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M168 220 C169 196 170 192 172 186" stroke="#1e2431" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M200 220 C201 195 203 191 206 185" stroke="#1e2431" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M232 220 C233 194 236 190 240 184" stroke="#1e2431" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M264 220 C265 193 260 189 256 183" stroke="#1e2431" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M296 220 C297 192 293 188 290 182" stroke="#1e2431" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M328 220 C329 191 326 187 324 181" stroke="#1e2431" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+  
+  <rect width="340" height="220" rx="28" fill="url(#vig-militia-recruit)"/>
+  <circle cx="256" cy="24" r=".6" fill="#b8c4d9" opacity=".05"/><circle cx="32" cy="116" r=".6" fill="#b8c4d9" opacity=".05"/><circle cx="148" cy="208" r=".6" fill="#b8c4d9" opacity=".05"/><circle cx="264" cy="80" r=".6" fill="#b8c4d9" opacity=".05"/><circle cx="40" cy="172" r=".6" fill="#b8c4d9" opacity=".05"/><circle cx="156" cy="44" r=".6" fill="#b8c4d9" opacity=".05"/><circle cx="272" cy="136" r=".6" fill="#b8c4d9" opacity=".05"/><circle cx="48" cy="8" r=".6" fill="#b8c4d9" opacity=".05"/><circle cx="164" cy="100" r=".6" fill="#b8c4d9" opacity=".05"/><circle cx="280" cy="192" r=".6" fill="#b8c4d9" opacity=".05"/><circle cx="56" cy="64" r=".6" fill="#b8c4d9" opacity=".05"/><circle cx="172" cy="156" r=".6" fill="#b8c4d9" opacity=".05"/><circle cx="288" cy="28" r=".6" fill="#b8c4d9" opacity=".05"/><circle cx="64" cy="120" r=".6" fill="#b8c4d9" opacity=".05"/><circle cx="180" cy="212" r=".6" fill="#b8c4d9" opacity=".05"/><circle cx="296" cy="84" r=".6" fill="#b8c4d9" opacity=".05"/><circle cx="72" cy="176" r=".6" fill="#b8c4d9" opacity=".05"/><circle cx="188" cy="48" r=".6" fill="#b8c4d9" opacity=".05"/><circle cx="304" cy="140" r=".6" fill="#b8c4d9" opacity=".05"/><circle cx="80" cy="12" r=".6" fill="#b8c4d9" opacity=".05"/><circle cx="196" cy="104" r=".6" fill="#b8c4d9" opacity=".05"/><circle cx="312" cy="196" r=".6" fill="#b8c4d9" opacity=".05"/><circle cx="88" cy="68" r=".6" fill="#b8c4d9" opacity=".05"/><circle cx="204" cy="160" r=".6" fill="#b8c4d9" opacity=".05"/><circle cx="320" cy="32" r=".6" fill="#b8c4d9" opacity=".05"/><circle cx="96" cy="124" r=".6" fill="#b8c4d9" opacity=".05"/>
+  <rect x="10" y="10" width="320" height="200" rx="22" fill="none" stroke="rgba(148,163,184,.35)"/>
+</svg>

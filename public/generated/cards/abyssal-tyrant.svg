@@ -1,19 +1,57 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 340 220" role="img" aria-label="Abyssal Tyrant illustration">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 340 220" role="img" aria-label="Deep Tyrant illustration">
   <defs>
-    <linearGradient id="sky-abyssal-tyrant" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#0a1226"/>
-      <stop offset="100%" stop-color="#475569" stop-opacity="0.75"/>
+    <linearGradient id="sky-abyssal-tyrant" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#160914"/>
+      <stop offset="100%" stop-color="#050208"/>
     </linearGradient>
-    <linearGradient id="ground-abyssal-tyrant" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0%" stop-color="#64748b" stop-opacity="0.22"/>
-      <stop offset="100%" stop-color="#0b1020" stop-opacity="0.12"/>
-    </linearGradient>
+    <radialGradient id="drown-abyssal-tyrant" cx="50%" cy="46%" r="62%">
+      <stop offset="0%" stop-color="#d84a6f" stop-opacity="0.2"/>
+      <stop offset="60%" stop-color="#d84a6f" stop-opacity="0.06"/>
+      <stop offset="100%" stop-color="#d84a6f" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="vig-abyssal-tyrant" cx="50%" cy="50%" r="72%">
+      <stop offset="0%" stop-color="#000" stop-opacity="0"/>
+      <stop offset="76%" stop-color="#000" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000" stop-opacity="0.5"/>
+    </radialGradient>
   </defs>
   <rect width="340" height="220" rx="28" fill="url(#sky-abyssal-tyrant)"/>
-  <rect x="10" y="10" width="320" height="200" rx="22" fill="none" stroke="rgba(168,85,247,.6)"/>
-  <circle cx="40" cy="28" r="2.4" fill="rgba(255,255,255,.18)"/><circle cx="76" cy="46" r="2.4" fill="rgba(255,255,255,.18)"/><circle cx="112" cy="64" r="2.4" fill="rgba(255,255,255,.18)"/><circle cx="148" cy="28" r="2.4" fill="rgba(255,255,255,.18)"/><circle cx="184" cy="46" r="2.4" fill="rgba(255,255,255,.18)"/><circle cx="220" cy="64" r="2.4" fill="rgba(255,255,255,.18)"/><circle cx="256" cy="28" r="2.4" fill="rgba(255,255,255,.18)"/>
-  <path d="M0 182 C54 154 102 162 170 176 C232 188 280 182 340 154 V220 H0 Z" fill="url(#ground-abyssal-tyrant)"/>
+  <rect width="340" height="220" rx="28" fill="url(#drown-abyssal-tyrant)"/>
+  <circle cx="258" cy="32" r="1.40" fill="#f08eae" opacity="0.12"/><circle cx="238" cy="90" r="1.05" fill="#f08eae" opacity="0.12"/><circle cx="218" cy="70" r="0.70" fill="#f08eae" opacity="0.12"/><circle cx="198" cy="50" r="1.40" fill="#f08eae" opacity="0.12"/><circle cx="178" cy="30" r="1.05" fill="#f08eae" opacity="0.12"/><circle cx="158" cy="88" r="0.70" fill="#f08eae" opacity="0.12"/><circle cx="138" cy="68" r="1.40" fill="#f08eae" opacity="0.12"/><circle cx="118" cy="48" r="1.05" fill="#f08eae" opacity="0.12"/><circle cx="98" cy="28" r="0.70" fill="#f08eae" opacity="0.12"/>
   
-    <path d="M170 66 L226 96 V158 C226 188 198 204 170 214 C142 204 114 188 114 158 V96 Z" fill="#475569"/>
-    <path d="M170 92 L188 114 L212 118 L188 126 L170 154 L152 126 L128 118 L152 114 Z" fill="#64748b" opacity=".6"/>
+    <circle cx="170" cy="60" r="38" fill="#d84a6f" opacity=".16"/>
+    <circle cx="170" cy="60" r="27.36" fill="#f08eae" opacity=".14"/>
+    <path d="M132 60 A38 38 0 0 0 208 60" fill="#050208" opacity=".55"/>
+  
+  <g fill="#2b1220" opacity=".5">
+    <path d="M66 178 L86 108 L96 176 Z"/>
+    <path d="M262 178 L270 96 L296 174 Z"/>
+    <path d="M302 180 L310 132 L324 178 Z"/>
+  </g>
+  <g stroke="#d84a6f" stroke-width="1" opacity=".18" fill="none">
+    <path d="M74 150 h12 M270 132 h10 M273 148 h12"/>
+  </g>
+  <path d="M-4 172 C60 164 130 180 190 172 C250 164 300 180 344 168 V206 H-4 Z" fill="#f08eae" opacity="0.05"/>
+  
+    <ellipse cx="170" cy="182" rx="74" ry="12" fill="none" stroke="#d84a6f" stroke-width="1.3" opacity=".35"/>
+    <ellipse cx="170" cy="128" rx="92" ry="58" fill="none" stroke="#d84a6f" stroke-width="1" opacity=".18"/>
+    <circle cx="86" cy="120" r="2" fill="#d84a6f" opacity=".5"/>
+    <circle cx="254" cy="118" r="2" fill="#d84a6f" opacity=".5"/>
+  
+      <path d="M136 150 C136 116 150 94 170 88 C190 94 204 116 204 150 C204 168 196 180 184 186 L156 186 C144 180 136 168 136 150 Z" fill="#57263f"/>
+      <path d="M136 128 L122 108 L140 116 M204 128 L218 108 L200 116 M152 96 L146 76 L162 88 M188 96 L194 76 L178 88" fill="#2b1220"/>
+      <path d="M150 186 C142 196 132 202 120 204 M162 186 C158 198 152 206 144 212 M178 186 C182 198 188 206 196 212 M190 186 C198 196 208 202 220 204" stroke="#57263f" stroke-width="6" fill="none" stroke-linecap="round"/>
+      <path d="M150 186 C142 196 132 202 120 204" fill="none" stroke="#f08eae" stroke-width="1.2" opacity=".35"/>
+      <circle cx="163.6" cy="116.0" r="5.699999999999999" fill="#ff9db8" opacity=".12"/><circle cx="163.6" cy="116.0" r="3" fill="#ff9db8"/><circle cx="182.4" cy="122.0" r="4.18" fill="#ff9db8" opacity=".12"/><circle cx="182.4" cy="122.0" r="2.2" fill="#ff9db8"/><circle cx="175.9" cy="131.1" r="2.6599999999999997" fill="#ff9db8" opacity=".12"/><circle cx="175.9" cy="131.1" r="1.4" fill="#ff9db8"/><circle cx="165.1" cy="128.6" r="5.699999999999999" fill="#ff9db8" opacity=".12"/><circle cx="165.1" cy="128.6" r="3" fill="#ff9db8"/><circle cx="167.8" cy="124.9" r="4.18" fill="#ff9db8" opacity=".12"/><circle cx="167.8" cy="124.9" r="2.2" fill="#ff9db8"/><circle cx="181.8" cy="115.5" r="2.6599999999999997" fill="#ff9db8" opacity=".12"/><circle cx="181.8" cy="115.5" r="1.4" fill="#ff9db8"/><circle cx="185.5" cy="130.7" r="5.699999999999999" fill="#ff9db8" opacity=".12"/><circle cx="185.5" cy="130.7" r="3" fill="#ff9db8"/>
+      <path d="M154 156 Q170 166 186 156" stroke="#2b1220" stroke-width="3" fill="none"/>
+      <path d="M158 160 L160 168 M166 163 L167 172 M174 163 L173 172 M182 160 L180 168" stroke="#2b1220" stroke-width="2"/>
+      <path d="M170 88 C190 94 204 116 204 150" fill="none" stroke="#f08eae" stroke-width="1.4" opacity=".45"/>
+  <path d="M-4 188 C60 182 130 194 190 188 C250 182 300 194 344 185 V222 H-4 Z" fill="#f08eae" opacity="0.07"/>
+  
+  <path d="M0 196 C60 186 120 194 170 190 C230 185 290 194 340 187 V220 H0 Z" fill="#050208" opacity=".9"/>
+  <path d="M14 220 C15 192 12 188 10 182" stroke="#2b1220" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M42 220 C43 188 42 184 42 178" stroke="#2b1220" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M84 220 C85 201 86 197 88 191" stroke="#2b1220" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M112 220 C113 197 116 193 120 187" stroke="#2b1220" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M140 220 C141 193 137 189 134 183" stroke="#2b1220" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M168 220 C169 189 167 185 166 179" stroke="#2b1220" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M210 220 C211 202 211 198 212 192" stroke="#2b1220" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M238 220 C239 198 241 194 244 188" stroke="#2b1220" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M266 220 C267 194 262 190 258 184" stroke="#2b1220" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M308 220 C309 190 306 186 304 180" stroke="#2b1220" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M336 220 C337 203 336 199 336 193" stroke="#2b1220" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+  
+  <rect width="340" height="220" rx="28" fill="url(#vig-abyssal-tyrant)"/>
+  <circle cx="276" cy="44" r=".6" fill="#f08eae" opacity=".05"/><circle cx="332" cy="176" r=".6" fill="#f08eae" opacity=".05"/><circle cx="48" cy="88" r=".6" fill="#f08eae" opacity=".05"/><circle cx="104" cy="0" r=".6" fill="#f08eae" opacity=".05"/><circle cx="160" cy="132" r=".6" fill="#f08eae" opacity=".05"/><circle cx="216" cy="44" r=".6" fill="#f08eae" opacity=".05"/><circle cx="272" cy="176" r=".6" fill="#f08eae" opacity=".05"/><circle cx="328" cy="88" r=".6" fill="#f08eae" opacity=".05"/><circle cx="44" cy="0" r=".6" fill="#f08eae" opacity=".05"/><circle cx="100" cy="132" r=".6" fill="#f08eae" opacity=".05"/><circle cx="156" cy="44" r=".6" fill="#f08eae" opacity=".05"/><circle cx="212" cy="176" r=".6" fill="#f08eae" opacity=".05"/><circle cx="268" cy="88" r=".6" fill="#f08eae" opacity=".05"/><circle cx="324" cy="0" r=".6" fill="#f08eae" opacity=".05"/><circle cx="40" cy="132" r=".6" fill="#f08eae" opacity=".05"/><circle cx="96" cy="44" r=".6" fill="#f08eae" opacity=".05"/><circle cx="152" cy="176" r=".6" fill="#f08eae" opacity=".05"/><circle cx="208" cy="88" r=".6" fill="#f08eae" opacity=".05"/><circle cx="264" cy="0" r=".6" fill="#f08eae" opacity=".05"/><circle cx="320" cy="132" r=".6" fill="#f08eae" opacity=".05"/><circle cx="36" cy="44" r=".6" fill="#f08eae" opacity=".05"/><circle cx="92" cy="176" r=".6" fill="#f08eae" opacity=".05"/><circle cx="148" cy="88" r=".6" fill="#f08eae" opacity=".05"/><circle cx="204" cy="0" r=".6" fill="#f08eae" opacity=".05"/><circle cx="260" cy="132" r=".6" fill="#f08eae" opacity=".05"/><circle cx="316" cy="44" r=".6" fill="#f08eae" opacity=".05"/>
+  <rect x="10" y="10" width="320" height="200" rx="22" fill="none" stroke="rgba(168,85,247,.55)"/>
 </svg>

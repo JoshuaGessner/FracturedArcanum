@@ -335,7 +335,7 @@ copy in `CARD_BORDER_OFFERS` in `src/constants.ts`.
 4. **Redundancy check** — verify no existing card at the same cost/rarity/keyword is made obsolete (see Card Catalog redundancy analysis)
 5. **Implement** — add to `CARD_LIBRARY` in `src/game.ts`
 6. **Params** — if the card has non-default effect amounts or multi-keyword behavior, add to `CARD_PARAMS`
-7. **Art** — add blueprint to `scripts/generate-brand-assets.mjs`, regenerate, verify manifest
+7. **Art** — add a bespoke scene to `CARD_SCENES` in `scripts/lib/card-art.mjs` (the generator fails if a library card has no scene), then `npm run build:engine` and regenerate assets; verify the manifest
 8. **Test** — add test cases in `src/game.test.ts` for the new card's effect resolution
 9. **Build** — run `npm run build:engine` then `npm run build`
 10. **Economy check** — verify the card doesn't break pack value or collection progression math; recalculate timelines in [`docs/ECONOMY_BALANCE.md`](ECONOMY_BALANCE.md)

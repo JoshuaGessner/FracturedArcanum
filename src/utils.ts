@@ -1,5 +1,5 @@
 import React from 'react'
-import { ARENA_URL, CARD_ART_ALIASES, CARD_BORDER_OFFERS, EFFECT_ICONS, PACK_ART, RANK_INSIGNIA, RARITY_GEM_ICONS } from './constants'
+import { ARENA_URL, CARD_BORDER_OFFERS, EFFECT_ICONS, PACK_ART, RANK_INSIGNIA, RARITY_GEM_ICONS } from './constants'
 import type { AppScreen, CardBorder, ToastSeverity } from './types'
 
 export type RewardScope = 'battle' | 'pack' | 'daily' | 'rank' | 'generic'
@@ -171,12 +171,11 @@ export function formatTimestamp(value: string): string {
 }
 
 export function cardArtPath(cardId: string): string {
-  const mappedCardId = CARD_ART_ALIASES[cardId] ?? cardId
-  return `/generated/cards/${mappedCardId}.svg`
+  return `/generated/cards/${cardId}.svg`
 }
 
 export function handleCardArtError(event: React.SyntheticEvent<HTMLImageElement>): void {
-  const fallbackPath = '/generated/cards/mana-wisp.svg'
+  const fallbackPath = '/generated/cards/card-unknown.svg'
   if (event.currentTarget.src.endsWith(fallbackPath)) {
     return
   }

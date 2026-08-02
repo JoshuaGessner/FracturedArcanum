@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 340 220" role="img" aria-label="Weaver of Ill Omen illustration">
+  <defs>
+    <linearGradient id="sky-hex-spider" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#140e0c"/>
+      <stop offset="100%" stop-color="#050303"/>
+    </linearGradient>
+    <radialGradient id="drown-hex-spider" cx="50%" cy="46%" r="62%">
+      <stop offset="0%" stop-color="#c98a4b" stop-opacity="0.2"/>
+      <stop offset="60%" stop-color="#c98a4b" stop-opacity="0.06"/>
+      <stop offset="100%" stop-color="#c98a4b" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="vig-hex-spider" cx="50%" cy="50%" r="72%">
+      <stop offset="0%" stop-color="#000" stop-opacity="0"/>
+      <stop offset="76%" stop-color="#000" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000" stop-opacity="0.5"/>
+    </radialGradient>
+  </defs>
+  <rect width="340" height="220" rx="28" fill="url(#sky-hex-spider)"/>
+  <rect width="340" height="220" rx="28" fill="url(#drown-hex-spider)"/>
+  <circle cx="275" cy="35" r="1.40" fill="#e0bd92" opacity="0.17"/><circle cx="162" cy="60" r="1.05" fill="#e0bd92" opacity="0.22"/><circle cx="49" cy="85" r="0.70" fill="#e0bd92" opacity="0.27"/><circle cx="232" cy="32" r="1.40" fill="#e0bd92" opacity="0.12"/><circle cx="119" cy="57" r="1.05" fill="#e0bd92" opacity="0.17"/><circle cx="302" cy="82" r="0.70" fill="#e0bd92" opacity="0.22"/><circle cx="189" cy="29" r="1.40" fill="#e0bd92" opacity="0.27"/><circle cx="76" cy="54" r="1.05" fill="#e0bd92" opacity="0.12"/><circle cx="259" cy="79" r="0.70" fill="#e0bd92" opacity="0.17"/>
+  
+    <circle cx="170" cy="108" r="74" fill="none" stroke="#c98a4b" stroke-width="2.5" opacity=".38"
+      stroke-dasharray="326 141"/>
+    <circle cx="170" cy="108" r="67" fill="none" stroke="#e0bd92" stroke-width="1" opacity=".2"/>
+  
+  <g fill="#2b1c13" opacity=".5">
+    <path d="M63 178 L68 108 L93 176 Z"/>
+    <path d="M259 178 L282 96 L293 174 Z"/>
+    <path d="M299 180 L307 132 L321 178 Z"/>
+  </g>
+  <g stroke="#c98a4b" stroke-width="1" opacity=".18" fill="none">
+    <path d="M71 150 h12 M267 132 h10 M270 148 h12"/>
+  </g>
+  <path d="M-4 169 C60 161 130 177 190 169 C250 161 300 177 344 165 V203 H-4 Z" fill="#e0bd92" opacity="0.05"/>
+  
+    <ellipse cx="170" cy="184" rx="66" ry="10" fill="none" stroke="#c98a4b" stroke-width="1.2" opacity=".3"/>
+    <ellipse cx="170" cy="184" rx="46" ry="6" fill="none" stroke="#c98a4b" stroke-width="1" opacity=".22"/>
+  
+      <path d="M96 60 L244 60 M110 170 L230 170 M96 60 L110 170 M244 60 L230 170 M120 60 L130 170 M170 60 L170 170 M220 60 L210 170 M100 92 L240 92 M104 128 L236 128" stroke="#c98a4b" stroke-width=".8" opacity=".3"/>
+      <ellipse cx="170" cy="118" rx="20" ry="24" fill="#54392a"/>
+      <circle cx="170" cy="92" r="11" fill="#54392a"/>
+      <path d="M156 104 C138 98 124 100 110 110 M158 116 C142 118 130 126 122 138 M160 128 C148 136 142 148 140 162 M184 104 C202 98 216 100 230 110 M182 116 C198 118 210 126 218 138 M180 128 C192 136 198 148 200 162" stroke="#2b1c13" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <path d="M162 132 L170 142 L178 132" fill="none" stroke="#c98a4b" stroke-width="1.4" opacity=".8"/>
+      <path d="M170 118 m-8 0 a8 8 0 1 0 16 0" fill="none" stroke="#c98a4b" stroke-width="1.2" opacity=".6"/>
+      <circle cx="164.0" cy="91.4" r="5.699999999999999" fill="#ffb84d" opacity=".12"/><circle cx="164.0" cy="91.4" r="3" fill="#ffb84d"/><circle cx="168.2" cy="89.3" r="4.18" fill="#ffb84d" opacity=".12"/><circle cx="168.2" cy="89.3" r="2.2" fill="#ffb84d"/><circle cx="169.4" cy="85.9" r="2.6599999999999997" fill="#ffb84d" opacity=".12"/><circle cx="169.4" cy="85.9" r="1.4" fill="#ffb84d"/><circle cx="172.0" cy="88.9" r="5.699999999999999" fill="#ffb84d" opacity=".12"/><circle cx="172.0" cy="88.9" r="3" fill="#ffb84d"/><circle cx="177.3" cy="90.9" r="4.18" fill="#ffb84d" opacity=".12"/><circle cx="177.3" cy="90.9" r="2.2" fill="#ffb84d"/><circle cx="171.4" cy="91.7" r="2.6599999999999997" fill="#ffb84d" opacity=".12"/><circle cx="171.4" cy="91.7" r="1.4" fill="#ffb84d"/>
+  <path d="M-4 191 C60 185 130 197 190 191 C250 185 300 197 344 188 V225 H-4 Z" fill="#e0bd92" opacity="0.07"/>
+  
+  <path d="M0 196 C60 186 120 194 170 190 C230 185 290 194 340 187 V220 H0 Z" fill="#050303" opacity=".9"/>
+  <path d="M16 220 C17 192 17 188 18 182" stroke="#2b1c13" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M45 220 C46 188 42 184 39 178" stroke="#2b1c13" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M74 220 C75 201 76 197 78 191" stroke="#2b1c13" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M117 220 C118 197 115 193 113 187" stroke="#2b1c13" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M146 220 C147 193 149 189 152 183" stroke="#2b1c13" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M175 220 C176 189 174 185 173 179" stroke="#2b1c13" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M204 220 C205 202 208 198 212 192" stroke="#2b1c13" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M233 220 C234 198 233 194 233 188" stroke="#2b1c13" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M276 220 C277 194 272 190 268 184" stroke="#2b1c13" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M305 220 C306 190 306 186 307 180" stroke="#2b1c13" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M334 220 C335 203 331 199 328 193" stroke="#2b1c13" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+  
+  <rect width="340" height="220" rx="28" fill="url(#vig-hex-spider)"/>
+  <circle cx="293" cy="77" r=".6" fill="#e0bd92" opacity=".05"/><circle cx="196" cy="198" r=".6" fill="#e0bd92" opacity=".05"/><circle cx="99" cy="99" r=".6" fill="#e0bd92" opacity=".05"/><circle cx="2" cy="0" r=".6" fill="#e0bd92" opacity=".05"/><circle cx="245" cy="121" r=".6" fill="#e0bd92" opacity=".05"/><circle cx="148" cy="22" r=".6" fill="#e0bd92" opacity=".05"/><circle cx="51" cy="143" r=".6" fill="#e0bd92" opacity=".05"/><circle cx="294" cy="44" r=".6" fill="#e0bd92" opacity=".05"/><circle cx="197" cy="165" r=".6" fill="#e0bd92" opacity=".05"/><circle cx="100" cy="66" r=".6" fill="#e0bd92" opacity=".05"/><circle cx="3" cy="187" r=".6" fill="#e0bd92" opacity=".05"/><circle cx="246" cy="88" r=".6" fill="#e0bd92" opacity=".05"/><circle cx="149" cy="209" r=".6" fill="#e0bd92" opacity=".05"/><circle cx="52" cy="110" r=".6" fill="#e0bd92" opacity=".05"/><circle cx="295" cy="11" r=".6" fill="#e0bd92" opacity=".05"/><circle cx="198" cy="132" r=".6" fill="#e0bd92" opacity=".05"/><circle cx="101" cy="33" r=".6" fill="#e0bd92" opacity=".05"/><circle cx="4" cy="154" r=".6" fill="#e0bd92" opacity=".05"/><circle cx="247" cy="55" r=".6" fill="#e0bd92" opacity=".05"/><circle cx="150" cy="176" r=".6" fill="#e0bd92" opacity=".05"/><circle cx="53" cy="77" r=".6" fill="#e0bd92" opacity=".05"/><circle cx="296" cy="198" r=".6" fill="#e0bd92" opacity=".05"/><circle cx="199" cy="99" r=".6" fill="#e0bd92" opacity=".05"/><circle cx="102" cy="0" r=".6" fill="#e0bd92" opacity=".05"/><circle cx="5" cy="121" r=".6" fill="#e0bd92" opacity=".05"/><circle cx="248" cy="22" r=".6" fill="#e0bd92" opacity=".05"/>
+  <rect x="10" y="10" width="320" height="200" rx="22" fill="none" stroke="rgba(96,165,250,.5)"/>
+</svg>

@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 340 220" role="img" aria-label="Starless Queen illustration">
+  <defs>
+    <linearGradient id="sky-void-empress" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#160914"/>
+      <stop offset="100%" stop-color="#050208"/>
+    </linearGradient>
+    <radialGradient id="drown-void-empress" cx="50%" cy="46%" r="62%">
+      <stop offset="0%" stop-color="#d84a6f" stop-opacity="0.2"/>
+      <stop offset="60%" stop-color="#d84a6f" stop-opacity="0.06"/>
+      <stop offset="100%" stop-color="#d84a6f" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="vig-void-empress" cx="50%" cy="50%" r="72%">
+      <stop offset="0%" stop-color="#000" stop-opacity="0"/>
+      <stop offset="76%" stop-color="#000" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000" stop-opacity="0.5"/>
+    </radialGradient>
+  </defs>
+  <rect width="340" height="220" rx="28" fill="url(#sky-void-empress)"/>
+  <rect width="340" height="220" rx="28" fill="url(#drown-void-empress)"/>
+  <circle cx="40" cy="78" r="1.05" fill="#f08eae" opacity="0.22"/><circle cx="46" cy="20" r="1.40" fill="#f08eae" opacity="0.12"/><circle cx="52" cy="40" r="0.70" fill="#f08eae" opacity="0.22"/><circle cx="58" cy="60" r="1.05" fill="#f08eae" opacity="0.12"/><circle cx="64" cy="80" r="1.40" fill="#f08eae" opacity="0.22"/><circle cx="70" cy="22" r="0.70" fill="#f08eae" opacity="0.12"/><circle cx="76" cy="42" r="1.05" fill="#f08eae" opacity="0.22"/><circle cx="82" cy="62" r="1.40" fill="#f08eae" opacity="0.12"/><circle cx="88" cy="82" r="0.70" fill="#f08eae" opacity="0.22"/>
+  
+    <circle cx="170" cy="56" r="40" fill="#d84a6f" opacity=".16"/>
+    <circle cx="170" cy="56" r="28.799999999999997" fill="#f08eae" opacity=".14"/>
+    <path d="M130 56 A40 40 0 0 0 210 56" fill="#050208" opacity=".55"/>
+  
+  <g fill="#2b1220" opacity=".5">
+    <path d="M40 178 L62 108 L70 176 Z"/>
+    <path d="M236 178 L242 96 L270 174 Z"/>
+    <path d="M276 180 L284 132 L298 178 Z"/>
+  </g>
+  <g stroke="#d84a6f" stroke-width="1" opacity=".18" fill="none">
+    <path d="M48 150 h12 M244 132 h10 M247 148 h12"/>
+  </g>
+  <path d="M-4 170 C60 162 130 178 190 170 C250 162 300 178 344 166 V204 H-4 Z" fill="#f08eae" opacity="0.05"/>
+  
+    <ellipse cx="170" cy="182" rx="74" ry="12" fill="none" stroke="#d84a6f" stroke-width="1.3" opacity=".35"/>
+    <ellipse cx="170" cy="128" rx="92" ry="58" fill="none" stroke="#d84a6f" stroke-width="1" opacity=".18"/>
+    <circle cx="86" cy="120" r="2" fill="#d84a6f" opacity=".5"/>
+    <circle cx="254" cy="118" r="2" fill="#d84a6f" opacity=".5"/>
+  
+      <path d="M140 192 C138 148 148 118 170 106 C192 118 202 148 200 192 Z" fill="#050208"/>
+      <path d="M140 192 C138 148 148 118 170 106 C192 118 202 148 200 192" fill="none" stroke="#d84a6f" stroke-width="1.6" opacity=".7"/>
+      <circle cx="160" cy="140" r="1.2" fill="#f08eae" opacity=".8"/>
+      <circle cx="178" cy="128" r="1" fill="#f08eae" opacity=".7"/>
+      <circle cx="168" cy="158" r="1.3" fill="#f08eae" opacity=".75"/>
+      <circle cx="184" cy="150" r="1" fill="#f08eae" opacity=".6"/>
+      <circle cx="156" cy="172" r="1.1" fill="#f08eae" opacity=".7"/>
+      <circle cx="176" cy="176" r="1" fill="#f08eae" opacity=".6"/>
+      <path d="M170 106 C162 100 159 92 162 82 C167 88 173 88 178 82 C181 92 178 100 170 106 Z" fill="#2b1220"/>
+      <path d="M152 84 L148 62 L158 74 L164 56 L170 70 L176 56 L182 74 L192 62 L188 84" fill="none" stroke="#d84a6f" stroke-width="2" stroke-linejoin="round" opacity=".85"/>
+      <g>
+    <circle cx="164" cy="92" r="4.2" fill="#ff9db8" opacity=".14"/>
+    <circle cx="176" cy="92" r="4.2" fill="#ff9db8" opacity=".14"/>
+    <circle cx="164" cy="92" r="2" fill="#ff9db8"/>
+    <circle cx="176" cy="92" r="2" fill="#ff9db8"/>
+  </g>
+      <path d="M148 128 C140 124 134 116 132 106 M192 128 C200 124 206 116 208 106" stroke="#d84a6f" stroke-width="1.4" fill="none" opacity=".45"/>
+  <path d="M-4 190 C60 184 130 196 190 190 C250 184 300 196 344 187 V224 H-4 Z" fill="#f08eae" opacity="0.07"/>
+  
+  <path d="M0 196 C60 186 120 194 170 190 C230 185 290 194 340 187 V220 H0 Z" fill="#050208" opacity=".9"/>
+  <path d="M20 220 C21 201 17 197 14 191" stroke="#2b1220" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M44 220 C45 200 42 196 40 190" stroke="#2b1220" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M82 220 C83 199 81 195 80 189" stroke="#2b1220" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M106 220 C107 198 106 194 106 188" stroke="#2b1220" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M144 220 C145 197 145 193 146 187" stroke="#2b1220" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M168 220 C169 196 170 192 172 186" stroke="#2b1220" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M206 220 C207 195 209 191 212 185" stroke="#2b1220" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M244 220 C245 194 248 190 252 184" stroke="#2b1220" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M268 220 C269 193 264 189 260 183" stroke="#2b1220" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M306 220 C307 192 303 188 300 182" stroke="#2b1220" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M330 220 C331 191 328 187 326 181" stroke="#2b1220" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+  
+  <rect width="340" height="220" rx="28" fill="url(#vig-void-empress)"/>
+  <circle cx="290" cy="90" r=".6" fill="#f08eae" opacity=".05"/><circle cx="100" cy="160" r=".6" fill="#f08eae" opacity=".05"/><circle cx="250" cy="10" r=".6" fill="#f08eae" opacity=".05"/><circle cx="60" cy="80" r=".6" fill="#f08eae" opacity=".05"/><circle cx="210" cy="150" r=".6" fill="#f08eae" opacity=".05"/><circle cx="20" cy="0" r=".6" fill="#f08eae" opacity=".05"/><circle cx="170" cy="70" r=".6" fill="#f08eae" opacity=".05"/><circle cx="320" cy="140" r=".6" fill="#f08eae" opacity=".05"/><circle cx="130" cy="210" r=".6" fill="#f08eae" opacity=".05"/><circle cx="280" cy="60" r=".6" fill="#f08eae" opacity=".05"/><circle cx="90" cy="130" r=".6" fill="#f08eae" opacity=".05"/><circle cx="240" cy="200" r=".6" fill="#f08eae" opacity=".05"/><circle cx="50" cy="50" r=".6" fill="#f08eae" opacity=".05"/><circle cx="200" cy="120" r=".6" fill="#f08eae" opacity=".05"/><circle cx="10" cy="190" r=".6" fill="#f08eae" opacity=".05"/><circle cx="160" cy="40" r=".6" fill="#f08eae" opacity=".05"/><circle cx="310" cy="110" r=".6" fill="#f08eae" opacity=".05"/><circle cx="120" cy="180" r=".6" fill="#f08eae" opacity=".05"/><circle cx="270" cy="30" r=".6" fill="#f08eae" opacity=".05"/><circle cx="80" cy="100" r=".6" fill="#f08eae" opacity=".05"/><circle cx="230" cy="170" r=".6" fill="#f08eae" opacity=".05"/><circle cx="40" cy="20" r=".6" fill="#f08eae" opacity=".05"/><circle cx="190" cy="90" r=".6" fill="#f08eae" opacity=".05"/><circle cx="0" cy="160" r=".6" fill="#f08eae" opacity=".05"/><circle cx="150" cy="10" r=".6" fill="#f08eae" opacity=".05"/><circle cx="300" cy="80" r=".6" fill="#f08eae" opacity=".05"/>
+  <rect x="10" y="10" width="320" height="200" rx="22" fill="none" stroke="rgba(168,85,247,.55)"/>
+</svg>

@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 340 220" role="img" aria-label="Malachar, the Carrion King illustration">
+  <defs>
+    <linearGradient id="sky-malachar-the-undying" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0a1410"/>
+      <stop offset="100%" stop-color="#030705"/>
+    </linearGradient>
+    <radialGradient id="drown-malachar-the-undying" cx="50%" cy="46%" r="62%">
+      <stop offset="0%" stop-color="#8fd3a3" stop-opacity="0.2"/>
+      <stop offset="60%" stop-color="#8fd3a3" stop-opacity="0.06"/>
+      <stop offset="100%" stop-color="#8fd3a3" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="vig-malachar-the-undying" cx="50%" cy="50%" r="72%">
+      <stop offset="0%" stop-color="#000" stop-opacity="0"/>
+      <stop offset="76%" stop-color="#000" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000" stop-opacity="0.5"/>
+    </radialGradient>
+  </defs>
+  <rect width="340" height="220" rx="28" fill="url(#sky-malachar-the-undying)"/>
+  <rect width="340" height="220" rx="28" fill="url(#drown-malachar-the-undying)"/>
+  <circle cx="136" cy="60" r="1.05" fill="#cfe8d4" opacity="0.22"/><circle cx="174" cy="44" r="1.40" fill="#cfe8d4" opacity="0.12"/><circle cx="212" cy="28" r="0.70" fill="#cfe8d4" opacity="0.22"/><circle cx="250" cy="90" r="1.05" fill="#cfe8d4" opacity="0.12"/><circle cx="288" cy="74" r="1.40" fill="#cfe8d4" opacity="0.22"/><circle cx="30" cy="58" r="0.70" fill="#cfe8d4" opacity="0.12"/><circle cx="68" cy="42" r="1.05" fill="#cfe8d4" opacity="0.22"/><circle cx="106" cy="26" r="1.40" fill="#cfe8d4" opacity="0.12"/><circle cx="144" cy="88" r="0.70" fill="#cfe8d4" opacity="0.22"/>
+  
+    <circle cx="170" cy="52" r="40" fill="#8fd3a3" opacity=".16"/>
+    <circle cx="170" cy="52" r="28.799999999999997" fill="#cfe8d4" opacity=".14"/>
+    <path d="M130 52 A40 40 0 0 0 210 52" fill="#030705" opacity=".55"/>
+  
+  <g fill="#1b2b20" opacity=".5">
+    <path d="M32 178 L54 108 L62 176 Z"/>
+    <path d="M228 178 L234 96 L262 174 Z"/>
+    <path d="M268 180 L276 132 L290 178 Z"/>
+  </g>
+  <g stroke="#8fd3a3" stroke-width="1" opacity=".18" fill="none">
+    <path d="M40 150 h12 M236 132 h10 M239 148 h12"/>
+  </g>
+  <path d="M-4 170 C60 162 130 178 190 170 C250 162 300 178 344 166 V204 H-4 Z" fill="#cfe8d4" opacity="0.05"/>
+  
+    <ellipse cx="170" cy="118" rx="96" ry="76" fill="#8fd3a3" opacity=".06"/>
+    <ellipse cx="170" cy="182" rx="80" ry="13" fill="none" stroke="#8fd3a3" stroke-width="1.4" opacity=".4"/>
+    <path d="M236.0 118.0 L262.0 118.0" stroke="#8fd3a3" stroke-width="1.1" opacity=".22"/><path d="M227.2 144.0 L249.7 155.0" stroke="#8fd3a3" stroke-width="1.1" opacity=".22"/><path d="M203.0 163.0 L216.0 182.1" stroke="#8fd3a3" stroke-width="1.1" opacity=".22"/><path d="M170.0 170.0 L170.0 192.0" stroke="#8fd3a3" stroke-width="1.1" opacity=".22"/><path d="M137.0 163.0 L124.0 182.1" stroke="#8fd3a3" stroke-width="1.1" opacity=".22"/><path d="M112.8 144.0 L90.3 155.0" stroke="#8fd3a3" stroke-width="1.1" opacity=".22"/><path d="M104.0 118.0 L78.0 118.0" stroke="#8fd3a3" stroke-width="1.1" opacity=".22"/><path d="M112.8 92.0 L90.3 81.0" stroke="#8fd3a3" stroke-width="1.1" opacity=".22"/><path d="M137.0 73.0 L124.0 53.9" stroke="#8fd3a3" stroke-width="1.1" opacity=".22"/><path d="M170.0 66.0 L170.0 44.0" stroke="#8fd3a3" stroke-width="1.1" opacity=".22"/><path d="M203.0 73.0 L216.0 53.9" stroke="#8fd3a3" stroke-width="1.1" opacity=".22"/><path d="M227.2 92.0 L249.7 81.0" stroke="#8fd3a3" stroke-width="1.1" opacity=".22"/>
+  
+      <path d="M108 192 L112 132 C112 116 124 104 140 102 L200 102 C216 104 228 116 228 132 L232 192 Z" fill="#1b2b20"/>
+      <path d="M118 128 L114 108 L126 118 M138 118 L136 96 L148 110 M202 118 L204 96 L192 110 M222 128 L226 108 L214 118" fill="#1b2b20"/>
+      <path d="M146 192 C144 152 152 124 170 114 C188 124 196 152 194 192 Z" fill="#3c5244"/>
+      <path d="M170 114 C160 107 157 97 161 87 C167 93 173 93 179 87 C183 97 180 107 170 114 Z" fill="#1b2b20"/>
+      <path d="M154 88 L150 66 L160 78 L166 60 L172 74 L178 60 L184 78 L194 66 L190 88" fill="none" stroke="#8fd3a3" stroke-width="2.2" stroke-linejoin="round" opacity=".9"/>
+      <g>
+    <circle cx="164" cy="98" r="4.620000000000001" fill="#b4ffcf" opacity=".14"/>
+    <circle cx="176" cy="98" r="4.620000000000001" fill="#b4ffcf" opacity=".14"/>
+    <circle cx="164" cy="98" r="2.2" fill="#b4ffcf"/>
+    <circle cx="176" cy="98" r="2.2" fill="#b4ffcf"/>
+  </g>
+      <path d="M124 150 C118 158 116 168 120 178 M216 150 C222 158 224 168 220 178" stroke="#3c5244" stroke-width="3" fill="none" opacity=".6"/>
+      <circle cx="122" cy="164" r="2" fill="#b4ffcf" opacity=".8"/>
+      <circle cx="219" cy="164" r="2" fill="#b4ffcf" opacity=".8"/>
+      <path d="M156 144 h28 M160 160 h20 M158 176 h24" stroke="#1b2b20" stroke-width="2.4"/>
+  <path d="M-4 190 C60 184 130 196 190 190 C250 184 300 196 344 187 V224 H-4 Z" fill="#cfe8d4" opacity="0.07"/>
+  
+  <path d="M0 196 C60 186 120 194 170 190 C230 185 290 194 340 187 V220 H0 Z" fill="#030705" opacity=".9"/>
+  <path d="M14 220 C15 201 17 197 20 191" stroke="#1b2b20" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M42 220 C43 200 43 196 44 190" stroke="#1b2b20" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M84 220 C85 199 83 195 82 189" stroke="#1b2b20" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M112 220 C113 198 109 194 106 188" stroke="#1b2b20" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M140 220 C141 197 144 193 148 187" stroke="#1b2b20" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M168 220 C169 196 170 192 172 186" stroke="#1b2b20" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M210 220 C211 195 210 191 210 185" stroke="#1b2b20" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M238 220 C239 194 236 190 234 184" stroke="#1b2b20" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M266 220 C267 193 262 189 258 183" stroke="#1b2b20" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M308 220 C309 192 311 188 314 182" stroke="#1b2b20" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M336 220 C337 191 337 187 338 181" stroke="#1b2b20" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+  
+  <rect width="340" height="220" rx="28" fill="url(#vig-malachar-the-undying)"/>
+  <circle cx="222" cy="198" r=".6" fill="#cfe8d4" opacity=".05"/><circle cx="304" cy="132" r=".6" fill="#cfe8d4" opacity=".05"/><circle cx="46" cy="66" r=".6" fill="#cfe8d4" opacity=".05"/><circle cx="128" cy="0" r=".6" fill="#cfe8d4" opacity=".05"/><circle cx="210" cy="154" r=".6" fill="#cfe8d4" opacity=".05"/><circle cx="292" cy="88" r=".6" fill="#cfe8d4" opacity=".05"/><circle cx="34" cy="22" r=".6" fill="#cfe8d4" opacity=".05"/><circle cx="116" cy="176" r=".6" fill="#cfe8d4" opacity=".05"/><circle cx="198" cy="110" r=".6" fill="#cfe8d4" opacity=".05"/><circle cx="280" cy="44" r=".6" fill="#cfe8d4" opacity=".05"/><circle cx="22" cy="198" r=".6" fill="#cfe8d4" opacity=".05"/><circle cx="104" cy="132" r=".6" fill="#cfe8d4" opacity=".05"/><circle cx="186" cy="66" r=".6" fill="#cfe8d4" opacity=".05"/><circle cx="268" cy="0" r=".6" fill="#cfe8d4" opacity=".05"/><circle cx="10" cy="154" r=".6" fill="#cfe8d4" opacity=".05"/><circle cx="92" cy="88" r=".6" fill="#cfe8d4" opacity=".05"/><circle cx="174" cy="22" r=".6" fill="#cfe8d4" opacity=".05"/><circle cx="256" cy="176" r=".6" fill="#cfe8d4" opacity=".05"/><circle cx="338" cy="110" r=".6" fill="#cfe8d4" opacity=".05"/><circle cx="80" cy="44" r=".6" fill="#cfe8d4" opacity=".05"/><circle cx="162" cy="198" r=".6" fill="#cfe8d4" opacity=".05"/><circle cx="244" cy="132" r=".6" fill="#cfe8d4" opacity=".05"/><circle cx="326" cy="66" r=".6" fill="#cfe8d4" opacity=".05"/><circle cx="68" cy="0" r=".6" fill="#cfe8d4" opacity=".05"/><circle cx="150" cy="154" r=".6" fill="#cfe8d4" opacity=".05"/><circle cx="232" cy="88" r=".6" fill="#cfe8d4" opacity=".05"/>
+  <rect x="10" y="10" width="320" height="200" rx="22" fill="none" stroke="rgba(245,158,11,.65)"/>
+</svg>

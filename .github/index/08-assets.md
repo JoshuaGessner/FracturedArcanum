@@ -1,6 +1,8 @@
 # Generated Asset Pipeline
 
-All shipped visual art is produced by [scripts/generate-brand-assets.mjs](../../scripts/generate-brand-assets.mjs) and written into [public/generated](../../public/generated). The latest verified generation pass produced **173 manifest entries**.
+All shipped visual art is produced by [scripts/generate-brand-assets.mjs](../../scripts/generate-brand-assets.mjs) and written into [public/generated](../../public/generated). The latest verified generation pass produced **166 manifest entries**.
+
+Card illustrations live in their own module, [scripts/lib/card-art.mjs](../../scripts/lib/card-art.mjs): one bespoke cosmic-horror scene per card, composed inside a shared atmosphere (tribe-tinted abyss sky, celestial motif, ruins, fog, rarity aura, vignette). The card list is imported from the compiled engine (`server/game.js`), so the art set tracks `CARD_LIBRARY` directly — a library card without a scene fails the generation run instead of silently borrowing another card's art. The generator also emits art for the four battle tokens (`token-spark`, `token-wisp`, `token-ghoul`, `token-wraith`) and the `card-unknown` load-error seal, and prunes SVGs for retired card ids from `public/generated/cards/`.
 
 ## Verified asset counts
 
