@@ -59,14 +59,34 @@ const TURN_LIMIT = 60
  * This is also the closer analogue of the person who filed the report: they
  * beat Legend consistently, and they were not playing the starter deck.
  */
+/**
+ * A deck an experienced player would actually build: aggressive tempo, three
+ * copies of the best one-drop, charge for reach, removal for the lanes.
+ *
+ * Deliberately holds no Storm Carrion, and that is worth explaining because
+ * the first version ran two.
+ *
+ * Storm Carrion is 3 mana for a 4/2 with Cleave and Charge — it deals four
+ * damage to every enemy unit the turn it lands, which on a three-lane board is
+ * the whole board, and then attacks. By the project's own balance framework it
+ * is at double its legal stat budget: (3*2)+1 = 7, minus 2 for Cleave and 2 for
+ * Charge, leaves 3 stats; it is printed with 6.
+ *
+ * Measured, its presence or absence in a fifteen-card deck swings the win rate
+ * by roughly seventy points. A reference built on it is not measuring how well
+ * the AI plays, it is measuring who drew the broken card — and the difficulty
+ * ladder tuned against it would bake that in. So the yardstick runs a fairly
+ * costed body instead, and the card itself is flagged for a balance decision
+ * rather than quietly designed around.
+ */
 const STRONG_REFERENCE_DECK = {
   'spark-imp': 3,
   'blaze-runner': 2,
   'hex-spider': 2,
   'shade-fox': 2,
   'sky-raider': 2,
-  'thunder-hawk': 2,
   'ember-witch': 2,
+  'soul-reaver': 2,
   'war-mammoth': 1,
 }
 
@@ -454,7 +474,13 @@ function reportMatrix(games) {
     for (const deck of DIFFICULTIES) {
       let wins = 0
       for (let i = 0; i < games; i += 1) {
-        if (withSeed(i + 1, () => playGame(weights, deck)).winner === 'enemy') wins += 1
+        // Against the strong tempo reference. The starter deck saturates —
+        // every capable difficulty beats it ~100% — so a matrix measured there
+        // reads as all-ones and separates nothing.
+        const result = withSeed(i + 1, () => playGame(
+          weights, deck, REFERENCE_DECKS.strong, REFERENCE_POLICIES.tempo,
+        ))
+        if (result.winner === 'enemy') wins += 1
       }
       cells.push((wins / games) * 100)
     }

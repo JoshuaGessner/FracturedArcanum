@@ -192,12 +192,23 @@ Tokens are units created by Summon effects. They cannot exist in decks or hands.
 
 ### Difficulty Tiers
 
-| Difficulty | Rating Range | Deck | Avg cost | Behavior |
-|------------|-------------|------|----------|----------|
-| Novice | < 1150 | 11 commons, bodies and 1 blocker | 2.00 | Cheapest playable card; no burst strategy |
-| Adept | 1150–1324 | 15 commons + 1 rare | 2.60 | Scored play; occasional burst |
-| Veteran | 1325–1499 | 13 with rares, Charge + removal | 2.69 | Smarter targeting; burst when ahead |
-| Legend | ≥ 1500 | 16 with epics, aggro-tempo | 2.81 | Full scoring; priority targeting; strategic burst |
+| Difficulty | Rating | Deck | Avg cost | Can it read your board? | Can it sequence attacks? |
+|------------|--------|------|----------|------------------------|--------------------------|
+| Novice | < 1150 | 11 commons, bodies and 1 blocker | 2.00 | no — plays the cheapest card | no |
+| Adept | 1150–1324 | 15 commons + 1 rare | 2.60 | no — scores cards in isolation | no |
+| Veteran | 1325–1499 | 13 with rares, Charge + removal | 2.85 | **yes** | no — swings lane by lane |
+| Legend | ≥ 1500 | 15 with epics, aggro-tempo | 3.00 | **yes** | **yes** — never misses lethal |
+
+**Difficulty is a capability, not a constant.** Each rung adds something the
+one below cannot do, and the two capabilities are what separate the tiers:
+board reading was measured at ~48 points of win rate, attack sequencing at
+~49. The old ladder gave all four the same algorithm with different numbers and
+left the top three within 2.4 points of each other.
+
+Neither capability is a heuristic. Both work by simulating a move and scoring
+the position it produces, so "Legend never misses lethal" is a property of the
+search — a winning line evaluates above every other line — rather than a rule
+that can rot. There is no lethal check in the code.
 
 ### AI Deck Design Rules
 

@@ -140,3 +140,76 @@ describe('AI decks follow the design bible', () => {
     }
   })
 })
+
+describe('AI decks avoid the outlier card', () => {
+  /**
+   * Storm Carrion is 3 mana for a 4/2 with Cleave and Charge: four damage to
+   * every enemy unit the turn it lands — on a three-lane board, the whole board
+   * — and then it attacks.
+   *
+   * By CARD_BALANCE_FRAMEWORK its budget is (3*2)+1 = 7 stats, minus 2 for
+   * Cleave and 2 for Charge, leaving 3. It is printed with 6, double its
+   * allowance, carrying the two keywords the framework taxes hardest. For
+   * comparison the framework flags Drakarion, same keyword pair, as over budget
+   * but justified — at 8 mana, legendary, one copy.
+   *
+   * Measured: adding or removing it from a fifteen-card deck swings the AI's
+   * win rate by ~70 points. While it is in a deck, difficulty is really a
+   * question of who drew it, and a ladder tuned around that would bake the
+   * outlier in. So the AI does not play it, and the card is flagged for its own
+   * balance decision rather than quietly designed around.
+   *
+   * Legend still gets a board sweep — Many-Mawed Horror, the same Cleave at
+   * 6 mana, which is a cost the framework actually supports.
+   *
+   * Delete this test when the card is re-costed, not before.
+   */
+  it('never runs Storm Carrion at any difficulty', () => {
+    for (const difficulty of DIFFICULTIES) {
+      expect(
+        AI_DIFFICULTY_DECKS[difficulty]['thunder-hawk'] ?? 0,
+        `${difficulty} runs Storm Carrion, which swings its win rate by ~70 points on its own`,
+      ).toBe(0)
+    }
+  })
+
+  /**
+   * A floor, not a ceiling: no AI card may be wildly over its stat budget.
+   *
+   * Only the fixed combat-keyword taxes from CARD_BALANCE_FRAMEWORK are applied
+   * here. The on-play keywords — Blast, Poison, Draw and the rest — are taxed
+   * per point of effect, and the amounts live in `CARD_PARAMS`, which is
+   * module-private. Inventing numbers for them would make this assert against
+   * arithmetic nobody agreed to, so those cards are skipped instead.
+   *
+   * The same blind spot is why Storm Carrion needs the named exclusion above
+   * rather than being caught here: its Charge is granted through CARD_PARAMS,
+   * so from outside the engine it looks like a Cleave card one point over
+   * budget instead of a two-keyword card four points over. A test that cannot
+   * see half the card should say so rather than quietly pass.
+   */
+  it('runs no card wildly over its combat-keyword budget', () => {
+    /** Fixed taxes, from the framework's Combat Keyword Costs table. */
+    const COMBAT_TAX: Partial<Record<string, number>> = {
+      charge: 2, guard: 1, fury: 1, lifesteal: 2, enrage: 1, overwhelm: 1, cleave: 2,
+    }
+    const offenders: string[] = []
+
+    for (const difficulty of DIFFICULTIES) {
+      for (const card of new Set(cardsOf(AI_DIFFICULTY_DECKS[difficulty]))) {
+        // Legendaries buy an allowance with their one-copy limit.
+        if (card.rarity === 'legendary') continue
+        // Scaling on-play keywords: tax unknowable from here, so not judged.
+        if (card.effect && !(card.effect in COMBAT_TAX)) continue
+
+        const budget = card.cost * 2 + 1 - (COMBAT_TAX[card.effect ?? ''] ?? 0)
+        const printed = card.attack + card.health
+        if (printed > budget + 1) {
+          offenders.push(`${difficulty}: ${card.id} is ${printed} stats against a budget of ${budget}`)
+        }
+      }
+    }
+
+    expect([...new Set(offenders)]).toEqual([])
+  })
+})

@@ -313,19 +313,6 @@ export const AI_DECK_CONFIG: DeckConfig = {
  * which on this clock is a handicap.
  */
 export const AI_DIFFICULTY_DECKS: Record<AIDifficulty, DeckConfig> = {
-  /**
-   * Bodies only — commons, no keyword beyond Guard, per the design bible's AI
-   * deck rules. No removal, no reach, no draw: it cannot answer anything or
-   * close a game it is winning, which is the lesson a new player should take
-   * from it.
-   *
-   * Deliberately light on Guard. An earlier version ran four blockers and
-   * *stalled* — 27 of 200 games hit the turn limit and the average game ran to
-   * 21 turns, because a starter deck cannot chew through 1/4 and 2/4 walls.
-   * A difficulty nobody can beat and nobody can lose to is not an easy
-   * difficulty, it is a boring one. Two blockers, and the rest is small bodies
-   * that trade badly.
-   */
   novice: {
     'spark-imp': 2,
     'copper-automaton': 3,
@@ -334,47 +321,26 @@ export const AI_DIFFICULTY_DECKS: Record<AIDifficulty, DeckConfig> = {
     'clockwork-knight': 1,
     'storm-brute': 1,
   },
-
-  /** Commons plus one rare: the first deck with removal and a little reach. */
   adept: AI_DECK_CONFIG,
-
-  /**
-   * Stronger rares and the first real synergy: Charge for reach, with Blast,
-   * Cleave and Poison to clear the lanes that Charge needs open.
-   */
   veteran: {
     'spark-imp': 2,
     'blaze-runner': 2,
-    'shade-fox': 1,
-    'hex-spider': 1,
+    'hex-spider': 2,
     'sky-raider': 2,
-    'thunder-hawk': 2,
-    'ember-witch': 1,
+    'ember-witch': 2,
+    'soul-reaver': 1,
     'flame-juggler': 1,
     'war-mammoth': 1,
   },
-
-  /**
-   * A coherent aggressive-tempo deck with epics, built to be a fair fight
-   * against a good player's deck rather than a slower version of one.
-   *
-   * Three copies of the best one-drop and two of everything that matters: the
-   * top difficulty should draw its plan reliably, not draw bigger cards. The
-   * top end is Charge, so late mana converts into damage instead of into a
-   * large body that spends a turn doing nothing — which is precisely what the
-   * old expensive singletons did. Shadow Dancer's Lifesteal is the one
-   * concession to defence: without it the deck simply lost the race to an
-   * aggressive opponent rather than winning or losing on its own plan.
-   */
   legend: {
     'spark-imp': 3,
     'blaze-runner': 2,
     'hex-spider': 2,
     'sky-raider': 2,
-    'thunder-hawk': 2,
     'ember-witch': 2,
     'shadow-dancer': 1,
     'shadow-assassin': 2,
+    'ancient-hydra': 1,
   },
 }
 
@@ -411,7 +377,7 @@ export const AI_DIFFICULTY_PROFILES: Record<AIDifficulty, AIDifficultyProfile> =
   adept: {
     id: 'adept',
     selectionMode: 'scored',
-    readsBoard: true,
+    readsBoard: false,
     sequencesAttacks: false,
     costWeight: 1.25,
     attackWeight: 2,
@@ -441,7 +407,7 @@ export const AI_DIFFICULTY_PROFILES: Record<AIDifficulty, AIDifficultyProfile> =
     id: 'veteran',
     selectionMode: 'scored',
     readsBoard: true,
-    sequencesAttacks: true,
+    sequencesAttacks: false,
     costWeight: 1.35,
     attackWeight: 2.15,
     healthWeight: 1.1,
