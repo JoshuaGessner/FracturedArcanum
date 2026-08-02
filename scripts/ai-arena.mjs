@@ -102,21 +102,24 @@ function withSeed(seed, fn) {
 
 // ── The reference opponent ────────────────────────────────────────────────
 
+// ── The reference opponents ───────────────────────────────────────────────
+//
+// Two policies, deliberately different in shape. Tuning an AI to beat a single
+// fixed opponent produces a champion at exactly one matchup, and this codebase
+// has already been caught measuring against one yardstick and believing the
+// number: the old ladder looked fine against the starter deck and collapsed
+// against a real one. A tempo player and a value player fail in opposite
+// directions, so an AI that handles both is more likely to handle a person.
+//
+// Neither is a champion, and neither is meant to be. They are rulers.
+
 /**
- * Where this attacker should swing.
+ * Tempo: develop the curve, take good trades, otherwise hit the face.
  *
- * Guard is a rule, not a preference — the engine rejects anything else while
- * one is up, so it is tried first. After that: a trade that kills and survives
- * is always taken, a trade that kills at the cost of the attacker is taken only
- * against something bigger, and everything else goes to the face. That is
- * roughly how a competent player plays a three-lane board, and being only
- * roughly right is fine: it is a yardstick, not a champion.
+ * Guard is a rule rather than a preference — the engine rejects anything else
+ * while one is up, so it is checked first everywhere below.
  */
-function referenceTarget(game, attacker) {
-  // hasKeyword, not `effect === 'guard'`: a unit can be granted guard at summon
-  // time on top of a different primary effect, and checking the field directly
-  // misses exactly those. Getting this wrong makes the reference swing into a
-  // guard it cannot see, have the attack rejected, and waste the unit.
+function tempoTarget(game, attacker) {
   const guardLane = game.enemy.board.findIndex((unit) => unit !== null && hasKeyword(unit, 'guard'))
   if (guardLane !== -1) return guardLane
 
@@ -126,33 +129,95 @@ function referenceTarget(game, attacker) {
   let bestScore = 0
   game.enemy.board.forEach((unit, index) => {
     if (!unit) return
-    const kills = unit.currentHealth <= attacker.attack
+    if (unit.currentHealth > attacker.attack) return
     const survives = attacker.currentHealth > unit.attack
-    if (!kills) return
-    // Value the trade by what it removes, discounted when it costs the attacker.
     const score = unit.attack * 2 + unit.currentHealth + (survives ? 6 : 0)
-    if (survives || unit.attack >= attacker.attack) {
-      if (score > bestScore) {
-        best = index
-        bestScore = score
-      }
+    if ((survives || unit.attack >= attacker.attack) && score > bestScore) {
+      best = index
+      bestScore = score
     }
   })
 
   return best === -1 ? 'hero' : best
 }
 
+/** Tempo picks the biggest thing the mana allows: curve out, apply pressure. */
+function tempoCard(game) {
+  let choice = -1
+  let choiceCost = -1
+  game.player.hand.forEach((card, index) => {
+    if (card.cost <= game.player.mana && card.cost > choiceCost) {
+      choice = index
+      choiceCost = card.cost
+    }
+  })
+  return choice
+}
+
 /**
- * One reference turn. Plays down the curve, then attacks.
+ * Value: keep the board, refuse bad trades, win later.
  *
- * Every action goes through the engine's own functions and is accepted only if
- * the state actually changed, so an illegal choice degrades to "skip" rather
- * than desyncing the simulation.
+ * Returns `null` to mean "do not attack at all", which tempo never does. That
+ * is the whole point of having it — an AI that races well can still be
+ * hopeless against someone content to sit behind blockers, and a single
+ * aggressive reference would never reveal that.
  */
-function playReferenceTurn(startState) {
+function valueTarget(game, attacker) {
+  const guardLane = game.enemy.board.findIndex((unit) => unit !== null && hasKeyword(unit, 'guard'))
+  if (guardLane !== -1) return guardLane
+
+  if (game.enemy.health <= attacker.attack) return 'hero'
+
+  // Only trades that come out ahead: kill it and live.
+  let best = -1
+  let bestScore = 0
+  game.enemy.board.forEach((unit, index) => {
+    if (!unit) return
+    if (unit.currentHealth > attacker.attack) return
+    if (attacker.currentHealth <= unit.attack) return
+    const score = unit.attack * 2 + unit.currentHealth
+    if (score > bestScore) {
+      best = index
+      bestScore = score
+    }
+  })
+  if (best !== -1) return best
+
+  // Nothing worth trading with: hit the face only when unopposed.
+  return game.enemy.board.every((unit) => unit === null) ? 'hero' : null
+}
+
+/** Value prefers durable bodies and blockers over raw cost. */
+function valueCard(game) {
+  let choice = -1
+  let choiceScore = -Infinity
+  game.player.hand.forEach((card, index) => {
+    if (card.cost > game.player.mana) return
+    const score = card.health * 2 + card.attack + (card.effect === 'guard' ? 6 : 0)
+    if (score > choiceScore) {
+      choice = index
+      choiceScore = score
+    }
+  })
+  return choice
+}
+
+const REFERENCE_POLICIES = {
+  tempo: { chooseCard: tempoCard, chooseTarget: tempoTarget },
+  value: { chooseCard: valueCard, chooseTarget: valueTarget },
+}
+
+/**
+ * One reference turn: develop, then attack.
+ *
+ * Every action goes through the engine's own functions and is kept only if the
+ * state actually changed, so an illegal choice degrades to "skip" rather than
+ * desyncing the simulation.
+ */
+function playReferenceTurn(startState, policy) {
   let game = startState
 
-  // Burst only when it finishes the job — a human holds it otherwise.
+  // Burst only when it finishes the job — a person holds it otherwise.
   if (game.player.momentum >= 3 && game.enemy.health <= 3) {
     const after = castMomentumBurst(game, 'player')
     if (after !== game) game = after
@@ -162,15 +227,7 @@ function playReferenceTurn(startState) {
     if (game.winner) break
     if (game.player.board.every((slot) => slot !== null)) break
 
-    // Highest cost the mana allows: the reference curves out.
-    let choice = -1
-    let choiceCost = -1
-    game.player.hand.forEach((card, index) => {
-      if (card.cost <= game.player.mana && card.cost > choiceCost) {
-        choice = index
-        choiceCost = card.cost
-      }
-    })
+    const choice = policy.chooseCard(game)
     if (choice === -1) break
 
     const after = playCard(game, 'player', choice)
@@ -183,7 +240,9 @@ function playReferenceTurn(startState) {
     const attacker = game.player.board[lane]
     if (!attacker || attacker.exhausted) continue
 
-    const target = referenceTarget(game, attacker)
+    const target = policy.chooseTarget(game, attacker)
+    if (target === null) continue
+
     let after = attack(game, 'player', lane, target)
     if (after === game && target !== 'hero') after = attack(game, 'player', lane, 'hero')
     if (after !== game) game = after
@@ -196,12 +255,15 @@ function playReferenceTurn(startState) {
   return game
 }
 
-// ── One game ──────────────────────────────────────────────────────────────
-
 /**
  * @returns {{winner: string, turns: number, aiFirstPlayTurn: number|null, aiManaWasted: number}}
  */
-function playGame(difficulty, deckSource = difficulty, referenceDeck = DEFAULT_DECK_CONFIG) {
+function playGame(
+  difficulty,
+  deckSource = difficulty,
+  referenceDeck = DEFAULT_DECK_CONFIG,
+  policy = REFERENCE_POLICIES.tempo,
+) {
   let game = createGame('ai', referenceDeck, 'Nemesis AI', difficulty)
   // Deck and reasoning are separate levers, and a single win rate cannot tell
   // you which one is costing games. Playing a difficulty's weights against
@@ -217,7 +279,7 @@ function playGame(difficulty, deckSource = difficulty, referenceDeck = DEFAULT_D
   while (!game.winner && turns < TURN_LIMIT) {
     turns += 1
 
-    game = playReferenceTurn(game)
+    game = playReferenceTurn(game, policy)
     if (game.winner) break
 
     // generateEnemyTurnSteps owns the whole AI turn including the transition
@@ -314,59 +376,64 @@ function reportDecks() {
   }
 }
 
-function reportGames(games, only, referenceName) {
+/**
+ * The ladder against every reference: two policies × two decks.
+ *
+ * One column is never enough. The starter deck cannot tell the top three
+ * difficulties apart, the strong deck flatters nobody at the bottom, and a
+ * purely aggressive reference would never reveal an AI that cannot beat
+ * someone sitting behind blockers. A ladder is only real if it climbs in every
+ * column.
+ */
+function reportGames(games, only) {
   const targets = only ? [only] : DIFFICULTIES
-  const referenceDeck = REFERENCE_DECKS[referenceName]
-  console.log(`\nAI vs the ${referenceName} deck — ${games} games each, seeded`)
-  console.log('  difficulty   AI wins   draws   avg turns   first play   mana idle/turn')
+  const columns = []
+  for (const policy of Object.keys(REFERENCE_POLICIES)) {
+    for (const deck of Object.keys(REFERENCE_DECKS)) columns.push({ policy, deck })
+  }
 
-  const results = []
+  console.log(`\nAI win % vs each reference — ${games} games per cell, seeded`)
+  console.log(`  ${'difficulty'.padEnd(12)}${columns.map(({ policy, deck }) => `${policy}/${deck}`.padStart(15)).join('')}`)
+
+  const rows = []
   for (const difficulty of targets) {
-    let aiWins = 0
-    let draws = 0
-    let turnSum = 0
-    let firstPlaySum = 0
-    let firstPlayCount = 0
-    let manaSum = 0
+    const cells = []
+    for (const { policy, deck } of columns) {
+      let wins = 0
+      for (let i = 0; i < games; i += 1) {
+        const result = withSeed(i + 1, () => playGame(
+          difficulty, difficulty, REFERENCE_DECKS[deck], REFERENCE_POLICIES[policy],
+        ))
+        if (result.winner === 'enemy') wins += 1
+      }
+      cells.push((wins / games) * 100)
+    }
+    rows.push({ difficulty, cells })
+    console.log(`  ${difficulty.padEnd(12)}${cells.map((n) => `${n.toFixed(1)}%`.padStart(15)).join('')}`)
+  }
 
-    for (let i = 0; i < games; i += 1) {
-      const result = withSeed(i + 1, () => playGame(difficulty, difficulty, referenceDeck))
-      if (result.winner === 'enemy') aiWins += 1
-      if (result.winner === 'draw') draws += 1
-      turnSum += result.turns
-      manaSum += result.aiManaWasted
-      if (result.aiFirstPlayTurn !== null) {
-        firstPlaySum += result.aiFirstPlayTurn
-        firstPlayCount += 1
+  if (only) return rows
+
+  // The ladder has to climb in every column, not on average.
+  const inversions = []
+  columns.forEach(({ policy, deck }, column) => {
+    for (let i = 1; i < rows.length; i += 1) {
+      const here = rows[i].cells[column]
+      const below = rows[i - 1].cells[column]
+      if (here < below - 0.001) {
+        inversions.push(`${policy}/${deck}: ${rows[i].difficulty} (${here.toFixed(1)}%) `
+          + `is weaker than ${rows[i - 1].difficulty} (${below.toFixed(1)}%)`)
       }
     }
+  })
 
-    const winRate = (aiWins / games) * 100
-    results.push({ difficulty, winRate })
-    console.log(
-      `  ${difficulty.padEnd(12)}${`${winRate.toFixed(1)}%`.padStart(7)}`
-      + `${String(draws).padStart(8)}`
-      + `${(turnSum / games).toFixed(1).padStart(12)}`
-      + `${(firstPlayCount ? firstPlaySum / firstPlayCount : 0).toFixed(2).padStart(13)}`
-      + `${(manaSum / games).toFixed(2).padStart(17)}`,
-    )
-  }
-
-  // The ladder only means something if it goes up.
-  const inversions = []
-  for (let i = 1; i < results.length; i += 1) {
-    if (results[i].winRate < results[i - 1].winRate) {
-      inversions.push(`${results[i].difficulty} (${results[i].winRate.toFixed(1)}%) is weaker than `
-        + `${results[i - 1].difficulty} (${results[i - 1].winRate.toFixed(1)}%)`)
-    }
-  }
-  if (inversions.length && !only) {
+  if (inversions.length) {
     console.log('\n  Ladder inversions:')
     for (const line of inversions) console.log(`    ✗ ${line}`)
-  } else if (!only) {
-    console.log('\n  Ladder is monotonic.')
+  } else {
+    console.log('\n  Ladder climbs in every column.')
   }
-  return results
+  return rows
 }
 
 /**
@@ -417,20 +484,8 @@ function main() {
     throw new Error(`Unknown difficulty "${only}". Known: ${DIFFICULTIES.join(', ')}`)
   }
 
-  const reference = value('reference', null)
-  if (reference && !REFERENCE_DECKS[reference]) {
-    throw new Error(`Unknown reference "${reference}". Known: ${Object.keys(REFERENCE_DECKS).join(', ')}`)
-  }
-
   reportDecks()
-  if (!args.includes('--decks')) {
-    // Both yardsticks by default. One is not enough: the starter deck cannot
-    // tell the top three difficulties apart, and the strong deck flatters
-    // nobody at the bottom.
-    for (const name of reference ? [reference] : Object.keys(REFERENCE_DECKS)) {
-      reportGames(games, only, name)
-    }
-  }
+  if (!args.includes('--decks')) reportGames(games, only)
   if (args.includes('--matrix')) reportMatrix(games)
   console.log('')
 }
