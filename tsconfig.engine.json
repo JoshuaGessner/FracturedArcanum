@@ -11,5 +11,14 @@
     "isolatedModules": true,
     "erasableSyntaxOnly": true
   },
-  "include": ["src/game.ts"]
+  // Every engine module the server needs, listed explicitly.
+  //
+  // tsc emits what a root file *imports*, and the AI depends on the engine
+  // rather than the other way round — so `src/ai.ts` is not reachable from
+  // `src/game.ts` and would never be compiled. The server would start fine and
+  // then fail the moment game-room.js resolved './ai.js'.
+  //
+  // Add a line here whenever the engine gains a module, plus a matching line
+  // in .gitignore for its generated output.
+  "include": ["src/game.ts", "src/ai.ts"]
 }

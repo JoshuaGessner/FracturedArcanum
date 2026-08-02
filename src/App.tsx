@@ -23,9 +23,9 @@ import {
   castMomentumBurst,
   passTurn,
   createGame,
-  generateEnemyTurnSteps,
   getRecommendedAIDifficulty,
 } from './game'
+import { generateEnemyTurnSteps } from './ai'
 import {
   ARENA_URL,
   CARD_BORDER_OFFERS,

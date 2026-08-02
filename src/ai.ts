@@ -1,13 +1,22 @@
 import {
+  AI_DIFFICULTY_PROFILES,
   BOARD_SIZE,
   STARTING_HEALTH,
+  attack,
+  boardHasGuard,
+  castMomentumBurst,
   hasKeyword,
   otherSide,
+  passTurn,
+  playCard,
+  type AIDifficulty,
+  type AIDifficultyProfile,
   type BattleSide,
+  type CardInstance,
   type GameState,
   type PlayerState,
   type Unit,
-} from './game'
+} from './game.js'
 
 /**
  * Position evaluation for the AI.
@@ -170,4 +179,240 @@ export function maxPositionalSwing(weights: EvalWeights = DEFAULT_EVAL_WEIGHTS):
     + BOARD_SIZE * fattestUnit
     + 10 * weights.card
     + 10 * weights.momentum)
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Enemy turn — moved verbatim from game.ts
+//
+// These decide what the AI plays and where it attacks. They lived in
+// game.ts, which is a standing complexity hotspot, and they belong with
+// the evaluator they are about to start using. Moving them here also
+// keeps the dependency acyclic: the AI imports the engine, and nothing in
+// the engine imports the AI.
+// ═══════════════════════════════════════════════════════════════════════
+
+function getAIProfile(difficulty: AIDifficulty): AIDifficultyProfile {
+  return AI_DIFFICULTY_PROFILES[difficulty] ?? AI_DIFFICULTY_PROFILES.adept
+}
+
+function scorePlayableCard(card: CardInstance, profile: AIDifficultyProfile, needsGuard: boolean, lowOnCards: boolean): number {
+  let score = card.cost * profile.costWeight + card.attack * profile.attackWeight + card.health * profile.healthWeight
+  score += (10 - card.cost) * profile.lowCostBias
+
+  if (card.effect === 'guard') score += needsGuard ? profile.guardNeedWeight : profile.baseGuardWeight
+  if (card.effect === 'charge') score += profile.chargeWeight
+  if (card.effect === 'draw') score += lowOnCards ? profile.lowHandDrawBonus : profile.drawWeight
+  if (card.effect === 'blast' || card.effect === 'poison' || card.effect === 'siphon') score += profile.removalWeight
+  if (card.effect === 'summon' || card.effect === 'empower' || card.effect === 'rally') score += profile.boardEngineWeight
+  if (card.rarity === 'legendary') score += profile.legendaryWeight
+
+  return score
+}
+
+export function highestPlayableIndex(
+  hand: CardInstance[],
+  mana: number,
+  difficulty: AIDifficulty = 'adept',
+  game?: GameState,
+  side: BattleSide = 'enemy',
+): number {
+  const affordable = hand
+    .map((card, index) => ({ card, index }))
+    .filter(({ card }) => card.cost <= mana)
+
+  if (!affordable.length) {
+    return -1
+  }
+
+  const profile = getAIProfile(difficulty)
+
+  if (profile.selectionMode === 'cheapest') {
+    affordable.sort((left, right) => left.card.cost - right.card.cost)
+    return affordable[0].index
+  }
+
+  const actor = game?.[side]
+  const needsGuard = actor ? actor.health <= 12 && !boardHasGuard(actor.board) : false
+  const lowOnCards = actor ? actor.hand.length <= 2 : false
+
+  let bestIndex = affordable[0].index
+  let bestScore = -Infinity
+
+  affordable.forEach(({ card, index }) => {
+    let score = scorePlayableCard(card, profile, needsGuard, lowOnCards)
+
+    if (game) {
+      if ((game.player.health <= 8 || game.player.board.filter(Boolean).length >= 2) && (card.effect === 'blast' || card.effect === 'poison')) {
+        score += profile.removalWeight
+      }
+      if (game.enemy.board.filter(Boolean).length === 0 && card.effect === 'guard') {
+        score += profile.baseGuardWeight
+      }
+    }
+
+    if (score > bestScore || (score === bestScore && card.cost > hand[bestIndex].cost)) {
+      bestIndex = index
+      bestScore = score
+    }
+  })
+
+  return bestIndex
+}
+
+export function chooseEnemyTarget(
+  game: GameState,
+  attacker: Unit,
+  difficulty: AIDifficulty = game.aiDifficulty ?? 'adept',
+): number | 'hero' {
+  const guardLane = game.player.board.findIndex((unit) => unit !== null && hasKeyword(unit, 'guard'))
+  if (guardLane !== -1) {
+    return guardLane
+  }
+
+  if (game.player.health <= attacker.attack) {
+    return 'hero'
+  }
+
+  const profile = getAIProfile(difficulty)
+  const heroPressure = game.enemy.board.reduce((total, unit) => total + (unit && !unit.exhausted ? unit.attack : 0), 0)
+  let heroScore = attacker.attack + profile.heroBias + (game.player.health <= heroPressure ? profile.lethalPressureBonus : 0)
+
+  if (profile.selectionMode === 'cheapest') {
+    const easyTrade = game.player.board.findIndex((unit) => unit !== null && unit.currentHealth <= attacker.attack)
+    return easyTrade !== -1 ? easyTrade : 'hero'
+  }
+
+  let bestLane = -1
+  let bestScore = -Infinity
+
+  game.player.board.forEach((unit, index) => {
+    if (!unit) {
+      return
+    }
+
+    let score = unit.attack * 2 + unit.currentHealth
+
+    if (unit.currentHealth <= attacker.attack) score += profile.tradeKillWeight
+    if (attacker.currentHealth > unit.attack) score += profile.survivalTradeWeight
+    if (unit.attack >= attacker.currentHealth) score -= profile.riskyTradePenalty
+    if (hasKeyword(unit, 'guard')) score += profile.guardNeedWeight
+    if (hasKeyword(unit, 'poison') || hasKeyword(unit, 'lifesteal') || hasKeyword(unit, 'cleave')) score += profile.dangerousKeywordWeight
+    if (unit.attack >= 4) score += profile.highAttackThreatWeight
+
+    if (score > bestScore) {
+      bestLane = index
+      bestScore = score
+    }
+  })
+
+  if (game.enemy.health < game.player.health) {
+    heroScore += profile.comebackHeroBonus
+  }
+
+  return bestLane !== -1 && bestScore >= heroScore ? bestLane : 'hero'
+}
+
+function shouldEnemyUseBurst(game: GameState, difficulty: AIDifficulty): boolean {
+  if (game.enemy.momentum < 3) {
+    return false
+  }
+
+  if (game.player.health <= 2) {
+    return true
+  }
+
+  const profile = getAIProfile(difficulty)
+  if (game.player.health <= profile.burstHeroThreshold) {
+    return true
+  }
+
+  const enemyBoardCount = game.enemy.board.filter(Boolean).length
+  const playerBoardCount = game.player.board.filter(Boolean).length
+  return (profile.burstOnEmptyHand && game.enemy.hand.length === 0)
+    || (profile.burstOnBoardDeficit && enemyBoardCount < playerBoardCount)
+}
+
+export function runEnemyTurn(base: GameState): GameState {
+  if (base.winner) {
+    return base
+  }
+
+  const difficulty = base.aiDifficulty ?? 'adept'
+  let game = passTurn(base)
+
+  if (game.turn !== 'enemy' || game.winner) {
+    return game
+  }
+
+  if (shouldEnemyUseBurst(game, difficulty)) {
+    game = castMomentumBurst(game, 'enemy')
+  }
+
+  while (true) {
+    const playableIndex = highestPlayableIndex(game.enemy.hand, game.enemy.mana, difficulty, game, 'enemy')
+    const boardFull = game.enemy.board.every((slot) => slot !== null)
+
+    if (playableIndex === -1 || boardFull || game.winner) {
+      break
+    }
+
+    game = playCard(game, 'enemy', playableIndex)
+  }
+
+  for (let index = 0; index < BOARD_SIZE; index += 1) {
+    const attacker = game.enemy.board[index]
+
+    if (!attacker || attacker.exhausted || game.winner) {
+      continue
+    }
+
+    game = attack(game, 'enemy', index, chooseEnemyTarget(game, attacker, difficulty))
+  }
+
+  return game.winner ? game : passTurn(game)
+}
+
+export type EnemyStep = { state: GameState; label: string }
+
+export function generateEnemyTurnSteps(base: GameState): EnemyStep[] {
+  if (base.winner) return [{ state: base, label: 'Game over' }]
+
+  const difficulty = base.aiDifficulty ?? 'adept'
+  const steps: EnemyStep[] = []
+  let game = passTurn(base)
+  steps.push({ state: game, label: `${game.enemy.name} begins their turn.` })
+
+  if (game.turn !== 'enemy' || game.winner) return steps
+
+  if (shouldEnemyUseBurst(game, difficulty)) {
+    game = castMomentumBurst(game, 'enemy')
+    steps.push({ state: game, label: `${game.enemy.name} unleashes Momentum Burst!` })
+  }
+
+  while (true) {
+    const playableIndex = highestPlayableIndex(game.enemy.hand, game.enemy.mana, difficulty, game, 'enemy')
+    const boardFull = game.enemy.board.every((slot) => slot !== null)
+    if (playableIndex === -1 || boardFull || game.winner) break
+    const card = game.enemy.hand[playableIndex]
+    game = playCard(game, 'enemy', playableIndex)
+    steps.push({ state: game, label: `${game.enemy.name} plays ${card.icon} ${card.name}.` })
+  }
+
+  for (let index = 0; index < BOARD_SIZE; index += 1) {
+    const attacker = game.enemy.board[index]
+    if (!attacker || attacker.exhausted || game.winner) continue
+    const target = chooseEnemyTarget(game, attacker, difficulty)
+    game = attack(game, 'enemy', index, target)
+    const targetLabel = target === 'hero' ? 'your hero' : `lane ${target + 1}`
+    steps.push({ state: game, label: `${attacker.name} attacks ${targetLabel}!` })
+  }
+
+  if (!game.winner) {
+    game = passTurn(game)
+    steps.push({ state: game, label: 'Your turn begins.' })
+  } else {
+    steps.push({ state: game, label: game.winner === 'enemy' ? 'Defeat!' : 'Victory!' })
+  }
+
+  return steps
 }

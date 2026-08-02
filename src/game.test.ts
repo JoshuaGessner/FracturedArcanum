@@ -13,8 +13,6 @@ import {
   getDeckSize,
   getRecommendedAIDifficulty,
   hasKeyword,
-  highestPlayableIndex,
-  chooseEnemyTarget,
   playCard,
   redactGameState,
   summonUnit,
@@ -23,6 +21,7 @@ import {
   type GameState,
   type Unit,
 } from './game'
+import { chooseEnemyTarget, highestPlayableIndex } from './ai'
 
 function findCard(id: string): CardInstance {
   const card = CARD_LIBRARY.find((c) => c.id === id)

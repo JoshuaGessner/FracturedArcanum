@@ -37,10 +37,10 @@ import {
   castMomentumBurst,
   createGame,
   createPlayer,
-  generateEnemyTurnSteps,
   hasKeyword,
   playCard,
 } from '../server/game.js'
+import { generateEnemyTurnSteps } from '../server/ai.js'
 
 const DIFFICULTIES = ['novice', 'adept', 'veteran', 'legend']
 /** A game that reaches this many turns is a stall, not a game; call it a draw. */

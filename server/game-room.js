@@ -1,7 +1,6 @@
 import {
   createGame,
   createDuelGame,
-  generateEnemyTurnSteps,
   playCard,
   attack,
   castMomentumBurst,
@@ -11,6 +10,7 @@ import {
   surrenderGame,
   BOARD_SIZE,
 } from './game.js'
+import { generateEnemyTurnSteps } from './ai.js'
 
 const TERMINAL_ROOM_RETENTION_MS = 30 * 60 * 1000
 const MAX_ROOMS = 200
