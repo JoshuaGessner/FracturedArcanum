@@ -5,9 +5,6 @@
     grid-template-columns: 1fr;
   }
 
-  .battle-action-dock {
-    flex-wrap: wrap;
-  }
 
   .admin-console { grid-column: span 1; }
 
@@ -242,48 +239,34 @@
   }
   .battle-hero-resource {
     font-size: 0.66rem;
-    padding: 1px 5px;
+  }
+  .battle-hero-pile {
+    padding: 2px 4px;
+    font-size: 0.68rem;
   }
   .battle-board-stack {
     min-height: clamp(200px, 38svh, 300px);
     gap: var(--space-1-5);
   }
   .battle-centerline {
-    flex-direction: row;
-    align-items: center;
-    padding: 3px 6px;
+    padding: 2px 10px 2px 2px;
     gap: var(--space-1-5);
   }
-  .battle-center-hero-slot {
-    min-width: 72px;
-    min-height: 26px;
-  }
   .battle-center-hero-button {
-    min-width: 68px;
-    min-height: 26px;
-    padding: 3px 6px;
-    font-size: 0.58rem;
-  }
-  .battle-center-hero-hint {
-    font-size: 0.52rem;
+    min-height: 28px;
+    padding: 3px 10px;
+    font-size: 0.66rem;
   }
   .battle-center-note {
-    font-size: 0.62rem;
+    font-size: 0.74rem;
   }
   .battle-center-turn {
-    font-size: 0.56rem;
-  }
-  .battle-center-phase {
-    font-size: 0.52rem;
-    padding: 1px 4px;
+    width: 24px;
+    height: 24px;
+    font-size: 0.74rem;
   }
   .battle-action-dock {
-    gap: var(--space-1);
-  }
-  .battle-action-dock > button {
-    min-height: 34px;
-    padding: 5px 3px;
-    font-size: 0.74rem;
+    gap: var(--space-1-5);
   }
   .queue-modal { width: 100%; }
   /* Small screens tune the one variable the hand derives from. Everything

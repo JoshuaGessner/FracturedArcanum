@@ -5,6 +5,21 @@
 .rarity-epic { --rarity-color: var(--rarity-epic); }
 .rarity-legendary { --rarity-color: var(--rarity-legendary); }
 
+/* The card bezel: aged bronze with a breath of the rarity colour, and gold
+   for legendaries. A full-strength rarity border read as grey plastic on
+   commons, and every card on the board looked like a different material.
+   Rarity itself is carried by the gem and the hairline inside the bezel
+   (card-face.css), which no cosmetic frame can reach. */
+.rarity-common,
+.rarity-rare,
+.rarity-epic {
+  --card-bezel: color-mix(in srgb, var(--rarity-color) 22%, #6b5233);
+}
+
+.rarity-legendary {
+  --card-bezel: #c99645;
+}
+
 .rarity-legendary {
   box-shadow: 0 0 16px rgba(217, 159, 59, 0.2);
 }
@@ -28,9 +43,9 @@
    `border`). Rarity keeps the gem plus a hairline just inside that bezel which
    nothing in the shop can reach.
 
-   The hairline only appears once a cosmetic frame has actually taken the
-   bezel. On the default frame there is no competitor, so rarity keeps the
-   bezel itself and a second ring would just read as a thick smear. */
+   On the default frame the bezel is bronze (see --card-bezel above) and the
+   CardFace hairline carries rarity; once a cosmetic frame takes the bezel,
+   this layer adds a second hairline that the frame cannot cover. */
 
 .builder-card-face::before,
 .hand-card::before,
@@ -218,6 +233,11 @@
   scroll-snap-type: x proximity;
   scrollbar-width: none;
   touch-action: pan-x;
+  /* Soft edges: a hand wider than the rail fades out at the side instead of
+     ending in a hard cut, which is the cue that it scrolls. A hand that fits
+     only loses a few pixels of padding to it. */
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 10px, #000 calc(100% - 18px), transparent);
+  mask-image: linear-gradient(to right, transparent, #000 10px, #000 calc(100% - 18px), transparent);
 }
 
 .hand-fan-grid.is-drag-active {
@@ -244,7 +264,7 @@
   gap: var(--space-1);
   box-shadow: 0 8px 20px rgba(17, 13, 12, 0.28);
   border-radius: 12px;
-  border: 2px solid var(--rarity-color, var(--border));
+  border: 2px solid var(--card-bezel, var(--rarity-color, var(--border)));
   overflow: hidden;
   transition: transform 0.25s ease, box-shadow 0.25s ease;
   touch-action: pan-x;
@@ -292,6 +312,17 @@
   }
 }
 
+/* Playable on your turn: a steady verdigris edge — the mana colour — on
+   every card you can afford right now, so the hand answers "what can I do"
+   before any card is touched. Steady, not pulsing: a hand of pulsing cards
+   is noise. */
+.hand-card.is-playable {
+  box-shadow:
+    0 8px 20px rgba(17, 13, 12, 0.28),
+    0 0 0 1px rgba(143, 208, 187, 0.85),
+    0 0 14px rgba(95, 168, 146, 0.55);
+}
+
 /* Keyboard parity for the hover lift. */
 .hand-card:focus-visible:not(:disabled) {
   transform: translateY(calc(var(--hand-card-h, 142px) * -0.12)) rotate(0deg) scale(1.05);
@@ -306,7 +337,9 @@
   transition: transform 60ms ease-out, box-shadow 60ms ease-out;
 }
 
-.hand-card.unplayable { opacity: 0.55; }
+/* Dimmed, not translucent: a see-through card shows the rail through its
+   art and reads as a ghost rather than "not yet". */
+.hand-card.unplayable { filter: saturate(0.5) brightness(0.62); }
 
 .hand-card.rarity-legendary {
   background: linear-gradient(180deg, rgba(68, 53, 28, 0.96), rgba(26, 21, 12, 0.96));
@@ -1022,7 +1055,7 @@
   overflow: hidden;
   aspect-ratio: 63 / 88;
   border-radius: var(--radius-lg);
-  border: 2px solid var(--rarity-color, var(--border));
+  border: 2px solid var(--card-bezel, var(--rarity-color, var(--border)));
   background: #120e0d;
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
 }

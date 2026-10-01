@@ -467,17 +467,54 @@ describe('BattleScreen mobile layout', () => {
     expect(strikeButton.closest('.battle-action-dock')).toBeNull()
   })
 
-  it('orders player resources as momentum, mana, then health', () => {
+  it('shows mana then health on the player plaque, and momentum on the Burst medallion', () => {
     renderBattleScreen()
 
     const playerAnchor = document.querySelector('.battle-hero-anchor.player') as HTMLElement
-    const momentum = within(playerAnchor).getByLabelText(/momentum/i)
     const mana = within(playerAnchor).getByLabelText(/mana/i)
     const health = within(playerAnchor).getByLabelText(/health/i)
     const children = Array.from(playerAnchor.children)
 
-    expect(children.indexOf(momentum)).toBeLessThan(children.indexOf(mana))
     expect(children.indexOf(mana)).toBeLessThan(children.indexOf(health))
+    expect(within(playerAnchor).queryByLabelText(/momentum/i)).toBeNull()
+
+    const burst = screen.getByRole('button', { name: /burst/i })
+    expect(burst.getAttribute('aria-label')).toMatch(/momentum \d+ of 10/i)
+    expect(burst.closest('.battle-action-dock')).toBeTruthy()
+  })
+
+  it('keeps Leave away from End Turn, and lets the enemy plaque take a strike', () => {
+    const activeGame = createGame('ai', {})
+    activeGame.player.board[0] = {
+      instanceId: 'ally-instance-9',
+      uid: 'ally-9',
+      id: 'spark-imp',
+      name: 'Crawling Spark',
+      cost: 1,
+      attack: 2,
+      health: 1,
+      currentHealth: 1,
+      exhausted: false,
+      rarity: 'common',
+      tribe: 'elemental',
+      text: 'Test ally',
+    }
+    const handleAttackTarget = vi.fn()
+    renderBattleScreen({
+      activePlayer: activeGame.player,
+      defendingPlayer: activeGame.enemy,
+      handleAttackTarget,
+    }, {
+      game: activeGame,
+      selectedAttacker: 0,
+    })
+
+    const leave = screen.getByRole('button', { name: /leave battle/i })
+    expect(leave.closest('.battle-action-dock')).toBeNull()
+    expect(leave.closest('.battle-enemy-row')).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(`strike ${activeGame.enemy.name}`, 'i') }))
+    expect(handleAttackTarget).toHaveBeenCalledWith('hero')
   })
 
   it('uses a consistent Empty Lane label for both sides', () => {

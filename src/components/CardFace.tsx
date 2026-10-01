@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { EFFECT_LABELS } from '../constants'
 import { cardArtPath, handleCardArtError } from '../utils'
 import { EffectBadge, RarityBadge, TribeSigil } from './AssetBadge'
 
@@ -11,6 +12,8 @@ export type CardFaceData = {
   rarity: string
   tribe: string
   effect?: string | null
+  /** Rules text. Printed on the plate only by the inspect variant. */
+  text?: string
 }
 
 export type CardFaceVariant = 'hand' | 'board' | 'collection' | 'inspect' | 'reveal'
@@ -67,6 +70,13 @@ export function CardFace({ card, variant, currentHealth, caption, lazy = true }:
           <span className="cf-name">
             <span className="cf-name-text">{card.name}</span>
           </span>
+          {/* The keyword, so a fanned hand or a collection page says what a
+              card does without opening it. Hidden by container query when the
+              face is too small to letter it legibly. */}
+          {card.effect && variant !== 'inspect' && variant !== 'board' && (
+            <span className="cf-keyword">{EFFECT_LABELS[card.effect] ?? card.effect}</span>
+          )}
+          {variant === 'inspect' && card.text && <span className="cf-rules">{card.text}</span>}
           {caption && <span className="cf-caption">{caption}</span>}
         </span>
       </span>

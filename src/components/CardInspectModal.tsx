@@ -45,7 +45,9 @@ export function CardInspectModal({ card, onClose }: CardInspectModalProps) {
             <CardFace card={card} variant="inspect" currentHealth={card.currentHealth} lazy={false} />
           </div>
           <div className="card-inspect-info">
-            <h2 id="card-inspect-name">{card.name}</h2>
+            {/* The name and rules text are printed on the card above; the
+                heading stays for the dialog's accessible name. */}
+            <h2 id="card-inspect-name" className="sr-only">{card.name}</h2>
             <span className="card-inspect-lineage">
               <RarityBadge rarity={card.rarity} />
               <span className="card-inspect-tribe"><TribeSigil tribe={card.tribe} />{card.tribe}</span>
@@ -53,7 +55,6 @@ export function CardInspectModal({ card, onClose }: CardInspectModalProps) {
             {card.currentHealth !== undefined && card.currentHealth !== card.health && (
               <p className="note">Wounded: {card.currentHealth} of {card.health} health remains.</p>
             )}
-            <p className="card-text">{card.text}</p>
             {card.effect && (
               <div className="card-inspect-effect">
                 <EffectBadge effect={card.effect} />

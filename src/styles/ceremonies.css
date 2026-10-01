@@ -279,7 +279,7 @@
   overflow: hidden;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
-  border: 2px solid var(--rarity-color, #d99f3b);
+  border: 2px solid var(--card-bezel, var(--rarity-color, #d99f3b));
   box-shadow: 0 12px 22px rgba(0, 0, 0, 0.45);
   background: linear-gradient(180deg, rgba(39, 32, 31, 0.96), rgba(26, 20, 19, 0.96));
 }

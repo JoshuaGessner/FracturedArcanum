@@ -24,6 +24,28 @@
   border-radius: inherit;
 }
 
+/* ─── Enemy row: Leave, then the enemy plaque ───────────────────── */
+.battle-enemy-row {
+  position: relative;
+  z-index: 3;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-1-5);
+}
+
+.battle-leave-button {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  min-height: 38px;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 18px;
+  color: var(--bone-dim);
+}
+
 /* ─── Hero plaques (mirrored pair, BattleHeroAnchor.tsx) ─────────── */
 .battle-hero-anchor {
   position: relative;
@@ -37,12 +59,61 @@
   background: linear-gradient(180deg, rgba(42, 32, 27, 0.92), rgba(20, 15, 13, 0.94));
   border: 1px solid rgba(201, 169, 110, 0.3);
   box-shadow: inset 0 1px 0 rgba(255, 232, 190, 0.08), 0 6px 16px rgba(0, 0, 0, 0.35);
-  overflow: hidden;
+  /* Visible, so a damage number can rise out of the health medallion; the
+     crack and halo overlays clip themselves (battle-polish.css). */
+  overflow: visible;
   transition: box-shadow var(--motion-fast), border-color var(--motion-fast);
 }
 
 .battle-hero-anchor.enemy {
   border-color: rgba(184, 64, 58, 0.42);
+}
+
+/* As a strike target the whole enemy plaque is the button: swing at the hero
+   the way the genre always has, by touching them. */
+button.battle-hero-anchor {
+  width: 100%;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.battle-hero-anchor.is-strike-target {
+  border-color: rgba(236, 138, 124, 0.85);
+  animation: strikeTargetPulse 1.1s ease-in-out infinite;
+}
+
+@keyframes strikeTargetPulse {
+  0%, 100% { box-shadow: 0 0 0 1px rgba(236, 138, 124, 0.35), 0 6px 16px rgba(0, 0, 0, 0.35); }
+  50% { box-shadow: 0 0 0 2px rgba(236, 138, 124, 0.7), 0 0 22px rgba(224, 120, 108, 0.45); }
+}
+
+/* Cards in hand and in the deck, on the opponent's plaque. */
+.battle-hero-piles {
+  display: inline-flex;
+  gap: var(--space-1);
+  flex: none;
+}
+
+.battle-hero-pile {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  background: rgba(13, 10, 10, 0.55);
+  box-shadow: inset 0 0 0 1px rgba(201, 169, 110, 0.18);
+  font-family: var(--font-display);
+  font-size: 0.74rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--bone-dim);
+}
+
+.battle-hero-pile .glyph {
+  font-size: 13px;
+  color: var(--brass);
 }
 
 /* The crest medallion: the seat's mark, struck in brass. */
@@ -97,6 +168,7 @@
 
 /* Health: the same blood medallion the cards use, a size up. */
 .battle-hero-hp {
+  position: relative;
   display: grid;
   place-items: center;
   flex: none;
@@ -121,22 +193,6 @@
   color: var(--bone);
 }
 
-/* Momentum: an orb that fills from the bottom; full at 10, Burst at 3. */
-.momentum-orb {
-  display: grid;
-  place-items: center;
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  font-family: var(--font-display);
-  font-size: 0.78rem;
-  color: #fff4dc;
-  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.8);
-  background:
-    linear-gradient(to top, rgba(224, 168, 78, 0.95) var(--momentum-fill, 0%), rgba(30, 22, 16, 0.92) var(--momentum-fill, 0%));
-  box-shadow: 0 0 0 1.5px rgba(184, 148, 88, 0.85), inset 0 2px 6px rgba(0, 0, 0, 0.45);
-}
-
 /* Mana: crystals, filled up to what is left this turn. */
 .mana-crystals {
   display: inline-flex;
@@ -145,8 +201,8 @@
 }
 
 .mana-crystal {
-  width: 7px;
-  height: 7px;
+  width: 9px;
+  height: 9px;
   transform: rotate(45deg);
   border-radius: 1px;
   border: 1px solid rgba(143, 208, 187, 0.55);
@@ -162,39 +218,170 @@
 .mana-count {
   font-family: var(--font-display);
   font-size: 0.74rem;
+  font-variant-numeric: tabular-nums;
   color: var(--verdigris-light);
 }
 
+/* The spendable number is the one a player checks before every play. */
+.mana-count strong {
+  font-size: 1.18rem;
+  color: #d6f5ea;
+  text-shadow: 0 0 10px rgba(143, 208, 187, 0.45);
+}
+
+/* ─── Floating damage and heal numbers (HealthPopBadge) ─────────── */
+.health-pop {
+  position: absolute;
+  left: 50%;
+  top: 38%;
+  z-index: 8;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.5rem;
+  line-height: 1;
+  pointer-events: none;
+  -webkit-text-stroke: 3px rgba(20, 8, 6, 0.9);
+  paint-order: stroke fill;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.7);
+  transform: translate(-50%, -50%);
+  animation: healthPop 1.05s cubic-bezier(0.2, 0.8, 0.3, 1) forwards;
+}
+
+.health-pop.is-damage { color: #ffb3a6; }
+.health-pop.is-heal { color: #b8f0dc; }
+
+/* Over a hero's medallion the number rides up out of it. */
+.battle-hero-hp .health-pop {
+  top: 50%;
+  font-size: 1.15rem;
+}
+
+@keyframes healthPop {
+  0% { opacity: 0; transform: translate(-50%, -30%) scale(0.4); }
+  14% { opacity: 1; transform: translate(-50%, -50%) scale(1.35); }
+  26% { transform: translate(-50%, -55%) scale(1); }
+  75% { opacity: 1; transform: translate(-50%, -110%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -140%) scale(0.95); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .health-pop {
+    animation: healthPopStill 1.05s linear forwards;
+  }
+
+  .battle-hero-anchor.is-strike-target {
+    animation: none;
+    box-shadow: 0 0 0 2px rgba(236, 138, 124, 0.6);
+  }
+}
+
+@keyframes healthPopStill {
+  0%, 80% { opacity: 1; transform: translate(-50%, -50%); }
+  100% { opacity: 0; transform: translate(-50%, -50%); }
+}
+
 /* ─── Action dock ──────────────────────────────────────────────── */
-/* Leave · Burst · End Turn. End Turn is the dominant control and sits on the
-   thumb side; Leave is a small way out, not a third equal choice. */
+/* Burst medallion · End Turn. End Turn is the dominant control on the thumb
+   side; Leave moved to the far end of the screen (.battle-enemy-row). */
 .battle-action-dock {
   display: flex;
-  gap: var(--space-1-5);
+  align-items: center;
+  gap: var(--space-2);
   z-index: 3;
 }
 
-.battle-action-dock > button {
+.battle-action-dock .battle-end-turn-button {
+  flex: 1 1 auto;
+  /* Fills the dock on a phone; on a wide board it stays a button, held on
+     the right where the hand's thumb is, instead of a 1,100px bar. */
+  max-width: 440px;
+  margin-left: auto;
   min-width: 0;
-  min-height: 38px;
-  padding: 5px 8px;
-  font-size: 0.8rem;
+  min-height: 44px;
+  font-size: 1rem;
+  letter-spacing: 0.08em;
 }
 
-.battle-action-dock .battle-leave-button {
-  flex: 0 0 auto;
-  gap: 4px;
+/* ─── Burst medallion ─────────────────────────────────────────────── */
+.burst-medallion {
   display: inline-flex;
   align-items: center;
+  gap: var(--space-2);
+  flex: none;
+  min-height: 44px;
+  padding: 0 12px 0 0;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--bone-dim);
+  box-shadow: none;
 }
 
-.battle-action-dock .battle-burst-button {
-  flex: 1 1 0;
+.burst-medallion-ring {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  /* The charge ring: filled arc, then a notch where Burst becomes affordable. */
+  background:
+    conic-gradient(from 0deg, transparent calc(var(--burst-notch) - 2deg), #fbe3a8 calc(var(--burst-notch) - 2deg) calc(var(--burst-notch) + 2deg), transparent calc(var(--burst-notch) + 2deg)),
+    conic-gradient(var(--ember) var(--burst-fill), rgba(201, 169, 110, 0.18) var(--burst-fill));
+  box-shadow: 0 0 0 1.5px rgba(184, 148, 88, 0.8), 0 4px 12px rgba(0, 0, 0, 0.5);
 }
 
-.battle-action-dock .battle-end-turn-button {
-  flex: 2 1 0;
-  font-size: 0.92rem;
+.burst-medallion-core {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1rem;
+  color: #fff4dc;
+  background: radial-gradient(circle at 38% 32%, #4a3826, #1c140f 78%);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.8);
+}
+
+.burst-medallion-label {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.86rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.burst-medallion.is-charged:not(:disabled) {
+  color: var(--ember-light);
+}
+
+.burst-medallion.is-charged:not(:disabled) .burst-medallion-core {
+  background: radial-gradient(circle at 38% 32%, #f3d08a, #b5782b 60%, #5a3418 100%);
+  color: #2a1606;
+  text-shadow: 0 1px 0 rgba(255, 240, 200, 0.5);
+}
+
+.burst-medallion.is-charged:not(:disabled) .burst-medallion-ring {
+  animation: burstReady 1.8s ease-in-out infinite;
+}
+
+@keyframes burstReady {
+  0%, 100% { box-shadow: 0 0 0 1.5px rgba(243, 208, 138, 0.9), 0 4px 12px rgba(0, 0, 0, 0.5); }
+  50% { box-shadow: 0 0 0 1.5px rgba(243, 208, 138, 0.9), 0 0 18px 3px rgba(224, 168, 78, 0.55); }
+}
+
+.burst-medallion:disabled {
+  opacity: 1;
+  filter: saturate(0.7);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .burst-medallion.is-charged:not(:disabled) .burst-medallion-ring {
+    animation: none;
+    box-shadow: 0 0 0 1.5px rgba(243, 208, 138, 0.9), 0 0 14px 2px rgba(224, 168, 78, 0.5);
+  }
 }
 
 /* The turn is spent — nothing affordable, nothing ready, no Burst — so the
@@ -419,79 +606,87 @@
   width: fit-content;
   max-width: 100%;
   margin: 0 auto;
-  padding: 3px 10px;
-  border-radius: var(--radius-md);
-  border: 1px solid rgba(214, 192, 154, 0.16);
-  background: linear-gradient(135deg, rgba(28, 22, 21, 0.88), rgba(50, 41, 40, 0.74));
+  padding: 3px 12px 3px 3px;
+  border-radius: var(--radius-pill);
+  border: 1px solid rgba(201, 169, 110, 0.28);
+  background: linear-gradient(180deg, rgba(36, 28, 24, 0.94), rgba(18, 13, 11, 0.94));
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+}
+
+.battle-centerline.is-player-turn {
+  border-color: rgba(143, 208, 187, 0.4);
+}
+
+.battle-centerline.is-enemy-turn {
+  border-color: rgba(236, 138, 124, 0.4);
+}
+
+.battle-center-copy {
+  display: grid;
+  line-height: 1.1;
 }
 
 .battle-center-hero-slot {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 92px;
-  min-height: 28px;
-  border-radius: var(--radius-sm);
-  border: 1px solid rgba(217, 159, 59, 0.16);
-  background: rgba(217, 159, 59, 0.07);
 }
 
 .battle-center-hero-button {
   min-width: 88px;
   min-height: 28px;
   padding: var(--space-1) var(--space-2);
-  border-radius: var(--radius-sm);
-  border: 1px solid rgba(217, 159, 59, 0.42);
-  background: linear-gradient(135deg, rgba(148, 91, 33, 0.58), rgba(98, 47, 43, 0.52));
-  color: #f6e7cc;
-  font-size: 0.66rem;
-  font-weight: 900;
-  text-transform: uppercase;
-  box-shadow: 0 0 16px rgba(217, 159, 59, 0.14);
-}
-
-.battle-center-hero-hint {
-  color: rgba(247, 240, 227, 0.66);
-  font-size: 0.6rem;
-  font-weight: 800;
+  border-radius: var(--radius-pill);
+  border: 1px solid rgba(236, 138, 124, 0.8);
+  background: linear-gradient(180deg, #b04236, #6e1f19);
+  color: #fff1ea;
+  font-family: var(--font-display);
+  font-size: 0.72rem;
+  font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
+  box-shadow: 0 0 16px rgba(224, 120, 108, 0.35);
 }
 
+/* The turn number in a brass disc. */
 .battle-center-turn {
-  font-size: 0.62rem;
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  font-family: var(--font-display);
+  font-size: 0.82rem;
   font-weight: 700;
-  letter-spacing: 0.08em;
-  color: rgba(217, 159, 59, 0.75);
-  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+  color: var(--ember-light);
+  background: radial-gradient(circle at 38% 32%, #4a3826, #1c140f 78%);
+  box-shadow: 0 0 0 1.5px rgba(184, 148, 88, 0.75);
 }
 
 .battle-center-note {
-  font-size: 0.69rem;
-  letter-spacing: 0.04em;
-  color: #f7f0e3;
-  text-align: center;
-  text-transform: uppercase;
+  font-family: var(--font-display);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--bone);
+  white-space: nowrap;
 }
 
 .battle-center-phase {
-  font-size: 0.58rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
+  font-size: 0.56rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  padding: 1px 6px;
-  border-radius: var(--radius-pill);
-  flex-shrink: 0;
 }
 
 .battle-center-phase.is-player-turn {
-  background: rgba(72, 159, 136, 0.25);
-  color: #d6c09a;
+  color: var(--verdigris-light);
 }
 
 .battle-center-phase.is-enemy-turn {
-  background: rgba(168, 71, 64, 0.2);
-  color: #e39a95;
+  color: var(--blood-light);
 }
 
 /* ─── Lanes ───────────────────────────────────────────────────────
@@ -506,12 +701,14 @@
   min-width: 0;
   min-height: 0;
   container-type: size;
+  /* A carved seat in the table rather than a box on it: no hard rim, just a
+     shallow recess, so the cards — not the containers — carry the board. */
   border-radius: 14px;
-  border: 1px solid rgba(201, 169, 110, 0.2);
+  border: 1px solid rgba(201, 169, 110, 0.1);
   background:
-    url('/generated/ui/lane-sigil.svg') center / min(70cqw, 70cqh, 120px) no-repeat,
-    radial-gradient(ellipse at 50% 50%, rgba(46, 34, 27, 0.55), rgba(14, 10, 9, 0.42));
-  box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.55), inset 0 -1px 0 rgba(255, 232, 190, 0.05);
+    url('/generated/ui/lane-sigil.svg') center / min(58cqw, 58cqh, 104px) no-repeat,
+    radial-gradient(ellipse at 50% 50%, rgba(30, 22, 18, 0.42), rgba(10, 7, 6, 0.3) 75%, transparent);
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.4);
 }
 
 /* The empty slot is the lane's hit area and drop target: invisible until a
@@ -527,8 +724,8 @@
 }
 
 .board-grid-battle .lane > .slot:not(.empty) {
-  /* A hair inside the plate so its carved edge still frames the card. */
-  width: min(100cqw - 8px, (100cqh - 8px) * 63 / 88);
+  /* As large as the seat allows — the units are the board. */
+  width: min(100cqw - 4px, (100cqh - 4px) * 63 / 88);
   height: auto;
   aspect-ratio: 63 / 88;
   min-height: 0;
@@ -551,7 +748,7 @@
   background: linear-gradient(180deg, rgba(75, 61, 58, 0.96), rgba(47, 38, 36, 0.96));
   color: #fefdfa;
   border-radius: 12px;
-  border: 2px solid var(--rarity-color, var(--border));
+  border: 2px solid var(--card-bezel, var(--rarity-color, var(--border)));
   transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
   touch-action: manipulation;
   -webkit-user-select: none;
@@ -590,9 +787,25 @@
 
 .slot.exhausted { opacity: 0.65; filter: saturate(0.6); }
 
+/* Ready to attack: the same verdigris edge as a playable hand card, so
+   "this can act now" reads the same everywhere on the table. */
+.slot.can-attack {
+  box-shadow:
+    0 10px 22px rgba(0, 0, 0, 0.45),
+    0 0 0 1px rgba(143, 208, 187, 0.85),
+    0 0 16px rgba(95, 168, 146, 0.6);
+}
+
 /* On the board a spent unit dims rather than fades: translucency would show
-   the lane's sigil through the card. */
+   the lane's sigil through the card. Only your own side: the opponent's
+   readiness resets before it can matter, and a dimmed enemy row made the
+   whole board look switched off on your turn. */
 .board-grid-battle .lane > .slot.exhausted {
+  opacity: 1;
+  filter: none;
+}
+
+.player-side .board-grid-battle .lane > .slot.exhausted {
   opacity: 1;
   filter: saturate(0.45) brightness(0.68);
 }

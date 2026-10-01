@@ -149,6 +149,7 @@
   pointer-events: none;
   object-fit: cover;
   border-radius: inherit;
+  clip-path: inset(0 round 999px);
 }
 
 .battle-hero-anchor .hero-fx-cracks {
@@ -277,7 +278,7 @@
   transition: filter 800ms ease, opacity 800ms ease;
 }
 
-/* Turn indicator chip — animate on turn swap. */
+/* Turn ribbon — flashes its label on turn swap. */
 .battle-center-phase.is-player-turn {
   animation: turnChipFlash 500ms ease-out;
 }

@@ -464,3 +464,40 @@ export function hasAvailableAction(player: {
   const canAttack = player.board.some((unit) => unit !== null && !unit.exhausted)
   return canPlay || canAttack || player.momentum >= 3
 }
+
+export type HealthChange = {
+  key: string
+  delta: number
+}
+
+/**
+ * Health that moved between two snapshots, keyed by hero or unit uid.
+ *
+ * Only keys present in both count: a unit that just arrived has no "before",
+ * and one that died is gone from "after" — neither is a hit or a heal to
+ * float a number over. Order follows the next snapshot so pops appear in board
+ * order.
+ */
+export function diffHealth(prev: Record<string, number>, next: Record<string, number>): HealthChange[] {
+  return Object.entries(next).flatMap(([key, value]) => {
+    const before = prev[key]
+    if (before === undefined || before === value) return []
+    return [{ key, delta: value - before }]
+  })
+}
+
+/**
+ * Every pile counter wants the same two numbers, and they arrive two ways:
+ * the local engine keeps real arrays, the server's redacted view sends counts.
+ */
+export function getPileCounts(player: {
+  hand: unknown[]
+  deck: unknown[]
+  handCount?: number
+  deckCount?: number
+}): { hand: number; deck: number } {
+  return {
+    hand: player.handCount ?? player.hand.length,
+    deck: player.deckCount ?? player.deck.length,
+  }
+}

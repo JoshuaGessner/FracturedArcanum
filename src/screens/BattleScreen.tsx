@@ -1,16 +1,19 @@
-import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
   RARITY_COLORS,
   hasKeyword,
   type CardInstance,
 } from '../game'
-import { asCardBorder, describeCard, getHandFanTilt, hasAvailableAction, pulseFeedback } from '../utils'
+import { asCardBorder, describeCard, getHandFanTilt, getPileCounts, hasAvailableAction, pulseFeedback } from '../utils'
 import { ECONOMY_REWARDS, UI_ASSETS } from '../constants'
 import { playSound, startLoopingSound } from '../audio'
 import { InterfaceGlyph } from '../components/AssetBadge'
 import { CardFace } from '../components/CardFace'
 import { BattleHeroAnchor } from '../components/BattleHeroAnchor'
+import { BurstMedallion } from '../components/BurstMedallion'
+import { HealthPopBadge } from '../components/HealthPopBadge'
+import { useHealthPops } from '../hooks/useHealthPops'
 import { SummaryPopup } from '../components/SummaryPopup'
 import { useAppShell, useGame, useProfile } from '../contexts'
 import type { InspectedCard } from '../types'
@@ -120,6 +123,19 @@ export function BattleScreen() {
   const showHeroSideLabels = !isRankedBattle && battleKind !== 'friend'
   // Nothing left to do this turn: End Turn starts to glow.
   const turnSpent = isMyTurn && !game.winner && !hasAvailableAction(activePlayer)
+  // Health by hero and unit uid, for the floating damage and heal numbers.
+  const healthSnapshot = useMemo(() => {
+    const entries: Array<[string, number]> = [
+      ['hero:player', game.player.health],
+      ['hero:enemy', game.enemy.health],
+    ]
+    for (const unit of [...game.player.board, ...game.enemy.board]) {
+      if (unit) entries.push([unit.uid, unit.currentHealth])
+    }
+    return Object.fromEntries(entries)
+  }, [game.player.health, game.enemy.health, game.player.board, game.enemy.board])
+  const healthPops = useHealthPops(healthSnapshot, game.turnNumber)
+  const enemyPiles = getPileCounts(game.enemy)
   const authoritativeResult = serverMatch.phase === 'terminal' ? serverMatch.outcome.result : null
   const displayedWinner = authoritativeResult === 'win'
     ? 'player'
@@ -707,13 +723,30 @@ export function BattleScreen() {
           )}
 
           {/* ─── Enemy Hero Anchor ──────────────────────────────── */}
-          <BattleHeroAnchor
-            side="enemy"
-            name={game.enemy.name}
-            health={game.enemy.health}
-            showSideLabel={showHeroSideLabels}
-            fx={enemyHeroFx}
-          />
+          {/* Leave sits up here, at the far end of the screen from End Turn:
+              a way out you reach for deliberately, not one a thumb lands on
+              while ending a turn. It pauses — the match survives. */}
+          <div className="battle-enemy-row">
+            <button
+              type="button"
+              className="ghost battle-leave-button"
+              onClick={handleLeaveBattle}
+              aria-label="Leave battle (the match is paused, not lost)"
+              title="Leave — the match is paused"
+            >
+              <InterfaceGlyph name="back" />
+            </button>
+            <BattleHeroAnchor
+              side="enemy"
+              name={game.enemy.name}
+              health={game.enemy.health}
+              showSideLabel={showHeroSideLabels}
+              fx={enemyHeroFx}
+              piles={enemyPiles}
+              onStrike={canStrikeHero ? () => handleAttackTarget('hero') : undefined}
+              healthPops={<HealthPopBadge pop={healthPops['hero:enemy']} />}
+            />
+          </div>
 
           <div className="battle-board-stack">
             <div className="battlefield-side enemy-side">
@@ -769,6 +802,7 @@ export function BattleScreen() {
                       <span className="card-frame" aria-hidden="true" />
                       <CardFace card={unit} variant="board" currentHealth={unit.currentHealth} />
                       {unit.frozen && <span className="battle-slot-frozen">Frozen</span>}
+                      <HealthPopBadge pop={healthPops[unit.uid]} />
                     </button>
                   </div>
                 )
@@ -776,19 +810,21 @@ export function BattleScreen() {
             </div>
           </div>
 
-          <div className="battle-centerline">
-            <span className="battle-center-turn">T{game.turnNumber}</span>
-            <strong className="battle-center-note">{battleCenterLabel}</strong>
-            <span className={`battle-center-phase ${isMyTurn ? 'is-player-turn' : 'is-enemy-turn'}`}>{isMyTurn ? 'Your turn' : 'Enemy turn'}</span>
-            <span className="battle-center-hero-slot" data-hero-target="enemy">
-              {canStrikeHero ? (
+          {/* One ribbon: whose turn, which turn, and what the next move is.
+              The Strike Hero action appears in it only while it is live. */}
+          <div className={`battle-centerline ${isMyTurn ? 'is-player-turn' : 'is-enemy-turn'}`}>
+            <span className="battle-center-turn" aria-label={`Turn ${game.turnNumber}`}>{game.turnNumber}</span>
+            <span className="battle-center-copy">
+              <span className={`battle-center-phase ${isMyTurn ? 'is-player-turn' : 'is-enemy-turn'}`}>{isMyTurn ? 'Your turn' : 'Enemy turn'}</span>
+              <strong className="battle-center-note">{battleCenterLabel}</strong>
+            </span>
+            {canStrikeHero && (
+              <span className="battle-center-hero-slot" data-hero-target="enemy">
                 <button className="battle-center-hero-button" onClick={() => handleAttackTarget('hero')}>
                   Strike Hero
                 </button>
-              ) : (
-                <span className="battle-center-hero-hint">{selectedAttacker === null ? 'Select Unit' : 'Hero Guarded'}</span>
-              )}
-            </span>
+              </span>
+            )}
           </div>
 
           <div className="battlefield-side player-side">
@@ -839,6 +875,7 @@ export function BattleScreen() {
                         unit.exhausted ? 'exhausted' : '',
                         unit.frozen ? 'frozen' : '',
                         isSelected ? 'selected' : '',
+                        canAttack && !isSelected ? 'can-attack' : '',
                         attackDrag?.active && attackDrag.attackerIndex === index ? 'is-attack-dragging' : '',
                         damagedSlots.has(unit.uid) ? 'damage-flash' : '',
                         dragActive ? 'drop-target-active' : '',
@@ -888,6 +925,7 @@ export function BattleScreen() {
                       <span className="card-frame" aria-hidden="true" />
                       <CardFace card={unit} variant="board" currentHealth={unit.currentHealth} />
                       {unit.frozen && <span className="battle-slot-frozen">Frozen</span>}
+                      <HealthPopBadge pop={healthPops[unit.uid]} />
                     </button>
                   </div>
                 )
@@ -905,21 +943,17 @@ export function BattleScreen() {
             showSideLabel={showHeroSideLabels}
             fx={playerHeroFx}
             lowHealth={playerLowHp}
-            resources={{ momentum: activePlayer.momentum, mana: activePlayer.mana, maxMana: activePlayer.maxMana }}
+            mana={{ mana: activePlayer.mana, maxMana: activePlayer.maxMana }}
+            healthPops={<HealthPopBadge pop={healthPops['hero:player']} />}
           />
 
           {/* ─── Action Dock ────────────────────────────────────── */}
           <div className={`battle-action-dock ${selectedAttacker !== null ? 'battle-action-dock-attack' : ''}`}>
-            <button className="ghost battle-leave-button" onClick={handleLeaveBattle}>
-              <InterfaceGlyph name="back" /> Leave
-            </button>
-            <button
-              className="secondary battle-burst-button"
-              onClick={handleBurst}
+            <BurstMedallion
+              momentum={activePlayer.momentum}
+              onBurst={handleBurst}
               disabled={activePlayer.momentum < 3 || Boolean(game.winner) || !isMyTurn}
-            >
-              Burst
-            </button>
+            />
             <button
               className={`primary battle-end-turn-button${turnSpent ? ' is-ready' : ''}`}
               onClick={handleEndTurn}
@@ -960,6 +994,7 @@ export function BattleScreen() {
                       `rarity-${card.rarity}`,
                       `border-${selectedCardBorder}`,
                       canPlay ? '' : 'unplayable',
+                      canPlay && isMyTurn ? 'is-playable' : '',
                       isDragging ? 'is-dragging' : '',
                       dragActive && !isDragging ? 'is-drag-sibling' : '',
                     ].filter(Boolean).join(' ')}

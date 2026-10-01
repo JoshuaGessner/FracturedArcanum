@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { appendToast, describeCard, hasAvailableAction, formatPasskeyCeremonyError, getCompletionPercent, getComplaintSeverityTone, getEffectIconPath, getHandFanTilt, getPackArtPath, getPasskeyOriginRequirementMessage, getRankAssetPath, getRankBand, getRankLabel, getRarityCompletion, getRarityGemPath, getScreenTransitionClass, getScreenTransitionSound, getStreakTier, shouldPresentScopedReward } from './utils'
+import { appendToast, describeCard, diffHealth, getPileCounts, hasAvailableAction, formatPasskeyCeremonyError, getCompletionPercent, getComplaintSeverityTone, getEffectIconPath, getHandFanTilt, getPackArtPath, getPasskeyOriginRequirementMessage, getRankAssetPath, getRankBand, getRankLabel, getRarityCompletion, getRarityGemPath, getScreenTransitionClass, getScreenTransitionSound, getStreakTier, shouldPresentScopedReward } from './utils'
 
 describe('UI asset helpers', () => {
   it('resolves rank insignia from labels and ratings', () => {
@@ -221,5 +221,28 @@ describe('hasAvailableAction', () => {
   it('sees a ready unit and an available Burst', () => {
     expect(hasAvailableAction({ ...base, board: [{ exhausted: false }, null, null] })).toBe(true)
     expect(hasAvailableAction({ ...base, momentum: 3 })).toBe(true)
+  })
+})
+
+describe('diffHealth', () => {
+  it('reports damage and healing on keys present in both snapshots', () => {
+    expect(diffHealth({ 'hero:enemy': 24, a: 3, b: 2 }, { 'hero:enemy': 21, a: 4, b: 2 })).toEqual([
+      { key: 'hero:enemy', delta: -3 },
+      { key: 'a', delta: 1 },
+    ])
+  })
+
+  it('ignores units that arrived or died', () => {
+    expect(diffHealth({ dead: 1 }, { fresh: 5 })).toEqual([])
+  })
+})
+
+describe('getPileCounts', () => {
+  it('prefers the redacted counts the server sends', () => {
+    expect(getPileCounts({ hand: [], deck: [], handCount: 4, deckCount: 9 })).toEqual({ hand: 4, deck: 9 })
+  })
+
+  it('falls back to the local engine arrays', () => {
+    expect(getPileCounts({ hand: [1, 2], deck: [1, 2, 3] })).toEqual({ hand: 2, deck: 3 })
   })
 })

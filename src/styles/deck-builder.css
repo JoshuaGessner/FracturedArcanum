@@ -48,7 +48,7 @@
   padding: 0;
   overflow: hidden;
   border-radius: 14px;
-  border: 2px solid var(--rarity-color, var(--border));
+  border: 2px solid var(--card-bezel, var(--rarity-color, var(--border)));
   background: #120e0d;
   color: inherit;
   box-shadow: 0 10px 22px rgba(0, 0, 0, 0.35);

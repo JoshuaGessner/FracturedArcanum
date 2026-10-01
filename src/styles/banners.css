@@ -46,7 +46,7 @@
   aspect-ratio: 63 / 88;
   overflow: hidden;
   border-radius: 18px;
-  border: 2px solid var(--rarity-color, var(--border));
+  border: 2px solid var(--card-bezel, var(--rarity-color, var(--border)));
   box-shadow: 0 18px 44px rgba(0, 0, 0, 0.55), 0 0 30px color-mix(in srgb, var(--rarity-color) 28%, transparent);
 }
 
