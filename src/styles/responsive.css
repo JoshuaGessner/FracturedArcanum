@@ -58,7 +58,7 @@
   }
   .section-card {
     border-radius: var(--radius-lg);
-    box-shadow: 0 10px 26px rgba(10, 14, 30, 0.22);
+    box-shadow: 0 10px 26px rgba(24, 18, 17, 0.22);
   }
   .section-head { gap: var(--space-1-5); }
   .nav-strip { padding: var(--space-2-5); }
@@ -110,7 +110,7 @@
   }
 
   .home-status-card .mini-text {
-    color: #dce3f7;
+    color: #f5edde;
     font-size: clamp(0.82rem, 3.7vw, 1rem);
     line-height: 1.18;
   }
@@ -782,7 +782,7 @@
   }
 
   .topbar-home.topbar-art {
-    border-color: rgba(147, 197, 253, 0.06);
+    border-color: rgba(214, 192, 154, 0.06);
   }
 
   .brand-block-home {

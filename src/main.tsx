@@ -1,5 +1,11 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
+// Bundled, OFL-licensed type: Cinzel for display, Inter for body. Latin
+// subsets only for Cinzel; Inter's stylesheet scopes each subset by
+// unicode-range, so browsers fetch only what they render.
+import '@fontsource/cinzel/latin-600.css'
+import '@fontsource/cinzel/latin-700.css'
+import '@fontsource-variable/inter/wght.css'
 import './index.css'
 import App from './App.tsx'
 import { ErrorBoundary } from './components/ErrorBoundary'

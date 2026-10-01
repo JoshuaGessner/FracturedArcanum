@@ -67,13 +67,13 @@
   width: 44px;
   height: 4px;
   border-radius: var(--radius-pill);
-  background: rgba(203, 213, 255, 0.35);
+  background: rgba(243, 234, 215, 0.35);
   transition: background var(--motion-fast);
 }
 
 .sheet-handle:hover::before,
 .sheet-handle:focus-visible::before {
-  background: rgba(203, 213, 255, 0.6);
+  background: rgba(243, 234, 215, 0.6);
 }
 
 .sheet-head {
@@ -110,9 +110,9 @@
 }
 
 .sheet-notice.warning {
-  border: 1px solid rgba(245, 158, 11, 0.3);
-  background: rgba(245, 158, 11, 0.12);
-  color: #fde68a;
+  border: 1px solid rgba(202, 144, 44, 0.3);
+  background: rgba(202, 144, 44, 0.12);
+  color: #e9c88e;
 }
 
 /* Modes stack vertically in the sheet. The old Play screen squeezed them
@@ -140,8 +140,8 @@
   background-size: contain;
   background-position: right center;
   opacity: 0.16;
-  -webkit-mask-image: linear-gradient(to right, transparent, #000 55%);
-  mask-image: linear-gradient(to right, transparent, #000 55%);
+  -webkit-mask-image: linear-gradient(to right, transparent, #000000 55%);
+  mask-image: linear-gradient(to right, transparent, #000000 55%);
 }
 
 .mode-card-grid-sheet .mode-card > * {

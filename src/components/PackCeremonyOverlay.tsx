@@ -259,7 +259,7 @@ export function PackCeremonyOverlay({
                 '--ceremony-tilt': `${tilt}deg`,
                 '--ceremony-lift': `${lift}px`,
                 '--ceremony-index': index,
-                '--rarity-color': RARITY_COLORS[card.rarity as keyof typeof RARITY_COLORS] ?? '#cbd5e1',
+                '--rarity-color': RARITY_COLORS[card.rarity as keyof typeof RARITY_COLORS] ?? RARITY_COLORS.common,
               } as React.CSSProperties
 
               return (

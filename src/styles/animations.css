@@ -37,7 +37,7 @@
 /* Legendary shimmer */
 .rarity-legendary .card-name,
 .rarity-legendary .slot-head strong {
-  background: linear-gradient(90deg, #fde68a, #fbbf24, #f59e0b, #fde68a);
+  background: linear-gradient(90deg, #e9c88e, #d99f3b, #ca902c, #e9c88e);
   background-size: 200% 100%;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;

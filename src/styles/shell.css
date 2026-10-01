@@ -67,21 +67,21 @@
   inset: 0;
   pointer-events: none;
   background:
-    radial-gradient(circle at 20% 10%, rgba(56, 189, 248, 0.12), transparent 0 28%),
-    radial-gradient(circle at 80% 0%, rgba(124, 58, 237, 0.14), transparent 0 24%);
+    radial-gradient(circle at 20% 10%, rgba(76, 182, 154, 0.12), transparent 0 28%),
+    radial-gradient(circle at 80% 0%, rgba(155, 88, 183, 0.14), transparent 0 24%);
   animation: ambientFloat 12s ease-in-out infinite;
 }
 
 .app-shell.theme-ember::before {
   background:
-    radial-gradient(circle at 18% 10%, rgba(251, 113, 133, 0.16), transparent 0 28%),
-    radial-gradient(circle at 82% 0%, rgba(249, 115, 22, 0.16), transparent 0 24%);
+    radial-gradient(circle at 18% 10%, rgba(217, 117, 110, 0.16), transparent 0 28%),
+    radial-gradient(circle at 82% 0%, rgba(213, 130, 47, 0.16), transparent 0 24%);
 }
 
 .app-shell.theme-moon::before {
   background:
-    radial-gradient(circle at 18% 10%, rgba(147, 197, 253, 0.16), transparent 0 28%),
-    radial-gradient(circle at 82% 0%, rgba(167, 139, 250, 0.16), transparent 0 24%);
+    radial-gradient(circle at 18% 10%, rgba(214, 192, 154, 0.16), transparent 0 28%),
+    radial-gradient(circle at 82% 0%, rgba(211, 187, 147, 0.16), transparent 0 24%);
 }
 
 @keyframes ambientFloat {
@@ -105,12 +105,12 @@
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
-  scrollbar-color: rgba(147, 197, 253, 0.35) transparent;
+  scrollbar-color: rgba(214, 192, 154, 0.35) transparent;
 }
 
 .app-shell:not(.battle-shell-active) .scene-stage > .screen-panel.active::-webkit-scrollbar { width: 6px; }
 .app-shell:not(.battle-shell-active) .scene-stage > .screen-panel.active::-webkit-scrollbar-thumb {
-  background: rgba(147, 197, 253, 0.35);
+  background: rgba(214, 192, 154, 0.35);
   border-radius: var(--radius-pill);
 }
 .app-shell:not(.battle-shell-active) .scene-stage > .screen-panel.active::-webkit-scrollbar-track { background: transparent; }
@@ -382,68 +382,68 @@
    each scene tints via background-color mix. */
 .home-screen.active::after {
   background:
-    radial-gradient(1.5px 1.5px at 12% 18%, rgba(251, 191, 36, 0.55), transparent),
-    radial-gradient(1px 1px at 28% 72%, rgba(251, 191, 36, 0.35), transparent),
-    radial-gradient(2px 2px at 65% 8%, rgba(251, 191, 36, 0.4), transparent),
-    radial-gradient(1px 1px at 82% 42%, rgba(251, 191, 36, 0.3), transparent),
-    radial-gradient(1.5px 1.5px at 45% 88%, rgba(251, 191, 36, 0.45), transparent),
-    radial-gradient(1px 1px at 92% 76%, rgba(251, 191, 36, 0.25), transparent);
+    radial-gradient(1.5px 1.5px at 12% 18%, rgba(217, 159, 59, 0.55), transparent),
+    radial-gradient(1px 1px at 28% 72%, rgba(217, 159, 59, 0.35), transparent),
+    radial-gradient(2px 2px at 65% 8%, rgba(217, 159, 59, 0.4), transparent),
+    radial-gradient(1px 1px at 82% 42%, rgba(217, 159, 59, 0.3), transparent),
+    radial-gradient(1.5px 1.5px at 45% 88%, rgba(217, 159, 59, 0.45), transparent),
+    radial-gradient(1px 1px at 92% 76%, rgba(217, 159, 59, 0.25), transparent);
   animation: sceneFxFadeIn 1.2s ease 0.4s forwards, sceneFxDriftSlow 18s ease-in-out infinite;
 }
 
 .collection-screen.active::after {
   background:
-    radial-gradient(1px 1px at 10% 30%, rgba(56, 189, 248, 0.5), transparent),
-    radial-gradient(1.5px 1.5px at 35% 58%, rgba(56, 189, 248, 0.3), transparent),
-    radial-gradient(1px 1px at 62% 15%, rgba(147, 197, 253, 0.45), transparent),
-    radial-gradient(2px 2px at 78% 70%, rgba(56, 189, 248, 0.35), transparent),
-    radial-gradient(1px 1px at 48% 90%, rgba(147, 197, 253, 0.25), transparent),
-    radial-gradient(1.5px 1.5px at 90% 25%, rgba(56, 189, 248, 0.4), transparent);
+    radial-gradient(1px 1px at 10% 30%, rgba(76, 182, 154, 0.5), transparent),
+    radial-gradient(1.5px 1.5px at 35% 58%, rgba(76, 182, 154, 0.3), transparent),
+    radial-gradient(1px 1px at 62% 15%, rgba(214, 192, 154, 0.45), transparent),
+    radial-gradient(2px 2px at 78% 70%, rgba(76, 182, 154, 0.35), transparent),
+    radial-gradient(1px 1px at 48% 90%, rgba(214, 192, 154, 0.25), transparent),
+    radial-gradient(1.5px 1.5px at 90% 25%, rgba(76, 182, 154, 0.4), transparent);
   animation: sceneFxFadeIn 1.2s ease 0.4s forwards, sceneFxDriftSlow 22s ease-in-out infinite;
 }
 
 .social-screen.active::after {
   background:
-    radial-gradient(2px 2px at 14% 25%, rgba(249, 115, 22, 0.45), transparent),
-    radial-gradient(1px 1px at 40% 60%, rgba(251, 146, 60, 0.3), transparent),
-    radial-gradient(1.5px 1.5px at 68% 18%, rgba(249, 115, 22, 0.4), transparent),
-    radial-gradient(1px 1px at 88% 55%, rgba(251, 146, 60, 0.25), transparent),
-    radial-gradient(2px 2px at 52% 82%, rgba(249, 115, 22, 0.35), transparent),
-    radial-gradient(1px 1px at 22% 90%, rgba(251, 146, 60, 0.2), transparent);
+    radial-gradient(2px 2px at 14% 25%, rgba(213, 130, 47, 0.45), transparent),
+    radial-gradient(1px 1px at 40% 60%, rgba(220, 149, 78, 0.3), transparent),
+    radial-gradient(1.5px 1.5px at 68% 18%, rgba(213, 130, 47, 0.4), transparent),
+    radial-gradient(1px 1px at 88% 55%, rgba(220, 149, 78, 0.25), transparent),
+    radial-gradient(2px 2px at 52% 82%, rgba(213, 130, 47, 0.35), transparent),
+    radial-gradient(1px 1px at 22% 90%, rgba(220, 149, 78, 0.2), transparent);
   animation: sceneFxFadeIn 1.2s ease 0.4s forwards, sceneFxEmberRise 16s ease-in-out infinite;
 }
 
 .shop-screen.active::after {
   background:
-    radial-gradient(2px 2px at 18% 20%, rgba(251, 191, 36, 0.5), transparent),
-    radial-gradient(1.5px 1.5px at 42% 55%, rgba(168, 85, 247, 0.35), transparent),
-    radial-gradient(1px 1px at 72% 10%, rgba(251, 191, 36, 0.4), transparent),
-    radial-gradient(2px 2px at 60% 78%, rgba(168, 85, 247, 0.3), transparent),
-    radial-gradient(1px 1px at 88% 40%, rgba(251, 191, 36, 0.35), transparent),
-    radial-gradient(1.5px 1.5px at 30% 92%, rgba(168, 85, 247, 0.25), transparent);
+    radial-gradient(2px 2px at 18% 20%, rgba(217, 159, 59, 0.5), transparent),
+    radial-gradient(1.5px 1.5px at 42% 55%, rgba(171, 108, 197, 0.35), transparent),
+    radial-gradient(1px 1px at 72% 10%, rgba(217, 159, 59, 0.4), transparent),
+    radial-gradient(2px 2px at 60% 78%, rgba(171, 108, 197, 0.3), transparent),
+    radial-gradient(1px 1px at 88% 40%, rgba(217, 159, 59, 0.35), transparent),
+    radial-gradient(1.5px 1.5px at 30% 92%, rgba(171, 108, 197, 0.25), transparent);
   animation: sceneFxFadeIn 1.2s ease 0.4s forwards, sceneFxShimmer 12s ease-in-out infinite;
 }
 
 .settings-screen.active::after {
   background:
-    radial-gradient(1px 1px at 15% 28%, rgba(147, 197, 253, 0.35), transparent),
-    radial-gradient(1px 1px at 42% 62%, rgba(147, 197, 253, 0.2), transparent),
-    radial-gradient(1.5px 1.5px at 68% 20%, rgba(167, 139, 250, 0.3), transparent),
-    radial-gradient(1px 1px at 85% 50%, rgba(147, 197, 253, 0.2), transparent),
-    radial-gradient(1px 1px at 55% 85%, rgba(167, 139, 250, 0.25), transparent),
-    radial-gradient(1px 1px at 8% 75%, rgba(147, 197, 253, 0.15), transparent);
+    radial-gradient(1px 1px at 15% 28%, rgba(214, 192, 154, 0.35), transparent),
+    radial-gradient(1px 1px at 42% 62%, rgba(214, 192, 154, 0.2), transparent),
+    radial-gradient(1.5px 1.5px at 68% 20%, rgba(211, 187, 147, 0.3), transparent),
+    radial-gradient(1px 1px at 85% 50%, rgba(214, 192, 154, 0.2), transparent),
+    radial-gradient(1px 1px at 55% 85%, rgba(211, 187, 147, 0.25), transparent),
+    radial-gradient(1px 1px at 8% 75%, rgba(214, 192, 154, 0.15), transparent);
   animation: sceneFxFadeIn 1.2s ease 0.4s forwards, sceneFxDriftSlow 26s ease-in-out infinite;
 }
 
 .battlefield.active::after {
   background:
-    radial-gradient(2px 2px at 10% 15%, rgba(239, 68, 68, 0.45), transparent),
-    radial-gradient(1.5px 1.5px at 32% 70%, rgba(249, 115, 22, 0.35), transparent),
-    radial-gradient(2.5px 2.5px at 58% 8%, rgba(239, 68, 68, 0.5), transparent),
-    radial-gradient(1px 1px at 80% 45%, rgba(249, 115, 22, 0.3), transparent),
-    radial-gradient(2px 2px at 45% 90%, rgba(239, 68, 68, 0.4), transparent),
-    radial-gradient(1.5px 1.5px at 92% 72%, rgba(249, 115, 22, 0.25), transparent),
-    radial-gradient(1px 1px at 20% 52%, rgba(251, 191, 36, 0.2), transparent);
+    radial-gradient(2px 2px at 10% 15%, rgba(199, 85, 77, 0.45), transparent),
+    radial-gradient(1.5px 1.5px at 32% 70%, rgba(213, 130, 47, 0.35), transparent),
+    radial-gradient(2.5px 2.5px at 58% 8%, rgba(199, 85, 77, 0.5), transparent),
+    radial-gradient(1px 1px at 80% 45%, rgba(213, 130, 47, 0.3), transparent),
+    radial-gradient(2px 2px at 45% 90%, rgba(199, 85, 77, 0.4), transparent),
+    radial-gradient(1.5px 1.5px at 92% 72%, rgba(213, 130, 47, 0.25), transparent),
+    radial-gradient(1px 1px at 20% 52%, rgba(217, 159, 59, 0.2), transparent);
   animation: sceneFxFadeIn 1.2s ease 0.4s forwards, sceneFxEmberRise 10s ease-in-out infinite;
 }
 

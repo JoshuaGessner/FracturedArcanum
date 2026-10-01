@@ -170,10 +170,10 @@ export const MAX_LEGENDARY_COPIES = 1
 export const CORE_SET: CardSet = 'SET-S1-CORE'
 
 export const RARITY_COLORS: Record<CardRarity, string> = {
-  common: '#9ca3af',
-  rare: '#3b82f6',
-  epic: '#a855f7',
-  legendary: '#f59e0b',
+  common: '#a8a29a',
+  rare: '#6c9bd2',
+  epic: '#a374c8',
+  legendary: '#e0a84e',
 }
 
 export const CARD_LIBRARY: CardTemplate[] = [

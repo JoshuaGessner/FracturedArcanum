@@ -1046,8 +1046,8 @@ export function BattleScreen() {
             >
               <defs>
                 <linearGradient id="attackArrowStroke" x1="0" y1="0" x2="1" y2="0">
-                  <stop offset="0%" stopColor="#fde68a" stopOpacity="0.95" />
-                  <stop offset="100%" stopColor="#dc2626" stopOpacity="0.95" />
+                  <stop offset="0%" stopColor="#e9c88e" stopOpacity="0.95" />
+                  <stop offset="100%" stopColor="#a84740" stopOpacity="0.95" />
                 </linearGradient>
               </defs>
               <line

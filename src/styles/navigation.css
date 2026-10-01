@@ -27,7 +27,7 @@
 .nav-strip {
   position: relative;
   z-index: 6;
-  background: linear-gradient(135deg, rgba(15, 23, 44, 0.94), rgba(30, 47, 89, 0.88));
+  background: linear-gradient(135deg, rgba(35, 27, 25, 0.94), rgba(70, 54, 51, 0.88));
   backdrop-filter: blur(12px);
   flex: 0 0 auto;
 }
@@ -62,9 +62,9 @@
   border-radius: var(--radius-xl) var(--radius-xl) 0 0;
   margin-inline: calc(var(--space-3) * -1);
   z-index: 4;
-  background: rgba(10, 14, 28, 0.92);
+  background: rgba(22, 17, 16, 0.92);
   backdrop-filter: blur(14px);
-  border: 1px solid rgba(147, 197, 253, 0.12);
+  border: 1px solid rgba(214, 192, 154, 0.12);
   border-bottom: 0;
   box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.34);
 }
@@ -76,7 +76,7 @@
   min-width: 0;
   padding: var(--space-1) var(--space-1) 5px;
   border-radius: var(--radius-md);
-  color: #9fb0d4;
+  color: #ceb487;
   text-align: center;
   display: grid;
   align-content: center;
@@ -107,13 +107,13 @@
 
 .scene-link:hover,
 .scene-link:focus-visible {
-  color: #dbe6ff;
+  color: #f7f0e3;
 }
 
 /* Active state reads from the glyph and label, not a filled pill. A solid
    gradient block at this size crowds the icon and buries the label. */
 .scene-link.active {
-  color: #fff;
+  color: #ffffff;
 }
 
 .scene-link.active::before {
@@ -128,8 +128,8 @@
   width: 22px;
   height: 3px;
   border-radius: 0 0 var(--radius-pill) var(--radius-pill);
-  background: linear-gradient(90deg, #38bdf8, #7c3aed);
-  box-shadow: 0 0 12px rgba(124, 58, 237, 0.6);
+  background: linear-gradient(90deg, #4cb69a, #9b58b7);
+  box-shadow: 0 0 12px rgba(155, 88, 183, 0.6);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -167,7 +167,7 @@
   padding: 16px 12px;
   min-height: 124px;
   border-radius: var(--radius-lg);
-  background: linear-gradient(160deg, rgba(124, 58, 237, 0.18), rgba(37, 99, 235, 0.12));
+  background: linear-gradient(160deg, rgba(155, 88, 183, 0.18), rgba(72, 159, 136, 0.12));
   border: 1px solid rgba(255, 255, 255, 0.08);
   color: var(--text);
   text-align: center;
@@ -192,7 +192,7 @@
 .nav-tile > * { position: relative; z-index: 1; }
 
 .nav-tile-alert {
-  box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.22), 0 10px 28px rgba(251, 191, 36, 0.18);
+  box-shadow: 0 0 0 1px rgba(217, 159, 59, 0.22), 0 10px 28px rgba(217, 159, 59, 0.18);
 }
 
 .nav-tile-notice {
@@ -203,7 +203,7 @@
   height: 12px;
   border-radius: 50%;
   background: radial-gradient(circle, var(--gold-light) 0%, var(--rarity-legendary) 65%, var(--gold-dark) 100%);
-  box-shadow: 0 0 0 4px rgba(251, 191, 36, 0.12), 0 0 16px rgba(251, 191, 36, 0.34);
+  box-shadow: 0 0 0 4px rgba(217, 159, 59, 0.12), 0 0 16px rgba(217, 159, 59, 0.34);
   animation: urgencyPulse 1.6s ease-in-out infinite;
 }
 
@@ -216,8 +216,8 @@
 .nav-tile:hover,
 .nav-tile:focus-visible {
   transform: translateY(-4px);
-  background: linear-gradient(160deg, rgba(124, 58, 237, 0.28), rgba(37, 99, 235, 0.2));
-  box-shadow: 0 10px 28px rgba(124, 58, 237, 0.32);
+  background: linear-gradient(160deg, rgba(155, 88, 183, 0.28), rgba(72, 159, 136, 0.2));
+  box-shadow: 0 10px 28px rgba(155, 88, 183, 0.32);
 }
 
 .nav-tile:active {

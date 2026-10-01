@@ -92,7 +92,7 @@ function buildSpotlightStyle(rect: Rect | null): React.CSSProperties {
     return {
       // No spotlight — fall back to a flat dim veil. The caption renders
       // centered in the viewport via a separate class.
-      background: 'rgba(6, 7, 14, 0.78)',
+      background: 'rgba(12, 9, 9, 0.78)',
     }
   }
   const cx = rect.left + rect.width / 2
@@ -101,7 +101,7 @@ function buildSpotlightStyle(rect: Rect | null): React.CSSProperties {
   const inner = Math.max(40, radius)
   const outer = inner + SPOTLIGHT_FALLBACK_RADIUS
   return {
-    background: `radial-gradient(circle at ${cx}px ${cy}px, rgba(6, 7, 14, 0) 0px, rgba(6, 7, 14, 0) ${inner}px, rgba(6, 7, 14, 0.86) ${outer}px)`,
+    background: `radial-gradient(circle at ${cx}px ${cy}px, rgba(12, 9, 9, 0) 0px, rgba(12, 9, 9, 0) ${inner}px, rgba(12, 9, 9, 0.86) ${outer}px)`,
   }
 }
 

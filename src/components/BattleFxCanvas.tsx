@@ -54,11 +54,11 @@ const PLAY_BURST_COUNT = 8
 const VICTORY_BURST_COUNT = 60
 const SWEEP_COUNT = 20
 
-const PLAYER_COLOR = 0x3b82f6  // blue-500
-const ENEMY_COLOR = 0xef4444   // red-500
-const WINNER_COLOR = 0xfbbf24  // amber-400
-const SWEEP_PLAYER_COLOR = 0x60a5fa // blue-400
-const SWEEP_ENEMY_COLOR = 0xf87171  // red-400
+const PLAYER_COLOR = 0x5fa892  // verdigris
+const ENEMY_COLOR = 0xb8403a   // blood
+const WINNER_COLOR = 0xe0a84e  // ember
+const SWEEP_PLAYER_COLOR = 0x8fd0bb // verdigris-light
+const SWEEP_ENEMY_COLOR = 0xe0786c  // blood-light
 const MAX_PARTICLES = 200
 const FALLBACK_FX_SIZE: FxSize = { width: 400, height: 600 }
 

@@ -8,7 +8,7 @@
 .hand-card.is-dragging {
   opacity: 0.42;
   filter: saturate(0.72) brightness(0.82);
-  outline: 2px solid rgba(253, 230, 138, 0.55);
+  outline: 2px solid rgba(233, 200, 142, 0.55);
   outline-offset: -3px;
   cursor: grabbing;
   touch-action: none;
@@ -30,8 +30,8 @@
   opacity: 0.98;
   box-shadow:
     0 18px 36px rgba(0, 0, 0, 0.55),
-    0 0 0 2px rgba(253, 230, 138, 0.85),
-    0 0 28px rgba(253, 230, 138, 0.55);
+    0 0 0 2px rgba(233, 200, 142, 0.85),
+    0 0 28px rgba(233, 200, 142, 0.55);
   filter: brightness(1.06);
   transition: box-shadow 120ms ease-out, filter 120ms ease-out;
   cursor: grabbing;
@@ -48,9 +48,9 @@
 .slot.drop-target-active.drop-target-valid {
   animation: dropTargetPulse 1100ms ease-in-out infinite;
   box-shadow:
-    0 0 0 2px rgba(253, 230, 138, 0.7),
-    0 0 22px rgba(253, 230, 138, 0.45) inset;
-  border-color: rgba(253, 230, 138, 0.75);
+    0 0 0 2px rgba(233, 200, 142, 0.7),
+    0 0 22px rgba(233, 200, 142, 0.45) inset;
+  border-color: rgba(233, 200, 142, 0.75);
 }
 
 .slot.drop-target-active.drop-target-invalid {
@@ -59,27 +59,27 @@
 
 .slot.drop-target-hover.drop-target-valid {
   box-shadow:
-    0 0 0 3px rgba(253, 230, 138, 0.92),
-    0 0 30px rgba(253, 230, 138, 0.58) inset,
+    0 0 0 3px rgba(233, 200, 142, 0.92),
+    0 0 30px rgba(233, 200, 142, 0.58) inset,
     0 10px 26px rgba(0, 0, 0, 0.28);
   transform: translateY(-2px) scale(1.02);
 }
 
 .slot.drop-target-hover.drop-target-invalid {
-  box-shadow: 0 0 0 3px rgba(248, 113, 113, 0.72);
-  border-color: rgba(248, 113, 113, 0.72);
+  box-shadow: 0 0 0 3px rgba(214, 117, 110, 0.72);
+  border-color: rgba(214, 117, 110, 0.72);
 }
 
 @keyframes dropTargetPulse {
   0%, 100% {
     box-shadow:
-      0 0 0 2px rgba(253, 230, 138, 0.5),
-      0 0 16px rgba(253, 230, 138, 0.32) inset;
+      0 0 0 2px rgba(233, 200, 142, 0.5),
+      0 0 16px rgba(233, 200, 142, 0.32) inset;
   }
   50% {
     box-shadow:
-      0 0 0 3px rgba(253, 230, 138, 0.95),
-      0 0 26px rgba(253, 230, 138, 0.55) inset;
+      0 0 0 3px rgba(233, 200, 142, 0.95),
+      0 0 26px rgba(233, 200, 142, 0.55) inset;
   }
 }
 
@@ -94,14 +94,14 @@
   position: absolute;
   inset: -4px;
   border-radius: inherit;
-  border: 2px solid rgba(253, 230, 138, 0.8);
+  border: 2px solid rgba(233, 200, 142, 0.8);
   animation: slamRing 400ms ease-out forwards;
   pointer-events: none;
 }
 
 @keyframes cardSlam {
   0%   { transform: scale(1); }
-  35%  { transform: scale(1.18); box-shadow: 0 0 0 4px rgba(253, 230, 138, 0.85), 0 0 32px rgba(253, 230, 138, 0.6) inset; }
+  35%  { transform: scale(1.18); box-shadow: 0 0 0 4px rgba(233, 200, 142, 0.85), 0 0 32px rgba(233, 200, 142, 0.6) inset; }
   70%  { transform: scale(0.98); }
   100% { transform: scale(1); }
 }
@@ -115,8 +115,8 @@
 .slot.is-valid-defender {
   animation: defenderPulse 900ms ease-in-out infinite;
   box-shadow:
-    0 0 0 2px rgba(248, 113, 113, 0.7),
-    0 0 18px rgba(220, 38, 38, 0.4) inset;
+    0 0 0 2px rgba(214, 117, 110, 0.7),
+    0 0 18px rgba(168, 71, 64, 0.4) inset;
 }
 
 .slot.is-invalid-defender {
@@ -124,8 +124,8 @@
 }
 
 @keyframes defenderPulse {
-  0%, 100% { box-shadow: 0 0 0 2px rgba(248, 113, 113, 0.55), 0 0 14px rgba(220, 38, 38, 0.32) inset; }
-  50%      { box-shadow: 0 0 0 3px rgba(252, 165, 165, 0.95), 0 0 24px rgba(248, 113, 113, 0.55) inset; }
+  0%, 100% { box-shadow: 0 0 0 2px rgba(214, 117, 110, 0.55), 0 0 14px rgba(168, 71, 64, 0.32) inset; }
+  50%      { box-shadow: 0 0 0 3px rgba(227, 154, 149, 0.95), 0 0 24px rgba(214, 117, 110, 0.55) inset; }
 }
 
 /* Attack arrow — overlays the battlefield-stage and tracks the cursor. */
@@ -137,7 +137,7 @@
   pointer-events: none;
   z-index: 70;
   overflow: visible;
-  filter: drop-shadow(0 0 6px rgba(220, 38, 38, 0.6));
+  filter: drop-shadow(0 0 6px rgba(168, 71, 64, 0.6));
 }
 
 /* Hero portrait reactions — damage shake, heal halo, low-HP vignette pulse. */
@@ -166,8 +166,8 @@
 
 .battle-hero-anchor.is-healed {
   box-shadow:
-    0 0 0 2px rgba(74, 222, 128, 0.6),
-    0 0 22px rgba(34, 197, 94, 0.4);
+    0 0 0 2px rgba(105, 176, 152, 0.6),
+    0 0 22px rgba(75, 145, 121, 0.4);
 }
 
 .battle-hero-anchor.is-low-hp {
@@ -180,7 +180,7 @@
   inset: 0;
   pointer-events: none;
   border-radius: inherit;
-  background: radial-gradient(circle at center, rgba(220, 38, 38, 0) 40%, rgba(220, 38, 38, 0.55) 100%);
+  background: radial-gradient(circle at center, rgba(168, 71, 64, 0) 40%, rgba(168, 71, 64, 0.55) 100%);
   mix-blend-mode: multiply;
 }
 
@@ -204,8 +204,8 @@
 }
 
 @keyframes heroLowHpVignette {
-  0%, 100% { box-shadow: inset 0 0 18px rgba(220, 38, 38, 0.35); }
-  50%      { box-shadow: inset 0 0 30px rgba(220, 38, 38, 0.7); }
+  0%, 100% { box-shadow: inset 0 0 18px rgba(168, 71, 64, 0.35); }
+  50%      { box-shadow: inset 0 0 30px rgba(168, 71, 64, 0.7); }
 }
 
 /* ─── Enhanced Battle Feedback (Phase F.3) ─────────────────────── */
@@ -222,15 +222,15 @@
 }
 
 @keyframes turnPulsePlayer {
-  0%   { box-shadow: inset 0 0 0 0 rgba(37, 99, 235, 0); }
-  30%  { box-shadow: inset 0 0 24px 2px rgba(37, 99, 235, 0.35); }
-  100% { box-shadow: inset 0 0 0 0 rgba(37, 99, 235, 0); }
+  0%   { box-shadow: inset 0 0 0 0 rgba(72, 159, 136, 0); }
+  30%  { box-shadow: inset 0 0 24px 2px rgba(72, 159, 136, 0.35); }
+  100% { box-shadow: inset 0 0 0 0 rgba(72, 159, 136, 0); }
 }
 
 @keyframes turnPulseEnemy {
-  0%   { box-shadow: inset 0 0 0 0 rgba(220, 38, 38, 0); }
-  30%  { box-shadow: inset 0 0 24px 2px rgba(220, 38, 38, 0.3); }
-  100% { box-shadow: inset 0 0 0 0 rgba(220, 38, 38, 0); }
+  0%   { box-shadow: inset 0 0 0 0 rgba(168, 71, 64, 0); }
+  30%  { box-shadow: inset 0 0 24px 2px rgba(168, 71, 64, 0.3); }
+  100% { box-shadow: inset 0 0 0 0 rgba(168, 71, 64, 0); }
 }
 
 /* Mana spend sparkle — card-play animation gets an extra glow burst. */
@@ -240,7 +240,7 @@
 
 @keyframes manaSpendGlow {
   0%   { filter: brightness(1); }
-  25%  { filter: brightness(1.6) drop-shadow(0 0 8px rgba(253, 230, 138, 0.8)); }
+  25%  { filter: brightness(1.6) drop-shadow(0 0 8px rgba(233, 200, 142, 0.8)); }
   100% { filter: brightness(1) drop-shadow(0 0 0 transparent); }
 }
 
@@ -250,8 +250,8 @@
 }
 
 @keyframes attackTelegraph {
-  0%, 100% { filter: drop-shadow(0 0 4px rgba(220, 38, 38, 0.5)); stroke-width: 6; }
-  50%      { filter: drop-shadow(0 0 10px rgba(253, 230, 138, 0.7)); stroke-width: 8; }
+  0%, 100% { filter: drop-shadow(0 0 4px rgba(168, 71, 64, 0.5)); stroke-width: 6; }
+  50%      { filter: drop-shadow(0 0 10px rgba(233, 200, 142, 0.7)); stroke-width: 8; }
 }
 
 /* Damage impact ripple — a brief expanding ring on units that take damage. */
@@ -260,7 +260,7 @@
   position: absolute;
   inset: -6px;
   border-radius: inherit;
-  border: 2px solid rgba(239, 68, 68, 0.7);
+  border: 2px solid rgba(199, 85, 77, 0.7);
   animation: damageRipple 450ms ease-out forwards;
   pointer-events: none;
 }
@@ -319,7 +319,7 @@
     animation: none !important;
     transition: none !important;
   }
-  .battle-hero-anchor.is-low-hp::after { background: rgba(220, 38, 38, 0.18); }
+  .battle-hero-anchor.is-low-hp::after { background: rgba(168, 71, 64, 0.18); }
   .slot.is-slamming::after { display: none; }
   .slot.damage-flash::after { display: none; }
   .battle-drag-ghost { transform: rotate(0deg) scale(1.04); }

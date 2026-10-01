@@ -34,7 +34,7 @@ export function CardInspectModal({ card, onClose }: CardInspectModalProps) {
     >
       <div
         className={`queue-modal card-inspect-modal section-card rarity-${card.rarity} border-${card.cardBorder ?? 'default'}`}
-        style={{ '--rarity-color': RARITY_COLORS[card.rarity as keyof typeof RARITY_COLORS] ?? '#9ca3af' } as React.CSSProperties}
+        style={{ '--rarity-color': RARITY_COLORS[card.rarity as keyof typeof RARITY_COLORS] ?? RARITY_COLORS.common } as React.CSSProperties}
         onClick={(e) => e.stopPropagation()}
       >
         <span className="card-frame" aria-hidden="true" />

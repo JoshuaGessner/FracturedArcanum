@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatPasskeyCeremonyError, getCompletionPercent, getComplaintSeverityTone, getEffectIconPath, getHandFanTilt, getPackArtPath, getPasskeyOriginRequirementMessage, getRankAssetPath, getRankBand, getRankLabel, getRarityCompletion, getRarityGemPath, getScreenTransitionClass, getScreenTransitionSound, getStreakTier, shouldPresentScopedReward } from './utils'
+import { appendToast, formatPasskeyCeremonyError, getCompletionPercent, getComplaintSeverityTone, getEffectIconPath, getHandFanTilt, getPackArtPath, getPasskeyOriginRequirementMessage, getRankAssetPath, getRankBand, getRankLabel, getRarityCompletion, getRarityGemPath, getScreenTransitionClass, getScreenTransitionSound, getStreakTier, shouldPresentScopedReward } from './utils'
 
 describe('UI asset helpers', () => {
   it('resolves rank insignia from labels and ratings', () => {
@@ -176,5 +176,23 @@ describe('getRankLabel', () => {
     for (const rating of [0, 999, 1000, 1149, 1150, 1299, 1300, 1499, 1500, 2400]) {
       expect(getRankLabel(rating)).toBe(getRankBand(rating).label)
     }
+  })
+})
+
+describe('appendToast', () => {
+  const toast = (id: string, message: string) => ({ id, message, severity: 'info' as const })
+
+  it('keeps only the newest two', () => {
+    let stack = appendToast([], toast('a', 'one'))
+    stack = appendToast(stack, toast('b', 'two'))
+    stack = appendToast(stack, toast('c', 'three'))
+    expect(stack.map((entry) => entry.id)).toEqual(['b', 'c'])
+  })
+
+  it('replaces a repeat instead of stacking it', () => {
+    let stack = appendToast([], toast('a', 'Reconnecting…'))
+    stack = appendToast(stack, toast('b', 'other'))
+    stack = appendToast(stack, toast('c', 'Reconnecting…'))
+    expect(stack.map((entry) => entry.id)).toEqual(['b', 'c'])
   })
 })

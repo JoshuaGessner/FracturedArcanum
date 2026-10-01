@@ -9,7 +9,7 @@
   justify-content: center;
   padding: var(--space-4);
   overflow: hidden;
-  background: radial-gradient(ellipse at center, rgba(8, 6, 22, 0.78) 0%, rgba(2, 2, 10, 0.94) 70%);
+  background: radial-gradient(ellipse at center, rgba(17, 13, 12, 0.78) 0%, rgba(7, 5, 5, 0.94) 70%);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
   animation: packCeremonyVeilIn 200ms ease forwards;
@@ -121,9 +121,9 @@
   top: 0;
   width: 50%;
   height: 50%;
-  background: linear-gradient(180deg, rgba(254, 230, 138, 0.95), rgba(217, 119, 6, 0.6));
-  border: 1px solid rgba(254, 230, 138, 0.85);
-  box-shadow: 0 0 18px rgba(254, 230, 138, 0.65);
+  background: linear-gradient(180deg, rgba(234, 200, 142, 0.95), rgba(178, 126, 36, 0.6));
+  border: 1px solid rgba(234, 200, 142, 0.85);
+  box-shadow: 0 0 18px rgba(234, 200, 142, 0.65);
 }
 
 .pack-ceremony-lid-half.left  { left: 0;  border-radius: 12px 0 0 0; animation: packLidFlyL 480ms ease-out forwards; }
@@ -241,9 +241,9 @@
   overflow: hidden;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
-  border: 2px solid var(--rarity-color, #fbbf24);
+  border: 2px solid var(--rarity-color, #d99f3b);
   box-shadow: 0 12px 22px rgba(0, 0, 0, 0.45);
-  background: linear-gradient(180deg, rgba(22, 24, 46, 0.96), rgba(12, 16, 32, 0.96));
+  background: linear-gradient(180deg, rgba(39, 32, 31, 0.96), rgba(26, 20, 19, 0.96));
 }
 
 .pack-ceremony-card-back img {
@@ -296,7 +296,7 @@
   z-index: 1;
   border-radius: var(--radius-md);
   overflow: hidden;
-  background: rgba(8, 12, 28, 0.6);
+  background: rgba(22, 16, 15, 0.6);
 }
 
 .pack-ceremony-card-art img {
@@ -351,8 +351,8 @@
   justify-content: center;
   padding: var(--space-2-5) var(--space-3);
   border-radius: var(--radius-lg);
-  background: linear-gradient(180deg, rgba(15, 17, 40, 0.92), rgba(8, 10, 28, 0.92));
-  border: 1px solid rgba(251, 191, 36, 0.3);
+  background: linear-gradient(180deg, rgba(32, 25, 24, 0.92), rgba(22, 16, 15, 0.92));
+  border: 1px solid rgba(217, 159, 59, 0.3);
   box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.45);
   width: 100%;
   max-width: 540px;
@@ -471,7 +471,7 @@
   justify-content: center;
   padding: var(--space-4);
   overflow: hidden;
-  background: radial-gradient(ellipse at center, rgba(20, 12, 6, 0.78) 0%, rgba(2, 2, 8, 0.94) 70%);
+  background: radial-gradient(ellipse at center, rgba(17, 12, 8, 0.78) 0%, rgba(6, 5, 4, 0.94) 70%);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   animation: rewardCinemaVeilIn 220ms ease forwards;
@@ -509,8 +509,8 @@
   gap: 14px;
   padding: 22px 20px 18px;
   text-align: center;
-  border-color: rgba(251, 191, 36, 0.36);
-  background: linear-gradient(135deg, rgba(36, 24, 8, 0.98), rgba(78, 48, 14, 0.92));
+  border-color: rgba(217, 159, 59, 0.36);
+  background: linear-gradient(135deg, rgba(31, 24, 12, 0.98), rgba(66, 50, 23, 0.92));
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
   animation: rewardCinemaCardIn 260ms ease;
 }
@@ -583,8 +583,8 @@
   font-size: 2.4rem;
   font-weight: 700;
   letter-spacing: 0.04em;
-  color: #fde68a;
-  text-shadow: 0 2px 12px rgba(251, 191, 36, 0.45);
+  color: #e9c88e;
+  text-shadow: 0 2px 12px rgba(217, 159, 59, 0.45);
   font-variant-numeric: tabular-nums;
 }
 
@@ -592,7 +592,7 @@
   font-size: 0.84rem;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: rgba(254, 240, 138, 0.86);
+  color: rgba(234, 200, 142, 0.86);
 }
 
 .reward-cinema-shower {
@@ -629,13 +629,13 @@
   margin: 0;
   font-size: 1.32rem;
   letter-spacing: 0.04em;
-  color: #fef3c7;
+  color: #f3e0c0;
   text-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
 }
 
 .reward-cinema-caption {
   margin: 0;
-  color: rgba(253, 230, 138, 0.86);
+  color: rgba(233, 200, 142, 0.86);
 }
 
 .reward-cinema-progress {
@@ -650,13 +650,13 @@
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: rgba(254, 240, 138, 0.18);
-  border: 1px solid rgba(254, 240, 138, 0.32);
+  background: rgba(234, 200, 142, 0.18);
+  border: 1px solid rgba(234, 200, 142, 0.32);
   transition: background 220ms ease, transform 220ms ease;
 }
 
 .reward-cinema-pip.active {
-  background: #fbbf24;
+  background: #d99f3b;
   transform: scale(1.12);
 }
 

@@ -1,6 +1,6 @@
 import React from 'react'
 import { ARENA_URL, CARD_BORDER_OFFERS, EFFECT_ICONS, PACK_ART, RANK_INSIGNIA, RARITY_GEM_ICONS } from './constants'
-import type { AppScreen, CardBorder, ToastSeverity } from './types'
+import type { AppScreen, CardBorder, ToastEntry, ToastSeverity } from './types'
 
 export type RewardScope = 'battle' | 'pack' | 'daily' | 'rank' | 'generic'
 export type InstallAvailability = 'prompt' | 'ios-manual' | 'installed' | 'unavailable'
@@ -421,4 +421,19 @@ export function getCardIcon(cardId: string, library: Array<{ id: string; icon: s
  */
 export function asCardBorder(value: unknown): CardBorder {
   return CARD_BORDER_OFFERS.some((offer) => offer.id === value) ? (value as CardBorder) : 'default'
+}
+
+/** At most this many toasts are on screen at once. */
+export const MAX_VISIBLE_TOASTS = 2
+
+/**
+ * Add a toast to the visible stack.
+ *
+ * A repeat of a message already showing replaces it rather than stacking a
+ * duplicate, and only the newest MAX_VISIBLE_TOASTS survive — four status
+ * lines piled over the scene was how a reconnect looked before.
+ */
+export function appendToast(stack: ToastEntry[], entry: ToastEntry, max: number = MAX_VISIBLE_TOASTS): ToastEntry[] {
+  const withoutRepeat = stack.filter((existing) => existing.message !== entry.message)
+  return [...withoutRepeat, entry].slice(-max)
 }

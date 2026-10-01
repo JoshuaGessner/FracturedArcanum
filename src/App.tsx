@@ -34,6 +34,7 @@ import {
   THEME_OFFERS,
 } from './constants'
 import {
+  appendToast,
   authFetch,
   createAnonymousId,
   getRankLabel,
@@ -401,7 +402,7 @@ function AppShell() {
       setToastMessageRaw(message)
       setToastSeverity(severity)
       const id = `t-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
-      setToastStack((current) => [...current.slice(-3), { id, message, severity }])
+      setToastStack((current) => appendToast(current, { id, message, severity }))
       window.setTimeout(() => {
         setToastStack((current) => current.filter((entry) => entry.id !== id))
       }, 4200)

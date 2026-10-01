@@ -54,7 +54,7 @@ button, [role="button"], .scene-link, .chip {
 select {
   appearance: none;
   -webkit-appearance: none;
-  background: rgba(8, 12, 26, 0.6);
+  background: rgba(20, 15, 14, 0.6);
   color: var(--text);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
@@ -77,7 +77,7 @@ select:focus {
 
 textarea {
   appearance: none;
-  background: rgba(8, 12, 26, 0.6);
+  background: rgba(20, 15, 14, 0.6);
   color: var(--text);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
@@ -105,7 +105,7 @@ input[type="checkbox"] {
   flex: 0 0 auto;
   border: 1.5px solid var(--border-bright);
   border-radius: 4px;
-  background: rgba(8, 12, 26, 0.5);
+  background: rgba(20, 15, 14, 0.5);
   cursor: pointer;
   position: relative;
   transition: background var(--motion-fast), border-color var(--motion-fast);
@@ -124,7 +124,7 @@ input[type="checkbox"]:checked::after {
   left: 5px;
   width: 5px;
   height: 9px;
-  border: solid #fff;
+  border: solid #ffffff;
   border-width: 0 2px 2px 0;
   transform: rotate(45deg);
 }
@@ -140,23 +140,23 @@ input[type="checkbox"]:hover {
 /* ─── Theme overrides v2: visible accent / surface differences ─── */
 
 .app-shell.theme-ember {
-  --accent: #f97316;
-  --accent-blue: #ef4444;
-  --border: rgba(249, 115, 22, 0.22);
-  --border-bright: rgba(249, 115, 22, 0.4);
-  --focus-ring: 0 0 0 2px rgba(249, 115, 22, 0.85);
+  --accent: #d5822f;
+  --accent-blue: #c7554d;
+  --border: rgba(213, 130, 47, 0.22);
+  --border-bright: rgba(213, 130, 47, 0.4);
+  --focus-ring: 0 0 0 2px rgba(213, 130, 47, 0.85);
 }
 
 .app-shell.theme-moon {
-  --accent: #38bdf8;
-  --accent-blue: #a78bfa;
-  --border: rgba(167, 139, 250, 0.24);
-  --border-bright: rgba(167, 139, 250, 0.4);
-  --focus-ring: 0 0 0 2px rgba(56, 189, 248, 0.85);
+  --accent: #4cb69a;
+  --accent-blue: #d3bb93;
+  --border: rgba(211, 187, 147, 0.24);
+  --border-bright: rgba(211, 187, 147, 0.4);
+  --focus-ring: 0 0 0 2px rgba(76, 182, 154, 0.85);
 }
 
 /* Theme swatch in vault matches the new accents. */
-.theme-swatch.royal { background: linear-gradient(135deg, #7c3aed, #2563eb); }
-.theme-swatch.ember { background: linear-gradient(135deg, #f97316, #ef4444); }
-.theme-swatch.moon  { background: linear-gradient(135deg, #38bdf8, #a78bfa); }
+.theme-swatch.royal { background: linear-gradient(135deg, #9b58b7, #489f88); }
+.theme-swatch.ember { background: linear-gradient(135deg, #d5822f, #c7554d); }
+.theme-swatch.moon  { background: linear-gradient(135deg, #4cb69a, #d3bb93); }
 

@@ -11,8 +11,8 @@
   "lang": "en",
   "categories": ["games", "entertainment"],
   "prefer_related_applications": false,
-  "background_color": "#0b1020",
-  "theme_color": "#0b1020",
+  "background_color": "#161110",
+  "theme_color": "#161110",
   "icons": [
     {
       "src": "/fractured-arcanum-icon-192.png",

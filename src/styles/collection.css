@@ -12,19 +12,19 @@
 }
 
 .rarity-chip.rarity-complete {
-  border-color: rgba(34, 197, 94, 0.4);
-  background: rgba(34, 197, 94, 0.1);
+  border-color: rgba(75, 145, 121, 0.4);
+  background: rgba(75, 145, 121, 0.1);
 }
 
 .rarity-chip.rarity-celebrate {
   animation: raritySpark 1.4s ease-out;
-  box-shadow: 0 0 0 1px rgba(250, 204, 21, 0.22), 0 0 18px rgba(250, 204, 21, 0.18);
+  box-shadow: 0 0 0 1px rgba(214, 152, 46, 0.22), 0 0 18px rgba(214, 152, 46, 0.18);
 }
 
 @keyframes raritySpark {
-  0% { transform: scale(0.96); box-shadow: 0 0 0 rgba(250, 204, 21, 0); }
-  30% { transform: scale(1.06); box-shadow: 0 0 18px rgba(250, 204, 21, 0.32); }
-  100% { transform: scale(1); box-shadow: 0 0 18px rgba(250, 204, 21, 0.12); }
+  0% { transform: scale(0.96); box-shadow: 0 0 0 rgba(214, 152, 46, 0); }
+  30% { transform: scale(1.06); box-shadow: 0 0 18px rgba(214, 152, 46, 0.32); }
+  100% { transform: scale(1); box-shadow: 0 0 18px rgba(214, 152, 46, 0.12); }
 }
 
 .collection-progress-ring {
@@ -51,7 +51,7 @@
 }
 
 .collection-progress-value {
-  stroke: #7c3aed;
+  stroke: #9b58b7;
   stroke-linecap: round;
   transition: stroke-dashoffset 280ms ease;
 }
@@ -63,7 +63,7 @@
   display: grid;
   place-items: center;
   text-align: center;
-  background: radial-gradient(circle at center, rgba(12, 18, 36, 0.98), rgba(21, 31, 58, 0.9));
+  background: radial-gradient(circle at center, rgba(28, 22, 21, 0.98), rgba(46, 36, 34, 0.9));
 }
 
 .collection-progress-core strong {
@@ -100,17 +100,17 @@
 .deck-roster-item {
   display: flex;
   align-items: stretch;
-  background: linear-gradient(180deg, rgba(34, 22, 12, 0.85), rgba(64, 38, 18, 0.72));
+  background: linear-gradient(180deg, rgba(29, 22, 15, 0.85), rgba(55, 39, 24, 0.72));
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   overflow: hidden;
   transition: border-color var(--motion-fast), transform var(--motion-fast), box-shadow var(--motion-fast);
-  box-shadow: inset 4px 0 0 rgba(251, 191, 36, 0.16);
+  box-shadow: inset 4px 0 0 rgba(217, 159, 59, 0.16);
 }
 
 .deck-roster-item.active {
   border-color: var(--accent);
-  box-shadow: 0 0 0 1px var(--accent) inset, inset 4px 0 0 rgba(251, 191, 36, 0.36), 0 8px 18px rgba(0, 0, 0, 0.18);
+  box-shadow: 0 0 0 1px var(--accent) inset, inset 4px 0 0 rgba(217, 159, 59, 0.36), 0 8px 18px rgba(0, 0, 0, 0.18);
 }
 
 .deck-roster-select {
@@ -238,7 +238,7 @@ button.icon-only {
   background: var(--accent);
   border-color: var(--accent);
   color: white;
-  box-shadow: 0 4px 14px rgba(124, 58, 237, 0.22);
+  box-shadow: 0 4px 14px rgba(155, 88, 183, 0.22);
 }
 
 /* ─── Deck stats: rarity counts + mana curve ─────────────────────── */
@@ -358,36 +358,36 @@ button.icon-only {
 
 /* Bronze Filigree — hammered bezel, fine beading inside it. */
 .border-bronze {
-  border-color: #8a6a45;
-  box-shadow: 0 6px 16px rgba(90, 68, 42, 0.22);
+  border-color: #7b6a4c;
+  box-shadow: 0 6px 16px rgba(79, 68, 47, 0.22);
 }
 
 .border-bronze > .card-frame {
   inset: 2px;
-  border: 1px dotted rgba(206, 160, 106, 0.5);
+  border: 1px dotted rgba(187, 160, 113, 0.5);
 }
 
 /* Frost Etching — pale silver bezel scored with etch marks. */
 .border-frost {
-  border-color: #b9cad8;
-  box-shadow: 0 6px 16px rgba(150, 180, 200, 0.18);
+  border-color: #bfc9d2;
+  box-shadow: 0 6px 16px rgba(160, 178, 190, 0.18);
 }
 
 .border-frost > .card-frame {
   inset: 2px;
-  border: 1px dashed rgba(226, 242, 252, 0.55);
+  border: 1px dashed rgba(231, 241, 247, 0.55);
 }
 
 /* Solar Ember — dark copper bezel, warm light breathing across the face.
    The bezel itself is deliberately far from --rarity-legendary; the ember is
    what you paid for, and it moves. */
 .border-solar {
-  border-color: #7c2d12;
-  box-shadow: 0 6px 18px rgba(124, 45, 18, 0.28);
+  border-color: #684421;
+  box-shadow: 0 6px 18px rgba(104, 68, 33, 0.28);
 }
 
 .border-solar > .card-frame {
-  background: radial-gradient(120% 80% at 50% 108%, rgba(234, 88, 12, 0.42), transparent 62%);
+  background: radial-gradient(120% 80% at 50% 108%, rgba(193, 118, 43, 0.42), transparent 62%);
   animation: solarEmberBreath 3.6s ease-in-out infinite;
 }
 
@@ -399,12 +399,12 @@ button.icon-only {
 /* Voidweave — obsidian bezel. Violet exists only in a sweep that travels, so
    it never sits still long enough to read as an epic ring. */
 .border-void {
-  border-color: #241a33;
-  box-shadow: 0 8px 22px rgba(24, 16, 38, 0.42);
+  border-color: #2b2523;
+  box-shadow: 0 8px 22px rgba(31, 25, 24, 0.42);
 }
 
 .border-void > .card-frame {
-  background: linear-gradient(115deg, transparent 42%, rgba(196, 149, 255, 0.38) 50%, transparent 58%) 0 0 / 300% 100% no-repeat;
+  background: linear-gradient(115deg, transparent 42%, rgba(199, 153, 219, 0.38) 50%, transparent 58%) 0 0 / 300% 100% no-repeat;
   animation: voidweaveSheen 5s linear infinite;
 }
 
@@ -422,7 +422,7 @@ button.icon-only {
   width: 100%;
   height: 64px;
   border-radius: var(--radius-md);
-  background: linear-gradient(135deg, rgba(124, 58, 237, 0.18), rgba(56, 189, 248, 0.12));
+  background: linear-gradient(135deg, rgba(155, 88, 183, 0.18), rgba(76, 182, 154, 0.12));
   margin-bottom: var(--space-2);
   overflow: hidden;
   border: 2px solid transparent;
@@ -445,23 +445,23 @@ button.icon-only {
 
 .border-preview.border-default { border-color: var(--border); }
 
-.border-preview.border-bronze { border-color: #8a6a45; }
-.border-preview.border-bronze::after { border: 1px dotted rgba(206, 160, 106, 0.5); }
+.border-preview.border-bronze { border-color: #7b6a4c; }
+.border-preview.border-bronze::after { border: 1px dotted rgba(187, 160, 113, 0.5); }
 
-.border-preview.border-frost { border-color: #b9cad8; }
-.border-preview.border-frost::after { border: 1px dashed rgba(226, 242, 252, 0.55); }
+.border-preview.border-frost { border-color: #bfc9d2; }
+.border-preview.border-frost::after { border: 1px dashed rgba(231, 241, 247, 0.55); }
 
-.border-preview.border-solar { border-color: #7c2d12; }
+.border-preview.border-solar { border-color: #684421; }
 .border-preview.border-solar::after {
   inset: 0;
-  background: radial-gradient(120% 80% at 50% 108%, rgba(234, 88, 12, 0.42), transparent 62%);
+  background: radial-gradient(120% 80% at 50% 108%, rgba(193, 118, 43, 0.42), transparent 62%);
   animation: solarEmberBreath 3.6s ease-in-out infinite;
 }
 
-.border-preview.border-void { border-color: #241a33; }
+.border-preview.border-void { border-color: #2b2523; }
 .border-preview.border-void::after {
   inset: 0;
-  background: linear-gradient(115deg, transparent 42%, rgba(196, 149, 255, 0.38) 50%, transparent 58%) 0 0 / 300% 100% no-repeat;
+  background: linear-gradient(115deg, transparent 42%, rgba(199, 153, 219, 0.38) 50%, transparent 58%) 0 0 / 300% 100% no-repeat;
   animation: voidweaveSheen 5s linear infinite;
 }
 

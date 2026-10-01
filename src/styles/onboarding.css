@@ -12,7 +12,7 @@
   transition: background 240ms ease-out;
 }
 .onboarding-tour-veil.centered {
-  background: rgba(6, 7, 14, 0.78);
+  background: rgba(12, 9, 9, 0.78);
 }
 
 .onboarding-tour-caption {
@@ -20,7 +20,7 @@
   max-width: 320px;
   padding: 18px 18px 16px;
   border-radius: 16px;
-  background: rgba(20, 17, 36, 0.96);
+  background: rgba(30, 25, 24, 0.96);
   box-shadow: 0 18px 48px rgba(0, 0, 0, 0.55);
   animation: onboardingCaptionIn 260ms ease-out;
   display: flex;
@@ -58,7 +58,7 @@
   transition: background 200ms ease-out;
 }
 .onboarding-tour-pip.active {
-  background: var(--accent, #d4a548);
+  background: var(--accent, #bc9655);
 }
 
 .onboarding-tour-controls {

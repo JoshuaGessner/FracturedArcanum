@@ -342,7 +342,7 @@ export function ShopScreen() {
                       <article
                         className={`pack-reveal-card rarity-${card.rarity} border-${selectedCardBorder}`}
                         key={`${card.id}-${index}`}
-                        style={{ '--rarity-color': RARITY_COLORS[card.rarity as keyof typeof RARITY_COLORS] ?? '#9ca3af' } as React.CSSProperties}
+                        style={{ '--rarity-color': RARITY_COLORS[card.rarity as keyof typeof RARITY_COLORS] ?? RARITY_COLORS.common } as React.CSSProperties}
                       >
                         <span className="card-frame" aria-hidden="true" />
                         <div className={`pack-reveal-glow pack-reveal-glow-${card.rarity}`} aria-hidden="true" />

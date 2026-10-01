@@ -36,11 +36,11 @@
    alpha they use in hand — the board is the focal plane, and the frame is not
    the thing the player is meant to be reading there. */
 .slot.border-solar > .card-frame {
-  background: radial-gradient(120% 80% at 50% 108%, rgba(234, 88, 12, 0.22), transparent 62%);
+  background: radial-gradient(120% 80% at 50% 108%, rgba(193, 118, 43, 0.22), transparent 62%);
 }
 
 .slot.border-void > .card-frame {
-  background: linear-gradient(115deg, transparent 42%, rgba(196, 149, 255, 0.2) 50%, transparent 58%) 0 0 / 300% 100% no-repeat;
+  background: linear-gradient(115deg, transparent 42%, rgba(199, 153, 219, 0.2) 50%, transparent 58%) 0 0 / 300% 100% no-repeat;
 }
 
 /* ─── Card inspect modal ───────────────────────────────────────────────
@@ -117,10 +117,10 @@
    collection.css (#21) on source order alone. Without re-asserting it here the
    ceremony card wore a frame's animated finish over a rarity-coloured bezel —
    half-framed, and the only surface where the two channels disagreed. */
-.pack-ceremony-card-front.border-bronze { border-color: #8a6a45; }
-.pack-ceremony-card-front.border-frost  { border-color: #b9cad8; }
-.pack-ceremony-card-front.border-solar  { border-color: #7c2d12; }
-.pack-ceremony-card-front.border-void   { border-color: #241a33; }
+.pack-ceremony-card-front.border-bronze { border-color: #7b6a4c; }
+.pack-ceremony-card-front.border-frost  { border-color: #bfc9d2; }
+.pack-ceremony-card-front.border-solar  { border-color: #684421; }
+.pack-ceremony-card-front.border-void   { border-color: #2b2523; }
 
 /* Rarity's hairline follows the bezel onto both pack surfaces, so the contract
    is identical everywhere: a frame may take the outer ring, never the inner

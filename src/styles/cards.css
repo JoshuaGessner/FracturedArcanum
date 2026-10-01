@@ -7,12 +7,12 @@
 
 .rarity-rare .slot-head strong,
 .rarity-rare .card-name {
-  color: #93c5fd;
+  color: #a8c6e8;
 }
 
 .rarity-epic .slot-head strong,
 .rarity-epic .card-name {
-  color: #d8b4fe;
+  color: #d2aee2;
 }
 
 .rarity-legendary .slot-head strong,
@@ -21,7 +21,7 @@
 }
 
 .rarity-legendary {
-  box-shadow: 0 0 16px rgba(251, 191, 36, 0.2);
+  box-shadow: 0 0 16px rgba(217, 159, 59, 0.2);
 }
 
 /* ─── The two frame channels ─────────────────────────────────────────
@@ -70,7 +70,7 @@
 .hand-card.rarity-legendary::before,
 .slot.rarity-legendary::before,
 .pack-reveal-card.rarity-legendary::before {
-  background: linear-gradient(135deg, rgba(251, 191, 36, 0.15), transparent 60%);
+  background: linear-gradient(135deg, rgba(217, 159, 59, 0.15), transparent 60%);
 }
 
 .rarity-gem {
@@ -120,8 +120,8 @@
   border-radius: 8px;
   font-size: 0.72rem;
   font-weight: 700;
-  background: linear-gradient(90deg, rgba(124, 58, 237, 0.5), rgba(192, 38, 211, 0.4));
-  color: #e0d4ff;
+  background: linear-gradient(90deg, rgba(155, 88, 183, 0.5), rgba(130, 76, 153, 0.4));
+  color: #f5edde;
   margin-top: 2px;
   letter-spacing: 0.02em;
 }
@@ -144,9 +144,9 @@
   height: 24px;
   padding: 0;
   border-radius: var(--radius-pill);
-  background: rgba(13, 20, 40, 0.86);
-  border: 1px solid rgba(192, 38, 211, 0.34);
-  box-shadow: 0 4px 12px rgba(7, 12, 24, 0.24);
+  background: rgba(31, 24, 23, 0.86);
+  border: 1px solid rgba(130, 76, 153, 0.34);
+  box-shadow: 0 4px 12px rgba(19, 14, 13, 0.24);
 }
 
 .effect-badge.icon-only .effect-icon {
@@ -189,7 +189,7 @@
 .battle-slot-rarity .rarity-gem-icon {
   width: 13px;
   height: 13px;
-  filter: drop-shadow(0 1px 2px rgba(6, 10, 22, 0.7));
+  filter: drop-shadow(0 1px 2px rgba(17, 13, 12, 0.7));
 }
 
 /* Hand cards — inline beside the cost pill. `.card-top` is a space-between
@@ -202,7 +202,7 @@
 .battle-hand-rarity .rarity-gem-icon {
   width: 13px;
   height: 13px;
-  filter: drop-shadow(0 1px 2px rgba(6, 10, 22, 0.7));
+  filter: drop-shadow(0 1px 2px rgba(17, 13, 12, 0.7));
 }
 
 .hand-card .card-top {
@@ -243,9 +243,9 @@
   margin-top: -2px;
   padding: 4px 8px 8px;
   border-radius: 16px 16px 14px 14px;
-  background: linear-gradient(180deg, rgba(9, 13, 24, 0.96), rgba(20, 30, 56, 0.94));
-  border: 1px solid rgba(147, 197, 253, 0.12);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 -10px 24px rgba(8, 12, 24, 0.18);
+  background: linear-gradient(180deg, rgba(19, 15, 14, 0.96), rgba(45, 35, 33, 0.94));
+  border: 1px solid rgba(214, 192, 154, 0.12);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 -10px 24px rgba(19, 15, 14, 0.18);
 }
 
 .hand-grid {
@@ -288,14 +288,14 @@
   block-size: var(--hand-card-h, 142px);
   aspect-ratio: 63 / 88;
   padding: clamp(5px, 1.1svh, 8px) clamp(6px, 1.4svh, 10px);
-  background: linear-gradient(180deg, rgba(49, 42, 84, 0.96), rgba(22, 24, 46, 0.96));
+  background: linear-gradient(180deg, rgba(71, 60, 57, 0.96), rgba(39, 32, 31, 0.96));
   color: white;
   text-align: left;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   gap: var(--space-1);
-  box-shadow: 0 8px 20px rgba(6, 10, 22, 0.28);
+  box-shadow: 0 8px 20px rgba(17, 13, 12, 0.28);
   border-radius: 12px;
   border: 2px solid var(--rarity-color, var(--border));
   overflow: hidden;
@@ -340,7 +340,7 @@
     /* Lift scales with the card so it clears the rail identically at every
        size — a fixed -18px overshot the clearance on short screens. */
     transform: translateY(calc(var(--hand-card-h, 142px) * -0.12)) rotate(0deg) scale(1.05);
-    box-shadow: 0 18px 40px rgba(6, 10, 22, 0.4), 0 0 16px var(--rarity-color, transparent);
+    box-shadow: 0 18px 40px rgba(17, 13, 12, 0.4), 0 0 16px var(--rarity-color, transparent);
     z-index: 8;
   }
 }
@@ -355,18 +355,18 @@
    affordance touch actually gets, so it is not hover-gated. */
 .battle-hand-rail .hand-card:active:not(:disabled):not(.is-dragging) {
   transform: translateY(6px) scale(0.97) rotate(0deg);
-  box-shadow: 0 2px 8px rgba(6, 10, 22, 0.5);
+  box-shadow: 0 2px 8px rgba(17, 13, 12, 0.5);
   transition: transform 60ms ease-out, box-shadow 60ms ease-out;
 }
 
 .hand-card.unplayable { opacity: 0.55; }
 
 .hand-card.rarity-legendary {
-  background: linear-gradient(180deg, rgba(80, 60, 20, 0.96), rgba(30, 24, 10, 0.96));
+  background: linear-gradient(180deg, rgba(68, 53, 28, 0.96), rgba(26, 21, 12, 0.96));
 }
 
 .hand-card.rarity-epic {
-  background: linear-gradient(180deg, rgba(60, 30, 80, 0.96), rgba(28, 18, 46, 0.96));
+  background: linear-gradient(180deg, rgba(64, 51, 48, 0.96), rgba(37, 30, 28, 0.96));
 }
 
 .cost-pill {
@@ -375,9 +375,9 @@
   display: inline-grid;
   place-items: center;
   border-radius: var(--radius-pill);
-  background: linear-gradient(135deg, #38bdf8, #2563eb);
+  background: linear-gradient(135deg, #4cb69a, #489f88);
   font-weight: 800;
-  box-shadow: 0 2px 8px rgba(56, 189, 248, 0.3);
+  box-shadow: 0 2px 8px rgba(76, 182, 154, 0.3);
 }
 
 .card-name {
@@ -426,8 +426,8 @@
 .rank-badge-art {
   padding: 4px 8px;
   border-radius: var(--radius-pill);
-  background: rgba(91, 118, 255, 0.16);
-  color: #eff3ff;
+  background: rgba(199, 170, 119, 0.16);
+  color: #fbf8f3;
   font-size: 0.88rem;
 }
 
@@ -448,13 +448,13 @@
 }
 
 .claim-ready {
-  border-color: rgba(251, 191, 36, 0.24);
-  box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.12), 0 12px 26px rgba(36, 20, 5, 0.18);
+  border-color: rgba(217, 159, 59, 0.24);
+  box-shadow: 0 0 0 1px rgba(217, 159, 59, 0.12), 0 12px 26px rgba(30, 20, 9, 0.18);
 }
 
 .reward-vault-card.claim-ready {
-  border-color: rgba(251, 191, 36, 0.28);
-  box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.16), 0 16px 38px rgba(36, 20, 5, 0.24);
+  border-color: rgba(217, 159, 59, 0.28);
+  box-shadow: 0 0 0 1px rgba(217, 159, 59, 0.16), 0 16px 38px rgba(30, 20, 9, 0.24);
 }
 
 .reward-vault-card.claim-ready .primary {
@@ -491,7 +491,7 @@
 
 .shop-market-title strong {
   font-size: clamp(1rem, 2.4vw, 1.18rem);
-  color: #f8fbff;
+  color: #fdfcfa;
 }
 
 .shop-resource-strip {
@@ -508,21 +508,21 @@
   min-height: 30px;
   padding: 5px 9px;
   border-radius: var(--radius-pill);
-  border: 1px solid rgba(147, 197, 253, 0.16);
-  background: rgba(91, 118, 255, 0.13);
-  color: #e8eeff;
+  border: 1px solid rgba(214, 192, 154, 0.16);
+  background: rgba(199, 170, 119, 0.13);
+  color: #faf6ed;
   font-size: 0.78rem;
   white-space: nowrap;
 }
 
 .shop-resource-chip strong {
-  color: #fff7d6;
+  color: #f6e7cc;
   font-size: 0.9rem;
 }
 
 .shop-resource-chip.is-accent {
-  border-color: rgba(251, 191, 36, 0.36);
-  background: linear-gradient(135deg, rgba(87, 62, 14, 0.42), rgba(49, 34, 10, 0.28));
+  border-color: rgba(217, 159, 59, 0.36);
+  background: linear-gradient(135deg, rgba(73, 55, 24, 0.42), rgba(41, 32, 15, 0.28));
 }
 
 .shop-nav-strip {
@@ -542,18 +542,18 @@
   min-height: 34px;
   padding: 7px 11px;
   border-radius: var(--radius-sm);
-  border: 1px solid rgba(147, 197, 253, 0.16);
-  background: linear-gradient(135deg, rgba(8, 14, 30, 0.68), rgba(23, 31, 57, 0.54));
-  color: #cbd8f4;
+  border: 1px solid rgba(214, 192, 154, 0.16);
+  background: linear-gradient(135deg, rgba(23, 17, 16, 0.68), rgba(46, 37, 35, 0.54));
+  color: #f1e5ce;
   font-size: 0.82rem;
   font-weight: 800;
   text-transform: uppercase;
 }
 
 .shop-nav-strip button.active {
-  border-color: rgba(251, 191, 36, 0.48);
-  background: linear-gradient(135deg, rgba(251, 191, 36, 0.16), rgba(96, 165, 250, 0.14));
-  color: #fff7d6;
+  border-color: rgba(217, 159, 59, 0.48);
+  background: linear-gradient(135deg, rgba(217, 159, 59, 0.16), rgba(199, 170, 119, 0.14));
+  color: #f6e7cc;
 }
 
 .shop-hub-surface,
@@ -586,7 +586,7 @@
 
 .shop-section-panel::-webkit-scrollbar { width: 6px; }
 .shop-section-panel::-webkit-scrollbar-thumb {
-  background: rgba(147, 197, 253, 0.28);
+  background: rgba(214, 192, 154, 0.28);
   border-radius: var(--radius-pill);
 }
 
@@ -597,8 +597,8 @@
   align-items: center;
   padding: var(--space-3);
   border-radius: var(--radius-lg);
-  border: 1px solid rgba(251, 191, 36, 0.2);
-  background: linear-gradient(135deg, rgba(66, 45, 12, 0.44), rgba(18, 24, 44, 0.8));
+  border: 1px solid rgba(217, 159, 59, 0.2);
+  background: linear-gradient(135deg, rgba(56, 42, 19, 0.44), rgba(36, 29, 27, 0.8));
 }
 
 .shop-feature-vault {
@@ -637,23 +637,23 @@
   min-width: 0;
   padding: var(--space-2);
   border-radius: 12px;
-  border: 1px solid rgba(251, 191, 36, 0.14);
+  border: 1px solid rgba(217, 159, 59, 0.14);
   background: rgba(255, 255, 255, 0.045);
-  color: #cfd8ff;
+  color: #f4ebda;
   font-size: 0.76rem;
 }
 
 .shop-feature-panel strong {
   display: block;
   margin-top: 2px;
-  color: #fff8dc;
+  color: #f7e9d1;
   font-size: clamp(1rem, 2.4vw, 1.16rem);
 }
 
 .shop-feature-panel .shop-vault-stat-strip strong {
   margin: 0;
   overflow: hidden;
-  color: #fff4c4;
+  color: #f3e0be;
   font-size: 0.84rem;
   line-height: 1.15;
   text-overflow: ellipsis;
@@ -696,11 +696,11 @@
   width: 100%;
   min-height: 0;
   padding: clamp(12px, 2.4vw, 22px);
-  border: 1px solid rgba(251, 191, 36, 0.22);
+  border: 1px solid rgba(217, 159, 59, 0.22);
   border-radius: var(--radius-lg);
   background:
-    linear-gradient(150deg, rgba(71, 48, 14, 0.58), rgba(8, 14, 29, 0.88) 46%, rgba(22, 33, 65, 0.72)),
-    linear-gradient(90deg, rgba(251, 191, 36, 0.08), transparent 35%, rgba(96, 165, 250, 0.08));
+    linear-gradient(150deg, rgba(60, 46, 22, 0.58), rgba(22, 17, 16, 0.88) 46%, rgba(51, 40, 37, 0.72)),
+    linear-gradient(90deg, rgba(217, 159, 59, 0.08), transparent 35%, rgba(199, 170, 119, 0.08));
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 18px 42px rgba(0, 0, 0, 0.2);
 }
 
@@ -723,10 +723,10 @@
   aspect-ratio: 1;
   padding: 14px;
   overflow: hidden;
-  border: 1px solid rgba(251, 191, 36, 0.38);
+  border: 1px solid rgba(217, 159, 59, 0.38);
   border-radius: 18px;
-  background: linear-gradient(145deg, rgba(19, 28, 54, 0.96), rgba(82, 58, 17, 0.76));
-  box-shadow: inset 0 0 28px rgba(251, 191, 36, 0.1), 0 16px 34px rgba(0, 0, 0, 0.28);
+  background: linear-gradient(145deg, rgba(43, 33, 32, 0.96), rgba(69, 53, 26, 0.76));
+  box-shadow: inset 0 0 28px rgba(217, 159, 59, 0.1), 0 16px 34px rgba(0, 0, 0, 0.28);
   text-align: center;
 }
 
@@ -740,17 +740,17 @@
 }
 
 .reward-vault-medallion span {
-  color: #dbe5ff;
+  color: #f7f0e3;
   font-size: 0.72rem;
   font-weight: 800;
   text-transform: uppercase;
 }
 
 .reward-vault-medallion strong {
-  color: #fff6cc;
+  color: #f5e3c4;
   font-size: clamp(2.55rem, 7vw, 4.4rem);
   line-height: 0.95;
-  text-shadow: 0 0 24px rgba(251, 191, 36, 0.18);
+  text-shadow: 0 0 24px rgba(217, 159, 59, 0.18);
 }
 
 .reward-vault-copy {
@@ -762,17 +762,17 @@
 .reward-vault-state {
   justify-self: start;
   padding: 5px 9px;
-  border: 1px solid rgba(251, 191, 36, 0.24);
+  border: 1px solid rgba(217, 159, 59, 0.24);
   border-radius: var(--radius-sm);
-  background: rgba(251, 191, 36, 0.1);
-  color: #fff0b6;
+  background: rgba(217, 159, 59, 0.1);
+  color: #f1dab2;
   font-size: 0.68rem;
   font-weight: 900;
   text-transform: uppercase;
 }
 
 .reward-vault-copy strong {
-  color: #f8fbff;
+  color: #fdfcfa;
   font-size: clamp(1.32rem, 3.8vw, 2.05rem);
   line-height: 1.05;
 }
@@ -809,10 +809,10 @@
   gap: 2px;
   min-width: 0;
   padding: 8px 10px;
-  border: 1px solid rgba(147, 197, 253, 0.14);
+  border: 1px solid rgba(214, 192, 154, 0.14);
   border-radius: var(--radius-sm);
-  background: rgba(8, 14, 30, 0.48);
-  color: #cfd8ff;
+  background: rgba(23, 17, 16, 0.48);
+  color: #f4ebda;
   font-size: 0.74rem;
   font-weight: 800;
   text-align: center;
@@ -820,7 +820,7 @@
 }
 
 .reward-vault-rule strong {
-  color: #fff6cc;
+  color: #f5e3c4;
   font-size: 1rem;
 }
 
@@ -858,9 +858,9 @@
   text-align: left;
   padding: 13px;
   border-radius: var(--radius-lg);
-  border: 1px solid rgba(147, 197, 253, 0.16);
-  background: linear-gradient(150deg, rgba(10, 16, 31, 0.9), rgba(34, 38, 72, 0.72));
-  color: #f5f8ff;
+  border: 1px solid rgba(214, 192, 154, 0.16);
+  background: linear-gradient(150deg, rgba(24, 19, 17, 0.9), rgba(60, 50, 48, 0.72));
+  color: #fdfbf7;
 }
 
 .shop-hub-panel::before {
@@ -872,7 +872,7 @@
   border-radius: 16px;
   opacity: 0.18;
   pointer-events: none;
-  background: linear-gradient(135deg, rgba(251, 191, 36, 0.7), rgba(91, 118, 255, 0.72));
+  background: linear-gradient(135deg, rgba(217, 159, 59, 0.7), rgba(199, 170, 119, 0.72));
   transform: rotate(10deg);
 }
 
@@ -882,7 +882,7 @@
   inset: 0;
   pointer-events: none;
   opacity: 0.42;
-  background: radial-gradient(circle at top right, rgba(147, 197, 253, 0.12), transparent 48%);
+  background: radial-gradient(circle at top right, rgba(214, 192, 154, 0.12), transparent 48%);
 }
 
 .shop-hub-panel > * {
@@ -929,7 +929,7 @@
 
 .shop-hub-panel:hover,
 .shop-hub-panel:focus-visible {
-  border-color: rgba(251, 191, 36, 0.32);
+  border-color: rgba(217, 159, 59, 0.32);
   filter: brightness(1.06);
 }
 
@@ -940,25 +940,25 @@
 }
 
 .shop-hub-panel-themes::before {
-  background: linear-gradient(135deg, rgba(251, 191, 36, 0.74), rgba(167, 139, 250, 0.76));
+  background: linear-gradient(135deg, rgba(217, 159, 59, 0.74), rgba(211, 187, 147, 0.76));
 }
 
 .shop-hub-panel-borders::before {
-  border: 2px solid rgba(147, 197, 253, 0.62);
-  background: linear-gradient(135deg, rgba(15, 23, 42, 0.08), rgba(59, 130, 246, 0.42));
+  border: 2px solid rgba(214, 192, 154, 0.62);
+  background: linear-gradient(135deg, rgba(33, 26, 25, 0.08), rgba(78, 181, 154, 0.42));
 }
 
 .shop-hub-panel-breakdown::before {
-  background: linear-gradient(135deg, rgba(45, 212, 191, 0.62), rgba(251, 191, 36, 0.68));
+  background: linear-gradient(135deg, rgba(86, 158, 134, 0.62), rgba(217, 159, 59, 0.68));
 }
 
 .shop-hub-panel-kicker {
   justify-self: start;
   padding: 4px 8px;
   border-radius: var(--radius-pill);
-  border: 1px solid rgba(147, 197, 253, 0.14);
+  border: 1px solid rgba(214, 192, 154, 0.14);
   background: rgba(255, 255, 255, 0.05);
-  color: #dbe5ff;
+  color: #f7f0e3;
   font-size: 0.62rem;
   font-weight: 700;
   letter-spacing: 0.1em;
@@ -967,19 +967,19 @@
 }
 
 .shop-hub-panel strong {
-  color: #f7f9ff;
+  color: #fdfcf9;
   font-size: clamp(0.96rem, 1.9vw, 1.12rem);
 }
 
 .shop-hub-panel > span:not(.shop-hub-panel-kicker) {
-  color: #c9d5f3;
+  color: #f0e4cc;
   font-size: 0.82rem;
 }
 
 .shop-hub-panel-stat {
   align-self: end;
   margin-top: var(--space-1);
-  color: #fff3c4 !important;
+  color: #f3e0be !important;
   font-size: 0.74rem !important;
 }
 
@@ -999,8 +999,8 @@
   gap: var(--space-2);
   align-items: center;
   padding: 6px 0 8px;
-  background: linear-gradient(180deg, rgba(12, 18, 36, 0.98), rgba(12, 18, 36, 0.82));
-  border-bottom: 1px solid rgba(147, 197, 253, 0.12);
+  background: linear-gradient(180deg, rgba(28, 22, 21, 0.98), rgba(28, 22, 21, 0.82));
+  border-bottom: 1px solid rgba(214, 192, 154, 0.12);
 }
 
 .shop-section-toolbar strong {
@@ -1008,7 +1008,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: #f8fbff;
+  color: #fdfcfa;
 }
 
 .shop-breakdown-list {
@@ -1020,7 +1020,7 @@
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: radial-gradient(circle at top, rgba(251, 191, 36, 0.08), transparent 58%);
+  background: radial-gradient(circle at top, rgba(217, 159, 59, 0.08), transparent 58%);
 }
 
 .pack-offer-art {
@@ -1034,8 +1034,8 @@
   margin-top: 14px;
   padding: var(--space-3);
   border-radius: 16px;
-  background: linear-gradient(160deg, rgba(18, 14, 36, 0.94), rgba(32, 24, 58, 0.88));
-  border: 1px solid rgba(147, 197, 253, 0.18);
+  background: linear-gradient(160deg, rgba(29, 23, 22, 0.94), rgba(47, 38, 36, 0.88));
+  border: 1px solid rgba(214, 192, 154, 0.18);
 }
 
 .pack-reveal-grid {
@@ -1053,7 +1053,7 @@
   padding: var(--space-2-5);
   border-radius: var(--radius-lg);
   border: 1px solid var(--rarity-color, var(--border));
-  background: linear-gradient(180deg, rgba(22, 24, 46, 0.96), rgba(12, 16, 32, 0.96));
+  background: linear-gradient(180deg, rgba(39, 32, 31, 0.96), rgba(26, 20, 19, 0.96));
   box-shadow: 0 8px 22px rgba(0, 0, 0, 0.22);
 }
 
@@ -1090,8 +1090,8 @@
 }
 
 .new-card-badge {
-  background: linear-gradient(135deg, rgba(251, 191, 36, 0.28), rgba(245, 158, 11, 0.32));
-  border: 1px solid rgba(251, 191, 36, 0.34);
+  background: linear-gradient(135deg, rgba(217, 159, 59, 0.28), rgba(202, 144, 44, 0.32));
+  border: 1px solid rgba(217, 159, 59, 0.34);
 }
 
 /* ─── Card Art ──────────────────────────────────────────────────── */
@@ -1100,8 +1100,8 @@
   height: 92px;
   overflow: hidden;
   border-radius: var(--radius-lg);
-  border: 1px solid rgba(251, 191, 36, 0.22);
-  background: linear-gradient(135deg, rgba(10, 18, 36, 0.95), rgba(23, 35, 71, 0.7));
+  border: 1px solid rgba(217, 159, 59, 0.22);
+  background: linear-gradient(135deg, rgba(28, 21, 19, 0.95), rgba(56, 43, 40, 0.7));
 }
 
 .card-art-shell.large { height: 104px; }
