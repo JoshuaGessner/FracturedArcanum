@@ -4,7 +4,7 @@ import type { CardBorder, CardCollection, OpenedPackCard } from '../types'
 import { UI_ASSETS } from '../constants'
 import { cardArtPath, getPackArtPath, handleCardArtError, pulseFeedback } from '../utils'
 import { playSound } from '../audio'
-import { RarityBadge } from './AssetBadge'
+import { RarityBadge, TribeSigil } from './AssetBadge'
 
 type CeremonyPhase = 'intro' | 'shake' | 'burst' | 'fan' | 'reveal' | 'done'
 
@@ -299,7 +299,7 @@ export function PackCeremonyOverlay({
                         </span>
                         <span className="pack-ceremony-card-meta">
                           <RarityBadge rarity={card.rarity} />
-                          <strong>{meta?.icon ?? '🃏'} {meta?.name ?? card.id}</strong>
+                          <strong>{meta && <TribeSigil tribe={meta.tribe} />}{meta?.name ?? card.id}</strong>
                           <span className="mini-text">
                             {card.duplicate ? 'Duplicate · refunded as Shards' : 'Added to your library'}
                           </span>

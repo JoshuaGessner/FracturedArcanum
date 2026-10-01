@@ -455,7 +455,6 @@ export type ConfirmRequest = ConfirmOptions & { resolve: (ok: boolean) => void }
 
 export type InspectedCard = {
   name: string
-  icon: string
   id: string
   cost: number
   attack: number

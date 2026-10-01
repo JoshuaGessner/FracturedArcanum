@@ -3,7 +3,7 @@ import type { InspectedCard } from '../types'
 import { EFFECT_DESCRIPTIONS } from '../constants'
 import { RARITY_COLORS } from '../game'
 import { cardArtPath, handleCardArtError } from '../utils'
-import { EffectBadge, RarityBadge, StatIcon } from './AssetBadge'
+import { EffectBadge, RarityBadge, StatIcon, TribeSigil } from './AssetBadge'
 
 type CardInspectModalProps = {
   card: InspectedCard | null
@@ -45,7 +45,7 @@ export function CardInspectModal({ card, onClose }: CardInspectModalProps) {
             <span className="cost-pill">{card.cost}</span>
             <div>
               <h2 id="card-inspect-name">
-                {card.icon} {card.name}
+                <TribeSigil tribe={card.tribe} />{card.name}
               </h2>
               <span className="badges">
                 <RarityBadge rarity={card.rarity} />

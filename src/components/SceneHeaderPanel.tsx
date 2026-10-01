@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { InterfaceGlyph } from './AssetBadge'
 
 export type SceneHeaderTile = {
   kicker: string
@@ -44,7 +45,7 @@ export function SceneHeaderPanel({
         <div className="subview-topstrip">
           {onBack ? (
             <button className="ghost mini subview-back-btn" onClick={onBack} aria-label="Back">
-              ← Back
+              <InterfaceGlyph name="back" /> Back
             </button>
           ) : <span />}
           {viewLabel ? <span className="subview-label">{viewLabel}</span> : null}

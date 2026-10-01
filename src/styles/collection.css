@@ -138,9 +138,9 @@
 }
 
 .deck-roster-active-dot {
-  color: var(--accent);
-  font-size: 0.6rem;
-  line-height: 1;
+  color: var(--ember);
+  font-size: 0.7rem;
+  margin-inline-end: var(--space-1);
 }
 
 .deck-roster-size {

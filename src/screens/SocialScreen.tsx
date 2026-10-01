@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import { CARD_LIBRARY } from '../game'
-import { RankBadge } from '../components/AssetBadge'
+import { InterfaceGlyph, RankBadge, TribeSigil } from '../components/AssetBadge'
 import { useAppShell, useProfile, useQueue, useSocial } from '../contexts'
-import { getCardIcon as _getCardIcon, getCardName as _getCardName, inferToastSeverity } from '../utils'
+import { getCardName as _getCardName, getCardTribe as _getCardTribe, inferToastSeverity } from '../utils'
 
 const getCardName = (id: string): string => _getCardName(id, CARD_LIBRARY)
-const getCardIcon = (id: string): string => _getCardIcon(id, CARD_LIBRARY)
+const getCardTribe = (id: string): string => _getCardTribe(id, CARD_LIBRARY)
 
 export function SocialScreen() {
   const { activeScreen } = useAppShell()
@@ -311,7 +311,7 @@ export function SocialScreen() {
                       const isYourSide = tradePickerDraft.side === 'offer'
                       return (
                         <option key={card.id} value={card.id} disabled={isYourSide && owned === 0}>
-                          {card.icon} {card.name} • {card.rarity}{isYourSide ? ` (own ${owned})` : ''}
+                          {card.name} • {card.rarity}{isYourSide ? ` (own ${owned})` : ''}
                         </option>
                       )
                     })}
@@ -347,10 +347,10 @@ export function SocialScreen() {
                     <div className="trade-chip-list">
                       {tradeForm.offer.map((item) => (
                         <span className="trade-chip" key={item.cardId}>
-                          <span className="chip-icon">{getCardIcon(item.cardId)}</span>
+                          <span className="chip-icon"><TribeSigil tribe={getCardTribe(item.cardId)} /></span>
                           {getCardName(item.cardId)}
                           <span className="chip-qty">×{item.qty}</span>
-                          <button type="button" onClick={() => removeTradeChip('offer', item.cardId)} aria-label={`Remove ${getCardName(item.cardId)}`}>✕</button>
+                          <button type="button" onClick={() => removeTradeChip('offer', item.cardId)} aria-label={`Remove ${getCardName(item.cardId)}`}><InterfaceGlyph name="close" /></button>
                         </span>
                       ))}
                     </div>
@@ -360,10 +360,10 @@ export function SocialScreen() {
                     <div className="trade-chip-list">
                       {tradeForm.request.map((item) => (
                         <span className="trade-chip" key={item.cardId}>
-                          <span className="chip-icon">{getCardIcon(item.cardId)}</span>
+                          <span className="chip-icon"><TribeSigil tribe={getCardTribe(item.cardId)} /></span>
                           {getCardName(item.cardId)}
                           <span className="chip-qty">×{item.qty}</span>
-                          <button type="button" onClick={() => removeTradeChip('request', item.cardId)} aria-label={`Remove ${getCardName(item.cardId)}`}>✕</button>
+                          <button type="button" onClick={() => removeTradeChip('request', item.cardId)} aria-label={`Remove ${getCardName(item.cardId)}`}><InterfaceGlyph name="close" /></button>
                         </span>
                       ))}
                     </div>
@@ -400,14 +400,14 @@ export function SocialScreen() {
                         <strong>Offer:</strong>{' '}
                         {trade.offer.map((item, index) => (
                           <span key={item.cardId}>
-                            {index > 0 ? ', ' : ''}{getCardIcon(item.cardId)} {getCardName(item.cardId)} ×{item.qty}
+                            {index > 0 ? ', ' : ''}<TribeSigil tribe={getCardTribe(item.cardId)} />{getCardName(item.cardId)} ×{item.qty}
                           </span>
                         ))}
                         {' · '}
                         <strong>Request:</strong>{' '}
                         {trade.request.map((item, index) => (
                           <span key={item.cardId}>
-                            {index > 0 ? ', ' : ''}{getCardIcon(item.cardId)} {getCardName(item.cardId)} ×{item.qty}
+                            {index > 0 ? ', ' : ''}<TribeSigil tribe={getCardTribe(item.cardId)} />{getCardName(item.cardId)} ×{item.qty}
                           </span>
                         ))}
                       </div>

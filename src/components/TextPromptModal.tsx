@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { InterfaceGlyph } from './AssetBadge'
 
 type TextPromptRequest = {
   title: string
@@ -47,7 +48,7 @@ export function TextPromptModal({ request, value, onChange, onClose }: TextPromp
         <div className="modal-head">
           <h3 id="text-prompt-title">{request.title}</h3>
           <button type="button" className="modal-close" onClick={() => onClose(false)} aria-label="Close">
-            ✕
+            <InterfaceGlyph name="close" />
           </button>
         </div>
         <label className="form-field">

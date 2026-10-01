@@ -542,7 +542,7 @@ export function generateEnemyTurnSteps(base: GameState): EnemyStep[] {
     if (playableIndex === -1 || boardFull || game.winner) break
     const card = game.enemy.hand[playableIndex]
     game = playCard(game, 'enemy', playableIndex)
-    steps.push({ state: game, label: `${game.enemy.name} plays ${card.icon} ${card.name}.` })
+    steps.push({ state: game, label: `${game.enemy.name} plays ${card.name}.` })
   }
 
   // Same decisions as runEnemyTurn, narrated. These two must not drift: one

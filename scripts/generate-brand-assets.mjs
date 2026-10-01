@@ -2,6 +2,7 @@ import { mkdirSync, readdirSync, unlinkSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { buildCardArtFiles } from './lib/card-art.mjs'
+import { buildGlyphFiles } from './lib/glyph-art.mjs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const publicDir = path.resolve(__dirname, '../public')
@@ -490,6 +491,7 @@ const uiAssets = {
   ...effects,
   ...overlays,
   ...particles,
+  ...buildGlyphFiles(),
 }
 
 const allCards = buildCardArtFiles()
@@ -506,6 +508,7 @@ const uiAssetType = (id) => {
   if (id.startsWith('fx-')) return 'ui-effect'
   if (id.startsWith('overlay-') || id.startsWith('glow-')) return 'ui-overlay'
   if (id.startsWith('particle-')) return 'ui-particle'
+  if (id.startsWith('tribe-') || id.startsWith('glyph-')) return 'ui-glyph'
   return 'ui-misc'
 }
 

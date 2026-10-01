@@ -86,12 +86,16 @@ name:    display name (Lovecraftian tone)
 cost:    mana cost (1–9)
 attack:  base attack power
 health:  base health points
-icon:    emoji fallback (replaced by SVG in production)
 text:    flavor/rules text
 effect:  primary keyword (optional — vanilla units have none)
 rarity:  common | rare | epic | legendary
 tribe:   beast | elemental | undead | dragon | mech | arcane | warrior | nature | demon | none
 ```
+
+Cards carry no icon or emoji. A card's identity is its generated art; beside
+its name the UI draws the engraved **tribe sigil** from
+`scripts/lib/glyph-art.mjs`. `src/noEmoji.test.ts` keeps emoji out of shipped
+source.
 
 ### Rarity Tiers
 

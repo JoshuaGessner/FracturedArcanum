@@ -9,7 +9,7 @@ import {
 } from '../game'
 import { DECK_MAX_TOTAL_DISPLAY, DECK_PRESETS } from '../constants'
 import { cardArtPath, getCompletionPercent, getRarityCompletion, handleCardArtError } from '../utils'
-import { EffectBadge, RarityBadge, StatIcon } from '../components/AssetBadge'
+import { EffectBadge, InterfaceGlyph, RarityBadge, StatIcon } from '../components/AssetBadge'
 import { SceneHeaderPanel, type SceneHeaderTile } from '../components/SceneHeaderPanel'
 import { useAppShell, useGame, useProfile, useQueue } from '../contexts'
 import { feedback } from '../feedback'
@@ -140,7 +140,7 @@ export function CollectionScreen() {
                       title={isActive ? 'Active deck' : 'Switch to this deck'}
                     >
                       <span className="deck-roster-name">
-                        {isActive && <span className="deck-roster-active-dot" aria-hidden="true">●</span>}
+                        {isActive && <InterfaceGlyph name="activeMark" className="deck-roster-active-dot" />}
                         {deck.name}
                       </span>
                       <span className={`deck-roster-size ${size >= MIN_DECK_SIZE ? 'ready' : 'warning'}`}>
@@ -260,7 +260,7 @@ export function CollectionScreen() {
             const count = deckConfig[card.id] ?? 0
             const addDisabled = count >= Math.min(maxCopies, ownedCount)
             const tribeShortLabel = card.tribe.slice(0, 3)
-            const inspectCard = { name: card.name, icon: card.icon, id: card.id, cost: card.cost, attack: card.attack, health: card.health, rarity: card.rarity, tribe: card.tribe, text: card.text, effect: card.effect ?? null, cardBorder: selectedCardBorder }
+            const inspectCard = { name: card.name, id: card.id, cost: card.cost, attack: card.attack, health: card.health, rarity: card.rarity, tribe: card.tribe, text: card.text, effect: card.effect ?? null, cardBorder: selectedCardBorder }
             return (
             <div
               className={`builder-card rarity-${card.rarity} border-${selectedCardBorder} ${ownedCount === 0 ? 'locked' : ''}`}

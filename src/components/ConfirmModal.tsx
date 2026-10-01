@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import type { ConfirmRequest } from '../types'
+import { InterfaceGlyph } from './AssetBadge'
 
 type ConfirmModalProps = {
   request: ConfirmRequest | null
@@ -45,7 +46,7 @@ export function ConfirmModal({ request, textInput, onTextInputChange, onClose }:
         <div className="modal-head">
           <h3 id="confirm-title">{request.title}</h3>
           <button type="button" className="modal-close" onClick={() => onClose(false)} aria-label="Close">
-            ✕
+            <InterfaceGlyph name="close" />
           </button>
         </div>
         <div className="modal-body">{request.body}</div>

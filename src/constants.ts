@@ -191,6 +191,29 @@ export const UI_ASSETS = {
     enrage: toUiAsset('fx-enrage.svg'),
     deathrattle: toUiAsset('fx-deathrattle.svg'),
   },
+  /** Engraved tribe sigils — what stands beside a card name, never an emoji. */
+  tribes: {
+    beast: toUiAsset('tribe-beast.svg'),
+    elemental: toUiAsset('tribe-elemental.svg'),
+    undead: toUiAsset('tribe-undead.svg'),
+    dragon: toUiAsset('tribe-dragon.svg'),
+    mech: toUiAsset('tribe-mech.svg'),
+    arcane: toUiAsset('tribe-arcane.svg'),
+    warrior: toUiAsset('tribe-warrior.svg'),
+    nature: toUiAsset('tribe-nature.svg'),
+    demon: toUiAsset('tribe-demon.svg'),
+    none: toUiAsset('tribe-none.svg'),
+  },
+  /** Single-ink interface marks, tinted by CSS mask to the text colour. */
+  glyphs: {
+    close: toUiAsset('glyph-close.svg'),
+    back: toUiAsset('glyph-back.svg'),
+    forward: toUiAsset('glyph-forward.svg'),
+    chevronRight: toUiAsset('glyph-chevron-right.svg'),
+    chevronDown: toUiAsset('glyph-chevron-down.svg'),
+    activeMark: toUiAsset('glyph-active-mark.svg'),
+    card: toUiAsset('glyph-card.svg'),
+  },
 } as const
 
 export const NAV_TILE_ART = UI_ASSETS.tiles
@@ -198,6 +221,8 @@ export const RANK_INSIGNIA = UI_ASSETS.ranks
 export const PACK_ART = UI_ASSETS.packs
 export const RARITY_GEM_ICONS = UI_ASSETS.rarityGems
 export const EFFECT_ICONS = UI_ASSETS.effects
+export const TRIBE_SIGILS = UI_ASSETS.tribes
+export const INTERFACE_GLYPHS = UI_ASSETS.glyphs
 
 export const STORAGE_KEYS = {
   deck: 'fractured-arcanum.deck',

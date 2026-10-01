@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { CARD_LIBRARY, RARITY_COLORS } from '../game'
 import { CARD_BORDER_OFFERS, ECONOMY_REWARDS, THEME_OFFERS } from '../constants'
-import { PackArt, RarityBadge } from '../components/AssetBadge'
+import { PackArt, RarityBadge, TribeSigil } from '../components/AssetBadge'
 import { PackCeremonyOverlay } from '../components/PackCeremonyOverlay'
 import { buildPackSummarySequence } from '../components/RewardCinemaSequence'
 import { cardArtPath, handleCardArtError } from '../utils'
@@ -358,7 +358,7 @@ export function ShopScreen() {
                         </div>
                         <div className="pack-reveal-meta">
                           <RarityBadge rarity={card.rarity} />
-                          <strong>{cardMeta?.icon} {cardMeta?.name ?? card.id}</strong>
+                          <strong>{cardMeta && <TribeSigil tribe={cardMeta.tribe} />}{cardMeta?.name ?? card.id}</strong>
                           <span className="note">{card.duplicate ? 'Duplicate converted into Shards.' : 'Added to your library.'}</span>
                         </div>
                         <span className={`badge ${card.duplicate ? '' : 'new-card-badge'}`}>{card.duplicate ? 'Duplicate' : 'New'}</span>
@@ -385,7 +385,7 @@ export function ShopScreen() {
                     <div className="leaderboard-row" key={entry.cardId}>
                       <RarityBadge rarity={entry.meta.rarity} className="badge-with-art" />
                       <div className="leaderboard-meta">
-                        <strong>{entry.meta.icon} {entry.meta.name}</strong>
+                        <strong><TribeSigil tribe={entry.meta.tribe} />{entry.meta.name}</strong>
                         <span className="note">
                           Owned {entry.owned} · In decks {entry.deckMin} · Excess {entry.extra} · {refundPer} Shards each
                         </span>
@@ -414,7 +414,7 @@ export function ShopScreen() {
                 <div className="leaderboard-list" style={{ marginTop: '0.75rem' }}>
                   <div className="leaderboard-row">
                     <div className="leaderboard-meta">
-                      <strong>Confirm: break down {pendingBreakdown.qty}× {meta?.icon} {meta?.name}</strong>
+                      <strong>Confirm: break down {pendingBreakdown.qty}× {meta?.name}</strong>
                       <span className="note">You will receive {total} Shards. This cannot be undone.</span>
                     </div>
                     <div className="controls">

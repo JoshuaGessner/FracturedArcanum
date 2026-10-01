@@ -4,6 +4,7 @@ import { formatTimestamp } from '../utils'
 import { useAppShell, useProfile } from '../contexts'
 import { feedback } from '../feedback'
 import type { AdminComplaint, AdminUser, PasskeySummary } from '../types'
+import { InterfaceGlyph } from '../components/AssetBadge'
 
 type AdminSubview = 'liveOps' | 'traffic' | 'complaints' | 'recovery' | 'accounts' | 'roles' | 'audit'
 
@@ -1093,7 +1094,7 @@ export function SettingsScreen() {
                               {entry.target ? ` → @${entry.target.username}` : ''}
                             </span>
                             <span className="mini-text">{formatTimestamp(entry.createdAt)}</span>
-                            {hasMeta && <span className="mini-text" aria-hidden="true">{expanded ? '▾' : '▸'}</span>}
+                            {hasMeta && <span className="mini-text"><InterfaceGlyph name={expanded ? 'chevronDown' : 'chevronRight'} /></span>}
                             {expanded && hasMeta && <pre className="audit-meta">{JSON.stringify(entry.metadata, null, 2)}</pre>}
                           </li>
                         )

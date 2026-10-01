@@ -173,7 +173,6 @@ describe('GameProvider setters', () => {
     const inspected: InspectedCard = {
       id: 'spark-imp',
       name: 'Spark Imp',
-      icon: 'imp',
       cost: 1,
       attack: 2,
       health: 1,

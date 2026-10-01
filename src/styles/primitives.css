@@ -316,3 +316,24 @@ button.danger:disabled { opacity: 0.55; transform: none; box-shadow: none; }
   }
 }
 
+
+/* ─── Line glyphs ───────────────────────────────────────────────────
+   One-ink SVGs painted through a mask, so they take the text colour. They
+   replace every emoji the UI used to render; see scripts/lib/glyph-art.mjs. */
+.glyph {
+  display: inline-block;
+  flex: none;
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.14em;
+  background-color: currentColor;
+  -webkit-mask: var(--glyph-src) center / contain no-repeat;
+  mask: var(--glyph-src) center / contain no-repeat;
+}
+
+.tribe-sigil {
+  width: 0.95em;
+  height: 0.95em;
+  margin-inline-end: 0.3em;
+  opacity: 0.82;
+}

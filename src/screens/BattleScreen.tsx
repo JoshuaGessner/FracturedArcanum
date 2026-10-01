@@ -8,7 +8,7 @@ import {
 import { asCardBorder, cardArtPath, getHandFanTilt, handleCardArtError, pulseFeedback } from '../utils'
 import { ECONOMY_REWARDS, UI_ASSETS } from '../constants'
 import { playSound, startLoopingSound } from '../audio'
-import { EffectBadge, RarityBadge, StatIcon } from '../components/AssetBadge'
+import { EffectBadge, RarityBadge, StatIcon, TribeSigil } from '../components/AssetBadge'
 import { SummaryPopup } from '../components/SummaryPopup'
 import { useAppShell, useGame, useProfile } from '../contexts'
 import type { InspectedCard } from '../types'
@@ -16,7 +16,7 @@ import type { InspectedCard } from '../types'
 /** `cardBorder` is the frame the inspect modal wears — the hand is always the
     local player's, so callers pass their own equipped frame. */
 function toInspectPayload(card: CardInstance, cardBorder: InspectedCard['cardBorder']): InspectedCard {
-  return { name: card.name, icon: card.icon, id: card.id, cost: card.cost, attack: card.attack, health: card.health, rarity: card.rarity, tribe: card.tribe, text: card.text, effect: card.effect ?? null, cardBorder }
+  return { name: card.name, id: card.id, cost: card.cost, attack: card.attack, health: card.health, rarity: card.rarity, tribe: card.tribe, text: card.text, effect: card.effect ?? null, cardBorder }
 }
 
 const BattleFxCanvas = lazy(() =>
@@ -779,14 +779,14 @@ export function BattleScreen() {
                       if (isSelectable) handleSelectAttacker(index)
                       else handleAttackTarget(index)
                     }}
-                    {...getLongPressProps({ name: unit.name, icon: unit.icon, id: unit.id, cost: unit.cost, attack: unit.attack, health: unit.health, currentHealth: unit.currentHealth, rarity: unit.rarity, tribe: unit.tribe, text: unit.text, effect: unit.effect ?? null, cardBorder: enemyCardBorder })}
+                    {...getLongPressProps({ name: unit.name, id: unit.id, cost: unit.cost, attack: unit.attack, health: unit.health, currentHealth: unit.currentHealth, rarity: unit.rarity, tribe: unit.tribe, text: unit.text, effect: unit.effect ?? null, cardBorder: enemyCardBorder })}
                     aria-disabled={Boolean(game.winner) || (isSelectable ? unit.exhausted : selectedAttacker === null)}
                     title="Long press to inspect"
                   >
                     <img className="unit-portrait" src={cardArtPath(unit.id)} alt={`${unit.name} artwork`} loading="lazy" onError={handleCardArtError} draggable={false} />
                     <div className="slot-head">
                       <strong>
-                        {unit.icon} {unit.name}
+                        <TribeSigil tribe={unit.tribe} />{unit.name}
                       </strong>
                       <span className="stats battle-stats-inline">
                         <span><StatIcon kind="attack" />{unit.attack}</span>
@@ -844,7 +844,7 @@ export function BattleScreen() {
                 const isSelectable = game.turn === 'player'
                 const isSelected = isSelectable && selectedAttacker === index
                 const canAttack = isSelectable && !unit.exhausted && isMyTurn && !game.winner
-                const unitInspectPayload = { name: unit.name, icon: unit.icon, id: unit.id, cost: unit.cost, attack: unit.attack, health: unit.health, currentHealth: unit.currentHealth, rarity: unit.rarity, tribe: unit.tribe, text: unit.text, effect: unit.effect ?? null, cardBorder: selectedCardBorder }
+                const unitInspectPayload = { name: unit.name, id: unit.id, cost: unit.cost, attack: unit.attack, health: unit.health, currentHealth: unit.currentHealth, rarity: unit.rarity, tribe: unit.tribe, text: unit.text, effect: unit.effect ?? null, cardBorder: selectedCardBorder }
                 const longPress = (getLongPressProps(unitInspectPayload) ?? {}) as Partial<{
                   onPointerDown: (event: React.PointerEvent<HTMLElement>) => void
                   onPointerMove: (event: React.PointerEvent<HTMLElement>) => void
@@ -912,7 +912,7 @@ export function BattleScreen() {
                     <img className="unit-portrait" src={cardArtPath(unit.id)} alt={`${unit.name} artwork`} loading="lazy" onError={handleCardArtError} draggable={false} />
                     <div className="slot-head">
                       <strong>
-                        {unit.icon} {unit.name}
+                        <TribeSigil tribe={unit.tribe} />{unit.name}
                       </strong>
                       <span className="stats battle-stats-inline">
                         <span><StatIcon kind="attack" />{unit.attack}</span>

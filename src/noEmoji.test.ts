@@ -1,0 +1,46 @@
+import { readFileSync, readdirSync, statSync } from 'node:fs'
+import path from 'node:path'
+import { describe, expect, it } from 'vitest'
+import { CARD_LIBRARY } from './game'
+
+/**
+ * The game draws its own marks — tribe sigils and interface glyphs from
+ * scripts/lib/glyph-art.mjs — so no emoji or pictographic symbol ships in
+ * production UI. Platform emoji change colour, size and style from one OS to
+ * the next and fight the card art. Tests and dev scripts are out of scope.
+ */
+const PICTOGRAPHIC = /[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{2300}-\u{23FF}\u{25A0}-\u{25FF}]/u
+
+function shippedFiles(dir: string): string[] {
+  return readdirSync(dir).flatMap((entry) => {
+    const full = path.join(dir, entry)
+    if (statSync(full).isDirectory()) return shippedFiles(full)
+    if (!/\.(ts|tsx|css|js)$/.test(entry) || /\.test\./.test(entry)) return []
+    return [full]
+  })
+}
+
+describe('no emoji in shipped UI', () => {
+  it('cards carry no emoji', () => {
+    for (const card of CARD_LIBRARY) {
+      expect(JSON.stringify(card), card.id).not.toMatch(PICTOGRAPHIC)
+    }
+  })
+
+  it('client and server source render no pictographic symbols', () => {
+    const roots = ['src', 'server']
+    const generated = new Set([path.join('server', 'game.js'), path.join('server', 'ai.js')])
+    const offenders: string[] = []
+    for (const root of roots) {
+      for (const file of shippedFiles(root)) {
+        if (generated.has(file)) continue
+        readFileSync(file, 'utf8').split('\n').forEach((line, index) => {
+          const code = line.trim()
+          if (code.startsWith('//') || code.startsWith('*') || code.startsWith('/*')) return
+          if (PICTOGRAPHIC.test(line)) offenders.push(`${file}:${index + 1}: ${code.slice(0, 80)}`)
+        })
+      }
+    }
+    expect(offenders).toEqual([])
+  })
+})

@@ -74,7 +74,6 @@ export type CardTemplate = {
   cost: number
   attack: number
   health: number
-  icon: string
   text: string
   effect?: CardEffect
   rarity: CardRarity
@@ -180,88 +179,88 @@ export const CARD_LIBRARY: CardTemplate[] = [
   // ═══════════════════════════════════════════════════════════════════
   // COMMON (28 cards) — Core roster of lesser horrors and cultists
   // ═══════════════════════════════════════════════════════════════════
-  { id: 'spark-imp', name: 'Crawling Spark', cost: 1, attack: 2, health: 1, icon: '⚡', text: 'A stuttering arc from beyond the veil.', rarity: 'common', tribe: 'elemental', set: CORE_SET },
-  { id: 'tide-caller', name: 'Abyssal Caller', cost: 1, attack: 1, health: 2, icon: '🌊', text: 'Bolster: whisper +1 health into a random ally on summon.', effect: 'bolster', rarity: 'common', tribe: 'elemental', set: CORE_SET },
-  { id: 'cave-bat', name: 'Cavern Fluke', cost: 1, attack: 1, health: 1, icon: '🦇', text: 'Charge: slips through the crack between worlds.', effect: 'charge', rarity: 'common', tribe: 'beast', set: CORE_SET },
-  { id: 'copper-automaton', name: 'Brass Husk', cost: 1, attack: 1, health: 3, icon: '⚙️', text: 'A hollow vessel that will not stop walking.', rarity: 'common', tribe: 'mech', set: CORE_SET },
-  { id: 'shade-fox', name: 'Pallid Fox', cost: 2, attack: 2, health: 2, icon: '🦊', text: 'Fury: grows bolder after tasting blood (+1 attack after surviving combat).', effect: 'fury', rarity: 'common', tribe: 'beast', set: CORE_SET },
-  { id: 'ironbark-guard', name: 'Bone Fence Sentinel', cost: 2, attack: 1, health: 4, icon: '🛡️', text: 'Guard: must be attacked first. It remembers every trespass.', effect: 'guard', rarity: 'common', tribe: 'nature', set: CORE_SET },
-  { id: 'dawn-healer', name: 'Pallid Mender', cost: 2, attack: 1, health: 3, icon: '🕯️', text: 'Restore 2 health to your hero on summon.', effect: 'heal', rarity: 'common', tribe: 'arcane', set: CORE_SET },
-  { id: 'blaze-runner', name: 'Ember Herald', cost: 2, attack: 3, health: 1, icon: '🔥', text: 'Charge: burns out fast. Glass wick.', effect: 'charge', rarity: 'common', tribe: 'elemental', set: CORE_SET },
-  { id: 'void-leech', name: 'Thought-Leech', cost: 2, attack: 2, health: 2, icon: '🩸', text: 'Drain: steal 1 Momentum from the enemy on summon.', effect: 'drain', rarity: 'common', tribe: 'demon', set: CORE_SET },
-  { id: 'bog-lurker', name: 'Marsh Lurker', cost: 2, attack: 2, health: 3, icon: '🐸', text: 'Something older than the mire itself.', rarity: 'common', tribe: 'beast', set: CORE_SET },
-  { id: 'militia-recruit', name: 'Cult Acolyte', cost: 2, attack: 2, health: 2, icon: '🕯️', text: 'Rally: gain 1 Momentum on summon. Their chants stir the Dread.', effect: 'rally', rarity: 'common', tribe: 'warrior', set: CORE_SET },
-  { id: 'rust-golem', name: 'Corroded Husk', cost: 2, attack: 1, health: 5, icon: '🔩', text: 'Guard: must be attacked first.', effect: 'guard', rarity: 'common', tribe: 'mech', set: CORE_SET },
-  { id: 'rune-scholar', name: 'Glyph Scholar', cost: 3, attack: 2, health: 3, icon: '📖', text: 'Rally: gain 1 Momentum on summon. Knowledge has a price.', effect: 'rally', rarity: 'common', tribe: 'arcane', set: CORE_SET },
-  { id: 'sky-raider', name: 'Wind-Stalker', cost: 3, attack: 3, health: 2, icon: '🪽', text: 'Charge: drops from the starless sky.', effect: 'charge', rarity: 'common', tribe: 'warrior', set: CORE_SET },
-  { id: 'thornback-boar', name: 'Bristle Beast', cost: 3, attack: 3, health: 3, icon: '🐗', text: 'Fury: gains +1 attack after surviving combat.', effect: 'fury', rarity: 'common', tribe: 'beast', set: CORE_SET },
-  { id: 'wind-sprite', name: 'Mist Wraith', cost: 3, attack: 2, health: 2, icon: '💨', text: 'Draw a card on summon. The fog reveals what was hidden.', effect: 'draw', rarity: 'common', tribe: 'nature', set: CORE_SET },
-  { id: 'granite-sentinel', name: 'Obelisk Sentinel', cost: 3, attack: 2, health: 4, icon: '🗿', text: 'Guard: must be attacked first. Carved with forbidden sigils.', effect: 'guard', rarity: 'common', tribe: 'elemental', set: CORE_SET },
-  { id: 'fire-imp', name: 'Ember Imp', cost: 3, attack: 3, health: 2, icon: '👹', text: 'Blast: deal 1 to the opposing hero.', effect: 'blast', rarity: 'common', tribe: 'demon', set: CORE_SET },
-  { id: 'field-medic', name: 'Battle Mender', cost: 3, attack: 2, health: 3, icon: '⛑️', text: 'Restore 3 health to your hero on summon.', effect: 'heal', rarity: 'common', tribe: 'warrior', set: CORE_SET },
-  { id: 'sand-elemental', name: 'Dust Horror', cost: 4, attack: 3, health: 4, icon: '🏜️', text: 'Bolster: give a random friendly unit +1 health.', effect: 'bolster', rarity: 'common', tribe: 'elemental', set: CORE_SET },
-  { id: 'pack-wolf', name: 'Starving Pack', cost: 4, attack: 4, health: 3, icon: '🐺', text: 'Empower: every ally bares its teeth (+1 attack on summon).', effect: 'empower', rarity: 'common', tribe: 'beast', set: CORE_SET },
-  { id: 'clockwork-knight', name: 'Geared Thrall', cost: 4, attack: 4, health: 5, icon: '⚙️', text: 'Reliable mid-game thrall. The gears whisper.', rarity: 'common', tribe: 'mech', set: CORE_SET },
-  { id: 'storm-brute', name: 'Thunderous Colossus', cost: 5, attack: 5, health: 6, icon: '⛈️', text: 'A tall, wrong-angled thing that closes games fast.', rarity: 'common', tribe: 'elemental', set: CORE_SET },
-  { id: 'siege-turtle', name: 'Carapace Wyrm', cost: 5, attack: 2, health: 8, icon: '🐢', text: 'Guard: must be attacked first. Its shell is older than the city.', effect: 'guard', rarity: 'common', tribe: 'beast', set: CORE_SET },
-  { id: 'flame-juggler', name: 'Fire-Eater Cultist', cost: 4, attack: 3, health: 4, icon: '🔥', text: 'Blast: deal 1 to the opposing hero.', effect: 'blast', rarity: 'common', tribe: 'elemental', set: CORE_SET },
-  { id: 'highland-archer', name: 'Barrow Archer', cost: 3, attack: 3, health: 2, icon: '🏹', text: 'Poison: deal 1 damage to all enemy units on summon. Tipped with grave-dust.', effect: 'poison', rarity: 'common', tribe: 'warrior', set: CORE_SET },
-  { id: 'moss-treant', name: 'Fungal Treant', cost: 5, attack: 4, health: 5, icon: '🍄', text: 'Heal 2 to your hero on summon. Its spores mend and madden.', effect: 'heal', rarity: 'common', tribe: 'nature', set: CORE_SET },
-  { id: 'coral-guardian', name: 'Coral Bastion', cost: 4, attack: 2, health: 5, icon: '🪸', text: 'Shield: give your hero +2 armor on summon.', effect: 'shield', rarity: 'common', tribe: 'nature', set: CORE_SET },
+  { id: 'spark-imp', name: 'Crawling Spark', cost: 1, attack: 2, health: 1, text: 'A stuttering arc from beyond the veil.', rarity: 'common', tribe: 'elemental', set: CORE_SET },
+  { id: 'tide-caller', name: 'Abyssal Caller', cost: 1, attack: 1, health: 2, text: 'Bolster: whisper +1 health into a random ally on summon.', effect: 'bolster', rarity: 'common', tribe: 'elemental', set: CORE_SET },
+  { id: 'cave-bat', name: 'Cavern Fluke', cost: 1, attack: 1, health: 1, text: 'Charge: slips through the crack between worlds.', effect: 'charge', rarity: 'common', tribe: 'beast', set: CORE_SET },
+  { id: 'copper-automaton', name: 'Brass Husk', cost: 1, attack: 1, health: 3, text: 'A hollow vessel that will not stop walking.', rarity: 'common', tribe: 'mech', set: CORE_SET },
+  { id: 'shade-fox', name: 'Pallid Fox', cost: 2, attack: 2, health: 2, text: 'Fury: grows bolder after tasting blood (+1 attack after surviving combat).', effect: 'fury', rarity: 'common', tribe: 'beast', set: CORE_SET },
+  { id: 'ironbark-guard', name: 'Bone Fence Sentinel', cost: 2, attack: 1, health: 4, text: 'Guard: must be attacked first. It remembers every trespass.', effect: 'guard', rarity: 'common', tribe: 'nature', set: CORE_SET },
+  { id: 'dawn-healer', name: 'Pallid Mender', cost: 2, attack: 1, health: 3, text: 'Restore 2 health to your hero on summon.', effect: 'heal', rarity: 'common', tribe: 'arcane', set: CORE_SET },
+  { id: 'blaze-runner', name: 'Ember Herald', cost: 2, attack: 3, health: 1, text: 'Charge: burns out fast. Glass wick.', effect: 'charge', rarity: 'common', tribe: 'elemental', set: CORE_SET },
+  { id: 'void-leech', name: 'Thought-Leech', cost: 2, attack: 2, health: 2, text: 'Drain: steal 1 Momentum from the enemy on summon.', effect: 'drain', rarity: 'common', tribe: 'demon', set: CORE_SET },
+  { id: 'bog-lurker', name: 'Marsh Lurker', cost: 2, attack: 2, health: 3, text: 'Something older than the mire itself.', rarity: 'common', tribe: 'beast', set: CORE_SET },
+  { id: 'militia-recruit', name: 'Cult Acolyte', cost: 2, attack: 2, health: 2, text: 'Rally: gain 1 Momentum on summon. Their chants stir the Dread.', effect: 'rally', rarity: 'common', tribe: 'warrior', set: CORE_SET },
+  { id: 'rust-golem', name: 'Corroded Husk', cost: 2, attack: 1, health: 5, text: 'Guard: must be attacked first.', effect: 'guard', rarity: 'common', tribe: 'mech', set: CORE_SET },
+  { id: 'rune-scholar', name: 'Glyph Scholar', cost: 3, attack: 2, health: 3, text: 'Rally: gain 1 Momentum on summon. Knowledge has a price.', effect: 'rally', rarity: 'common', tribe: 'arcane', set: CORE_SET },
+  { id: 'sky-raider', name: 'Wind-Stalker', cost: 3, attack: 3, health: 2, text: 'Charge: drops from the starless sky.', effect: 'charge', rarity: 'common', tribe: 'warrior', set: CORE_SET },
+  { id: 'thornback-boar', name: 'Bristle Beast', cost: 3, attack: 3, health: 3, text: 'Fury: gains +1 attack after surviving combat.', effect: 'fury', rarity: 'common', tribe: 'beast', set: CORE_SET },
+  { id: 'wind-sprite', name: 'Mist Wraith', cost: 3, attack: 2, health: 2, text: 'Draw a card on summon. The fog reveals what was hidden.', effect: 'draw', rarity: 'common', tribe: 'nature', set: CORE_SET },
+  { id: 'granite-sentinel', name: 'Obelisk Sentinel', cost: 3, attack: 2, health: 4, text: 'Guard: must be attacked first. Carved with forbidden sigils.', effect: 'guard', rarity: 'common', tribe: 'elemental', set: CORE_SET },
+  { id: 'fire-imp', name: 'Ember Imp', cost: 3, attack: 3, health: 2, text: 'Blast: deal 1 to the opposing hero.', effect: 'blast', rarity: 'common', tribe: 'demon', set: CORE_SET },
+  { id: 'field-medic', name: 'Battle Mender', cost: 3, attack: 2, health: 3, text: 'Restore 3 health to your hero on summon.', effect: 'heal', rarity: 'common', tribe: 'warrior', set: CORE_SET },
+  { id: 'sand-elemental', name: 'Dust Horror', cost: 4, attack: 3, health: 4, text: 'Bolster: give a random friendly unit +1 health.', effect: 'bolster', rarity: 'common', tribe: 'elemental', set: CORE_SET },
+  { id: 'pack-wolf', name: 'Starving Pack', cost: 4, attack: 4, health: 3, text: 'Empower: every ally bares its teeth (+1 attack on summon).', effect: 'empower', rarity: 'common', tribe: 'beast', set: CORE_SET },
+  { id: 'clockwork-knight', name: 'Geared Thrall', cost: 4, attack: 4, health: 5, text: 'Reliable mid-game thrall. The gears whisper.', rarity: 'common', tribe: 'mech', set: CORE_SET },
+  { id: 'storm-brute', name: 'Thunderous Colossus', cost: 5, attack: 5, health: 6, text: 'A tall, wrong-angled thing that closes games fast.', rarity: 'common', tribe: 'elemental', set: CORE_SET },
+  { id: 'siege-turtle', name: 'Carapace Wyrm', cost: 5, attack: 2, health: 8, text: 'Guard: must be attacked first. Its shell is older than the city.', effect: 'guard', rarity: 'common', tribe: 'beast', set: CORE_SET },
+  { id: 'flame-juggler', name: 'Fire-Eater Cultist', cost: 4, attack: 3, health: 4, text: 'Blast: deal 1 to the opposing hero.', effect: 'blast', rarity: 'common', tribe: 'elemental', set: CORE_SET },
+  { id: 'highland-archer', name: 'Barrow Archer', cost: 3, attack: 3, health: 2, text: 'Poison: deal 1 damage to all enemy units on summon. Tipped with grave-dust.', effect: 'poison', rarity: 'common', tribe: 'warrior', set: CORE_SET },
+  { id: 'moss-treant', name: 'Fungal Treant', cost: 5, attack: 4, health: 5, text: 'Heal 2 to your hero on summon. Its spores mend and madden.', effect: 'heal', rarity: 'common', tribe: 'nature', set: CORE_SET },
+  { id: 'coral-guardian', name: 'Coral Bastion', cost: 4, attack: 2, health: 5, text: 'Shield: give your hero +2 armor on summon.', effect: 'shield', rarity: 'common', tribe: 'nature', set: CORE_SET },
 
   // ═══════════════════════════════════════════════════════════════════
   // RARE (22 cards) — Stronger horrors, harder to coax from the deep
   // ═══════════════════════════════════════════════════════════════════
-  { id: 'moonwell-sage', name: 'Pale Moon Seer', cost: 4, attack: 2, health: 4, icon: '🌙', text: 'Draw a card on summon.', effect: 'draw', rarity: 'rare', tribe: 'arcane', set: CORE_SET },
-  { id: 'ember-witch', name: 'Ashen Witch', cost: 4, attack: 3, health: 4, icon: '🕯️', text: 'Blast: deal 2 to the opposing hero.', effect: 'blast', rarity: 'rare', tribe: 'arcane', set: CORE_SET },
-  { id: 'venom-drake', name: 'Venomous Serpent-Kin', cost: 3, attack: 2, health: 4, icon: '🐍', text: 'Poison: deal 1 damage to all enemy units on summon.', effect: 'poison', rarity: 'rare', tribe: 'dragon', set: CORE_SET },
-  { id: 'warcry-sentinel', name: 'Ululating Sentinel', cost: 3, attack: 2, health: 3, icon: '📯', text: 'Empower: its shriek emboldens every ally (+1 attack on summon).', effect: 'empower', rarity: 'rare', tribe: 'warrior', set: CORE_SET },
-  { id: 'aegis-knight', name: 'Ward-Knight', cost: 4, attack: 3, health: 5, icon: '⚜️', text: 'Shield: give your hero +3 armor on summon.', effect: 'shield', rarity: 'rare', tribe: 'warrior', set: CORE_SET },
-  { id: 'soul-reaver', name: 'Soul Harvester', cost: 4, attack: 4, health: 3, icon: '💀', text: 'Siphon: deal 2 to enemy hero, heal self for 2.', effect: 'siphon', rarity: 'rare', tribe: 'undead', set: CORE_SET },
-  { id: 'crystal-golem', name: 'Geode Colossus', cost: 5, attack: 3, health: 8, icon: '💎', text: 'Guard: must be attacked first. Grown in a place with no sky.', effect: 'guard', rarity: 'rare', tribe: 'elemental', set: CORE_SET },
-  { id: 'runebound-oracle', name: 'Hollow Oracle', cost: 3, attack: 1, health: 4, icon: '🔮', text: 'Draw 2 cards on summon. The hollow speaks of futures.', effect: 'draw', rarity: 'rare', tribe: 'arcane', set: CORE_SET },
-  { id: 'frost-weaver', name: 'Rime Weaver', cost: 3, attack: 2, health: 3, icon: '❄️', text: 'Frostbite: freeze an enemy unit (exhausted next turn).', effect: 'frostbite', rarity: 'rare', tribe: 'elemental', set: CORE_SET },
-  { id: 'crimson-berserker', name: 'Blood-Maddened Zealot', cost: 4, attack: 5, health: 3, icon: '🪓', text: 'Enrage: gains +2 attack when damaged.', effect: 'enrage', rarity: 'rare', tribe: 'warrior', set: CORE_SET },
-  { id: 'ghost-knight', name: 'Shade Knight', cost: 3, attack: 3, health: 3, icon: '👻', text: 'Deathrattle: deal 2 damage to the enemy hero when destroyed.', effect: 'deathrattle', rarity: 'rare', tribe: 'undead', set: CORE_SET },
-  { id: 'war-mammoth', name: 'Chitinous Behemoth', cost: 5, attack: 5, health: 5, icon: '🦣', text: 'Overwhelm: excess damage crashes into the enemy hero.', effect: 'overwhelm', rarity: 'rare', tribe: 'beast', set: CORE_SET },
-  { id: 'thunder-hawk', name: 'Storm Carrion', cost: 3, attack: 4, health: 2, icon: '🦅', text: 'Charge and Cleave: rakes every enemy unit as it lands.', effect: 'cleave', rarity: 'rare', tribe: 'beast', set: CORE_SET },
-  { id: 'hex-spider', name: 'Weaver of Ill Omen', cost: 2, attack: 2, health: 3, icon: '🕷️', text: 'Poison: deal 1 to all enemy units on summon.', effect: 'poison', rarity: 'rare', tribe: 'beast', set: CORE_SET },
-  { id: 'iron-clad', name: 'Iron-Clad Devotee', cost: 5, attack: 4, health: 6, icon: '🏰', text: 'Guard: must be attacked first. Shield: +2 armor.', effect: 'guard', rarity: 'rare', tribe: 'mech', set: CORE_SET },
-  { id: 'shadow-dancer', name: 'Umbral Dancer', cost: 4, attack: 4, health: 3, icon: '🌑', text: 'Lifesteal: heal your hero for damage dealt.', effect: 'lifesteal', rarity: 'rare', tribe: 'undead', set: CORE_SET },
-  { id: 'arcane-artificer', name: 'Occult Artificer', cost: 3, attack: 2, health: 4, icon: '🧪', text: 'Summon: conjure a 1/1 Wisp on summon.', effect: 'summon', rarity: 'rare', tribe: 'arcane', set: CORE_SET },
-  { id: 'vine-lasher', name: 'Vine Horror', cost: 4, attack: 3, health: 4, icon: '🌿', text: 'Poison: deal 2 to all enemy units on summon.', effect: 'poison', rarity: 'rare', tribe: 'nature', set: CORE_SET },
-  { id: 'storm-shaman', name: 'Tempest Cultist', cost: 5, attack: 3, health: 5, icon: '🌩️', text: 'Blast: deal 3 to the opposing hero.', effect: 'blast', rarity: 'rare', tribe: 'elemental', set: CORE_SET },
-  { id: 'bone-collector', name: 'Ossuary Collector', cost: 4, attack: 3, health: 4, icon: '🦴', text: 'Drain: steal 2 Momentum from the enemy on summon.', effect: 'drain', rarity: 'rare', tribe: 'undead', set: CORE_SET },
-  { id: 'lava-hound', name: 'Magma Hound', cost: 5, attack: 4, health: 5, icon: '🌋', text: 'Deathrattle: deal 3 damage to all enemy units when destroyed.', effect: 'deathrattle', rarity: 'rare', tribe: 'elemental', set: CORE_SET },
-  { id: 'bronze-drake', name: 'Brazen Wyrm', cost: 4, attack: 4, health: 4, icon: '🐲', text: 'Draw a card on summon.', effect: 'draw', rarity: 'rare', tribe: 'dragon', set: CORE_SET },
+  { id: 'moonwell-sage', name: 'Pale Moon Seer', cost: 4, attack: 2, health: 4, text: 'Draw a card on summon.', effect: 'draw', rarity: 'rare', tribe: 'arcane', set: CORE_SET },
+  { id: 'ember-witch', name: 'Ashen Witch', cost: 4, attack: 3, health: 4, text: 'Blast: deal 2 to the opposing hero.', effect: 'blast', rarity: 'rare', tribe: 'arcane', set: CORE_SET },
+  { id: 'venom-drake', name: 'Venomous Serpent-Kin', cost: 3, attack: 2, health: 4, text: 'Poison: deal 1 damage to all enemy units on summon.', effect: 'poison', rarity: 'rare', tribe: 'dragon', set: CORE_SET },
+  { id: 'warcry-sentinel', name: 'Ululating Sentinel', cost: 3, attack: 2, health: 3, text: 'Empower: its shriek emboldens every ally (+1 attack on summon).', effect: 'empower', rarity: 'rare', tribe: 'warrior', set: CORE_SET },
+  { id: 'aegis-knight', name: 'Ward-Knight', cost: 4, attack: 3, health: 5, text: 'Shield: give your hero +3 armor on summon.', effect: 'shield', rarity: 'rare', tribe: 'warrior', set: CORE_SET },
+  { id: 'soul-reaver', name: 'Soul Harvester', cost: 4, attack: 4, health: 3, text: 'Siphon: deal 2 to enemy hero, heal self for 2.', effect: 'siphon', rarity: 'rare', tribe: 'undead', set: CORE_SET },
+  { id: 'crystal-golem', name: 'Geode Colossus', cost: 5, attack: 3, health: 8, text: 'Guard: must be attacked first. Grown in a place with no sky.', effect: 'guard', rarity: 'rare', tribe: 'elemental', set: CORE_SET },
+  { id: 'runebound-oracle', name: 'Hollow Oracle', cost: 3, attack: 1, health: 4, text: 'Draw 2 cards on summon. The hollow speaks of futures.', effect: 'draw', rarity: 'rare', tribe: 'arcane', set: CORE_SET },
+  { id: 'frost-weaver', name: 'Rime Weaver', cost: 3, attack: 2, health: 3, text: 'Frostbite: freeze an enemy unit (exhausted next turn).', effect: 'frostbite', rarity: 'rare', tribe: 'elemental', set: CORE_SET },
+  { id: 'crimson-berserker', name: 'Blood-Maddened Zealot', cost: 4, attack: 5, health: 3, text: 'Enrage: gains +2 attack when damaged.', effect: 'enrage', rarity: 'rare', tribe: 'warrior', set: CORE_SET },
+  { id: 'ghost-knight', name: 'Shade Knight', cost: 3, attack: 3, health: 3, text: 'Deathrattle: deal 2 damage to the enemy hero when destroyed.', effect: 'deathrattle', rarity: 'rare', tribe: 'undead', set: CORE_SET },
+  { id: 'war-mammoth', name: 'Chitinous Behemoth', cost: 5, attack: 5, health: 5, text: 'Overwhelm: excess damage crashes into the enemy hero.', effect: 'overwhelm', rarity: 'rare', tribe: 'beast', set: CORE_SET },
+  { id: 'thunder-hawk', name: 'Storm Carrion', cost: 3, attack: 4, health: 2, text: 'Charge and Cleave: rakes every enemy unit as it lands.', effect: 'cleave', rarity: 'rare', tribe: 'beast', set: CORE_SET },
+  { id: 'hex-spider', name: 'Weaver of Ill Omen', cost: 2, attack: 2, health: 3, text: 'Poison: deal 1 to all enemy units on summon.', effect: 'poison', rarity: 'rare', tribe: 'beast', set: CORE_SET },
+  { id: 'iron-clad', name: 'Iron-Clad Devotee', cost: 5, attack: 4, health: 6, text: 'Guard: must be attacked first. Shield: +2 armor.', effect: 'guard', rarity: 'rare', tribe: 'mech', set: CORE_SET },
+  { id: 'shadow-dancer', name: 'Umbral Dancer', cost: 4, attack: 4, health: 3, text: 'Lifesteal: heal your hero for damage dealt.', effect: 'lifesteal', rarity: 'rare', tribe: 'undead', set: CORE_SET },
+  { id: 'arcane-artificer', name: 'Occult Artificer', cost: 3, attack: 2, health: 4, text: 'Summon: conjure a 1/1 Wisp on summon.', effect: 'summon', rarity: 'rare', tribe: 'arcane', set: CORE_SET },
+  { id: 'vine-lasher', name: 'Vine Horror', cost: 4, attack: 3, health: 4, text: 'Poison: deal 2 to all enemy units on summon.', effect: 'poison', rarity: 'rare', tribe: 'nature', set: CORE_SET },
+  { id: 'storm-shaman', name: 'Tempest Cultist', cost: 5, attack: 3, health: 5, text: 'Blast: deal 3 to the opposing hero.', effect: 'blast', rarity: 'rare', tribe: 'elemental', set: CORE_SET },
+  { id: 'bone-collector', name: 'Ossuary Collector', cost: 4, attack: 3, health: 4, text: 'Drain: steal 2 Momentum from the enemy on summon.', effect: 'drain', rarity: 'rare', tribe: 'undead', set: CORE_SET },
+  { id: 'lava-hound', name: 'Magma Hound', cost: 5, attack: 4, health: 5, text: 'Deathrattle: deal 3 damage to all enemy units when destroyed.', effect: 'deathrattle', rarity: 'rare', tribe: 'elemental', set: CORE_SET },
+  { id: 'bronze-drake', name: 'Brazen Wyrm', cost: 4, attack: 4, health: 4, text: 'Draw a card on summon.', effect: 'draw', rarity: 'rare', tribe: 'dragon', set: CORE_SET },
 
   // ═══════════════════════════════════════════════════════════════════
   // EPIC (14 cards) — Powerful horrors, build-around entities
   // ═══════════════════════════════════════════════════════════════════
-  { id: 'nether-witch', name: 'Void Witch', cost: 5, attack: 4, health: 5, icon: '🌀', text: 'Blast: deal 2 to the opposing hero. Draw a card.', effect: 'blast', rarity: 'epic', tribe: 'arcane', set: CORE_SET },
-  { id: 'sunforged-giant', name: 'Hollow-Sun Giant', cost: 6, attack: 6, health: 7, icon: '☀️', text: 'A vast finisher that eclipses the board.', rarity: 'epic', tribe: 'elemental', set: CORE_SET },
-  { id: 'abyssal-tyrant', name: 'Deep Tyrant', cost: 6, attack: 5, health: 6, icon: '🦑', text: 'Silence: strip effects from enemy units. Blast: deal 2.', effect: 'silence', rarity: 'epic', tribe: 'demon', set: CORE_SET },
-  { id: 'phoenix-ascendant', name: 'Pyre Revenant', cost: 6, attack: 5, health: 5, icon: '🪶', text: 'Charge. Deathrattle: deal 3 to enemy hero on death.', effect: 'charge', rarity: 'epic', tribe: 'elemental', set: CORE_SET },
-  { id: 'glacial-colossus', name: 'Rimebound Colossus', cost: 7, attack: 4, health: 10, icon: '🏔️', text: 'Guard. Frostbite: freeze all enemy units on summon.', effect: 'frostbite', rarity: 'epic', tribe: 'elemental', set: CORE_SET },
-  { id: 'blood-queen', name: 'Crimson Matron', cost: 6, attack: 5, health: 5, icon: '🧛', text: 'Lifesteal. Siphon: deal 3 to enemy hero, heal for 3.', effect: 'siphon', rarity: 'epic', tribe: 'undead', set: CORE_SET },
-  { id: 'iron-juggernaut', name: 'Iron Juggernaut', cost: 7, attack: 7, health: 7, icon: '🦾', text: 'Overwhelm: excess damage hits the enemy hero.', effect: 'overwhelm', rarity: 'epic', tribe: 'mech', set: CORE_SET },
-  { id: 'ancient-hydra', name: 'Many-Mawed Horror', cost: 6, attack: 4, health: 6, icon: '🐙', text: 'Cleave: lashes every lane. Fury.', effect: 'cleave', rarity: 'epic', tribe: 'beast', set: CORE_SET },
-  { id: 'void-empress', name: 'Starless Queen', cost: 6, attack: 4, health: 5, icon: '🌌', text: 'Empower: all friendly units gain +2 attack on summon.', effect: 'empower', rarity: 'epic', tribe: 'demon', set: CORE_SET },
-  { id: 'storm-titan', name: 'Storm Herald', cost: 7, attack: 6, health: 6, icon: '⛈️', text: 'Blast: deal 3 to enemy hero. Draw a card.', effect: 'blast', rarity: 'epic', tribe: 'elemental', set: CORE_SET },
-  { id: 'necro-sage', name: 'Charnel Sage', cost: 5, attack: 3, health: 5, icon: '☠️', text: 'Summon: fill empty lanes with 2/2 Ghoul tokens.', effect: 'summon', rarity: 'epic', tribe: 'undead', set: CORE_SET },
-  { id: 'druid-elder', name: 'Verdant Elder', cost: 5, attack: 3, health: 6, icon: '🌿', text: 'Heal 4 to hero. Bolster all friendly units +1 health.', effect: 'heal', rarity: 'epic', tribe: 'nature', set: CORE_SET },
-  { id: 'shadow-assassin', name: 'Whispering Assassin', cost: 5, attack: 5, health: 3, icon: '🗡️', text: 'Charge. Lifesteal: heal for damage dealt.', effect: 'charge', rarity: 'epic', tribe: 'undead', set: CORE_SET },
-  { id: 'arcane-golem', name: 'Runic Husk', cost: 6, attack: 5, health: 5, icon: '🔮', text: 'Rally: gain 3 Momentum on summon. Draw 1.', effect: 'rally', rarity: 'epic', tribe: 'arcane', set: CORE_SET },
+  { id: 'nether-witch', name: 'Void Witch', cost: 5, attack: 4, health: 5, text: 'Blast: deal 2 to the opposing hero. Draw a card.', effect: 'blast', rarity: 'epic', tribe: 'arcane', set: CORE_SET },
+  { id: 'sunforged-giant', name: 'Hollow-Sun Giant', cost: 6, attack: 6, health: 7, text: 'A vast finisher that eclipses the board.', rarity: 'epic', tribe: 'elemental', set: CORE_SET },
+  { id: 'abyssal-tyrant', name: 'Deep Tyrant', cost: 6, attack: 5, health: 6, text: 'Silence: strip effects from enemy units. Blast: deal 2.', effect: 'silence', rarity: 'epic', tribe: 'demon', set: CORE_SET },
+  { id: 'phoenix-ascendant', name: 'Pyre Revenant', cost: 6, attack: 5, health: 5, text: 'Charge. Deathrattle: deal 3 to enemy hero on death.', effect: 'charge', rarity: 'epic', tribe: 'elemental', set: CORE_SET },
+  { id: 'glacial-colossus', name: 'Rimebound Colossus', cost: 7, attack: 4, health: 10, text: 'Guard. Frostbite: freeze all enemy units on summon.', effect: 'frostbite', rarity: 'epic', tribe: 'elemental', set: CORE_SET },
+  { id: 'blood-queen', name: 'Crimson Matron', cost: 6, attack: 5, health: 5, text: 'Lifesteal. Siphon: deal 3 to enemy hero, heal for 3.', effect: 'siphon', rarity: 'epic', tribe: 'undead', set: CORE_SET },
+  { id: 'iron-juggernaut', name: 'Iron Juggernaut', cost: 7, attack: 7, health: 7, text: 'Overwhelm: excess damage hits the enemy hero.', effect: 'overwhelm', rarity: 'epic', tribe: 'mech', set: CORE_SET },
+  { id: 'ancient-hydra', name: 'Many-Mawed Horror', cost: 6, attack: 4, health: 6, text: 'Cleave: lashes every lane. Fury.', effect: 'cleave', rarity: 'epic', tribe: 'beast', set: CORE_SET },
+  { id: 'void-empress', name: 'Starless Queen', cost: 6, attack: 4, health: 5, text: 'Empower: all friendly units gain +2 attack on summon.', effect: 'empower', rarity: 'epic', tribe: 'demon', set: CORE_SET },
+  { id: 'storm-titan', name: 'Storm Herald', cost: 7, attack: 6, health: 6, text: 'Blast: deal 3 to enemy hero. Draw a card.', effect: 'blast', rarity: 'epic', tribe: 'elemental', set: CORE_SET },
+  { id: 'necro-sage', name: 'Charnel Sage', cost: 5, attack: 3, health: 5, text: 'Summon: fill empty lanes with 2/2 Ghoul tokens.', effect: 'summon', rarity: 'epic', tribe: 'undead', set: CORE_SET },
+  { id: 'druid-elder', name: 'Verdant Elder', cost: 5, attack: 3, health: 6, text: 'Heal 4 to hero. Bolster all friendly units +1 health.', effect: 'heal', rarity: 'epic', tribe: 'nature', set: CORE_SET },
+  { id: 'shadow-assassin', name: 'Whispering Assassin', cost: 5, attack: 5, health: 3, text: 'Charge. Lifesteal: heal for damage dealt.', effect: 'charge', rarity: 'epic', tribe: 'undead', set: CORE_SET },
+  { id: 'arcane-golem', name: 'Runic Husk', cost: 6, attack: 5, health: 5, text: 'Rally: gain 3 Momentum on summon. Draw 1.', effect: 'rally', rarity: 'epic', tribe: 'arcane', set: CORE_SET },
 
   // ═══════════════════════════════════════════════════════════════════
   // LEGENDARY (6 cards) — Named horrors, one-per-deck, world-ending
   // ═══════════════════════════════════════════════════════════════════
-  { id: 'drakarion-the-eternal', name: 'Drakarion, the Fathomless', cost: 8, attack: 8, health: 8, icon: '🐉', text: 'Charge. Cleave all lanes. The leviathan wakes.', effect: 'charge', rarity: 'legendary', tribe: 'dragon', set: CORE_SET },
-  { id: 'zephyr-world-breaker', name: 'Zephyr, the Whispering Gale', cost: 9, attack: 7, health: 10, icon: '🌪️', text: 'Guard. Frostbite all enemies. Blast: 4 to hero.', effect: 'frostbite', rarity: 'legendary', tribe: 'elemental', set: CORE_SET },
-  { id: 'velara-the-lifebinder', name: 'Velara, the Mycelial', cost: 8, attack: 5, health: 9, icon: '🍄', text: 'Heal hero to full. Empower: all units gain +2 attack.', effect: 'heal', rarity: 'legendary', tribe: 'nature', set: CORE_SET },
-  { id: 'malachar-the-undying', name: 'Malachar, the Carrion King', cost: 8, attack: 6, health: 7, icon: '💀', text: 'Silence all enemies. Summon a 3/3 Wraith in each empty lane.', effect: 'silence', rarity: 'legendary', tribe: 'undead', set: CORE_SET },
-  { id: 'kronos-the-forgemaster', name: 'Kronos, the Ironclad Heretic', cost: 9, attack: 8, health: 8, icon: '⚒️', text: 'Empower: all units gain +3 attack. Shield hero: +5 armor.', effect: 'empower', rarity: 'legendary', tribe: 'mech', set: CORE_SET },
-  { id: 'aethon-runekeeper', name: 'Aethon, the Starless Oracle', cost: 7, attack: 5, health: 6, icon: '📜', text: 'Draw 3 cards. Rally: gain 3 Momentum. The oracle speaks of ruin.', effect: 'draw', rarity: 'legendary', tribe: 'arcane', set: CORE_SET },
+  { id: 'drakarion-the-eternal', name: 'Drakarion, the Fathomless', cost: 8, attack: 8, health: 8, text: 'Charge. Cleave all lanes. The leviathan wakes.', effect: 'charge', rarity: 'legendary', tribe: 'dragon', set: CORE_SET },
+  { id: 'zephyr-world-breaker', name: 'Zephyr, the Whispering Gale', cost: 9, attack: 7, health: 10, text: 'Guard. Frostbite all enemies. Blast: 4 to hero.', effect: 'frostbite', rarity: 'legendary', tribe: 'elemental', set: CORE_SET },
+  { id: 'velara-the-lifebinder', name: 'Velara, the Mycelial', cost: 8, attack: 5, health: 9, text: 'Heal hero to full. Empower: all units gain +2 attack.', effect: 'heal', rarity: 'legendary', tribe: 'nature', set: CORE_SET },
+  { id: 'malachar-the-undying', name: 'Malachar, the Carrion King', cost: 8, attack: 6, health: 7, text: 'Silence all enemies. Summon a 3/3 Wraith in each empty lane.', effect: 'silence', rarity: 'legendary', tribe: 'undead', set: CORE_SET },
+  { id: 'kronos-the-forgemaster', name: 'Kronos, the Ironclad Heretic', cost: 9, attack: 8, health: 8, text: 'Empower: all units gain +3 attack. Shield hero: +5 armor.', effect: 'empower', rarity: 'legendary', tribe: 'mech', set: CORE_SET },
+  { id: 'aethon-runekeeper', name: 'Aethon, the Starless Oracle', cost: 7, attack: 5, health: 6, text: 'Draw 3 cards. Rally: gain 3 Momentum. The oracle speaks of ruin.', effect: 'draw', rarity: 'legendary', tribe: 'arcane', set: CORE_SET },
 ]
 
 export const DEFAULT_DECK_CONFIG: DeckConfig = {
@@ -491,7 +490,6 @@ type DeathrattleSpec =
 type SummonSpec = {
   id: string
   name: string
-  icon: string
   attack: number
   health: number
 }
@@ -533,7 +531,7 @@ const DEFAULT_EFFECT_AMOUNT: Partial<Record<CardEffect, number>> = {
 const DEFAULT_TOKEN: SummonSpec = {
   id: 'token-spark',
   name: 'Spark',
-  icon: '⚡',
+ 
   attack: 1,
   health: 1,
 }
@@ -551,7 +549,7 @@ const CARD_PARAMS: Record<string, CardParams> = {
   'storm-shaman':        { amount: 3 }, // Blast 3
   'bone-collector':      { amount: 2 }, // Drain 2
   'iron-clad':           { extras: [{ kind: 'shield', amount: 2 }] }, // Guard + Shield 2
-  'arcane-artificer':    { summonOne: { id: 'token-wisp', name: 'Wisp', icon: '✨', attack: 1, health: 1 } },
+  'arcane-artificer':    { summonOne: { id: 'token-wisp', name: 'Wisp', attack: 1, health: 1 } },
   'ghost-knight':        { deathrattle: { kind: 'damage-hero', amount: 2 } },
   'lava-hound':          { deathrattle: { kind: 'damage-all-enemy-units', amount: 3 } },
   'thunder-hawk':        { grantsKeyword: 'charge' }, // Primary: Cleave; grants Charge — card text: "Charge and Cleave"
@@ -565,7 +563,7 @@ const CARD_PARAMS: Record<string, CardParams> = {
   'blood-queen':         { amount: 3, grantsKeyword: 'lifesteal' },           // Siphon 3 + Lifesteal
   'ancient-hydra':       { extras: [{ kind: 'cleave' }], grantsKeyword: 'fury' },
   'void-empress':        { amount: 2 },                                       // Empower 2
-  'necro-sage':          { summonAll: { id: 'token-ghoul', name: 'Ghoul', icon: '💀', attack: 2, health: 2 } },
+  'necro-sage':          { summonAll: { id: 'token-ghoul', name: 'Ghoul', attack: 2, health: 2 } },
   'druid-elder':         { amount: 4, bolsterAll: true },                     // Heal 4 + Bolster all
   'shadow-assassin':     { grantsKeyword: 'lifesteal' },                      // Charge + Lifesteal
   'arcane-golem':        { amount: 3, extras: [{ kind: 'draw' }] },           // Rally 3 + Draw
@@ -574,7 +572,7 @@ const CARD_PARAMS: Record<string, CardParams> = {
   'drakarion-the-eternal':   { extras: [{ kind: 'cleave' }] },                                             // Charge + Cleave
   'zephyr-world-breaker':    { freezeAll: true, grantsKeyword: 'guard', extras: [{ kind: 'blast', amount: 4 }] },
   'velara-the-lifebinder':   { healToFull: true, extras: [{ kind: 'empower', amount: 2 }] },
-  'malachar-the-undying':    { summonAll: { id: 'token-wraith', name: 'Wraith', icon: '👻', attack: 3, health: 3 }, extras: [{ kind: 'summon' }] }, // Silence + Summon-all
+  'malachar-the-undying':    { summonAll: { id: 'token-wraith', name: 'Wraith', attack: 3, health: 3 }, extras: [{ kind: 'summon' }] }, // Silence + Summon-all
   'kronos-the-forgemaster':  { amount: 3, extras: [{ kind: 'shield', amount: 5 }] },                       // Empower 3 + Shield 5
   'aethon-runekeeper':       { amount: 3, extras: [{ kind: 'rally', amount: 3 }] },                        // Draw 3 + Rally 3
 }
@@ -1061,7 +1059,7 @@ export function playCard(base: GameState, side: BattleSide, handIndex: number, l
     board: nextBoard,
   }
   let nextRival = rival
-  let nextLog = pushLog(base.log, `${actor.name} played ${card.icon} ${card.name}.`)
+  let nextLog = pushLog(base.log, `${actor.name} played ${card.name}.`)
 
   // Board-wide damage to the rival, with deathrattles resolved straight away
   // so a later keyword on the same card sees the board as it really is.
@@ -1230,7 +1228,6 @@ export function playCard(base: GameState, side: BattleSide, handIndex: number, l
                     ...card,
                     id: summonAll.id,
                     name: summonAll.name,
-                    icon: summonAll.icon,
                     cost: 0,
                     attack: summonAll.attack,
                     health: summonAll.health,
@@ -1253,7 +1250,6 @@ export function playCard(base: GameState, side: BattleSide, handIndex: number, l
                   ...card,
                   id: summonOne.id,
                   name: summonOne.name,
-                  icon: summonOne.icon,
                   cost: 0,
                   attack: summonOne.attack,
                   health: summonOne.health,

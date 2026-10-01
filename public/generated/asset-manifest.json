@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-02T17:11:26.339Z",
+  "generatedAt": "2026-10-01T01:44:09.104Z",
   "provider": "local-svg",
   "apiReady": false,
   "commercialSafe": true,
@@ -549,6 +549,108 @@
       "id": "particle-frost.svg",
       "path": "/generated/ui/particle-frost.svg",
       "type": "ui-particle",
+      "source": "local-generated"
+    },
+    {
+      "id": "tribe-beast.svg",
+      "path": "/generated/ui/tribe-beast.svg",
+      "type": "ui-glyph",
+      "source": "local-generated"
+    },
+    {
+      "id": "tribe-elemental.svg",
+      "path": "/generated/ui/tribe-elemental.svg",
+      "type": "ui-glyph",
+      "source": "local-generated"
+    },
+    {
+      "id": "tribe-undead.svg",
+      "path": "/generated/ui/tribe-undead.svg",
+      "type": "ui-glyph",
+      "source": "local-generated"
+    },
+    {
+      "id": "tribe-dragon.svg",
+      "path": "/generated/ui/tribe-dragon.svg",
+      "type": "ui-glyph",
+      "source": "local-generated"
+    },
+    {
+      "id": "tribe-mech.svg",
+      "path": "/generated/ui/tribe-mech.svg",
+      "type": "ui-glyph",
+      "source": "local-generated"
+    },
+    {
+      "id": "tribe-arcane.svg",
+      "path": "/generated/ui/tribe-arcane.svg",
+      "type": "ui-glyph",
+      "source": "local-generated"
+    },
+    {
+      "id": "tribe-warrior.svg",
+      "path": "/generated/ui/tribe-warrior.svg",
+      "type": "ui-glyph",
+      "source": "local-generated"
+    },
+    {
+      "id": "tribe-nature.svg",
+      "path": "/generated/ui/tribe-nature.svg",
+      "type": "ui-glyph",
+      "source": "local-generated"
+    },
+    {
+      "id": "tribe-demon.svg",
+      "path": "/generated/ui/tribe-demon.svg",
+      "type": "ui-glyph",
+      "source": "local-generated"
+    },
+    {
+      "id": "tribe-none.svg",
+      "path": "/generated/ui/tribe-none.svg",
+      "type": "ui-glyph",
+      "source": "local-generated"
+    },
+    {
+      "id": "glyph-close.svg",
+      "path": "/generated/ui/glyph-close.svg",
+      "type": "ui-glyph",
+      "source": "local-generated"
+    },
+    {
+      "id": "glyph-back.svg",
+      "path": "/generated/ui/glyph-back.svg",
+      "type": "ui-glyph",
+      "source": "local-generated"
+    },
+    {
+      "id": "glyph-forward.svg",
+      "path": "/generated/ui/glyph-forward.svg",
+      "type": "ui-glyph",
+      "source": "local-generated"
+    },
+    {
+      "id": "glyph-chevron-right.svg",
+      "path": "/generated/ui/glyph-chevron-right.svg",
+      "type": "ui-glyph",
+      "source": "local-generated"
+    },
+    {
+      "id": "glyph-chevron-down.svg",
+      "path": "/generated/ui/glyph-chevron-down.svg",
+      "type": "ui-glyph",
+      "source": "local-generated"
+    },
+    {
+      "id": "glyph-active-mark.svg",
+      "path": "/generated/ui/glyph-active-mark.svg",
+      "type": "ui-glyph",
+      "source": "local-generated"
+    },
+    {
+      "id": "glyph-card.svg",
+      "path": "/generated/ui/glyph-card.svg",
+      "type": "ui-glyph",
       "source": "local-generated"
     },
     {

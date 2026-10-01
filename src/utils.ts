@@ -405,9 +405,8 @@ export function getCardName(cardId: string, library: Array<{ id: string; name: s
   return card ? card.name : cardId
 }
 
-export function getCardIcon(cardId: string, library: Array<{ id: string; icon: string }>): string {
-  const card = library.find((entry) => entry.id === cardId)
-  return card?.icon ?? '🃏'
+export function getCardTribe(cardId: string, library: Array<{ id: string; tribe: string }>): string {
+  return library.find((entry) => entry.id === cardId)?.tribe ?? 'none'
 }
 
 /**
