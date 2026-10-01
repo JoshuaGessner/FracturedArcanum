@@ -153,6 +153,9 @@ What it does:
 
 - creates a timestamped hard backup before making changes
 - pauses the managed service during the data backup by default so SQLite is not copied mid-write
+- finds the data directory the server actually uses — `DATA_DIR` from your shell, the systemd unit, the PM2 process, or `.env`, falling back to `./data` — and backs it up even when it lives outside the repository
+- takes a consistent, integrity-checked copy of the SQLite database with SQLite's online backup API, and stops before touching any code if that copy fails
+- warns loudly when it cannot find a database at all, which on a live server means `DATA_DIR` is set somewhere it cannot read (rerun with `DATA_DIR=/path/to/data`)
 - captures a full repository snapshot for rollback
 - preserves Docker volume data and local `data/` contents
 - preserves your `.env` file
@@ -185,7 +188,11 @@ bash scripts/update.sh --mode docker
 
 If the updater stops with `D-Bus connection terminated while waiting for jobs`, the restart almost certainly worked — an interactive polkit password prompt sat inside a D-Bus call that times out after 25 seconds. See [docs/deployment-permissions.md](docs/deployment-permissions.md) to grant the deploy user passwordless control of the unit and remove the prompt.
 
-Backups are written to `backups/update-YYYYMMDD-HHMMSS/` and now include a full repository snapshot, data backup, Docker-volume backup when applicable, metadata showing whether the service was quiesced, and a restore note.
+Backups are written to `backups/update-YYYYMMDD-HHMMSS/` and include a full repository snapshot, the `data/` archive, an `external-data.tar.gz` when `DATA_DIR` is outside the repository, the integrity-checked `fractured-arcanum.db` snapshot, the Docker-volume backup when applicable, metadata recording the data directory and whether the service was quiesced, and a restore note.
+
+Schema changes are applied by the server itself on start (`openDatabase()` in `server/db/connection.js`), and only ever additively — tables are created if missing, columns added if missing, backfills fill blanks only. `server/db-migration-safety.test.js` runs that against a copy of a real database, so an update never needs a manual migration step and never drops player data.
+
+A restore never deletes live data: the current data directory (and `.env`) is renamed beside itself with a `.pre-restore-<timestamp>` suffix before the backup is unpacked, so a mistaken restore is undone with a single `mv`. Restoring code leaves `node_modules/`, `dist/` and the data directory alone.
 
 To restore the latest backup:
 

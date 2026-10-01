@@ -60,13 +60,18 @@ live in `src/components/BattleLaunchSheet.tsx`, opened from Home's battle CTA.
 
 | Component | Lines | Purpose |
 |------|------|
-| `src/components/AssetBadge.tsx` | Shared effect, rarity, rank, stat, and pack visuals |
+| `src/components/AssetBadge.tsx` | Shared effect, rarity, rank, stat, and pack visuals, plus the mask glyphs `Glyph`, `InterfaceGlyph` and `TribeSigil` that replaced every emoji |
+| `src/components/CardFace.tsx` | The one card face used by hand, board, collection, inspect and pack reveals |
+| `src/components/BattleHeroAnchor.tsx` | Hero plaque: crest, name, momentum orb, mana crystals, health medallion |
+| `src/components/HomeStatusRibbon.tsx` | Home identity, rating meter, and Record / Deck / Vault tiles |
+| `src/components/HomeQuestBoard.tsx` | Home quest board with the featured contract |
+| `src/components/QuestLedgerPanel.tsx` | Quest ledger subview with engraved quest glyphs |
 | `src/components/BattleIntroOverlay.tsx` | Cinematic battle-entry overlay |
 | `src/components/RewardCinemaOverlay.tsx` | Unified reward presentation across battle, daily, pack, and rank-up moments |
 | `src/components/PackCeremonyOverlay.tsx` | Full-screen pack opening ceremony |
 | `src/components/OnboardingTour.tsx` | First-launch and replayable spotlight tour |
 | `src/components/TopBar.tsx` | Shell header and device actions |
-| `src/components/NavBar.tsx` | Bottom 6-tab navigation |
+| `src/components/NavBar.tsx` | Bottom navigation: Home, Cards, Shop, Social |
 | `src/components/CardInspectModal.tsx` | Long-press card inspect modal |
 | `src/components/ConfirmModal.tsx` | Shared confirmation surface |
 | `src/components/ToastStack.tsx` | Toast renderer |

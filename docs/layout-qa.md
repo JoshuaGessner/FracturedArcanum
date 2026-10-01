@@ -213,6 +213,13 @@ shared with hand testing. The harness treats it as read-mostly:
 Point any tool at an already-running app with `QA_URL=http://…` to skip the
 boot cost during a tight loop.
 
+**A fresh checkout or a reset `data/` needs first-launch setup once.** Until
+`setupComplete` is true in `data/server-config.json` the server serves the
+setup screen in place of the app, signed in or not. The harness checks
+`/api/setup/status` before signing in and stops with that explanation; before
+it did, every state simply timed out "failing to open". It also needs the
+`uxqa` account to exist in the local database.
+
 ## Rule attribution
 
 `scripts/lib/cssAttribution.mjs` turns a CDP `CSS.getMatchedStylesForNode`

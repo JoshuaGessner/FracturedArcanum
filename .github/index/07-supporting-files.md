@@ -64,7 +64,23 @@ Covers:
 - card border and cosmetic ownership
 - legacy startup and migration regressions
 
-> Latest verified suite status: 54 tests passing.
+### `server/no-emoji.test.js`
+Fails if a pictographic character appears in any card or in shipped source
+under `src/` or `server/` (tests excluded). The game draws its own glyphs.
+
+### `server/ui-assets.test.js`
+Fails if any path registered in `UI_ASSETS` is missing from `public/`, or any
+keyword in `EFFECT_LABELS` or the card library lacks a seal.
+
+### `server/sqlite-snapshot.test.js`
+Covers the updater's database snapshot: a live WAL database copies into one
+self-contained, integrity-checked file, and a missing database exits non-zero.
+
+### `server/db-migration-safety.test.js`
+Runs `openDatabase()` against a copy of a real database to prove startup
+migrations stay re-runnable and additive.
+
+> Latest verified suite status: 46 files, 539 tests passing.
 
 ## Build configuration
 
@@ -103,6 +119,11 @@ Key scripts include:
 - writes screenshots and `responsive-layout-report.json` to `.layout-qa/`
 - fails on horizontal document overflow, clipped visible content, or offscreen interactive controls; touch-target issues are reported as warnings
 
+All four QA tools share `scripts/lib/qa-app.mjs`. If the server has not
+finished first-launch setup it serves the setup screen instead of the app;
+the harness checks `/api/setup/status` and stops with that explanation rather
+than timing out on every state.
+
 ## Deployment
 
 ### `Dockerfile`
@@ -117,6 +138,25 @@ Key scripts include:
 
 ### `render.yaml`
 - Render deployment configuration for remote hosting
+
+### `scripts/update.sh` (`npm run update:server`)
+- resolves the data directory the server really uses (`DATA_DIR` in the shell,
+  the systemd unit, the PM2 process, `.env`, then `./data`) and logs it
+- pauses the managed service, then writes `backups/update-<timestamp>/`: repo
+  snapshot, `local-data.tar.gz`, `external-data.tar.gz` for a `DATA_DIR`
+  outside the repo, the Docker volume, `.env`, and `metadata.txt`
+- copies the database with `scripts/sqlite-snapshot.cjs` (SQLite online
+  backup, integrity-checked, single file) and aborts before any code change if
+  that fails
+- fast-forward-only pull, `npm ci` + build or `docker compose build`, restart,
+  health check; on failure restarts the paused service and names the backup
+
+### `scripts/restore-backup.sh` (`npm run restore:server`)
+- moves the current data directory and `.env` aside as `*.pre-restore-<ts>`
+  rather than deleting them
+- restores `external-data.tar.gz` to the `data_dir` recorded in metadata, then
+  installs the integrity-checked database snapshot
+- restoring code never touches `node_modules/`, `dist/` or the data directory
 
 ## Runtime data files
 

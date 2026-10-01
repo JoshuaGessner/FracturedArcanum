@@ -70,7 +70,7 @@ Every new card must pass the balance audit checklist before merging.
    the same pass.
 7. **Refactor before extending crowded files.** `src/App.tsx` and
    `server/server.js` are the remaining hotspots — find the seam instead of
-   adding another long branch. `src/App.css` (24 modules under `src/styles/`)
+   adding another long branch. `src/App.css` (26 modules under `src/styles/`)
    and `server/db.js` (nine modules under `server/db/`) are already split;
    extend those in the module that owns the surface.
 
@@ -207,8 +207,22 @@ Read these before touching layout CSS — each cost real debugging time:
 
 ### Assets and audio
 - New visual assets go through `scripts/generate-brand-assets.mjs` and are
-  registered in `public/generated/asset-manifest.json`.
+  registered in `public/generated/asset-manifest.json`. Draw them in the
+  module that owns their family: `scripts/lib/glyph-art.mjs` (mask glyphs,
+  tribe sigils), `insignia-art.mjs` (keyword seals, league shields, shard,
+  result crests), `scene-art.mjs` (backgrounds, board), `relic-art.mjs`
+  (packs, card back), `card-art.mjs` (card illustrations).
 - All generated assets stay original and commercial-safe SVG.
+- **No emoji, anywhere.** Not in cards, labels, buttons or logs —
+  `server/no-emoji.test.js` enforces it. Use `InterfaceGlyph` / `TribeSigil`
+  from `AssetBadge.tsx`, and add a glyph to `glyph-art.mjs` if one is missing.
+  No text inside an SVG that depends on an installed font; cut letters as
+  strokes.
+- Register every asset in `UI_ASSETS`; `server/ui-assets.test.js` fails if a
+  registered file is missing or a keyword has no seal.
+- Every card face is `src/components/CardFace.tsx`. Do not build a second one.
+- Colours come from the palette tokens in `src/styles/tokens.css` (umber,
+  bone, brass, ember, verdigris, violet, blood); see `.github/index/06-styles.md`.
 - Repeated visual surfaces resolve through the semantic registry in
   `src/constants.ts` and shared primitives like `src/components/AssetBadge.tsx`.
 - New sounds stay synthesized in `src/audio.ts` via Web Audio — no audio files.
@@ -234,7 +248,7 @@ Read these before touching layout CSS — each cost real debugging time:
 | `src/constants.ts` | Static UI constants, theme offers, labels, semantic asset registry | Data only, no functions |
 | `src/utils.ts` | Pure helpers (asset lookup, transitions, completion, severity, fan layout) | No React, no app state |
 | `src/App.css` | Ordered index of `src/styles/*.css` — imports only | **Import order is load-bearing**; add a module where its cascade requires |
-| `src/styles/` | 24 stylesheet modules, each a contiguous slice of the original single file | Edit the module that owns the surface; never reorder the index |
+| `src/styles/` | 26 stylesheet modules: 24 slices of the original single file, then `card-face.css` and `card-frames.css` | Edit the module that owns the surface; never reorder the index |
 | `src/audio.ts` | Web Audio synthesis | |
 | `src/ambient.ts` | Ambient scene audio/visual bed | |
 | `src/feedback.ts` | Sound + haptic pairing | |
@@ -333,6 +347,24 @@ The bottom nav has four destinations: Home, Cards, Shop, Social.
 | `npm run lint` | ESLint |
 | `npm test` | Vitest suite |
 | `npm run release:check` | Test + lint + build |
+| `npm run assets:generate` | Rebuild engine + regenerate all SVG art |
+| `npm run update:server` | Safe server update (see below) |
+| `npm run restore:server` | Restore the newest update backup |
+
+### Updating live servers
+
+`scripts/update.sh` is the only supported way to update a running server, and
+it must never lose player data. If you change it, keep these properties:
+- Back up **before** the pull: code snapshot, `data/`, an external `DATA_DIR`
+  (resolved from the shell, systemd unit, PM2 env or `.env`), `.env`, the
+  Docker volume, and an integrity-checked SQLite snapshot via
+  `scripts/sqlite-snapshot.cjs`. A failed snapshot aborts the update.
+- `git pull --ff-only`; never reset, clean or force anything in the checkout.
+- `docker compose up` without `-v`; volumes are data.
+- `scripts/restore-backup.sh` moves live data aside, never deletes it, and
+  leaves `node_modules/`, `dist/` and the data directory out of code restores.
+- Schema evolves only through additive `openDatabase()` migrations
+  (`server/db-migration-safety.test.js`), so no update needs a manual step.
 
 ### AI balance
 

@@ -1,6 +1,7 @@
 > **`src/App.css` is now an index, not a stylesheet.** It contains only
-> `@import` lines pointing at `src/styles/*.css`, split into 24 modules that are
-> contiguous slices of the original 9,550-line file.
+> `@import` lines pointing at `src/styles/*.css`: 26 modules, 24 of them
+> contiguous slices of the original 9,550-line file plus `card-face.css` and
+> `card-frames.css`, which load last.
 >
 > **The import order in `App.css` is load-bearing.** The cascade resolves by
 > source order and this project relies on it heavily — `responsive.css`
@@ -27,6 +28,47 @@ presentation layer:
 - collection, social, shop, and settings density passes
 - gamification, urgency, and celebration effects
 - responsive and reduced-motion safeguards at the end of the file
+
+## Palette and type
+
+`tokens.css` defines the palette the whole UI draws from, taken from the card
+art's own light. Use the tokens, not new literals:
+
+| Family | Tokens | Meaning |
+|------|------|------|
+| Umber | `--umber-950` … `--umber-700` | grounds and panels |
+| Bone | `--bone`, `--bone-dim` | text |
+| Brass | `--brass`, `--brass-dim` | engraved rims and hairlines |
+| Ember | `--ember`, `--ember-light`, `--ember-deep` | primary actions, gold, progress |
+| Verdigris | `--verdigris`, `--verdigris-light`, `--verdigris-deep` | mana, success |
+| Violet | `--violet`, `--violet-deep` | epic rarity, arcane accents (`--accent`) |
+| Blood | `--blood`, `--blood-light`, `--blood-deep` | health, damage, danger, the enemy |
+
+Rarity colours (`RARITY_COLORS` in `src/game.ts`): common `#a8a29a`, rare
+`#6c9bd2`, epic `#a374c8`, legendary `#e0a84e`. The generated rarity gems use
+the same values.
+
+Type: `--font-display` (Cinzel, headings, card names, primary buttons) and
+`--font-body` (Inter Variable). Both are self-hosted through `@fontsource`
+imports in `src/main.tsx`, so the CSP's `font-src 'self'` holds.
+
+Buttons come in three tiers (`buttons.css`): gilded `.primary` via the
+`--btn-primary-*` tokens, lacquer `.secondary`, and `.ghost`. Filter chips,
+difficulty chips and selected states reuse the primary tokens rather than a
+second gold.
+
+Mask glyphs (`.glyph`, `.tribe-sigil` in `primitives.css`) paint a black SVG
+through `mask: var(--glyph-src)` in `currentColor`; tint them with `color`.
+
+## The card face (`card-face.css`)
+
+`CardFace` renders two sibling layers around the host's `.card-frame`:
+`.cf` (art and name plate, below the frame at z 4) and `.cf-gems` (cost,
+seal, attack diamond, health medallion, rarity gem, hairline — above it at
+z 5), so a cosmetic frame never tints the numbers. Each layer is a size
+container and everything inside is in `cqw`/`cqh`, so one set of proportions
+serves a 68px phone-hand card and the full inspect view. Below 84px wide the
+name is hidden.
 
 ## Major section map
 

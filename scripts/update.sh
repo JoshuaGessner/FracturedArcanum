@@ -27,6 +27,11 @@ RESTART_SETTLE_SECONDS="${RESTART_SETTLE_SECONDS:-45}"
 BACKUP_ROOT="${BACKUP_ROOT:-$REPO_ROOT/backups}"
 CURRENT_BACKUP_DIR=""
 COMPOSE_CMD=()
+# Where the running server keeps its database and JSON state. Resolved by
+# resolve_data_dir; DATA_DIR in the updater's own environment wins.
+DATA_DIR_RESOLVED=""
+DATA_DIR_SOURCE=""
+DB_FILE_NAME="fractured-arcanum.db"
 
 usage() {
   cat <<'EOF'
@@ -51,7 +56,15 @@ Options:
 Environment overrides:
   UPDATE_MODE, UPDATE_BRANCH, COMPOSE_SERVICE, DOCKER_VOLUME_NAME,
   SYSTEM_SERVICE_NAME, BACKUP_ROOT, PORT, HEALTH_URL,
-  HEALTH_WAIT_SECONDS, HEALTH_POLL_INTERVAL, QUIESCE_BACKUP
+  HEALTH_WAIT_SECONDS, HEALTH_POLL_INTERVAL, QUIESCE_BACKUP, DATA_DIR
+
+Data directory (node mode):
+  The server reads DATA_DIR from its own service environment, which this
+  script cannot see directly. It looks, in order, at DATA_DIR in this shell,
+  the systemd unit's Environment, the PM2 process env, and .env, then falls
+  back to ./data. Every candidate is backed up even when it lives outside the
+  repository, and the database is copied with SQLite's online backup API so
+  the copy is consistent even if no service could be paused.
 
 Docker + systemd:
   When SYSTEM_SERVICE_NAME matches an active systemd unit the script will
@@ -360,6 +373,99 @@ verify_remote_branch() {
   log "origin/$BRANCH exists."
 }
 
+# The server honours DATA_DIR (server/db/connection.js resolveDataDir). A
+# deploy that sets it in the systemd unit or PM2 ecosystem file keeps every
+# account outside ./data — and an updater that only archived ./data would
+# report a successful backup of an empty directory.
+read_systemd_data_dir() {
+  command_exists systemctl || return 0
+  # A missing unit or a host without a running systemd is not an error here.
+  { systemctl show "$SYSTEM_SERVICE_NAME" -p Environment --value 2>/dev/null || true; } \
+    | tr ' ' '\n' | sed -n 's/^DATA_DIR=//p' | tail -n 1
+}
+
+read_pm2_data_dir() {
+  command_exists pm2 || return 0
+  command_exists node || return 0
+  pm2 jlist 2>/dev/null | SERVICE="$SYSTEM_SERVICE_NAME" node -e '
+    let raw = ""
+    process.stdin.on("data", (c) => { raw += c })
+    process.stdin.on("end", () => {
+      try {
+        const app = JSON.parse(raw).find((p) => p.name === process.env.SERVICE)
+        const env = app?.pm2_env ?? {}
+        process.stdout.write(String(env.DATA_DIR ?? env.env?.DATA_DIR ?? ""))
+      } catch { /* not JSON: no PM2 data dir */ }
+    })' 2>/dev/null || true
+}
+
+read_dotenv_data_dir() {
+  [[ -f "$REPO_ROOT/.env" ]] || return 0
+  { sed -n 's/^[[:space:]]*\(export[[:space:]]\{1,\}\)\{0,1\}DATA_DIR=//p' "$REPO_ROOT/.env" || true; } \
+    | tail -n 1 | sed -e 's/^["'\'']//' -e 's/["'\'']$//'
+}
+
+resolve_data_dir() {
+  local candidate=""
+  if [[ -n "${DATA_DIR:-}" ]]; then
+    candidate="$DATA_DIR"; DATA_DIR_SOURCE="DATA_DIR in this shell"
+  else
+    candidate="$(read_systemd_data_dir || true)"
+    if [[ -n "$candidate" ]]; then
+      DATA_DIR_SOURCE="systemd unit $SYSTEM_SERVICE_NAME"
+    else
+      candidate="$(read_pm2_data_dir || true)"
+      if [[ -n "$candidate" ]]; then
+        DATA_DIR_SOURCE="PM2 process $SYSTEM_SERVICE_NAME"
+      else
+        candidate="$(read_dotenv_data_dir || true)"
+        if [[ -n "$candidate" ]]; then
+          DATA_DIR_SOURCE=".env"
+        else
+          candidate="$REPO_ROOT/data"; DATA_DIR_SOURCE="default ./data"
+        fi
+      fi
+    fi
+  fi
+
+  # Relative paths resolve against the repo root, which is the working
+  # directory every supported service definition uses.
+  if [[ "$candidate" != /* ]]; then
+    candidate="$REPO_ROOT/$candidate"
+  fi
+  DATA_DIR_RESOLVED="$(cd "$candidate" 2>/dev/null && pwd -P || printf '%s' "$candidate")"
+  log "Data directory: $DATA_DIR_RESOLVED (from $DATA_DIR_SOURCE)"
+}
+
+data_dir_is_repo_data() {
+  local repo_data
+  repo_data="$(cd "$REPO_ROOT/data" 2>/dev/null && pwd -P || printf '%s' "$REPO_ROOT/data")"
+  [[ "$DATA_DIR_RESOLVED" == "$repo_data" ]]
+}
+
+# The copy of record for the database: consistent even while the server is
+# writing, and integrity-checked before the update is allowed to continue.
+snapshot_database() {
+  local db_path="$DATA_DIR_RESOLVED/$DB_FILE_NAME"
+  if [[ ! -f "$db_path" ]]; then
+    if [[ "$MODE" == "node" ]]; then
+      warn "No database found at $db_path."
+      warn "If this server already has players, its DATA_DIR is set somewhere this script cannot read."
+      warn "Stop now and rerun with DATA_DIR=/path/to/data, or continue only if this is a fresh install."
+    fi
+    return 0
+  fi
+
+  if ! command_exists node || [[ ! -d "$REPO_ROOT/node_modules/better-sqlite3" ]]; then
+    warn "Node or better-sqlite3 is unavailable; relying on the data archive alone for the database."
+    return 0
+  fi
+
+  log "Taking a consistent SQLite snapshot of $db_path..."
+  run node "$REPO_ROOT/scripts/sqlite-snapshot.cjs" "$db_path" "$CURRENT_BACKUP_DIR/$DB_FILE_NAME" \
+    || die "The database snapshot failed. Nothing has been changed; investigate before updating."
+}
+
 write_backup_metadata() {
   {
     printf 'app=%s\n' "$APP_NAME"
@@ -368,6 +474,8 @@ write_backup_metadata() {
     printf 'branch=%s\n' "${BRANCH:-unknown}"
     printf 'commit=%s\n' "$(git -C "$REPO_ROOT" rev-parse HEAD 2>/dev/null || echo unknown)"
     printf 'quiesced_service=%s\n' "$SERVICE_STOPPED_FOR_BACKUP"
+    printf 'data_dir=%s\n' "${DATA_DIR_RESOLVED:-}"
+    printf 'data_dir_source=%s\n' "${DATA_DIR_SOURCE:-}"
     printf 'restore_command=%s\n' "bash scripts/restore-backup.sh --backup-dir $CURRENT_BACKUP_DIR"
   } > "$CURRENT_BACKUP_DIR/metadata.txt"
 }
@@ -407,6 +515,17 @@ backup_local_data() {
     run tar -czf "$CURRENT_BACKUP_DIR/local-data.tar.gz" -C "$REPO_ROOT" data
   else
     warn "No local data directory found; skipping local data backup."
+  fi
+
+  # A DATA_DIR outside the repository gets its own archive, restored to the
+  # path recorded as data_dir in metadata.txt.
+  if [[ -n "$DATA_DIR_RESOLVED" ]] && ! data_dir_is_repo_data; then
+    if [[ -d "$DATA_DIR_RESOLVED" ]]; then
+      run tar -czf "$CURRENT_BACKUP_DIR/external-data.tar.gz" \
+        -C "$(dirname "$DATA_DIR_RESOLVED")" "$(basename "$DATA_DIR_RESOLVED")"
+    else
+      warn "DATA_DIR $DATA_DIR_RESOLVED does not exist; nothing to archive there."
+    fi
   fi
 
   if [[ -f "$REPO_ROOT/.env" ]]; then
@@ -455,6 +574,10 @@ verify_backup_artifacts() {
     verify_backup_artifact "$CURRENT_BACKUP_DIR/local-data.tar.gz"
   fi
 
+  if [[ -f "$CURRENT_BACKUP_DIR/external-data.tar.gz" ]]; then
+    verify_backup_artifact "$CURRENT_BACKUP_DIR/external-data.tar.gz"
+  fi
+
   if [[ "$MODE" == "docker" && -f "$CURRENT_BACKUP_DIR/docker-volume-data.tar.gz" ]]; then
     verify_backup_artifact "$CURRENT_BACKUP_DIR/docker-volume-data.tar.gz"
   fi
@@ -479,6 +602,9 @@ create_backup() {
   write_backup_metadata
   backup_repo_snapshot
   backup_local_data
+  if [[ "$MODE" == "node" ]]; then
+    snapshot_database
+  fi
 
   if [[ "$MODE" == "docker" ]]; then
     backup_docker_volume
@@ -698,6 +824,9 @@ main() {
   resolve_branch
   ensure_clean_repo
   verify_remote_branch
+  if [[ "$MODE" == "node" ]]; then
+    resolve_data_dir
+  fi
 
   log "Starting safe update in $MODE mode from $REPO_ROOT"
 

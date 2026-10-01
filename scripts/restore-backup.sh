@@ -140,7 +140,7 @@ confirm_restore() {
   fi
 
   printf '\nAbout to restore backup from:\n  %s\n' "$BACKUP_DIR"
-  printf 'This can overwrite files in the current checkout. Continue? [y/N] '
+  printf 'Code is overwritten; current data is moved aside, never deleted. Continue? [y/N] '
   read -r reply
   if [[ ! "$reply" =~ ^[Yy]$ ]]; then
     die "Restore cancelled."
@@ -166,27 +166,85 @@ restore_repo_snapshot() {
     fi
 
     tar -xzf "$snapshot" -C "$tmp_dir"
-    rsync -a --delete --exclude 'backups/' "$tmp_dir/" "$REPO_ROOT/"
+    # The snapshot never contains node_modules/, dist/ or coverage/, so
+    # without these excludes --delete wiped the install and left the app
+    # unbootable. data/ and .env are excluded because restore_local_data owns
+    # them — and moves the current copy aside instead of deleting it.
+    rsync -a --delete \
+      --exclude '/backups' --exclude '/node_modules' --exclude '/dist' --exclude '/coverage' \
+      --exclude '/data' --exclude '/.env' \
+      "$tmp_dir/" "$REPO_ROOT/"
     rm -rf "$tmp_dir"
   else
     warn "rsync is not installed; restoring by overlay only. Extra files added after the backup may remain."
-    run tar -xzf "$snapshot" -C "$REPO_ROOT"
+    run tar -xzf "$snapshot" -C "$REPO_ROOT" --exclude='./data' --exclude='./.env'
   fi
+}
+
+# Never delete live data during a restore: the backup being restored could be
+# the wrong one. The current directory is renamed beside itself first, so a
+# mistaken restore is undone with a single mv.
+move_aside() {
+  local target="$1"
+  [[ -e "$target" ]] || return 0
+  local aside
+  aside="${target}.pre-restore-$(date '+%Y%m%d-%H%M%S')"
+  log "Keeping the current $(basename "$target") at $aside"
+  run mv "$target" "$aside"
+}
+
+metadata_value() {
+  local key="$1"
+  [[ -f "$BACKUP_DIR/metadata.txt" ]] || return 0
+  sed -n "s/^${key}=//p" "$BACKUP_DIR/metadata.txt" | tail -n 1
 }
 
 restore_local_data() {
   local data_archive="$BACKUP_DIR/local-data.tar.gz"
   if [[ -f "$data_archive" ]]; then
     if [[ "$DRY_RUN" -eq 1 ]]; then
-      log "Would restore local data archive $data_archive"
+      log "Would restore local data archive $data_archive (current data/ moved aside first)"
     else
-      rm -rf "$REPO_ROOT/data"
+      move_aside "$REPO_ROOT/data"
       tar -xzf "$data_archive" -C "$REPO_ROOT"
     fi
   fi
 
+  # A DATA_DIR outside the repository, archived separately by update.sh and
+  # restored to the path it recorded.
+  local external_archive="$BACKUP_DIR/external-data.tar.gz"
+  local external_dir
+  external_dir="$(metadata_value data_dir)"
+  if [[ -f "$external_archive" ]]; then
+    [[ -n "$external_dir" && "$external_dir" == /* && "$external_dir" != "/" ]] \
+      || die "external-data.tar.gz is present but metadata.txt records no usable data_dir."
+    if [[ "$DRY_RUN" -eq 1 ]]; then
+      log "Would restore $external_archive to $external_dir (current copy moved aside first)"
+    else
+      move_aside "$external_dir"
+      mkdir -p "$(dirname "$external_dir")"
+      tar -xzf "$external_archive" -C "$(dirname "$external_dir")"
+    fi
+  fi
+
   if [[ -f "$BACKUP_DIR/.env.backup" ]]; then
+    [[ -f "$REPO_ROOT/.env" ]] && run cp "$REPO_ROOT/.env" "$REPO_ROOT/.env.pre-restore-$(date '+%Y%m%d-%H%M%S')"
     run cp "$BACKUP_DIR/.env.backup" "$REPO_ROOT/.env"
+  fi
+
+  # The integrity-checked online snapshot is the most reliable copy of the
+  # database; prefer it over the one inside the archive.
+  if [[ -f "$BACKUP_DIR/fractured-arcanum.db" ]]; then
+    local live_dir="${external_dir:-$REPO_ROOT/data}"
+    [[ -f "$external_archive" ]] || live_dir="$REPO_ROOT/data"
+    if [[ "$DRY_RUN" -eq 1 ]]; then
+      log "Would install the SQLite snapshot into $live_dir"
+    else
+      mkdir -p "$live_dir"
+      rm -f "$live_dir/fractured-arcanum.db-wal" "$live_dir/fractured-arcanum.db-shm"
+      cp "$BACKUP_DIR/fractured-arcanum.db" "$live_dir/fractured-arcanum.db"
+      log "Installed the consistent database snapshot into $live_dir"
+    fi
   fi
 }
 

@@ -9,10 +9,25 @@
 
 ## Quality
 
-- automated tests
+- automated tests (`npm test`), including the no-emoji, registered-asset and
+  migration-safety suites
 - lint checks
 - production build
+- `npm run qa:probe -- --all-viewports` passes after layout changes
 - health endpoint for backend
+
+## Deploying to an existing server
+
+- update with `npm run update:server` (never a bare `git pull` + restart): it
+  backs up code, `data/`, an external `DATA_DIR`, `.env` and the Docker volume,
+  and takes an integrity-checked SQLite snapshot before touching anything
+- check the first log lines: `Data directory: … (from …)` must name the
+  directory that holds the live `fractured-arcanum.db`; a "No database found"
+  warning on a server with players means `DATA_DIR` is set somewhere the
+  updater cannot read — stop and rerun with `DATA_DIR=/path/to/data`
+- schema changes apply on start, additively; no manual migration step
+- if anything looks wrong, `npm run restore:server` — it moves the current
+  data aside as `*.pre-restore-<timestamp>` rather than deleting it
 
 ## Device validation
 
