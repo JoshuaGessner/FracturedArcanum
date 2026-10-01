@@ -696,6 +696,15 @@ function AppShell() {
     }
   }, [activeScreen, authToken, settingsSubview, setDeckConfig]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // The socket handlers below are bound once per session — their effect only
+  // re-runs when authToken changes — so a value they read that changes later
+  // must come through this ref. Read directly, muting sound mid-session still
+  // played the match-start chime, and the rank-up check compared against the
+  // profile as it stood when the socket connected.
+  const socketLiveRef = useRef({ soundEnabled, serverProfile })
+  useEffect(() => {
+    socketLiveRef.current = { soundEnabled, serverProfile }
+  }, [soundEnabled, serverProfile])
 
   useEffect(() => {
     if (!authToken) {
@@ -907,7 +916,7 @@ function AppShell() {
       setQueueSeconds(0)
       setQueuedOpponent(null)
       triggerBattleIntro()
-      playSound('summon', soundEnabled)
+      playSound('summon', socketLiveRef.current.soundEnabled)
     })
 
     socket.on('game:state', (payload: { matchId?: string; roomId?: string; revision?: number; state: GameState }) => {
@@ -930,6 +939,9 @@ function AppShell() {
       const matchKind: ServerBattleKind = recoveringPersistedSettlement
         ? payload.serverMode === 'ai' ? 'ai' : payload.serverMode === 'unranked' ? 'friend' : 'ranked'
         : current.kind
+      // Captured before setServerProfile below: this is the record as it stood
+      // before the match, which is what the rank-up comparison needs.
+      const profileBefore = socketLiveRef.current.serverProfile
       const settlement: MatchSettlement = {
         matchId,
         kind: matchKind,
@@ -937,11 +949,11 @@ function AppShell() {
         reason: payload.reason ?? 'completed',
         shardsEarned: payload.settlement?.shardsEarned ?? 0,
         ratingDelta: payload.settlement?.ratingDelta ?? 0,
-        shards: payload.settlement?.shards ?? serverProfile?.shards ?? 0,
-        seasonRating: payload.settlement?.seasonRating ?? serverProfile?.seasonRating ?? 1200,
-        wins: payload.settlement?.wins ?? serverProfile?.wins ?? 0,
-        losses: payload.settlement?.losses ?? serverProfile?.losses ?? 0,
-        streak: payload.settlement?.streak ?? serverProfile?.streak ?? 0,
+        shards: payload.settlement?.shards ?? profileBefore?.shards ?? 0,
+        seasonRating: payload.settlement?.seasonRating ?? profileBefore?.seasonRating ?? 1200,
+        wins: payload.settlement?.wins ?? profileBefore?.wins ?? 0,
+        losses: payload.settlement?.losses ?? profileBefore?.losses ?? 0,
+        streak: payload.settlement?.streak ?? profileBefore?.streak ?? 0,
       }
       actionInFlightRef.current = false
       rejoinInFlightRef.current = false
@@ -972,7 +984,7 @@ function AppShell() {
       setBattleSessionActive(false)
       setServerMatch({ phase: 'terminal', matchId, revision: payload.revision ?? current.revision, kind: current.kind, outcome: settlement })
       if (payload.result === 'win') {
-        const previousRating = serverProfile?.seasonRating ?? settlement.seasonRating - settlement.ratingDelta
+        const previousRating = profileBefore?.seasonRating ?? settlement.seasonRating - settlement.ratingDelta
         const previousRankLabel = getRankLabel(previousRating)
         const nextRankLabel = getRankLabel(settlement.seasonRating)
         const beats = buildBattleVictorySequence({
@@ -1037,7 +1049,7 @@ function AppShell() {
       setOpponentDisconnected(payload.opponentDisconnected)
       triggerBattleIntro()
       setToastMessage(`Reconnected to your ${kind === 'ranked' ? 'ranked match' : kind === 'friend' ? 'friend duel' : 'AI skirmish'}.`)
-      playSound('summon', soundEnabled)
+      playSound('summon', socketLiveRef.current.soundEnabled)
     })
 
     socket.on('game:rejoin_failed', (payload?: { error?: string }) => {
@@ -1803,9 +1815,12 @@ function AppShell() {
   })
 
   function transitionToScreen(screen: AppScreen, withSound = false) {
-    setScreenTransitionClass(getScreenTransitionClass(activeScreen, screen))
+    // Through refs: the socket handlers call a copy of this function captured
+    // when they were bound, and would otherwise animate from that screen.
+    const fromScreen = activeScreenRef.current
+    setScreenTransitionClass(getScreenTransitionClass(fromScreen, screen))
     if (withSound) {
-      playSound(getScreenTransitionSound(activeScreen, screen), soundEnabled)
+      playSound(getScreenTransitionSound(fromScreen, screen), socketLiveRef.current.soundEnabled)
     }
     if (screen !== 'battle') {
       setBattleSummaryVisible(false)
@@ -1843,8 +1858,6 @@ function AppShell() {
     const neighbor = getNeighborScreen(activeScreen, direction === 'prev' ? -1 : 1, NAV_ORDER)
     if (!neighbor) return
     transitionToScreen(neighbor, true)
-  // transitionToScreen is defined inline; rely on the closure capture.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeScreen])
   const sceneSwipeBind = useSceneSwipe({
     isBattleScreen,
@@ -1879,8 +1892,6 @@ function AppShell() {
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  // transitionToScreen is defined inline; rely on the closure capture.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [swipeEnabled, activeScreen])
 
   // ─── Phase 3X — Onboarding tour control ──────────────────────────────
@@ -1907,9 +1918,6 @@ function AppShell() {
     } else {
       setTourVisible(true)
     }
-  // transitionToScreen is defined inline in AppShell so it isn't a stable
-  // ref; we intentionally rely on the closure capture here.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // First-launch auto-trigger: only on a fresh authenticated landing on
