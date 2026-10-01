@@ -98,6 +98,18 @@ export type Unit = CardInstance & {
    * primary on-play effect classification.
    */
   keywords?: CardEffect[]
+  /**
+   * Frostbitten: stays exhausted through its owner's next turn start, then
+   * thaws. Plain `exhausted` cannot express this — every turn start clears it,
+   * which is why Frostbite used to do nothing at all.
+   */
+  frozen?: boolean
+  /**
+   * Silenced: lost its keywords, including any deathrattle. Needed because a
+   * deathrattle lives in CARD_PARAMS by card id, not on `effect`, so clearing
+   * `effect` alone left it armed.
+   */
+  silenced?: boolean
 }
 
 /**
@@ -212,7 +224,7 @@ export const CARD_LIBRARY: CardTemplate[] = [
   { id: 'crimson-berserker', name: 'Blood-Maddened Zealot', cost: 4, attack: 5, health: 3, icon: '🪓', text: 'Enrage: gains +2 attack when damaged.', effect: 'enrage', rarity: 'rare', tribe: 'warrior', set: CORE_SET },
   { id: 'ghost-knight', name: 'Shade Knight', cost: 3, attack: 3, health: 3, icon: '👻', text: 'Deathrattle: deal 2 damage to the enemy hero when destroyed.', effect: 'deathrattle', rarity: 'rare', tribe: 'undead', set: CORE_SET },
   { id: 'war-mammoth', name: 'Chitinous Behemoth', cost: 5, attack: 5, health: 5, icon: '🦣', text: 'Overwhelm: excess damage crashes into the enemy hero.', effect: 'overwhelm', rarity: 'rare', tribe: 'beast', set: CORE_SET },
-  { id: 'thunder-hawk', name: 'Storm Carrion', cost: 3, attack: 4, health: 2, icon: '🦅', text: 'Charge and Cleave: scatters flesh across adjacent lanes.', effect: 'cleave', rarity: 'rare', tribe: 'beast', set: CORE_SET },
+  { id: 'thunder-hawk', name: 'Storm Carrion', cost: 3, attack: 4, health: 2, icon: '🦅', text: 'Charge and Cleave: rakes every enemy unit as it lands.', effect: 'cleave', rarity: 'rare', tribe: 'beast', set: CORE_SET },
   { id: 'hex-spider', name: 'Weaver of Ill Omen', cost: 2, attack: 2, health: 3, icon: '🕷️', text: 'Poison: deal 1 to all enemy units on summon.', effect: 'poison', rarity: 'rare', tribe: 'beast', set: CORE_SET },
   { id: 'iron-clad', name: 'Iron-Clad Devotee', cost: 5, attack: 4, health: 6, icon: '🏰', text: 'Guard: must be attacked first. Shield: +2 armor.', effect: 'guard', rarity: 'rare', tribe: 'mech', set: CORE_SET },
   { id: 'shadow-dancer', name: 'Umbral Dancer', cost: 4, attack: 4, health: 3, icon: '🌑', text: 'Lifesteal: heal your hero for damage dealt.', effect: 'lifesteal', rarity: 'rare', tribe: 'undead', set: CORE_SET },
@@ -247,7 +259,7 @@ export const CARD_LIBRARY: CardTemplate[] = [
   { id: 'drakarion-the-eternal', name: 'Drakarion, the Fathomless', cost: 8, attack: 8, health: 8, icon: '🐉', text: 'Charge. Cleave all lanes. The leviathan wakes.', effect: 'charge', rarity: 'legendary', tribe: 'dragon', set: CORE_SET },
   { id: 'zephyr-world-breaker', name: 'Zephyr, the Whispering Gale', cost: 9, attack: 7, health: 10, icon: '🌪️', text: 'Guard. Frostbite all enemies. Blast: 4 to hero.', effect: 'frostbite', rarity: 'legendary', tribe: 'elemental', set: CORE_SET },
   { id: 'velara-the-lifebinder', name: 'Velara, the Mycelial', cost: 8, attack: 5, health: 9, icon: '🍄', text: 'Heal hero to full. Empower: all units gain +2 attack.', effect: 'heal', rarity: 'legendary', tribe: 'nature', set: CORE_SET },
-  { id: 'malachar-the-undying', name: 'Malachar, the Carrion King', cost: 8, attack: 6, health: 7, icon: '💀', text: 'Silence all enemies. Summon a 3/3 Wraith in each lane.', effect: 'silence', rarity: 'legendary', tribe: 'undead', set: CORE_SET },
+  { id: 'malachar-the-undying', name: 'Malachar, the Carrion King', cost: 8, attack: 6, health: 7, icon: '💀', text: 'Silence all enemies. Summon a 3/3 Wraith in each empty lane.', effect: 'silence', rarity: 'legendary', tribe: 'undead', set: CORE_SET },
   { id: 'kronos-the-forgemaster', name: 'Kronos, the Ironclad Heretic', cost: 9, attack: 8, health: 8, icon: '⚒️', text: 'Empower: all units gain +3 attack. Shield hero: +5 armor.', effect: 'empower', rarity: 'legendary', tribe: 'mech', set: CORE_SET },
   { id: 'aethon-runekeeper', name: 'Aethon, the Starless Oracle', cost: 7, attack: 5, health: 6, icon: '📜', text: 'Draw 3 cards. Rally: gain 3 Momentum. The oracle speaks of ruin.', effect: 'draw', rarity: 'legendary', tribe: 'arcane', set: CORE_SET },
 ]
@@ -562,7 +574,7 @@ const CARD_PARAMS: Record<string, CardParams> = {
   'drakarion-the-eternal':   { extras: [{ kind: 'cleave' }] },                                             // Charge + Cleave
   'zephyr-world-breaker':    { freezeAll: true, grantsKeyword: 'guard', extras: [{ kind: 'blast', amount: 4 }] },
   'velara-the-lifebinder':   { healToFull: true, extras: [{ kind: 'empower', amount: 2 }] },
-  'malachar-the-undying':    { summonAll: { id: 'token-wraith', name: 'Wraith', icon: '👻', attack: 3, health: 3 } },
+  'malachar-the-undying':    { summonAll: { id: 'token-wraith', name: 'Wraith', icon: '👻', attack: 3, health: 3 }, extras: [{ kind: 'summon' }] }, // Silence + Summon-all
   'kronos-the-forgemaster':  { amount: 3, extras: [{ kind: 'shield', amount: 5 }] },                       // Empower 3 + Shield 5
   'aethon-runekeeper':       { amount: 3, extras: [{ kind: 'rally', amount: 3 }] },                        // Draw 3 + Rally 3
 }
@@ -666,7 +678,11 @@ export function drawCards(player: PlayerState, count: number): PlayerState {
 }
 
 export function resetBoard(board: Array<Unit | null>): Array<Unit | null> {
-  return board.map((unit) => (unit ? { ...unit, exhausted: false } : null))
+  return board.map((unit) => {
+    if (!unit) return null
+    // A frozen unit sits out the turn it was frozen for, then thaws.
+    return unit.frozen ? { ...unit, exhausted: true, frozen: false } : { ...unit, exhausted: false }
+  })
 }
 
 export function summonUnit(card: CardInstance): Unit {
@@ -690,6 +706,88 @@ export function pushLog(log: string[], entry: string): string[] {
 
 export function boardHasGuard(board: Array<Unit | null>): boolean {
   return board.some((unit) => Boolean(unit) && hasKeyword(unit as Unit, 'guard'))
+}
+
+/**
+ * Heal a hero. Healing caps at STARTING_HEALTH but never *lowers* health that
+ * Shield armor has already pushed above it — a plain `Math.min` cap did.
+ */
+export function healHero(health: number, amount: number): number {
+  return Math.max(health, Math.min(STARTING_HEALTH, health + amount))
+}
+
+function unitDeathrattle(unit: Unit): DeathrattleSpec | undefined {
+  return unit.silenced ? undefined : getDeathrattle(unit.id)
+}
+
+/**
+ * Deal damage to one unit. Returns null if it dies. Enrage fires on any hit it
+ * survives, from any source — the keyword is "when damaged", not "when it
+ * attacks".
+ */
+function damageUnit(unit: Unit, amount: number, log: string[]): { unit: Unit | null; log: string[] } {
+  if (amount <= 0) return { unit, log }
+  const damaged: Unit = { ...unit, currentHealth: unit.currentHealth - amount }
+  if (damaged.currentHealth <= 0) return { unit: null, log }
+  if (hasKeyword(damaged, 'enrage')) {
+    return {
+      unit: { ...damaged, attack: damaged.attack + 2 },
+      log: pushLog(log, `${unit.name} enters a furious enrage! +2 attack.`),
+    }
+  }
+  return { unit: damaged, log }
+}
+
+/** Deal the same damage to every unit on a board, reporting who died. */
+function damageBoard(
+  board: Array<Unit | null>,
+  amount: number,
+  log: string[],
+): { board: Array<Unit | null>; dead: Unit[]; log: string[] } {
+  const dead: Unit[] = []
+  let nextLog = log
+  const nextBoard = board.map((unit) => {
+    if (!unit) return null
+    const hit = damageUnit(unit, amount, nextLog)
+    nextLog = hit.log
+    if (!hit.unit) dead.push(unit)
+    return hit.unit
+  })
+  return { board: nextBoard, dead, log: nextLog }
+}
+
+type Combatants = { actor: PlayerState; rival: PlayerState; log: string[] }
+type Fallen = { unit: Unit; owner: 'actor' | 'rival' }
+
+/**
+ * Fire the deathrattle of every unit that died, in order, including any that
+ * die to another deathrattle. Every death path — combat, Poison, Cleave —
+ * funnels through here, because the keyword is "on death", not "on dying in
+ * combat". Terminates: each pass only removes units from finite boards.
+ */
+function resolveDeathrattles(start: Combatants, fallen: Fallen[]): Combatants {
+  let { actor, rival, log } = start
+  const queue = [...fallen]
+  while (queue.length > 0) {
+    const { unit, owner } = queue.shift() as Fallen
+    const deathrattle = unitDeathrattle(unit)
+    if (!deathrattle) continue
+    const foeSide: Fallen['owner'] = owner === 'actor' ? 'rival' : 'actor'
+    const foe = foeSide === 'actor' ? actor : rival
+    let nextFoe: PlayerState
+    if (deathrattle.kind === 'damage-hero') {
+      nextFoe = { ...foe, health: foe.health - deathrattle.amount }
+      log = pushLog(log, `${unit.name}'s deathrattle strikes ${foe.name} for ${deathrattle.amount}.`)
+    } else {
+      const hit = damageBoard(foe.board, deathrattle.amount, log)
+      nextFoe = { ...foe, board: hit.board }
+      log = pushLog(hit.log, `${unit.name} erupts, dealing ${deathrattle.amount} to all enemy units.`)
+      queue.push(...hit.dead.map((dead) => ({ unit: dead, owner: foeSide })))
+    }
+    if (foeSide === 'actor') actor = nextFoe
+    else rival = nextFoe
+  }
+  return { actor, rival, log }
 }
 
 export function beginTurn(player: PlayerState): PlayerState {
@@ -965,6 +1063,20 @@ export function playCard(base: GameState, side: BattleSide, handIndex: number, l
   let nextRival = rival
   let nextLog = pushLog(base.log, `${actor.name} played ${card.icon} ${card.name}.`)
 
+  // Board-wide damage to the rival, with deathrattles resolved straight away
+  // so a later keyword on the same card sees the board as it really is.
+  function damageRivalBoard(amount: number, message: string): void {
+    const hit = damageBoard(nextRival.board, amount, nextLog)
+    nextRival = { ...nextRival, board: hit.board }
+    const resolved = resolveDeathrattles(
+      { actor: nextActor, rival: nextRival, log: pushLog(hit.log, message) },
+      hit.dead.map((unit) => ({ unit, owner: 'rival' as const })),
+    )
+    nextActor = resolved.actor
+    nextRival = resolved.rival
+    nextLog = resolved.log
+  }
+
   // Resolve a single keyword "step" (used both for the primary effect and
   // any extras listed in CARD_PARAMS). Returns the updated tuple.
   function resolveKeyword(kind: CardEffect, override?: number): void {
@@ -984,10 +1096,10 @@ export function playCard(base: GameState, side: BattleSide, handIndex: number, l
 
     if (kind === 'heal') {
       if (params.healToFull) {
-        nextActor = { ...nextActor, health: STARTING_HEALTH }
+        nextActor = { ...nextActor, health: Math.max(nextActor.health, STARTING_HEALTH) }
         nextLog = pushLog(nextLog, `${card.name} restores the hero to full health.`)
       } else {
-        nextActor = { ...nextActor, health: Math.min(STARTING_HEALTH, nextActor.health + amount) }
+        nextActor = { ...nextActor, health: healHero(nextActor.health, amount) }
         nextLog = pushLog(nextLog, `${card.name} restores ${amount} health.`)
       }
       return
@@ -1020,15 +1132,7 @@ export function playCard(base: GameState, side: BattleSide, handIndex: number, l
     }
 
     if (kind === 'poison') {
-      nextRival = {
-        ...nextRival,
-        board: nextRival.board.map((unit) => {
-          if (!unit) return null
-          const damaged = { ...unit, currentHealth: unit.currentHealth - amount }
-          return damaged.currentHealth > 0 ? damaged : null
-        }),
-      }
-      nextLog = pushLog(nextLog, `${card.name} poisons all enemy units for ${amount} damage.`)
+      damageRivalBoard(amount, `${card.name} poisons all enemy units for ${amount} damage.`)
       return
     }
 
@@ -1040,7 +1144,7 @@ export function playCard(base: GameState, side: BattleSide, handIndex: number, l
 
     if (kind === 'siphon') {
       nextRival = { ...nextRival, health: nextRival.health - amount }
-      nextActor = { ...nextActor, health: Math.min(STARTING_HEALTH, nextActor.health + amount) }
+      nextActor = { ...nextActor, health: healHero(nextActor.health, amount) }
       nextLog = pushLog(nextLog, `${card.name} siphons ${amount} life from the enemy hero.`)
       return
     }
@@ -1079,7 +1183,7 @@ export function playCard(base: GameState, side: BattleSide, handIndex: number, l
       if (params.freezeAll) {
         nextRival = {
           ...nextRival,
-          board: nextRival.board.map((unit) => (unit ? { ...unit, exhausted: true } : null)),
+          board: nextRival.board.map((unit) => (unit ? { ...unit, exhausted: true, frozen: true } : null)),
         }
         nextLog = pushLog(nextLog, `${card.name} freezes all enemy units solid.`)
       } else {
@@ -1089,7 +1193,7 @@ export function playCard(base: GameState, side: BattleSide, handIndex: number, l
           nextRival = {
             ...nextRival,
             board: nextRival.board.map((unit, idx) =>
-              idx === target && unit ? { ...unit, exhausted: true } : unit,
+              idx === target && unit ? { ...unit, exhausted: true, frozen: true } : unit,
             ),
           }
           const frozen = nextRival.board[target]
@@ -1103,7 +1207,7 @@ export function playCard(base: GameState, side: BattleSide, handIndex: number, l
       nextRival = {
         ...nextRival,
         board: nextRival.board.map((unit) =>
-          unit ? { ...unit, effect: undefined, keywords: undefined } : null,
+          unit ? { ...unit, effect: undefined, keywords: undefined, silenced: true } : null,
         ),
       }
       nextLog = pushLog(nextLog, `${card.name} silences all enemy units.`)
@@ -1166,18 +1270,11 @@ export function playCard(base: GameState, side: BattleSide, handIndex: number, l
     }
 
     if (kind === 'cleave') {
-      // Cleave-on-summon: deal damage equal to this card's attack to every
-      // enemy unit. (Cleave keyword on combat is handled in `attack`.)
+      // Cleave resolves once, on summon: this card's attack to every enemy
+      // unit. Deliberately not repeated on each attack — a recurring board
+      // wipe on a 3-mana Charge body is beyond any keyword tax.
       const cleaveAmount = override ?? card.attack
-      nextRival = {
-        ...nextRival,
-        board: nextRival.board.map((unit) => {
-          if (!unit) return null
-          const damaged = { ...unit, currentHealth: unit.currentHealth - cleaveAmount }
-          return damaged.currentHealth > 0 ? damaged : null
-        }),
-      }
-      nextLog = pushLog(nextLog, `${card.name} cleaves all enemy units for ${cleaveAmount}.`)
+      damageRivalBoard(cleaveAmount, `${card.name} cleaves all enemy units for ${cleaveAmount}.`)
       return
     }
 
@@ -1282,7 +1379,7 @@ export function attack(
 
     // Lifesteal: heal hero for damage dealt
     if (hasKeyword(updatedAttacker, 'lifesteal')) {
-      nextActor = { ...nextActor, health: Math.min(STARTING_HEALTH, nextActor.health + updatedAttacker.attack) }
+      nextActor = { ...nextActor, health: healHero(nextActor.health, updatedAttacker.attack) }
       nextLog = pushLog(nextLog, `${updatedAttacker.name} steals ${updatedAttacker.attack} life.`)
     }
 
@@ -1294,111 +1391,55 @@ export function attack(
     if (hasKeyword(updatedAttacker, 'fury')) {
       nextLog = pushLog(nextLog, `${updatedAttacker.name} grows stronger from Fury.`)
     }
-  } else {
-    const defender = rival.board[target]
 
-    if (!defender) {
-      return base
-    }
-
-    let damagedAttacker: Unit = {
-      ...attacker,
-      exhausted: true,
-      currentHealth: attacker.currentHealth - defender.attack,
-    }
-    const damagedDefender: Unit = {
-      ...defender,
-      currentHealth: defender.currentHealth - attacker.attack,
-    }
-
-    // Enrage: if damaged but alive, gain +2 attack
-    if (damagedAttacker.currentHealth > 0 && damagedAttacker.currentHealth < attacker.currentHealth && hasKeyword(damagedAttacker, 'enrage')) {
-      damagedAttacker = { ...damagedAttacker, attack: damagedAttacker.attack + 2 }
-      nextLog = pushLog(nextLog, `${damagedAttacker.name} enters a furious enrage! +2 attack.`)
-    }
-
-    if (damagedAttacker.currentHealth > 0 && hasKeyword(damagedAttacker, 'fury')) {
-      damagedAttacker = {
-        ...damagedAttacker,
-        attack: damagedAttacker.attack + 1,
-      }
-      nextLog = pushLog(nextLog, `${damagedAttacker.name} survives and gains +1 attack.`)
-    }
-
-    // Lifesteal: heal hero for damage dealt in combat
-    if (hasKeyword(attacker, 'lifesteal') && damagedDefender.currentHealth < defender.currentHealth) {
-      const healAmt = Math.min(attacker.attack, defender.currentHealth)
-      nextActor = { ...nextActor, health: Math.min(STARTING_HEALTH, nextActor.health + healAmt) }
-      nextLog = pushLog(nextLog, `${attacker.name} steals ${healAmt} life.`)
-    }
-
-    // Overwhelm: excess damage hits the enemy hero
-    if (hasKeyword(attacker, 'overwhelm') && damagedDefender.currentHealth <= 0) {
-      const excess = Math.abs(damagedDefender.currentHealth)
-      if (excess > 0) {
-        nextRival = { ...nextRival, health: nextRival.health - excess }
-        nextLog = pushLog(nextLog, `${attacker.name} overwhelms for ${excess} to the hero.`)
-      }
-    }
-
-    // Deathrattle triggers — data-driven via getDeathrattle()
-    function applyDeathrattle(deadUnit: Unit, friendlySide: 'attacker' | 'defender'): void {
-      const dr = getDeathrattle(deadUnit.id)
-      if (!dr) return
-      if (dr.kind === 'damage-hero') {
-        if (friendlySide === 'defender') {
-          // The dying unit is on the defender (rival) side; their deathrattle damages our hero.
-          nextActor = { ...nextActor, health: nextActor.health - dr.amount }
-          nextLog = pushLog(nextLog, `${deadUnit.name}'s spirit lashes out for ${dr.amount} damage.`)
-        } else {
-          nextRival = { ...nextRival, health: nextRival.health - dr.amount }
-          nextLog = pushLog(nextLog, `${deadUnit.name} erupts in flame: ${dr.amount} to the enemy hero.`)
-        }
-      } else if (dr.kind === 'damage-all-enemy-units') {
-        if (friendlySide === 'defender') {
-          // dying defender — its deathrattle hits attacker's board
-          nextActor = {
-            ...nextActor,
-            board: actorBoard.map((unit) => {
-              if (!unit) return null
-              const damaged = { ...unit, currentHealth: unit.currentHealth - dr.amount }
-              return damaged.currentHealth > 0 ? damaged : null
-            }),
-          }
-          nextLog = pushLog(nextLog, `${deadUnit.name} erupts, dealing ${dr.amount} to all units.`)
-        } else {
-          nextRival = {
-            ...nextRival,
-            board: rivalBoard.map((unit) => {
-              if (!unit) return null
-              const damaged = { ...unit, currentHealth: unit.currentHealth - dr.amount }
-              return damaged.currentHealth > 0 ? damaged : null
-            }),
-          }
-          nextLog = pushLog(nextLog, `${deadUnit.name} erupts, dealing ${dr.amount} to all enemy units.`)
-        }
-      }
-    }
-
-    if (damagedDefender.currentHealth <= 0) applyDeathrattle(defender, 'defender')
-    if (damagedAttacker.currentHealth <= 0) applyDeathrattle(attacker, 'attacker')
-
-    actorBoard[attackerIndex] = damagedAttacker.currentHealth > 0 ? damagedAttacker : null
-    rivalBoard[target] = damagedDefender.currentHealth > 0 ? damagedDefender : null
-
-    nextLog = pushLog(nextLog, `${attacker.name} clashes with ${defender.name}.`)
+    return applySides(base, side, nextActor, nextRival, nextLog)
   }
 
-  nextActor = {
-    ...nextActor,
-    board: actorBoard,
-  }
-  nextRival = {
-    ...nextRival,
-    board: rivalBoard,
+  const defender = rival.board[target]
+
+  if (!defender) {
+    return base
   }
 
-  return applySides(base, side, nextActor, nextRival, nextLog)
+  // Both strikes land simultaneously, from the stats each unit entered with.
+  // Enrage on either side is applied inside damageUnit.
+  const strickenAttacker = damageUnit({ ...attacker, exhausted: true }, defender.attack, nextLog)
+  nextLog = strickenAttacker.log
+  const strickenDefender = damageUnit(defender, attacker.attack, nextLog)
+  nextLog = strickenDefender.log
+
+  let survivingAttacker = strickenAttacker.unit
+  if (survivingAttacker && hasKeyword(survivingAttacker, 'fury')) {
+    survivingAttacker = { ...survivingAttacker, attack: survivingAttacker.attack + 1 }
+    nextLog = pushLog(nextLog, `${survivingAttacker.name} survives and gains +1 attack.`)
+  }
+
+  // Lifesteal: heal hero for damage dealt in combat
+  if (hasKeyword(attacker, 'lifesteal') && attacker.attack > 0) {
+    const healAmt = Math.min(attacker.attack, defender.currentHealth)
+    nextActor = { ...nextActor, health: healHero(nextActor.health, healAmt) }
+    nextLog = pushLog(nextLog, `${attacker.name} steals ${healAmt} life.`)
+  }
+
+  // Overwhelm: excess damage hits the enemy hero
+  const excess = attacker.attack - defender.currentHealth
+  if (hasKeyword(attacker, 'overwhelm') && excess > 0) {
+    nextRival = { ...nextRival, health: nextRival.health - excess }
+    nextLog = pushLog(nextLog, `${attacker.name} overwhelms for ${excess} to the hero.`)
+  }
+
+  actorBoard[attackerIndex] = survivingAttacker
+  rivalBoard[target] = strickenDefender.unit
+  nextLog = pushLog(nextLog, `${attacker.name} clashes with ${defender.name}.`)
+
+  // Deathrattles resolve against the boards as they now stand. Building them
+  // from a stale copy is how Magma Hound's eruption used to be overwritten.
+  const fallen: Fallen[] = []
+  if (!strickenDefender.unit) fallen.push({ unit: defender, owner: 'rival' })
+  if (!survivingAttacker) fallen.push({ unit: attacker, owner: 'actor' })
+  const resolved = resolveDeathrattles({ actor: nextActor, rival: nextRival, log: nextLog }, fallen)
+
+  return applySides(base, side, resolved.actor, resolved.rival, resolved.log)
 }
 
 

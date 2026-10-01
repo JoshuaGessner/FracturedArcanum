@@ -13,6 +13,7 @@ import {
   getDeckSize,
   getRecommendedAIDifficulty,
   hasKeyword,
+  passTurn,
   playCard,
   redactGameState,
   summonUnit,
@@ -285,5 +286,125 @@ describe('cosmetic frames in redacted state', () => {
     const game = createGame('ai', DEFAULT_DECK_CONFIG)
     expect(game.player.cardBorder).toBe('default')
     expect(game.enemy.cardBorder).toBe('default')
+  })
+})
+
+/** A ready-to-act unit for a crafted board. */
+function readyUnit(id: string, overrides: Partial<Unit> = {}): Unit {
+  return { ...summonUnit(findCard(id)), exhausted: false, ...overrides }
+}
+
+describe('rules regressions from the edge-case bug pass', () => {
+  it('Magma Hound\'s deathrattle hits the attacker\'s board when it dies in combat', () => {
+    const game = craftGame([])
+    game.enemy.board[0] = readyUnit('lava-hound', { currentHealth: 1 })
+    game.player.board = [readyUnit('storm-brute'), readyUnit('bog-lurker', { currentHealth: 5, health: 5 }), null]
+
+    const result = attack(game, 'player', 0, 0)
+    // Storm brute: 6 - 4 (strike back) - 3 (eruption) → dead. Bog lurker: 5 - 3 → 2.
+    expect(result.player.board[0]).toBeNull()
+    expect(result.player.board[1]?.currentHealth).toBe(2)
+    expect(result.enemy.board[0]).toBeNull()
+  })
+
+  it('a deathrattle fires when Poison kills the unit, not only in combat', () => {
+    const game = craftGame([findCard('hex-spider')])
+    game.enemy.board[0] = readyUnit('ghost-knight', { currentHealth: 1 })
+    const result = playCard(game, 'player', 0)
+    expect(result.enemy.board[0]).toBeNull()
+    expect(result.player.health).toBe(STARTING_HEALTH - 2)
+  })
+
+  it('deathrattles chain: a poisoned Magma Hound erupts onto the board that poisoned it', () => {
+    const game = craftGame([findCard('hex-spider')])
+    game.enemy.board[0] = readyUnit('lava-hound', { currentHealth: 1 })
+    const result = playCard(game, 'player', 0)
+    // The just-summoned Weaver (2/3) takes the 3-damage eruption and dies.
+    expect(result.player.board.every((slot) => slot === null)).toBe(true)
+  })
+
+  it('Silence disarms a deathrattle', () => {
+    const game = craftGame([findCard('abyssal-tyrant')])
+    game.enemy.board[0] = readyUnit('ghost-knight')
+    const silenced = playCard(game, 'player', 0)
+    expect(silenced.enemy.board[0]?.silenced).toBe(true)
+
+    const tyrantLane = silenced.player.board.findIndex((slot) => slot !== null)
+    const ready: GameState = {
+      ...silenced,
+      player: {
+        ...silenced.player,
+        board: silenced.player.board.map((unit) => (unit ? { ...unit, exhausted: false } : null)),
+      },
+    }
+    const healthBefore = ready.player.health
+    const result = attack(ready, 'player', tyrantLane, 0)
+    expect(result.enemy.board[0]).toBeNull()
+    expect(result.player.health).toBe(healthBefore)
+  })
+
+  it('Frostbite keeps the unit exhausted through its owner\'s next turn, then thaws', () => {
+    const game = craftGame([findCard('frost-weaver')])
+    game.enemy.board[0] = readyUnit('storm-brute')
+    const frozenTurn = passTurn(playCard(game, 'player', 0))
+    expect(frozenTurn.turn).toBe('enemy')
+    expect(frozenTurn.enemy.board[0]?.exhausted).toBe(true)
+    expect(attack(frozenTurn, 'enemy', 0, 'hero')).toBe(frozenTurn)
+
+    const thawed = passTurn(passTurn(frozenTurn))
+    expect(thawed.turn).toBe('enemy')
+    expect(thawed.enemy.board[0]?.exhausted).toBe(false)
+    expect(thawed.enemy.board[0]?.frozen).toBe(false)
+  })
+
+  it('Malachar summons a 3/3 Wraith in each empty lane', () => {
+    const game = craftGame([findCard('malachar-the-undying')])
+    const result = playCard(game, 'player', 0)
+    const wraiths = result.player.board.filter((unit) => unit?.id === 'token-wraith')
+    expect(wraiths).toHaveLength(2)
+    expect(wraiths.every((unit) => unit?.attack === 3 && unit?.currentHealth === 3)).toBe(true)
+  })
+
+  it('healing never lowers health that armor pushed above the cap', () => {
+    const healer = craftGame([findCard('dawn-healer')])
+    healer.player.health = 28
+    expect(playCard(healer, 'player', 0).player.health).toBe(28)
+
+    const velara = craftGame([findCard('velara-the-lifebinder')])
+    velara.player.health = 30
+    expect(playCard(velara, 'player', 0).player.health).toBe(30)
+
+    const siphon = craftGame([findCard('soul-reaver')])
+    siphon.player.health = 27
+    expect(playCard(siphon, 'player', 0).player.health).toBe(27)
+
+    const lifesteal = craftGame([])
+    lifesteal.player.health = 26
+    lifesteal.player.board[0] = readyUnit('shadow-dancer')
+    expect(attack(lifesteal, 'player', 0, 'hero').player.health).toBe(26)
+
+    // Below the cap, healing still stops at it.
+    const capped = craftGame([findCard('field-medic')])
+    capped.player.health = 23
+    expect(playCard(capped, 'player', 0).player.health).toBe(STARTING_HEALTH)
+  })
+
+  it('Enrage triggers when the unit is damaged while defending', () => {
+    const game = craftGame([])
+    game.enemy.board[0] = readyUnit('crimson-berserker')
+    game.player.board[0] = readyUnit('spark-imp')
+    const result = attack(game, 'player', 0, 0)
+    expect(result.enemy.board[0]?.currentHealth).toBe(1)
+    expect(result.enemy.board[0]?.attack).toBe(7)
+  })
+
+  it('Enrage triggers on Poison damage and not on a killing blow', () => {
+    const poisoned = craftGame([findCard('hex-spider')])
+    poisoned.enemy.board[0] = readyUnit('crimson-berserker')
+    expect(playCard(poisoned, 'player', 0).enemy.board[0]?.attack).toBe(7)
+
+    const killed = craftGame([findCard('vine-lasher')])
+    killed.enemy.board[0] = readyUnit('crimson-berserker', { currentHealth: 2 })
+    expect(playCard(killed, 'player', 0).enemy.board[0]).toBeNull()
   })
 })

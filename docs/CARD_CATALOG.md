@@ -133,7 +133,7 @@ All 70 cards below belong to the **Core Set**. Core set cards are permanent — 
 | token-spark | Spark | 1/1 | Default fallback | Standard token |
 | token-wisp | Wisp | 1/1 | Occult Artificer | Identical to Spark; different flavor |
 | token-ghoul | Ghoul | 2/2 | Charnel Sage | Fills all empty lanes |
-| token-wraith | Wraith | 3/3 | Malachar, the Carrion King | Fills all empty lanes; powerful |
+| token-wraith | Wraith | 3/3 | Malachar, the Carrion King | Fills all empty lanes; powerful. (Never actually summoned before the 2026-10 rules fix — Malachar's play-rate data predates it) |
 
 ---
 
@@ -141,10 +141,14 @@ All 70 cards below belong to the **Core Set**. Core set cards are permanent — 
 
 | Card | Issue | Severity | Status |
 |------|-------|----------|--------|
-| Thunder Hawk (storm-carrion) | Charge + Cleave at 3 mana is aggressive; 4/2 stats with two major keywords | Medium | Monitor win rates; may need cost increase to 4 |
+| Thunder Hawk (storm-carrion) | Charge + Cleave at 3 mana is aggressive; 4/2 stats with two major keywords. Cleave resolves once on summon against every enemy unit (card text corrected from "adjacent lanes") | Medium | Monitor win rates; may need cost increase to 4 |
 | Rust Golem (corroded-husk) | 1/5 with Guard at 2-cost is +1 over budget | Low | Accepted — 1 ATK is nearly irrelevant offensively (documented deviation) |
 | Necro-Sage (charnel-sage) | Summon-all 2/2s on an empty board is up to 12 stats of tokens for 5 mana | Medium | Board-dependent; dead on a full board; monitor |
 | Blood Queen (crimson-matron) | Siphon 3 + Lifesteal at 6-cost; +3 over keyword tax budget | Medium | Accepted — Lifesteal requires surviving combat; documented as Epic Multi-Keyword exception |
+| Malachar (carrion-king) | Summon-all 3/3 Wraiths never fired until the 2026-10 rules fix; now delivers the full payload its Legendary Allowance assumed | Medium | Monitor — first real data on the card as designed |
+| Frostbite cards (rime-weaver, rimebound-colossus, zephyr) | Freeze was a no-op until the 2026-10 rules fix (the turn-start reset cleared it); now costs the frozen unit a turn | Medium | Monitor — the −1.5/−3 tax was being paid for nothing before |
+| Deathrattle cards (shade-knight, magma-hound, pyre-revenant) | Now fire on any death, not only in combat; Magma Hound's eruption was overwritten in combat until the 2026-10 fix | Low | Monitor — matches the Design Bible definition |
+| Blood-Maddened Zealot (crimson-berserker) | Enrage now fires on any damage it survives, including while defending | Low | Monitor — matches the Design Bible definition |
 | ~~Storm Brute (thunderous-colossus)~~ | ~~5/4 vanilla for 5 mana was under curve~~ | ~~Low~~ | ✅ **Fixed** — buffed to 5/6 (Season 1 patch) |
 | ~~Clockwork Knight (geared-thrall)~~ | ~~4/4 vanilla for 4 mana was 1 under budget~~ | ~~Low~~ | ✅ **Fixed** — buffed to 4/5 (Season 1 patch) |
 | ~~Shadow Assassin (whispering-assassin)~~ | ~~6/3 with Charge + Lifesteal was +3 over budget~~ | ~~Medium~~ | ✅ **Fixed** — nerfed to 5/3 (Season 1 patch) |

@@ -138,17 +138,17 @@ tribe:   beast | elemental | undead | dragon | mech | arcane | warrior | nature 
 | **Guard** | Must be attacked before other targets | Defensive anchor; slight stat bonus allowed for low-attack guards |
 | **Fury** | +1 attack after surviving combat with a unit or hero | Snowball threat; keep base attack moderate |
 | **Lifesteal** | Heal hero for damage dealt | Sustain keyword; rare+ only; reduce attack to prevent unbeatable racing |
-| **Enrage** | +2 attack when this unit takes damage | Reward for being attacked; pairs well with high health |
+| **Enrage** | +2 attack each time this unit takes damage and survives — from combat (attacking or defending), Poison, Cleave or a deathrattle | Reward for being attacked; pairs well with high health |
 | **Overwhelm** | Excess damage from attacking a unit hits the enemy hero | Finisher keyword; keep on high-cost units |
-| **Deathrattle** | Trigger effect on death (damage hero or damage all enemy units) | Value from death; defined in CARD_PARAMS |
-| **Cleave** | Deal this unit's attack to all enemy units when attacking | Board clear on a body; very powerful; high cost required |
+| **Deathrattle** | Trigger effect on death from any source — combat, Poison, Cleave, another deathrattle (damage hero or damage all enemy units). Chains resolve in order. Silence disarms it | Value from death; defined in CARD_PARAMS |
+| **Cleave** | Deal this unit's attack to all enemy units **once, on summon** | Board clear on a body; very powerful; high cost required. Deliberately not repeated on each attack: a recurring board wipe on a Charge body would be a near-infinite value loop (Balance Framework §7 red flags) |
 
 ### On-Play Keywords (Trigger on summon)
 
 | Keyword | Default Amount | Behavior |
 |---------|---------------|----------|
 | **Blast** | 2 | Deal N damage to enemy hero |
-| **Heal** | 2 | Restore N health to your hero (cap 24) |
+| **Heal** | 2 | Restore N health to your hero (cap 24; never lowers health that Shield armor already raised above 24) |
 | **Draw** | 1 | Draw N cards from deck |
 | **Rally** | 1 | Gain N Momentum (cap 10) |
 | **Drain** | 1 | Steal N Momentum from the enemy |
@@ -157,8 +157,8 @@ tribe:   beast | elemental | undead | dragon | mech | arcane | warrior | nature 
 | **Shield** | 3 | Grant +N health to your hero (functions as armor) |
 | **Siphon** | 2 | Deal N to enemy hero AND heal your hero for N |
 | **Bolster** | 1 | Grant +N health to a random friendly unit (or all, via CARD_PARAMS) |
-| **Frostbite** | — | Exhaust a random enemy unit (or all, via CARD_PARAMS) |
-| **Silence** | — | Strip all effects and keywords from all enemy units |
+| **Frostbite** | — | Freeze a random enemy unit (or all, via CARD_PARAMS): it stays exhausted through its owner's next turn, then thaws |
+| **Silence** | — | Strip all effects and keywords from all enemy units, including deathrattles |
 | **Summon** | — | Create a token unit in an empty lane (spec in CARD_PARAMS) |
 
 ### Multi-Keyword Cards

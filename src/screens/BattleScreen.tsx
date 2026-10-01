@@ -2,6 +2,7 @@ import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
   RARITY_COLORS,
+  hasKeyword,
   type CardInstance,
 } from '../game'
 import { asCardBorder, cardArtPath, getHandFanTilt, handleCardArtError, pulseFeedback } from '../utils'
@@ -751,7 +752,7 @@ export function BattleScreen() {
                 const isSelected = false
                 const isValidDefender = selectedAttacker !== null && !defenderHasGuard
                   ? true
-                  : selectedAttacker !== null && unit.effect === 'guard'
+                  : selectedAttacker !== null && hasKeyword(unit, 'guard')
                 const isInvalidDefender = selectedAttacker !== null && !isValidDefender
 
                 return (
@@ -760,8 +761,9 @@ export function BattleScreen() {
                       'slot',
                       `rarity-${unit.rarity}`,
                       `border-${enemyCardBorder}`,
-                      unit.effect === 'guard' ? 'guard' : '',
+                      hasKeyword(unit, 'guard') ? 'guard' : '',
                       unit.exhausted ? 'exhausted' : '',
+                      unit.frozen ? 'frozen' : '',
                       isSelected ? 'selected' : '',
                       damagedSlots.has(unit.uid) ? 'damage-flash' : '',
                       isValidDefender && selectedAttacker !== null ? 'is-valid-defender' : '',
@@ -794,6 +796,7 @@ export function BattleScreen() {
                     <span className="card-frame" aria-hidden="true" />
                     <RarityBadge rarity={unit.rarity} iconOnly className="battle-slot-rarity" />
                     {unit.effect && <EffectBadge effect={unit.effect} compact iconOnly className="battle-slot-effect" />}
+                    {unit.frozen && <span className="battle-slot-frozen">Frozen</span>}
                   </button>
                 )
               })}
@@ -857,8 +860,9 @@ export function BattleScreen() {
                       'slot',
                       `rarity-${unit.rarity}`,
                       `border-${selectedCardBorder}`,
-                      unit.effect === 'guard' ? 'guard' : '',
+                      hasKeyword(unit, 'guard') ? 'guard' : '',
                       unit.exhausted ? 'exhausted' : '',
+                      unit.frozen ? 'frozen' : '',
                       isSelected ? 'selected' : '',
                       attackDrag?.active && attackDrag.attackerIndex === index ? 'is-attack-dragging' : '',
                       damagedSlots.has(unit.uid) ? 'damage-flash' : '',
@@ -918,6 +922,7 @@ export function BattleScreen() {
                     <span className="card-frame" aria-hidden="true" />
                     <RarityBadge rarity={unit.rarity} iconOnly className="battle-slot-rarity" />
                     {unit.effect && <EffectBadge effect={unit.effect} compact iconOnly className="battle-slot-effect" />}
+                    {unit.frozen && <span className="battle-slot-frozen">Frozen</span>}
                   </button>
                 )
               })}
