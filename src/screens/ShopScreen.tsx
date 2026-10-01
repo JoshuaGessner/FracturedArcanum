@@ -2,9 +2,9 @@ import { useMemo, useState } from 'react'
 import { CARD_LIBRARY, RARITY_COLORS } from '../game'
 import { CARD_BORDER_OFFERS, ECONOMY_REWARDS, THEME_OFFERS } from '../constants'
 import { PackArt, RarityBadge, TribeSigil } from '../components/AssetBadge'
+import { CardFace } from '../components/CardFace'
 import { PackCeremonyOverlay } from '../components/PackCeremonyOverlay'
 import { buildPackSummarySequence } from '../components/RewardCinemaSequence'
-import { cardArtPath, handleCardArtError } from '../utils'
 import { useAppShell, useGame, useProfile } from '../contexts'
 
 const RARITY_REFUND = { common: 5, rare: 10, epic: 25, legendary: 100 } as const
@@ -345,23 +345,15 @@ export function ShopScreen() {
                         style={{ '--rarity-color': RARITY_COLORS[card.rarity as keyof typeof RARITY_COLORS] ?? RARITY_COLORS.common } as React.CSSProperties}
                       >
                         <span className="card-frame" aria-hidden="true" />
-                        <div className={`pack-reveal-glow pack-reveal-glow-${card.rarity}`} aria-hidden="true" />
-                        <div className="card-art-shell thumb pack-reveal-art-shell">
-                          <img
-                            className="card-illustration"
-                            src={cardArtPath(card.id)}
-                            alt={`${cardMeta?.name ?? card.id} illustration`}
-                            loading="lazy"
-                            onError={handleCardArtError}
-                            draggable={false}
+                        {cardMeta ? (
+                          <CardFace
+                            card={cardMeta}
+                            variant="reveal"
+                            caption={card.duplicate ? 'Duplicate · Shards refunded' : 'New to your library'}
                           />
-                        </div>
-                        <div className="pack-reveal-meta">
-                          <RarityBadge rarity={card.rarity} />
-                          <strong>{cardMeta && <TribeSigil tribe={cardMeta.tribe} />}{cardMeta?.name ?? card.id}</strong>
-                          <span className="note">{card.duplicate ? 'Duplicate converted into Shards.' : 'Added to your library.'}</span>
-                        </div>
-                        <span className={`badge ${card.duplicate ? '' : 'new-card-badge'}`}>{card.duplicate ? 'Duplicate' : 'New'}</span>
+                        ) : (
+                          <strong className="pack-reveal-missing">{card.id}</strong>
+                        )}
                       </article>
                     )
                   })}

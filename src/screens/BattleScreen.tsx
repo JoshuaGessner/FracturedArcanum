@@ -5,10 +5,11 @@ import {
   hasKeyword,
   type CardInstance,
 } from '../game'
-import { asCardBorder, cardArtPath, getHandFanTilt, handleCardArtError, pulseFeedback } from '../utils'
+import { asCardBorder, cardArtPath, describeCard, getHandFanTilt, handleCardArtError, pulseFeedback } from '../utils'
 import { ECONOMY_REWARDS, UI_ASSETS } from '../constants'
 import { playSound, startLoopingSound } from '../audio'
 import { EffectBadge, RarityBadge, StatIcon, TribeSigil } from '../components/AssetBadge'
+import { CardFace } from '../components/CardFace'
 import { SummaryPopup } from '../components/SummaryPopup'
 import { useAppShell, useGame, useProfile } from '../contexts'
 import type { InspectedCard } from '../types'
@@ -550,21 +551,7 @@ export function BattleScreen() {
   const renderHandCardFace = (card: CardInstance) => (
     <>
       <span className="card-frame" aria-hidden="true" />
-      <div className="card-top">
-        <span className="cost-pill">{card.cost}</span>
-        <RarityBadge rarity={card.rarity} iconOnly className="battle-hand-rarity" />
-        {card.effect && <EffectBadge effect={card.effect} compact iconOnly className="battle-hand-effect" />}
-      </div>
-      <div className="card-art-shell thumb">
-        <img className="card-illustration" src={cardArtPath(card.id)} alt={`${card.name} artwork`} loading="lazy" onError={handleCardArtError} draggable={false} />
-      </div>
-      <div>
-        <strong className="card-name">{card.name}</strong>
-      </div>
-      <div className="card-stats">
-        <span><StatIcon kind="attack" /> {card.attack}</span>
-        <span><StatIcon kind="health" /> {card.health}</span>
-      </div>
+      <CardFace card={card} variant="hand" />
     </>
   )
 
@@ -1023,6 +1010,7 @@ export function BattleScreen() {
                     }}
                     {...composed}
                     aria-disabled={!canPlay}
+                    aria-label={describeCard(card)}
                     title={canPlay ? 'Tap or drag to play, long press to inspect' : `${overlayLabel}. Long press to inspect.`}
                     style={{
                       '--rarity-color': RARITY_COLORS[card.rarity],

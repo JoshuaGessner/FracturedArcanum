@@ -436,3 +436,12 @@ export function appendToast(stack: ToastEntry[], entry: ToastEntry, max: number 
   const withoutRepeat = stack.filter((existing) => existing.message !== entry.message)
   return [...withoutRepeat, entry].slice(-max)
 }
+
+/** What a screen reader hears for a card: name, cost and stats in one phrase. */
+export function describeCard(
+  card: { name: string; cost: number; attack: number; health: number },
+  currentHealth?: number,
+): string {
+  const health = currentHealth ?? card.health
+  return `${card.name}, ${card.cost} mana, ${card.attack} attack, ${health} health`
+}

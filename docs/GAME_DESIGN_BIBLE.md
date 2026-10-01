@@ -94,7 +94,7 @@ tribe:   beast | elemental | undead | dragon | mech | arcane | warrior | nature 
 
 Cards carry no icon or emoji. A card's identity is its generated art; beside
 its name the UI draws the engraved **tribe sigil** from
-`scripts/lib/glyph-art.mjs`. `src/noEmoji.test.ts` keeps emoji out of shipped
+`scripts/lib/glyph-art.mjs`. `server/no-emoji.test.js` keeps emoji out of shipped
 source.
 
 ### Rarity Tiers

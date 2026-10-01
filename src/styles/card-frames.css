@@ -43,23 +43,17 @@
   background: linear-gradient(115deg, transparent 42%, rgba(199, 153, 219, 0.2) 50%, transparent 58%) 0 0 / 300% 100% no-repeat;
 }
 
-/* ─── Card inspect modal ───────────────────────────────────────────────
-   The largest view of a card in the app. It used to declare
-   `border: 2px solid var(--rarity-color, var(--border))` while the element
-   never received a `rarity-*` class, so that variable never resolved and the
-   fallback did all the work — the card's rarity was invisible here. The class
-   is applied now, which makes that original declaration mean what it says.
+/* ─── Card inspect ─────────────────────────────────────────────────────
+   The largest view of a card in the app. The frame and the rarity hairline
+   ride the card itself (`.card-inspect-face`), not the modal around it: this
+   is the shot where a bought frame is meant to look bought, and it should look
+   like a frame on a card, not a border on a dialog.
 
-   The frame layer needs a non-scrolling home. `.card-inspect-modal` owns
-   `max-height: 85svh` + `overflow-y: auto`, and an `inset: 0` child of a
-   scroll container scrolls away with the content — the bezel would stay put
-   while the hairline and finish slid up out of the box. So the scrolling moves
-   one level in, to `.card-inspect-scroll`, and the modal keeps the frame.
-
-   This is the deliberate contained-scroller case the layout notes carve out:
-   `min-height: 0` on a flex child normally risks crushing content, but here
-   the child IS the scroll owner and the parent is height-capped, which is
-   exactly when the pattern is correct. */
+   The modal is height-capped and scrolls one level in, on
+   `.card-inspect-scroll` — the deliberate contained-scroller case the layout
+   notes carve out: `min-height: 0` on a flex child normally risks crushing
+   content, but here the child IS the scroll owner and the parent is
+   height-capped, which is exactly when the pattern is correct. */
 .card-inspect-modal {
   position: relative;
   /* Beats .queue-modal's `display: grid` — the grid moves to the scroller. */
@@ -68,17 +62,18 @@
   overflow: visible;
 }
 
-/* The modal was never part of the rarity `::before` group in cards.css, so a
-   frame here would have taken the bezel with nothing given back. Same contract
-   as everywhere else: the frame gets the outer ring, rarity keeps the inner
-   one. Safe against the scroller because that now lives one level in. */
-.card-inspect-modal:not(.border-default)::before {
+/* The inspect card joins the rarity `::before` group: the frame gets the outer
+   ring, rarity keeps the inner one. */
+.card-inspect-face::before {
   content: '';
   position: absolute;
   inset: 0;
   border-radius: inherit;
   pointer-events: none;
   z-index: 3;
+}
+
+.card-inspect-face:not(.border-default)::before {
   border: 1px solid var(--rarity-color, var(--border));
 }
 
@@ -102,10 +97,6 @@
    On the ceremony card the frame belongs to the FRONT face only. The back is
    the pack backing before the flip, and a frame bleeding through a 3D
    backface would show the card's identity early. */
-.pack-ceremony-card-front {
-  position: relative;
-}
-
 .pack-ceremony-card-front > .card-frame {
   /* Above the art and meta, below .pack-ceremony-card-glow's legendary burst. */
   z-index: 3;
@@ -147,7 +138,7 @@
   .slot.border-solar > .card-frame,
   .pack-reveal-card.border-solar > .card-frame,
   .pack-ceremony-card-front.border-solar > .card-frame,
-  .card-inspect-modal.border-solar > .card-frame {
+  .card-inspect-face.border-solar > .card-frame {
     animation: none !important;
     opacity: 0.8;
   }
@@ -155,7 +146,7 @@
   .slot.border-void > .card-frame,
   .pack-reveal-card.border-void > .card-frame,
   .pack-ceremony-card-front.border-void > .card-frame,
-  .card-inspect-modal.border-void > .card-frame {
+  .card-inspect-face.border-void > .card-frame {
     animation: none !important;
     background-position: 30% 0 !important;
   }

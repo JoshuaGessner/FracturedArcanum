@@ -8,8 +8,9 @@ import {
   getDeckSize,
 } from '../game'
 import { DECK_MAX_TOTAL_DISPLAY, DECK_PRESETS } from '../constants'
-import { cardArtPath, getCompletionPercent, getRarityCompletion, handleCardArtError } from '../utils'
-import { EffectBadge, InterfaceGlyph, RarityBadge, StatIcon } from '../components/AssetBadge'
+import { describeCard, getCompletionPercent, getRarityCompletion } from '../utils'
+import { InterfaceGlyph, RarityBadge } from '../components/AssetBadge'
+import { CardFace } from '../components/CardFace'
 import { SceneHeaderPanel, type SceneHeaderTile } from '../components/SceneHeaderPanel'
 import { useAppShell, useGame, useProfile, useQueue } from '../contexts'
 import { feedback } from '../feedback'
@@ -259,54 +260,26 @@ export function CollectionScreen() {
             const ownedCount = loggedIn ? (collection[card.id] ?? 0) : maxCopies
             const count = deckConfig[card.id] ?? 0
             const addDisabled = count >= Math.min(maxCopies, ownedCount)
-            const tribeShortLabel = card.tribe.slice(0, 3)
             const inspectCard = { name: card.name, id: card.id, cost: card.cost, attack: card.attack, health: card.health, rarity: card.rarity, tribe: card.tribe, text: card.text, effect: card.effect ?? null, cardBorder: selectedCardBorder }
             return (
-            <div
-              className={`builder-card rarity-${card.rarity} border-${selectedCardBorder} ${ownedCount === 0 ? 'locked' : ''}`}
-              key={card.id}
-              style={{ '--rarity-color': RARITY_COLORS[card.rarity] } as React.CSSProperties}
-            >
-              <span className="card-frame" aria-hidden="true" />
+            <div className={`builder-card ${ownedCount === 0 ? 'locked' : ''}`} key={card.id}>
               <button
                 type="button"
-                className="builder-card-preview"
+                className={`builder-card-face rarity-${card.rarity} border-${selectedCardBorder}`}
+                style={{ '--rarity-color': RARITY_COLORS[card.rarity] } as React.CSSProperties}
                 onClick={() => {
                   if (consumeLongPressAction()) return
                 }}
                 {...getLongPressProps(inspectCard)}
+                aria-label={describeCard(card)}
                 title="Hold to inspect the full card"
               >
-                <div className="card-art-shell">
-                  <img
-                    className="card-illustration"
-                    src={cardArtPath(card.id)}
-                    alt={`${card.name} illustration`}
-                    loading="lazy"
-                    onError={handleCardArtError}
-                    draggable={false}
-                  />
-                </div>
-                <div className="slot-head">
-                  <strong>{card.name}</strong>
-                  <span className="stats"><StatIcon kind="mana" className="inline-stat" /> {card.cost}</span>
-                </div>
-                <div className="card-meta-row">
-                  <RarityBadge rarity={card.rarity} />
-                  <span className="mini-text builder-card-meta-full">{card.tribe} · Owned {ownedCount}</span>
-                  <span className="mini-text builder-card-meta-compact" aria-label={`${card.tribe} owned ${ownedCount}`}>
-                    {tribeShortLabel} · x{ownedCount}
-                  </span>
-                </div>
-                <div className="card-stats">
-                  <span><StatIcon kind="attack" /> {card.attack}</span>
-                  <span><StatIcon kind="health" /> {card.health}</span>
-                </div>
-                <div className="builder-card-footnote">
-                  {card.effect && <EffectBadge effect={card.effect} compact />}
-                </div>
+                <span className="card-frame" aria-hidden="true" />
+                <CardFace card={card} variant="collection" />
               </button>
 
+              <div className="builder-card-footer">
+                <span className="builder-card-owned">Owned {ownedCount}</span>
               <div className="stepper">
                 <button className="ghost mini" onClick={() => handleDeckCount(card.id, -1)}>
                   −
@@ -315,6 +288,7 @@ export function CollectionScreen() {
                 <button className="ghost mini" onClick={() => handleDeckCount(card.id, 1)} disabled={addDisabled}>
                   +
                 </button>
+              </div>
               </div>
             </div>
             )

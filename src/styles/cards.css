@@ -47,7 +47,7 @@
    bezel. On the default frame there is no competitor, so rarity keeps the
    bezel itself and a second ring would just read as a thick smear. */
 
-.builder-card::before,
+.builder-card-face::before,
 .hand-card::before,
 .slot::before,
 .pack-reveal-card::before {
@@ -59,14 +59,14 @@
   z-index: 3;
 }
 
-.builder-card:not(.border-default)::before,
+.builder-card-face:not(.border-default)::before,
 .hand-card:not(.border-default)::before {
   border: 1px solid var(--rarity-color, var(--border));
 }
 
 /* The legendary wash rides the rarity layer, so an equipped frame dims it as
    little as it dims the hairline: not at all. */
-.builder-card.rarity-legendary::before,
+.builder-card-face.rarity-legendary::before,
 .hand-card.rarity-legendary::before,
 .slot.rarity-legendary::before,
 .pack-reveal-card.rarity-legendary::before {
@@ -1040,58 +1040,30 @@
 
 .pack-reveal-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: var(--space-2-5);
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: var(--space-3);
   margin-top: var(--space-2-5);
 }
 
 .pack-reveal-card {
   position: relative;
   overflow: hidden;
-  display: grid;
-  gap: var(--space-2);
-  padding: var(--space-2-5);
+  aspect-ratio: 63 / 88;
   border-radius: var(--radius-lg);
-  border: 1px solid var(--rarity-color, var(--border));
-  background: linear-gradient(180deg, rgba(39, 32, 31, 0.96), rgba(26, 20, 19, 0.96));
-  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.22);
+  border: 2px solid var(--rarity-color, var(--border));
+  background: #120e0d;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+}
+
+.pack-reveal-missing {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
 }
 
 .pack-reveal-card:hover {
   transform: translateY(-2px);
-}
-
-.pack-reveal-glow {
-  position: absolute;
-  inset: -20px;
-  opacity: 0.18;
-  pointer-events: none;
-  background-position: center;
-  background-repeat: no-repeat;
-  background-size: cover;
-}
-
-.pack-reveal-glow-common { background-image: url('/generated/ui/glow-common.svg'); }
-.pack-reveal-glow-rare { background-image: url('/generated/ui/glow-rare.svg'); }
-.pack-reveal-glow-epic { background-image: url('/generated/ui/glow-epic.svg'); }
-.pack-reveal-glow-legendary { background-image: url('/generated/ui/glow-legendary.svg'); }
-
-.pack-reveal-art-shell {
-  position: relative;
-  z-index: 1;
-  height: 74px;
-}
-
-.pack-reveal-meta {
-  position: relative;
-  z-index: 1;
-  display: grid;
-  gap: var(--space-1);
-}
-
-.new-card-badge {
-  background: linear-gradient(135deg, rgba(217, 159, 59, 0.28), rgba(202, 144, 44, 0.32));
-  border: 1px solid rgba(217, 159, 59, 0.34);
 }
 
 /* ─── Card Art ──────────────────────────────────────────────────── */
@@ -1120,7 +1092,7 @@
 }
 
 .hand-card:hover .card-illustration,
-.builder-card:hover .card-illustration {
+.builder-card-face:hover .card-illustration {
   transform: scale(1.08);
 }
 

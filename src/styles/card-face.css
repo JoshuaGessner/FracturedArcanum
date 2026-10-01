@@ -1,0 +1,281 @@
+/* ═══════════════════════════════════════════════════════════════════
+   The card face (src/components/CardFace.tsx)
+   ───────────────────────────────────────────────────────────────────
+   One face for hand, board, collection, inspect and reveals. It fills its
+   host absolutely and sizes everything in container units (cqw/cqh of the
+   face itself), so the same proportions hold from a 68px phone-hand card to
+   the full inspect view, and the host keeps owning layout.
+
+   Rarity is carried three ways, none of which a cosmetic frame can reach:
+   the gem, the plate's material, and the hairline ring inside the bezel.
+   ═══════════════════════════════════════════════════════════════════ */
+
+.cf,
+.cf-gems {
+  --cf-ring: rgba(168, 162, 154, 0.55);
+  --cf-plate: linear-gradient(180deg, rgba(43, 36, 32, 0.96) 0%, rgba(24, 19, 17, 0.98) 100%);
+  --cf-name: var(--bone);
+
+  position: absolute;
+  inset: 0;
+  display: block;
+  overflow: hidden;
+  border-radius: inherit;
+  container: cardface / size;
+  color: var(--bone);
+  text-align: center;
+  pointer-events: none;
+}
+
+.cf {
+  background: #120e0d;
+}
+
+/* Above the host's .card-frame (z-index 4): a cosmetic finish never tints
+   the gems or the rarity hairline. */
+.cf-gems {
+  z-index: 5;
+}
+
+.cf-rarity-rare {
+  --cf-ring: rgba(108, 155, 210, 0.7);
+  --cf-plate: linear-gradient(180deg, rgba(31, 38, 50, 0.96) 0%, rgba(17, 20, 28, 0.98) 100%);
+  --cf-name: #cfe0f4;
+}
+
+.cf-rarity-epic {
+  --cf-ring: rgba(163, 116, 200, 0.75);
+  --cf-plate: linear-gradient(180deg, rgba(44, 30, 52, 0.96) 0%, rgba(23, 15, 29, 0.98) 100%);
+  --cf-name: #e6d2f2;
+}
+
+.cf-rarity-legendary {
+  --cf-ring: rgba(224, 168, 78, 0.85);
+  --cf-plate: linear-gradient(180deg, rgba(62, 44, 18, 0.97) 0%, rgba(28, 20, 8, 0.98) 100%);
+  --cf-name: var(--ember-light);
+}
+
+/* Hairline ring just inside the bezel — rarity's own line. */
+.cf-gems::after {
+  content: '';
+  position: absolute;
+  inset: 2.6cqw;
+  border: 1px solid var(--cf-ring);
+  border-radius: 6cqw;
+  pointer-events: none;
+  z-index: 4;
+}
+
+/* ─── Art ───────────────────────────────────────────────────────── */
+.cf .cf-art {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 62cqh;
+  overflow: hidden;
+}
+
+/* The art is drawn 340×220; the card window is taller than that, so it is
+   cropped to cover and biased slightly upward, where the figures sit. */
+.cf .cf-art > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 42%;
+  -webkit-user-drag: none;
+  user-select: none;
+}
+
+/* Fade the art into the plate instead of cutting it with a line. */
+.cf .cf-art::after {
+  content: '';
+  position: absolute;
+  inset: 45% 0 0;
+  background: linear-gradient(180deg, transparent, rgba(18, 14, 13, 0.92));
+}
+
+.cf-rarity-legendary .cf-art::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(105deg, transparent 38%, rgba(255, 236, 190, 0.3) 50%, transparent 62%);
+  background-size: 260% 100%;
+  animation: cf-sheen 6s ease-in-out infinite;
+  mix-blend-mode: screen;
+}
+
+@keyframes cf-sheen {
+  0%, 55% { background-position: 130% 0; }
+  100% { background-position: -130% 0; }
+}
+
+/* ─── Plate ─────────────────────────────────────────────────────── */
+.cf .cf-plate {
+  position: absolute;
+  inset: 54cqh 0 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2cqw;
+  padding: 5cqw 8cqw 24cqw;
+  background: var(--cf-plate);
+  /* Lip where art meets plate: a carved edge rather than a box. */
+  box-shadow: inset 0 1px 0 rgba(255, 232, 190, 0.12), 0 -4cqw 8cqw rgba(0, 0, 0, 0.35);
+  clip-path: polygon(0 4cqw, 12cqw 0, 88cqw 0, 100% 4cqw, 100% 100%, 0 100%);
+}
+
+.cf .cf-name {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 100%;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 9.6cqw;
+  line-height: 1.12;
+  letter-spacing: 0.02em;
+  color: var(--cf-name);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
+}
+
+.cf .cf-tribe {
+  flex: none;
+  width: 7.5cqw;
+  height: 7.5cqw;
+  margin: -3.5cqw 0 -0.5cqw;
+  color: var(--cf-ring);
+  opacity: 0.9;
+}
+
+.cf .cf-name-text {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow-wrap: anywhere;
+}
+
+.cf .cf-caption {
+  font-size: 6cqw;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* ─── Gems ──────────────────────────────────────────────────────── */
+.cf-gems .cf-cost,
+.cf-gems .cf-stat {
+  position: absolute;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: #fff8e8;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.85), 0 0 3cqw rgba(0, 0, 0, 0.6);
+}
+
+.cf-gems .cf-cost {
+  top: 4cqw;
+  left: 4cqw;
+  width: 23cqw;
+  height: 23cqw;
+  border-radius: 50%;
+  font-size: 13cqw;
+  background: radial-gradient(circle at 35% 30%, #8fd0bb 0%, #3f8f7c 45%, #1d4a41 100%);
+  box-shadow: 0 0 0 1.4cqw #b89458, 0 0 0 2.2cqw rgba(30, 20, 10, 0.85), 0 2cqw 4cqw rgba(0, 0, 0, 0.5);
+}
+
+/* Attack: a diamond. Health: a medallion. Different shapes, so the two
+   numbers that decide every trade read apart even in greyscale. */
+.cf-gems .cf-attack {
+  bottom: 5cqw;
+  left: 6cqw;
+  width: 19cqw;
+  height: 19cqw;
+  font-size: 12cqw;
+}
+
+.cf-gems .cf-attack::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  transform: rotate(45deg) scale(0.86);
+  border-radius: 2.5cqw;
+  background: linear-gradient(135deg, #f0c46e 0%, #c98a33 50%, #7a4b16 100%);
+  box-shadow: 0 0 0 1.2cqw rgba(40, 24, 8, 0.85), 0 2cqw 4cqw rgba(0, 0, 0, 0.5);
+}
+
+.cf-gems .cf-health {
+  bottom: 4cqw;
+  right: 5cqw;
+  width: 21cqw;
+  height: 21cqw;
+  border-radius: 50%;
+  font-size: 12cqw;
+  background: radial-gradient(circle at 35% 30%, #e0786c 0%, #a5352f 50%, #5a1715 100%);
+  box-shadow: 0 0 0 1.2cqw #b89458, 0 0 0 2cqw rgba(30, 10, 8, 0.85), 0 2cqw 4cqw rgba(0, 0, 0, 0.5);
+}
+
+.cf-gems .cf-health.is-damaged > span {
+  color: #ffd0c6;
+}
+
+.cf-gems .cf-seal {
+  position: absolute;
+  top: 5cqw;
+  right: 5cqw;
+  z-index: 5;
+  width: 19cqw;
+  height: 19cqw;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 35%, rgba(58, 46, 40, 0.95), rgba(20, 15, 13, 0.98));
+  box-shadow: 0 0 0 1px var(--cf-ring), 0 1cqw 3cqw rgba(0, 0, 0, 0.5);
+}
+
+.cf-gems .cf-seal .effect-icon {
+  width: 13cqw;
+  height: 13cqw;
+}
+
+.cf-gems .cf-rarity {
+  position: absolute;
+  bottom: 6.5cqw;
+  left: 50%;
+  z-index: 5;
+  margin: 0;
+  transform: translateX(-50%);
+}
+
+.cf-gems .cf-rarity .rarity-gem-icon {
+  width: 11cqw;
+  height: 11cqw;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.7));
+}
+
+/* ─── Small faces ───────────────────────────────────────────────── */
+/* Below this width a name is unreadable and only steals art; the gems carry
+   the card, and long-press inspect carries the rest. */
+@container cardface (max-width: 84px) {
+  .cf-name {
+    display: none !important;
+  }
+
+  .cf-plate {
+    padding-bottom: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cf-rarity-legendary .cf-art::before {
+    animation: none;
+    background-position: 50% 0;
+    opacity: 0.4;
+  }
+}

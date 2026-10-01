@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { appendToast, formatPasskeyCeremonyError, getCompletionPercent, getComplaintSeverityTone, getEffectIconPath, getHandFanTilt, getPackArtPath, getPasskeyOriginRequirementMessage, getRankAssetPath, getRankBand, getRankLabel, getRarityCompletion, getRarityGemPath, getScreenTransitionClass, getScreenTransitionSound, getStreakTier, shouldPresentScopedReward } from './utils'
+import { appendToast, describeCard, formatPasskeyCeremonyError, getCompletionPercent, getComplaintSeverityTone, getEffectIconPath, getHandFanTilt, getPackArtPath, getPasskeyOriginRequirementMessage, getRankAssetPath, getRankBand, getRankLabel, getRarityCompletion, getRarityGemPath, getScreenTransitionClass, getScreenTransitionSound, getStreakTier, shouldPresentScopedReward } from './utils'
 
 describe('UI asset helpers', () => {
   it('resolves rank insignia from labels and ratings', () => {
@@ -194,5 +194,13 @@ describe('appendToast', () => {
     stack = appendToast(stack, toast('b', 'other'))
     stack = appendToast(stack, toast('c', 'Reconnecting…'))
     expect(stack.map((entry) => entry.id)).toEqual(['b', 'c'])
+  })
+})
+
+describe('describeCard', () => {
+  it('reads name, cost and stats, preferring current health', () => {
+    const card = { name: 'Pallid Fox', cost: 2, attack: 2, health: 2 }
+    expect(describeCard(card)).toBe('Pallid Fox, 2 mana, 2 attack, 2 health')
+    expect(describeCard(card, 1)).toBe('Pallid Fox, 2 mana, 2 attack, 1 health')
   })
 })

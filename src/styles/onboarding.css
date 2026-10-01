@@ -160,7 +160,7 @@
   .reward-vault-card.claim-ready .primary { animation: none !important; }
 
   /* Legendary card cosmetic glow. */
-  .builder-card.rarity-legendary::before,
+  .builder-card-face.rarity-legendary::before,
   .hand-card.rarity-legendary::before { animation: none !important; }
 
   /* Animated cosmetic frames. The finish still reads — the ember sits at its

@@ -14,8 +14,8 @@
 .builder-grid {
   margin-top: var(--space-1-5);
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: var(--space-2-5);
+  grid-template-columns: repeat(auto-fill, minmax(156px, 1fr));
+  gap: var(--space-3);
   min-width: 0;
 }
 
@@ -29,197 +29,77 @@
 }
 
 .builder-card {
-  /* Container for its own contents. Safe here: the card is a grid item so its
-     width comes from the track and never from its contents, it is already
-     `position: relative` with `overflow: hidden`, and its one `position:
-     fixed` descendant (the drag ghost) is portalled out of the subtree.
-
-     Note the card's *own* box cannot use `cqw` — container units resolve
-     against the nearest *ancestor* container, so `cqw` here would mean "panel
-     width", i.e. the viewport again. Only the contents below may use them. */
-  container-type: inline-size;
-  container-name: card;
-
   position: relative;
   min-width: 0;
-  min-height: 200px;
-  padding: var(--space-2);
   display: grid;
-  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-rows: auto auto;
   gap: var(--space-1-5);
-  overflow: hidden;
-  background: linear-gradient(180deg, rgba(53, 44, 42, 0.98), rgba(34, 28, 26, 0.98));
-  border-radius: 16px;
-  border: 2px solid var(--rarity-color, var(--border));
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
   -webkit-touch-callout: none;
 }
 
-/* Compact treatment, keyed to the card's own width.
-
-   The threshold is in CONTENT-box pixels, which is what `@container` compares
-   against — not the border box you get from getBoundingClientRect(). The card
-   carries 8px padding each side plus a 2px border, so a 217px card queries as
-   197px. Getting this wrong fails silently: a first pass used 200px and the
-   roomy desktop card still matched the compact branch.
-
-   Measured content widths: 152px (phone, 2-up), 170px (3-up), 174px, 197px
-   (desktop, 5-up), 274px (2-up wide). 185px separates the crowded cases from
-   the roomy ones. */
-@container card (width < 185px) {
-  .builder-card .builder-card-preview,
-  .builder-card .builder-card-preview > *,
-  .builder-card .slot-head,
-  .builder-card .card-meta-row,
-  .builder-card .card-stats,
-  .builder-card .builder-card-footnote,
-  .builder-card .stepper {
-    min-width: 0;
-    max-width: 100%;
-    box-sizing: border-box;
-    overflow: hidden;
-  }
-
-  .builder-card .card-art-shell {
-    height: 78px;
-    border-radius: 12px;
-  }
-
-  .builder-card .slot-head,
-  .builder-card .card-meta-row,
-  .builder-card .card-stats {
-    gap: var(--space-1);
-  }
-
-  .builder-card .slot-head strong {
-    font-size: 0.78rem;
-    line-height: 1.15;
-  }
-
-  .builder-card .stats,
-  .builder-card .card-stats {
-    font-size: 0.8rem;
-  }
-
-  .builder-card .rarity-gem {
-    gap: 3px;
-    margin-bottom: 0;
-    flex: 0 1 auto;
-    min-width: 0;
-  }
-
-  /* Icon-only at this width; the label returns as soon as the card has room. */
-  .builder-card .rarity-gem span {
-    display: none;
-  }
-
-  .builder-card .rarity-gem-icon,
-  .builder-card .stat-icon,
-  .builder-card .effect-icon {
-    width: 12px;
-    height: 12px;
-  }
-
-  .builder-card .builder-card-meta-full {
-    display: none;
-  }
-
-  /* Descendant form, not the bare class: the base `.builder-card-meta-compact
-     { display: none }` sits later in the file at equal specificity and would
-     otherwise win, silently keeping the compact label hidden. */
-  .builder-card .builder-card-meta-compact {
-    display: inline-block;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-size: 0.72rem;
-  }
-
-  .builder-card .effect-badge {
-    display: inline-grid;
-    place-items: center;
-    width: 22px;
-    height: 22px;
-    padding: 0;
-    border-radius: var(--radius-pill);
-  }
-
-  .builder-card .effect-badge span {
-    display: none;
-  }
-
-  .builder-card .stepper {
-    justify-content: space-between;
-    gap: 3px;
-  }
-
-  /* Stays at 34px — a narrow card is exactly where the +/- controls must not
-     shrink further. */
-  .builder-card .stepper .ghost.mini {
-    width: 34px;
-    min-width: 34px;
-    height: 34px;
-    padding: 0;
-    border-radius: var(--radius-md);
-  }
-
-  .builder-card .count-chip {
-    min-width: 24px;
-    font-size: 0.86rem;
-  }
-}
-.builder-card-preview {
+/* The card itself: a real 63×88 card, drawn by CardFace. It hosts the
+   rarity hairline (::before, see cards.css) and the cosmetic `.card-frame`,
+   which is why the rarity and border classes live here, not on the wrapper. */
+.builder-card-face {
+  position: relative;
+  display: block;
   width: 100%;
-  max-width: 100%;
-  min-width: 0;
+  aspect-ratio: 63 / 88;
   padding: 0;
-  display: grid;
-  gap: var(--space-1);
-  border: 0;
-  box-sizing: border-box;
-  background: transparent;
-  color: inherit;
-  text-align: left;
   overflow: hidden;
+  border-radius: 14px;
+  border: 2px solid var(--rarity-color, var(--border));
+  background: #120e0d;
+  color: inherit;
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.35);
+  transition: transform var(--motion-base), box-shadow var(--motion-base);
   -webkit-touch-callout: none;
   -webkit-user-select: none;
   user-select: none;
 }
 
-.builder-card-meta-compact {
-  display: none;
-}
-
-.builder-card-preview:focus-visible {
-  outline: 2px solid #6ac1aa;
+.builder-card-face:focus-visible {
+  outline: 2px solid var(--ember-light);
   outline-offset: 2px;
 }
 
-.builder-card-footnote {
+@media (hover: hover) and (pointer: fine) {
+  .builder-card-face:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 16px 30px rgba(0, 0, 0, 0.45), 0 0 18px color-mix(in srgb, var(--rarity-color) 35%, transparent);
+  }
+}
+
+.builder-card-footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-1-5);
+  gap: var(--space-1);
   min-width: 0;
 }
 
-.builder-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+.builder-card-owned {
+  font-size: var(--font-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  white-space: nowrap;
 }
 
-.builder-card.rarity-legendary {
-  background: linear-gradient(180deg, rgba(51, 40, 22, 0.98), rgba(24, 20, 12, 0.98));
+/* An unowned card stays legible — it is still the catalogue — but recedes. */
+.builder-card.locked .builder-card-face {
+  filter: saturate(0.35) brightness(0.72);
 }
 
-.builder-card.rarity-epic {
-  background: linear-gradient(180deg, rgba(51, 41, 38, 0.98), rgba(31, 25, 24, 0.98));
-}
-
-.builder-card.locked {
-  opacity: 0.72;
-  filter: saturate(0.75);
+.builder-card .stepper .ghost.mini {
+  width: 34px;
+  min-width: 34px;
+  height: 34px;
+  padding: 0;
+  border-radius: var(--radius-md);
+  font-family: var(--font-display);
+  font-weight: 700;
 }
 
 .stepper {

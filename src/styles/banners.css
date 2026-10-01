@@ -23,72 +23,99 @@
 }
 
 .card-inspect-modal {
-  background: linear-gradient(180deg, rgba(60, 50, 48, 0.98), rgba(31, 25, 24, 0.98));
-  border: 2px solid var(--rarity-color, var(--border));
+  background: var(--panel-bg);
+  border: 1px solid var(--brass-dim);
   border-radius: var(--radius-xl);
   padding: var(--space-5);
-  max-width: 340px;
-  width: 90vw;
-  max-height: 85svh;
-  overflow-y: auto;
+  width: min(92vw, 720px);
+  max-height: 88svh;
+  box-shadow: var(--panel-edge), 0 30px 80px rgba(0, 0, 0, 0.6);
   animation: modalPop 0.25s ease;
 }
 
-.card-inspect-header {
-  text-align: center;
-  margin-bottom: var(--space-3);
+/* Phone: card on top, details under it. Wide: card left, details right. */
+.card-inspect-scroll {
+  grid-template-columns: 1fr;
+  justify-items: center;
 }
 
-.card-inspect-header h3 {
-  margin: 0 0 var(--space-1);
-  font-size: 1.3rem;
-}
-
-.card-inspect-header .note {
-  font-size: 0.75rem;
-  color: #d2bb92;
-}
-
-.card-inspect-modal .card-art-shell {
-  border-radius: 12px;
+.card-inspect-face {
+  position: relative;
+  width: min(68vw, 300px, calc((88svh - 260px) * 63 / 88));
+  min-width: 170px;
+  aspect-ratio: 63 / 88;
   overflow: hidden;
-  margin-bottom: var(--space-3);
+  border-radius: 18px;
+  border: 2px solid var(--rarity-color, var(--border));
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.55), 0 0 30px color-mix(in srgb, var(--rarity-color) 28%, transparent);
 }
 
-.card-inspect-modal .card-illustration {
+.card-inspect-info {
+  display: grid;
+  gap: var(--space-2-5);
   width: 100%;
-  display: block;
+  align-content: start;
 }
 
-.card-inspect-stats {
+.card-inspect-info h2 {
+  font-size: var(--font-xl);
+  line-height: 1.15;
+  color: var(--bone);
+}
+
+.card-inspect-lineage {
   display: flex;
-  gap: var(--space-4);
-  justify-content: center;
-  font-size: 1rem;
-  font-weight: 700;
-  padding: var(--space-2) 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--font-sm);
+  color: var(--bone-dim);
+}
+
+.card-inspect-tribe {
+  display: inline-flex;
+  align-items: center;
+  text-transform: capitalize;
 }
 
 .card-inspect-effect {
-  margin-top: var(--space-2);
-  padding: var(--space-2-5);
-  background: rgba(255, 255, 255, 0.05);
+  padding: var(--space-2-5) var(--space-3);
+  background: rgba(255, 232, 190, 0.05);
+  border: 1px solid rgba(201, 169, 110, 0.18);
   border-radius: var(--radius-md);
 }
 
 .card-inspect-effect .note {
   margin-top: var(--space-1);
-  font-size: 0.8rem;
-  line-height: 1.4;
+  font-size: var(--font-sm);
+  line-height: 1.45;
 }
 
 .card-inspect-modal .card-text {
-  margin-top: var(--space-2-5);
+  font-size: var(--font-md);
+  line-height: 1.5;
+  color: var(--bone-dim);
 }
 
-.card-inspect-modal button.ghost {
+.card-inspect-info .secondary {
   width: 100%;
-  margin-top: var(--space-3);
+}
+
+@media (min-width: 640px) {
+  .card-inspect-scroll {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: start;
+    justify-items: stretch;
+    gap: var(--space-6);
+  }
+
+  .card-inspect-face {
+    width: min(300px, calc((88svh - 80px) * 63 / 88));
+  }
+
+  .card-inspect-info {
+    padding-top: var(--space-2);
+  }
 }
 
 /* ─── Game Resume Block ─── */

@@ -87,6 +87,10 @@
 /* Bottom sheets */
 @import './styles/sheets.css';
 
+/* The shared card face (CardFace.tsx). Before card-frames.css so a bought
+   frame still lands on top of it. */
+@import './styles/card-face.css';
+
 /* Cosmetic frames on board units, the inspect modal and pack reveals. Last on
    purpose — it must outrank the ceremony card in ceremonies.css and the
    reduced-motion block in onboarding.css, which the base frame rules in

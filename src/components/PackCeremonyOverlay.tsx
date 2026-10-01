@@ -2,9 +2,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { CARD_LIBRARY, RARITY_COLORS } from '../game'
 import type { CardBorder, CardCollection, OpenedPackCard } from '../types'
 import { UI_ASSETS } from '../constants'
-import { cardArtPath, getPackArtPath, handleCardArtError, pulseFeedback } from '../utils'
+import { getPackArtPath, pulseFeedback } from '../utils'
 import { playSound } from '../audio'
-import { RarityBadge, TribeSigil } from './AssetBadge'
+import { CardFace } from './CardFace'
 
 type CeremonyPhase = 'intro' | 'shake' | 'burst' | 'fan' | 'reveal' | 'done'
 
@@ -289,21 +289,16 @@ export function PackCeremonyOverlay({
                           alt=""
                           aria-hidden="true"
                         />
-                        <span className="pack-ceremony-card-art">
-                          <img
-                            src={cardArtPath(card.id)}
-                            alt={`${meta?.name ?? card.id} illustration`}
-                            onError={handleCardArtError}
-                            draggable={false}
+                        {meta ? (
+                          <CardFace
+                            card={meta}
+                            variant="reveal"
+                            caption={card.duplicate ? 'Duplicate · Shards refunded' : undefined}
+                            lazy={false}
                           />
-                        </span>
-                        <span className="pack-ceremony-card-meta">
-                          <RarityBadge rarity={card.rarity} />
-                          <strong>{meta && <TribeSigil tribe={meta.tribe} />}{meta?.name ?? card.id}</strong>
-                          <span className="mini-text">
-                            {card.duplicate ? 'Duplicate · refunded as Shards' : 'Added to your library'}
-                          </span>
-                        </span>
+                        ) : (
+                          <span className="pack-ceremony-card-missing">{card.id}</span>
+                        )}
                         {isFirstTime && (
                           <img
                             className="pack-ceremony-card-ribbon"
