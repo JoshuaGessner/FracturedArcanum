@@ -1,20 +1,12 @@
 /* ─── Text Styles ───────────────────────────────────────────────── */
 
-.note, .mini-text, .card-text { color: #f4ebda; }
+.note, .mini-text { color: #f4ebda; }
 .note { font-size: 0.92rem; }
 
-.mini-text, .card-text {
+.mini-text {
   font-size: 0.88rem;
   line-height: 1.35;
 }
-
-.card-text.clamped {
-  display: -webkit-box;
-  overflow: hidden;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-}
-
 /* ─── Summary / Victory ──────────────────────────────────────── */
 
 .log-heading { margin-top: var(--space-4); }

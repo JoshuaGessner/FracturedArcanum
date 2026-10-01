@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
 import { BattleLaunchSheet } from '../components/BattleLaunchSheet'
 import { HomeQuestBoard } from '../components/HomeQuestBoard'
+import { HomeDeckShowcase } from '../components/HomeDeckShowcase'
 import { HomeStatusRibbon } from '../components/HomeStatusRibbon'
 import { QuestLedgerPanel } from '../components/QuestLedgerPanel'
 import { useAppShell, useGame, useProfile, useQueue } from '../contexts'
-import { getStreakTier } from '../utils'
+import { CARD_LIBRARY, MIN_DECK_SIZE } from '../game'
+import { getStreakTier, pickDeckShowcase } from '../utils'
 
 const HOME_DECK_GOAL = 14
 
@@ -19,13 +21,14 @@ const HOME_DECK_GOAL = 14
  * inside the natural thumb arc.
  */
 export function HomeScreen() {
-  const { activeScreen, dailyQuest, seasonName, seasonEnd } = useAppShell()
+  const { activeScreen, dailyQuest, seasonName, seasonEnd, openScreen } = useAppShell()
   const { gameInProgress, game, handleResumeBattle, handleAbandonBattle, isRankedBattle } = useGame()
   const { queueState, queueSeconds } = useQueue()
   const {
     record, winRate, selectedDeckSize, serverProfile, rankLabel,
     canClaimDailyReward, nextRewardLabel, seasonRating, rankProgress, nextRankTarget,
     questOverview, handleClaimQuestReward, handleClaimQuestRewards, deckReady,
+    savedDecks, activeDeckId, handleSelectDeck, deckConfig,
   } = useProfile()
 
   const streakTier = getStreakTier(record.streak)
@@ -84,9 +87,14 @@ export function HomeScreen() {
   const readyQuestRewards = questOverview?.summary.claimable ?? 0
   const deckCardsNeeded = Math.max(0, HOME_DECK_GOAL - selectedDeckSize)
   const deckSurplus = Math.max(0, selectedDeckSize - HOME_DECK_GOAL)
+  // Two thresholds: MIN_DECK_SIZE makes a deck playable, HOME_DECK_GOAL is a
+  // full deck. Between them the deck is ready to battle and only "short of
+  // full" — saying "needed" there contradicted the Battle button beside it.
   const deckDetailLabel = selectedDeckSize >= HOME_DECK_GOAL
     ? deckSurplus > 0 ? `${deckSurplus} over minimum` : 'Minimum met'
-    : `${deckCardsNeeded} ${deckCardsNeeded === 1 ? 'card' : 'cards'} needed`
+    : deckReady
+      ? `${deckCardsNeeded} to fill`
+      : `${Math.max(0, MIN_DECK_SIZE - selectedDeckSize)} more to play`
   const rewardVaultLabel = canClaimDailyReward ? 'Ready to Claim' : nextRewardLabel
   const ratingToNext = Math.max(0, nextRankTarget - seasonRating)
   const clampedRankProgress = Math.max(0, Math.min(100, rankProgress))
@@ -114,6 +122,15 @@ export function HomeScreen() {
       accent: canClaimDailyReward,
     },
   ]
+
+  const activeDeckIndex = Math.max(0, savedDecks.findIndex((deck) => deck.id === activeDeckId))
+  const activeDeckName = savedDecks[activeDeckIndex]?.name ?? 'Starter Deck'
+  const showcaseCards = pickDeckShowcase(deckConfig, CARD_LIBRARY)
+  const stepDeck = (direction: 1 | -1) => {
+    if (savedDecks.length < 2) return
+    const next = savedDecks[(activeDeckIndex + direction + savedDecks.length) % savedDecks.length]
+    handleSelectDeck(next)
+  }
 
   // The CTA reports the single most useful next action, so the player never
   // has to open the sheet just to find out what state they are in.
@@ -160,6 +177,19 @@ export function HomeScreen() {
             {/* Primary action: last in the flow, largest on the page, and
                 anchored to the bottom of the hub so it sits in the thumb arc. */}
             <div className={`home-battle-dock tone-${battleCta.tone}`}>
+              {!gameInProgress && (
+                <HomeDeckShowcase
+                  deckName={activeDeckName}
+                  deckSize={selectedDeckSize}
+                  deckGoal={MIN_DECK_SIZE}
+                  ready={deckReady}
+                  cards={showcaseCards}
+                  canCycle={savedDecks.length > 1}
+                  onPrevious={() => stepDeck(-1)}
+                  onNext={() => stepDeck(1)}
+                  onOpen={() => openScreen('collection')}
+                />
+              )}
               <button
                 className="home-battle-cta"
                 onClick={gameInProgress ? handleResumeBattle : () => setLaunchOpen(true)}

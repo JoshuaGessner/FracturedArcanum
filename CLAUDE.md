@@ -9,8 +9,8 @@
 
 Read the code index in `.github/index/` before writing or modifying code, to
 locate the right file and function. For visual, UX, or battle-presentation work,
-read `.github/REFACTOR_PLAN.md` first so changes stay aligned with the
-scene-first direction.
+read `.github/REFACTOR_PLAN.md` and `docs/UI_DESIGN_PRINCIPLES.md` first so
+changes stay aligned with the scene-first direction and the interface rules.
 
 | Index File | Covers |
 |------------|--------|
@@ -44,6 +44,7 @@ effects, keywords, tribes, economy values, collectibles, or cosmetic pricing.
 | `docs/deployment-permissions.md` | Deploy and server-update permissions |
 | `docs/release-checklist.md` | Pre-release verification |
 | `docs/layout-qa.md` | The four layout-QA tools, their invariants, and the traps they encode |
+| `docs/UI_DESIGN_PRINCIPLES.md` | The interface rules (card hierarchy, readability, signals, thumb placement, ceremony) and the genre research behind them |
 
 **Game content workflow:** Design Bible → Balance Framework → implement in
 `src/game.ts` → update Card Catalog → verify economy impact → test → build.
@@ -171,7 +172,17 @@ Every new card must pass the balance audit checklist before merging.
   battle that is the board.
 - Temporary battle notices float above the arena and never push layout down.
 - Cards in hand and on the board expose effect seals without inspect-first play.
-- Recap, reward, and conclusion states reuse the shared summary-popup pattern.
+- Recap, reward, and conclusion states reuse the shared summary-popup pattern
+  (pass a result `crest` for match outcomes).
+- **One signal per meaning.** A steady verdigris edge means "can act now" on
+  hand cards and board units alike; your spent units dim (never translucent);
+  the opponent's units never dim on your turn. Do not invent a second
+  "playable" colour.
+- **Battle controls:** Leave stays at the top, away from End Turn; momentum
+  lives on the `BurstMedallion`; floating damage/heal numbers come from
+  `useHealthPops`. See `docs/UI_DESIGN_PRINCIPLES.md`.
+- Binary settings use `SettingSwitch` (`role="switch"`), never an On/Off
+  label button. Section tab strips stay one row on phones.
 
 #### Layout traps this codebase has actually hit
 Read these before touching layout CSS — each cost real debugging time:
@@ -242,7 +253,7 @@ Read these before touching layout CSS — each cost real debugging time:
 | `src/AppShellContext.ts` | `AppShellContextValue` + context for auth/nav/toasts/admin | Update when adding shared AppShell-only state |
 | `src/screens/` | Presentational screens: Home, Collection, Battle, Social, Shop, Settings | Propless — read state via slice hooks |
 | `src/components/` | Shared UI primitives (modals, nav, overlays, badges, ceremonies) | Prop-driven only |
-| `src/hooks/` | `useViewportMetrics`, `useSceneSwipe` (reusable behaviour) plus AppShell domain hooks: `useAccountActions`, `useAdminConsole`, `useSocialActions` | Domain hooks own their own state or read a provider directly — do not pass setters in |
+| `src/hooks/` | `useViewportMetrics`, `useSceneSwipe`, `useHealthPops` (reusable behaviour) plus AppShell domain hooks: `useAccountActions`, `useAdminConsole`, `useSocialActions` | Domain hooks own their own state or read a provider directly — do not pass setters in |
 | `src/utils/` | `layoutScaling`, `sceneSwipe` — pure, unit-tested helpers | No React |
 | `src/types.ts` | UI-only types | |
 | `src/constants.ts` | Static UI constants, theme offers, labels, semantic asset registry | Data only, no functions |

@@ -501,3 +501,23 @@ export function getPileCounts(player: {
     deck: player.deckCount ?? player.deck.length,
   }
 }
+
+const SHOWCASE_RARITY_RANK: Record<string, number> = { legendary: 3, epic: 2, rare: 1, common: 0 }
+
+/**
+ * The cards a deck is shown by: its rarest, then most expensive, one copy
+ * each — the deck box's cover the way a player would describe the deck.
+ */
+export function pickDeckShowcase<T extends { id: string; rarity: string; cost: number }>(
+  deckConfig: Record<string, number>,
+  library: T[],
+  count = 3,
+): T[] {
+  return library
+    .filter((card) => (deckConfig[card.id] ?? 0) > 0)
+    .sort((a, b) =>
+      (SHOWCASE_RARITY_RANK[b.rarity] ?? 0) - (SHOWCASE_RARITY_RANK[a.rarity] ?? 0)
+      || b.cost - a.cost
+      || a.id.localeCompare(b.id))
+    .slice(0, count)
+}

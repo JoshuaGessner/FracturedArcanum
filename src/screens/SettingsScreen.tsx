@@ -5,6 +5,7 @@ import { useAppShell, useProfile } from '../contexts'
 import { feedback } from '../feedback'
 import type { AdminComplaint, AdminUser, PasskeySummary } from '../types'
 import { InterfaceGlyph } from '../components/AssetBadge'
+import { SettingSwitch } from '../components/SettingSwitch'
 
 type AdminSubview = 'liveOps' | 'traffic' | 'complaints' | 'recovery' | 'accounts' | 'roles' | 'audit'
 
@@ -151,79 +152,75 @@ export function SettingsScreen() {
         <SettingsToggleRow
           label="Arena Audio"
           action={(
-            <button
-              className={`ghost mini ${soundEnabled ? '' : 'muted'}`}
-              onClick={() => {
+            <SettingSwitch
+              label="Arena Audio"
+              checked={soundEnabled}
+              onToggle={() => {
                 const nextValue = !soundEnabled
                 setSoundEnabled(nextValue)
                 setToastMessage(nextValue ? 'Arena sound enabled.' : 'Arena sound muted.')
               }}
-            >
-              {soundEnabled ? 'On' : 'Off'}
-            </button>
+            />
           )}
         />
         <SettingsToggleRow
           label="Ambient Loops"
           action={(
-            <button
-              className={`ghost mini ${ambientEnabled && soundEnabled ? '' : 'muted'}`}
+            <SettingSwitch
+              label="Ambient Loops"
+              checked={ambientEnabled && soundEnabled}
               disabled={!soundEnabled}
-              onClick={() => {
+              caption={!soundEnabled ? 'Audio off' : undefined}
+              onToggle={() => {
                 const nextValue = !ambientEnabled
                 setAmbientEnabled(nextValue)
                 setToastMessage(nextValue ? 'Ambient loops enabled.' : 'Ambient loops disabled.')
               }}
-            >
-              {!soundEnabled ? 'Audio off' : ambientEnabled ? 'On' : 'Off'}
-            </button>
+            />
           )}
         />
         <SettingsToggleRow
           label="Analytics"
           action={(
-            <button
-              className={`ghost mini ${analyticsConsent ? '' : 'muted'}`}
-              onClick={() => {
+            <SettingSwitch
+              label="Analytics"
+              checked={analyticsConsent}
+              onToggle={() => {
                 const nextValue = !analyticsConsent
                 setAnalyticsConsent(nextValue)
                 setToastMessage(nextValue ? 'Anonymous tracking enabled.' : 'Anonymous tracking paused.')
               }}
-            >
-              {analyticsConsent ? 'On' : 'Off'}
-            </button>
+            />
           )}
         />
         <SettingsToggleRow
           label="Scene Swipe"
           action={(
-            <button
-              className={`ghost mini ${gesturesEnabled ? '' : 'muted'}`}
-              onClick={() => {
+            <SettingSwitch
+              label="Scene Swipe"
+              checked={gesturesEnabled}
+              onToggle={() => {
                 const nextValue = !gesturesEnabled
                 feedback('tap', soundEnabled, hapticsEnabled)
                 setGesturesEnabled(nextValue)
                 setToastMessage(nextValue ? 'Scene swipe enabled.' : 'Scene swipe disabled.')
               }}
-            >
-              {gesturesEnabled ? 'On' : 'Off'}
-            </button>
+            />
           )}
         />
         <SettingsToggleRow
           label="Haptics"
           action={(
-            <button
-              className={`ghost mini ${hapticsEnabled ? '' : 'muted'}`}
-              onClick={() => {
+            <SettingSwitch
+              label="Haptics"
+              checked={hapticsEnabled}
+              onToggle={() => {
                 const nextValue = !hapticsEnabled
                 feedback('tap', soundEnabled, nextValue)
                 setHapticsEnabled(nextValue)
                 setToastMessage(nextValue ? 'Haptics enabled.' : 'Haptics disabled.')
               }}
-            >
-              {hapticsEnabled ? 'On' : 'Off'}
-            </button>
+            />
           )}
         />
         <SettingsToggleRow

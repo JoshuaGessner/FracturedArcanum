@@ -70,6 +70,31 @@ container and everything inside is in `cqw`/`cqh`, so one set of proportions
 serves a 68px phone-hand card and the full inspect view. Below 84px wide the
 name is hidden.
 
+## Card bezel and signals
+
+- `--card-bezel` (set on `.rarity-*` in `cards.css`) is aged bronze tinted 22%
+  toward the rarity colour, gold for legendaries. Card hosts draw their border
+  with it; rarity itself is the gem plus the CardFace hairline.
+- `.hand-card.is-playable` and `.slot.can-attack` share one steady verdigris
+  edge. Spent player units dim via filter; enemy units never dim.
+- `.health-pop` (battle.css) is the floating damage/heal number; its
+  reduced-motion variant holds still and fades.
+
+## Battle HUD (battle.css)
+
+`.battle-enemy-row` (Leave + enemy plaque) · board stack with the one-line
+`.battle-centerline` turn ribbon · player plaque · `.battle-action-dock`
+(`.burst-medallion` + End Turn, capped at 440px and held right) · hand rail.
+Lanes are shallow seats (`.board-grid-battle .lane`) and units fill them.
+
+## Section tabs and settings
+
+On phones `.shop-nav-strip`, `.social-nav-strip` and `.settings-nav-strip`
+share one rule in `responsive.css`: a single scrolling row with a fade. The
+active tab uses the amber→verdigris gradient with `#fff7d6` text.
+`.settings-toggle-list` is one grouped list with hairline dividers and no
+overflow clip (a clipped grid item collapsed it to a hairline once).
+
 ## Major section map
 
 | Section | Approx. Range | Key Classes |

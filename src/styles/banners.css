@@ -90,13 +90,6 @@
   font-size: var(--font-sm);
   line-height: 1.45;
 }
-
-.card-inspect-modal .card-text {
-  font-size: var(--font-md);
-  line-height: 1.5;
-  color: var(--bone-dim);
-}
-
 .card-inspect-info .secondary {
   width: 100%;
 }

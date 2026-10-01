@@ -269,9 +269,13 @@ export async function applyProbeStyles(page, viewport) {
  */
 export async function abandonBattleIfActive(page) {
   if (await page.locator('.battlefield.active').count() > 0) {
+    // The class first: Leave became an icon-only button in the enemy row, and
+    // matching on its visible text silently stopped finding it — every state
+    // after the first battle then opened into a match that never closed.
     await page.evaluate(() => {
-      const button = [...document.querySelectorAll('.battlefield button, .app-shell button')]
-        .find((el) => (el.textContent || '').trim() === 'Leave')
+      const button = document.querySelector('.battlefield.active .battle-leave-button')
+        ?? [...document.querySelectorAll('.battlefield button, .app-shell button')]
+          .find((el) => (el.textContent || '').trim() === 'Leave')
       button?.click()
     })
     await page.waitForSelector('.battlefield.active', { state: 'detached', timeout: 5_000 }).catch(() => {})

@@ -18,14 +18,14 @@ body {
   user-select: none;
 }
 
-input, textarea, p, .card-text, .note, .mini-text {
+input, textarea, p, .note, .mini-text {
   -webkit-user-select: text;
   user-select: text;
 }
 
 /* But inside long-press surfaces (cards, slots, hand) keep selection
    off so iOS does not fire the system text-callout on inspect. */
-.slot p, .slot .note, .slot .card-text, .hand-card p, .hand-card .note, .hand-card .card-text, .builder-card p, .builder-card .note, .builder-card .card-text {
+.slot p, .slot .note, .hand-card p, .hand-card .note, .builder-card p, .builder-card .note {
   -webkit-user-select: none;
   user-select: none;
   -webkit-touch-callout: none;

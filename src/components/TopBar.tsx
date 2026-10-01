@@ -45,7 +45,7 @@ export function TopBar({
     return (
       <header className="topbar topbar-compact-shell" aria-label={screenTitle} ref={ref}>
         <div className="topbar-compact-copy">
-          <p className="eyebrow">{screenTitle}</p>
+          <h1 className="topbar-screen-title">{screenTitle}</h1>
         </div>
         {trailing}
       </header>

@@ -62,7 +62,11 @@ live in `src/components/BattleLaunchSheet.tsx`, opened from Home's battle CTA.
 |------|------|
 | `src/components/AssetBadge.tsx` | Shared effect, rarity, rank, stat, and pack visuals, plus the mask glyphs `Glyph`, `InterfaceGlyph` and `TribeSigil` that replaced every emoji |
 | `src/components/CardFace.tsx` | The one card face used by hand, board, collection, inspect and pack reveals |
-| `src/components/BattleHeroAnchor.tsx` | Hero plaque: crest, name, momentum orb, mana crystals, health medallion |
+| `src/components/BattleHeroAnchor.tsx` | Hero plaque: crest, name, enemy hand/deck counts, mana crystals with a large count, health medallion; the enemy plaque is the strike target while attacking |
+| `src/components/BurstMedallion.tsx` | Burst control carrying momentum: charge ring, notch at the cost of 3, lit when affordable |
+| `src/components/HealthPopBadge.tsx` | Floating `-3` / `+2` over a unit or hero (driven by `src/hooks/useHealthPops.ts`) |
+| `src/components/HomeDeckShowcase.tsx` | Home: the active deck's headline cards, name and readiness beside Battle, with arrows to switch decks |
+| `src/components/SettingSwitch.tsx` | Brass `role="switch"` toggle for binary preferences |
 | `src/components/HomeStatusRibbon.tsx` | Home identity, rating meter, and Record / Deck / Vault tiles |
 | `src/components/HomeQuestBoard.tsx` | Home quest board with the featured contract |
 | `src/components/QuestLedgerPanel.tsx` | Quest ledger subview with engraved quest glyphs |

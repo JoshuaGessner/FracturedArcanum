@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { appendToast, describeCard, diffHealth, getPileCounts, hasAvailableAction, formatPasskeyCeremonyError, getCompletionPercent, getComplaintSeverityTone, getEffectIconPath, getHandFanTilt, getPackArtPath, getPasskeyOriginRequirementMessage, getRankAssetPath, getRankBand, getRankLabel, getRarityCompletion, getRarityGemPath, getScreenTransitionClass, getScreenTransitionSound, getStreakTier, shouldPresentScopedReward } from './utils'
+import { appendToast, describeCard, diffHealth, getPileCounts, pickDeckShowcase, hasAvailableAction, formatPasskeyCeremonyError, getCompletionPercent, getComplaintSeverityTone, getEffectIconPath, getHandFanTilt, getPackArtPath, getPasskeyOriginRequirementMessage, getRankAssetPath, getRankBand, getRankLabel, getRarityCompletion, getRarityGemPath, getScreenTransitionClass, getScreenTransitionSound, getStreakTier, shouldPresentScopedReward } from './utils'
 
 describe('UI asset helpers', () => {
   it('resolves rank insignia from labels and ratings', () => {
@@ -244,5 +244,23 @@ describe('getPileCounts', () => {
 
   it('falls back to the local engine arrays', () => {
     expect(getPileCounts({ hand: [1, 2], deck: [1, 2, 3] })).toEqual({ hand: 2, deck: 3 })
+  })
+})
+
+describe('pickDeckShowcase', () => {
+  const library = [
+    { id: 'a', rarity: 'common', cost: 5 },
+    { id: 'b', rarity: 'legendary', cost: 2 },
+    { id: 'c', rarity: 'rare', cost: 4 },
+    { id: 'd', rarity: 'rare', cost: 6 },
+    { id: 'e', rarity: 'epic', cost: 1 },
+  ]
+
+  it('fronts the rarest, then most expensive, cards in the deck', () => {
+    expect(pickDeckShowcase({ a: 2, b: 1, c: 1, d: 1, e: 2 }, library).map((card) => card.id)).toEqual(['b', 'e', 'd'])
+  })
+
+  it('ignores cards at zero copies and returns fewer for a thin deck', () => {
+    expect(pickDeckShowcase({ a: 1, b: 0 }, library).map((card) => card.id)).toEqual(['a'])
   })
 })

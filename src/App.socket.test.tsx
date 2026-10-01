@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { createGame } from './game'
 import type { ServerProfile } from './types'
 
@@ -91,10 +91,11 @@ describe('AppShell socket handlers', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Settings and account' }))
     await settle()
-    const audioRow = screen.getByText('Arena Audio').closest('div') as HTMLElement
-    fireEvent.click(within(audioRow.parentElement as HTMLElement).getByRole('button', { name: 'On' }))
+    const audioSwitch = screen.getByRole('switch', { name: 'Arena Audio' })
+    expect(audioSwitch.getAttribute('aria-checked')).toBe('true')
+    fireEvent.click(audioSwitch)
     await settle()
-    expect(screen.getByText('Arena Audio').closest('div')?.parentElement?.textContent).toContain('Off')
+    expect(screen.getByRole('switch', { name: 'Arena Audio' }).getAttribute('aria-checked')).toBe('false')
 
     playSound.mockClear()
     await act(async () => {
