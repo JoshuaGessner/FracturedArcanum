@@ -139,24 +139,21 @@ input[type="checkbox"]:hover {
 
 /* ─── Theme overrides v2: visible accent / surface differences ─── */
 
+/* Themes re-light the table from the palette rather than adding hues to it:
+   Ember Court is ember and blood, Moonwell is verdigris and bone. */
 .app-shell.theme-ember {
-  --accent: #d5822f;
-  --accent-blue: #c7554d;
-  --border: rgba(213, 130, 47, 0.22);
-  --border-bright: rgba(213, 130, 47, 0.4);
-  --focus-ring: 0 0 0 2px rgba(213, 130, 47, 0.85);
+  --accent: var(--ember);
+  --accent-blue: var(--blood-light);
+  --border: rgba(224, 168, 78, 0.22);
+  --border-bright: rgba(224, 168, 78, 0.4);
+  --focus-ring: 0 0 0 2px rgba(224, 168, 78, 0.85);
 }
 
 .app-shell.theme-moon {
-  --accent: #4cb69a;
-  --accent-blue: #d3bb93;
-  --border: rgba(211, 187, 147, 0.24);
-  --border-bright: rgba(211, 187, 147, 0.4);
-  --focus-ring: 0 0 0 2px rgba(76, 182, 154, 0.85);
+  --accent: var(--verdigris-light);
+  --accent-blue: var(--bone-dim);
+  --border: rgba(143, 208, 187, 0.22);
+  --border-bright: rgba(143, 208, 187, 0.4);
+  --focus-ring: 0 0 0 2px rgba(143, 208, 187, 0.85);
 }
-
-/* Theme swatch in vault matches the new accents. */
-.theme-swatch.royal { background: linear-gradient(135deg, #9b58b7, #489f88); }
-.theme-swatch.ember { background: linear-gradient(135deg, #d5822f, #c7554d); }
-.theme-swatch.moon  { background: linear-gradient(135deg, #4cb69a, #d3bb93); }
 

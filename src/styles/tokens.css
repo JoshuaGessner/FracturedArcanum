@@ -63,6 +63,11 @@
   --btn-secondary-bg: linear-gradient(180deg, rgba(58, 46, 40, 0.92), rgba(33, 26, 23, 0.96));
   --btn-secondary-border: rgba(201, 169, 110, 0.38);
   --btn-danger-bg: linear-gradient(180deg, #a63a33 0%, #6e1d1b 100%);
+  /* The ledge: a solid edge under the face that the button sinks into when
+     pressed, the way Clash Royale's buttons read as objects to push. */
+  --btn-ledge-depth: 4px;
+  --btn-primary-ledge: #7a4a16;
+  --btn-secondary-ledge: #0f0b0a;
 
   /* One physical surface instead of nested borders. */
   --panel-bg: linear-gradient(180deg, rgba(40, 31, 28, 0.9), rgba(24, 18, 16, 0.94));

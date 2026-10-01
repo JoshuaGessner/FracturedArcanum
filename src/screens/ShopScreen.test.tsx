@@ -342,6 +342,20 @@ describe('ShopScreen hub flow', () => {
     expect(screen.getByRole('button', { name: /back/i })).toBeTruthy()
   })
 
+  it('previews every frame on a real card wearing it', () => {
+    const { container } = renderShopScreen()
+
+    fireEvent.click(screen.getByRole('button', { name: /^borders$/i }))
+
+    const previews = Array.from(container.querySelectorAll('.border-preview-card'))
+    expect(previews.map((el) => Array.from(el.classList).find((name) => name.startsWith('border-') && name !== 'border-preview-card')))
+      .toEqual(['border-default', 'border-bronze', 'border-frost', 'border-solar', 'border-void'])
+    for (const preview of previews) {
+      expect(preview.querySelector(':scope > .card-frame')).toBeTruthy()
+      expect(preview.querySelector('.cf-cost')).toBeTruthy()
+    }
+  })
+
   it('resets ceremony reveal state when a fresh pack result arrives', async () => {
     const { rerender } = render(
       <PackCeremonyOverlay

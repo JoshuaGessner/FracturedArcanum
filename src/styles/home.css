@@ -79,7 +79,7 @@
   color: var(--btn-primary-text);
   background: var(--btn-primary-bg);
   border: 1px solid var(--btn-primary-border);
-  box-shadow: var(--btn-primary-glow), 0 12px 30px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 6px 0 var(--btn-primary-ledge), var(--btn-primary-glow), 0 14px 30px rgba(0, 0, 0, 0.45);
   transition: transform var(--motion-fast), box-shadow var(--motion-fast), filter var(--motion-fast);
 }
 
@@ -112,8 +112,10 @@
 }
 
 .home-battle-cta:active {
-  transform: translateY(1px) scale(0.995);
+  transform: translateY(5px);
+  box-shadow: 0 1px 0 var(--btn-primary-ledge), var(--btn-primary-glow), 0 6px 14px rgba(0, 0, 0, 0.4);
   filter: brightness(0.96);
+  transition-duration: 60ms;
 }
 
 .home-battle-cta-label {

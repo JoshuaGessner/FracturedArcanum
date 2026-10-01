@@ -451,54 +451,79 @@ button.icon-only {
   /* No-op. With no frame competing for it, rarity keeps the bezel. */
 }
 
-/* Bronze Filigree — hammered bezel, fine beading inside it. */
+/* Each paid frame is a cast material, drawn by scripts/lib/frame-art.mjs and
+   stretched over the whole card: bezel band, corner caps, a crest at top
+   centre and clasps at the art/plate seam. The host's own border becomes the
+   frame's dark outer seat. Ornament stays off the corners, which belong to
+   the cost and stat emblems.
+
+   The ladder climbs in structure, not just colour — the genre's rule for
+   premium finishes (Hearthstone golden cards, Marvel Snap's border ladder):
+   Bronze is beaded metal, Frost adds etched crystal, and only the two top
+   frames move. Their finish rides `.card-frame::after` so it can animate
+   without touching the art. */
+
 .border-bronze {
-  border-color: #7b6a4c;
-  box-shadow: 0 6px 16px rgba(79, 68, 47, 0.22);
+  border-color: #4a2e10;
+  box-shadow: 0 6px 16px rgba(79, 52, 20, 0.32);
 }
 
 .border-bronze > .card-frame {
-  inset: 2px;
-  border: 1px dotted rgba(187, 160, 113, 0.5);
+  background: url('/generated/ui/frame-bronze.svg') center / 100% 100% no-repeat;
 }
 
-/* Frost Etching — pale silver bezel scored with etch marks. */
 .border-frost {
-  border-color: #bfc9d2;
-  box-shadow: 0 6px 16px rgba(160, 178, 190, 0.18);
+  border-color: #4e6272;
+  box-shadow: 0 6px 18px rgba(150, 196, 220, 0.22);
 }
 
 .border-frost > .card-frame {
-  inset: 2px;
-  border: 1px dashed rgba(231, 241, 247, 0.55);
+  background: url('/generated/ui/frame-frost.svg') center / 100% 100% no-repeat;
 }
 
-/* Solar Ember — dark copper bezel, warm light breathing across the face.
-   The bezel itself is deliberately far from --rarity-legendary; the ember is
-   what you paid for, and it moves. */
+/* Solar Ember — copper with embers rising off the lower band, and warm light
+   breathing up the face. The copper is deliberately far from
+   --rarity-legendary; the ember is what you paid for, and it moves. */
 .border-solar {
-  border-color: #684421;
-  box-shadow: 0 6px 18px rgba(104, 68, 33, 0.28);
+  border-color: #2a1206;
+  box-shadow: 0 6px 20px rgba(193, 98, 33, 0.34);
 }
 
 .border-solar > .card-frame {
-  background: radial-gradient(120% 80% at 50% 108%, rgba(193, 118, 43, 0.42), transparent 62%);
+  background: url('/generated/ui/frame-solar.svg') center / 100% 100% no-repeat;
+}
+
+.border-solar > .card-frame::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(120% 70% at 50% 110%, rgba(240, 138, 42, 0.4), transparent 62%);
   animation: solarEmberBreath 3.6s ease-in-out infinite;
 }
 
 @keyframes solarEmberBreath {
-  0%, 100% { opacity: 0.55; }
+  0%, 100% { opacity: 0.45; }
   50% { opacity: 1; }
 }
 
-/* Voidweave — obsidian bezel. Violet exists only in a sweep that travels, so
-   it never sits still long enough to read as an epic ring. */
+/* Voidweave — obsidian cut with violet runes. Violet in the light exists only
+   in a sweep that travels, so it never sits still long enough to read as an
+   epic ring. */
 .border-void {
-  border-color: #2b2523;
-  box-shadow: 0 8px 22px rgba(31, 25, 24, 0.42);
+  border-color: #000;
+  box-shadow: 0 8px 24px rgba(90, 60, 130, 0.36);
 }
 
 .border-void > .card-frame {
+  background: url('/generated/ui/frame-void.svg') center / 100% 100% no-repeat;
+}
+
+.border-void > .card-frame::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
   background: linear-gradient(115deg, transparent 42%, rgba(199, 153, 219, 0.38) 50%, transparent 58%) 0 0 / 300% 100% no-repeat;
   animation: voidweaveSheen 5s linear infinite;
 }
@@ -508,55 +533,19 @@ button.icon-only {
   100% { background-position: -120% 0; }
 }
 
-/* Frame preview tile in the vault catalog — same vocabulary at tile scale. */
-.border-preview {
-  position: relative;
+/* Frame preview in the shop: a real card wearing the frame, because a frame
+   is only worth its price on a card. Sized off the tile, never wider than a
+   collection card. */
+.border-preview-stage {
   display: flex;
-  align-items: center;
   justify-content: center;
-  width: 100%;
-  height: 64px;
+  padding: var(--space-2) 0;
   border-radius: var(--radius-md);
-  background: linear-gradient(135deg, rgba(155, 88, 183, 0.18), rgba(76, 182, 154, 0.12));
-  margin-bottom: var(--space-2);
-  overflow: hidden;
-  border: 2px solid transparent;
+  background: radial-gradient(80% 70% at 50% 40%, rgba(214, 160, 90, 0.16), transparent 70%);
 }
 
-.border-preview-icon {
-  width: 28px;
-  height: 28px;
-  object-fit: contain;
-  opacity: 0.7;
-}
-
-.border-preview::after {
-  content: '';
-  position: absolute;
-  inset: 2px;
-  border-radius: inherit;
+.border-preview-card {
+  width: min(100%, 104px);
   pointer-events: none;
-}
-
-.border-preview.border-default { border-color: var(--border); }
-
-.border-preview.border-bronze { border-color: #7b6a4c; }
-.border-preview.border-bronze::after { border: 1px dotted rgba(187, 160, 113, 0.5); }
-
-.border-preview.border-frost { border-color: #bfc9d2; }
-.border-preview.border-frost::after { border: 1px dashed rgba(231, 241, 247, 0.55); }
-
-.border-preview.border-solar { border-color: #684421; }
-.border-preview.border-solar::after {
-  inset: 0;
-  background: radial-gradient(120% 80% at 50% 108%, rgba(193, 118, 43, 0.42), transparent 62%);
-  animation: solarEmberBreath 3.6s ease-in-out infinite;
-}
-
-.border-preview.border-void { border-color: #2b2523; }
-.border-preview.border-void::after {
-  inset: 0;
-  background: linear-gradient(115deg, transparent 42%, rgba(199, 153, 219, 0.38) 50%, transparent 58%) 0 0 / 300% 100% no-repeat;
-  animation: voidweaveSheen 5s linear infinite;
 }
 

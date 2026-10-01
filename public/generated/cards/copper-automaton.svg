@@ -11,13 +11,47 @@
     </radialGradient>
     <radialGradient id="vig-copper-automaton" cx="50%" cy="50%" r="72%">
       <stop offset="0%" stop-color="#000" stop-opacity="0"/>
-      <stop offset="76%" stop-color="#000" stop-opacity="0"/>
-      <stop offset="100%" stop-color="#000" stop-opacity="0.5"/>
+      <stop offset="78%" stop-color="#000" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000" stop-opacity="0.4"/>
     </radialGradient>
+    <radialGradient id="back-copper-automaton" cx="50.0%" cy="40.9%" r="58%">
+      <stop offset="0%" stop-color="#c9a35a" stop-opacity="0.55"/>
+      <stop offset="35%" stop-color="#c9a35a" stop-opacity="0.2"/>
+      <stop offset="100%" stop-color="#c9a35a" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="shaft-copper-automaton" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#e6cf9a" stop-opacity="0.22"/>
+      <stop offset="70%" stop-color="#e6cf9a" stop-opacity="0.04"/>
+      <stop offset="100%" stop-color="#e6cf9a" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="soft" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="1.4"/></filter>
+    <filter id="rim-copper-automaton" x="-25%" y="-25%" width="150%" height="150%" color-interpolation-filters="sRGB">
+      <feOffset in="SourceAlpha" dy="2.4" result="down"/>
+      <feComposite in="SourceAlpha" in2="down" operator="out" result="topEdge"/>
+      <feGaussianBlur in="topEdge" stdDeviation="0.7" result="topSoft"/>
+      <feFlood flood-color="#e6cf9a" flood-opacity="0.95"/>
+      <feComposite in2="topSoft" operator="in" result="topRim"/>
+      <feMorphology in="SourceAlpha" operator="dilate" radius="1.3" result="grown"/>
+      <feComposite in="grown" in2="SourceAlpha" operator="out" result="edge"/>
+      <feGaussianBlur in="edge" stdDeviation="1" result="edgeSoft"/>
+      <feFlood flood-color="#e6cf9a" flood-opacity="0.42"/>
+      <feComposite in2="edgeSoft" operator="in" result="allRim"/>
+      <feGaussianBlur in="SourceAlpha" stdDeviation="7" result="haloBlur"/>
+      <feFlood flood-color="#c9a35a" flood-opacity="0.5"/>
+      <feComposite in2="haloBlur" operator="in" result="halo"/>
+      <feMerge>
+        <feMergeNode in="halo"/>
+        <feMergeNode in="SourceGraphic"/>
+        <feMergeNode in="allRim"/>
+        <feMergeNode in="topRim"/>
+      </feMerge>
+    </filter>
   </defs>
-  <rect width="340" height="220" rx="28" fill="url(#sky-copper-automaton)"/>
-  <rect width="340" height="220" rx="28" fill="url(#drown-copper-automaton)"/>
+  <rect width="340" height="220" fill="url(#sky-copper-automaton)"/>
+  <rect width="340" height="220" fill="url(#drown-copper-automaton)"/>
+  <rect width="340" height="220" fill="url(#back-copper-automaton)"/>
   <circle cx="242" cy="62" r="1.40" fill="#e6cf9a" opacity="0.12"/><circle cx="118" cy="24" r="1.05" fill="#e6cf9a" opacity="0.12"/><circle cx="290" cy="64" r="0.70" fill="#e6cf9a" opacity="0.12"/><circle cx="166" cy="26" r="1.40" fill="#e6cf9a" opacity="0.12"/><circle cx="42" cy="66" r="1.05" fill="#e6cf9a" opacity="0.12"/><circle cx="214" cy="28" r="0.70" fill="#e6cf9a" opacity="0.12"/><circle cx="90" cy="68" r="1.40" fill="#e6cf9a" opacity="0.12"/><circle cx="262" cy="30" r="1.05" fill="#e6cf9a" opacity="0.12"/><circle cx="138" cy="70" r="0.70" fill="#e6cf9a" opacity="0.12"/>
+  <path d="M124 -10 L150 -10 L190 230 L138 230 Z" fill="url(#shaft-copper-automaton)" opacity="0.55"/><path d="M162 -10 L184 -10 L216 230 L172 230 Z" fill="url(#shaft-copper-automaton)" opacity="0.43"/><path d="M230 -10 L248 -10 L294 230 L258 230 Z" fill="url(#shaft-copper-automaton)" opacity="0.31"/>
   
     <circle cx="170" cy="90" r="52" fill="none" stroke="#c9a35a" stroke-width="2.5" opacity=".38"
       stroke-dasharray="229 99"/>
@@ -33,7 +67,7 @@
   </g>
   <path d="M-4 172 C60 164 130 180 190 172 C250 164 300 180 344 168 V206 H-4 Z" fill="#e6cf9a" opacity="0.05"/>
   
-  
+  <g filter="url(#rim-copper-automaton)">
       <path d="M144 190 L148 128 C148 112 156 102 170 102 C184 102 192 112 192 128 L196 190 Z" fill="#4d4636"/>
       <path d="M150 128 h40 M152 144 h36 M154 160 h32" stroke="#262115" stroke-width="3"/>
       <path d="M156 102 L152 84 C152 72 160 64 170 64 C180 64 188 72 188 84 L184 102 Z" fill="none" stroke="#4d4636" stroke-width="4"/>
@@ -42,13 +76,13 @@
       <path d="M148 118 C132 122 124 134 122 150 M192 118 C208 122 216 134 218 150" stroke="#4d4636" stroke-width="5" fill="none" stroke-linecap="round"/>
       <path d="M122 150 L118 168 M218 150 L224 166" stroke="#262115" stroke-width="4" stroke-linecap="round"/>
       <path d="M160 190 L158 204 M180 190 L182 204" stroke="#262115" stroke-width="5" stroke-linecap="round"/>
-      <path d="M170 102 V116 M164 108 h12" stroke="#c9a35a" stroke-width="1.4" opacity=".7"/>
+      <path d="M170 102 V116 M164 108 h12" stroke="#c9a35a" stroke-width="1.4" opacity=".7"/></g>
   <path d="M-4 188 C60 182 130 194 190 188 C250 182 300 194 344 185 V222 H-4 Z" fill="#e6cf9a" opacity="0.07"/>
   
   <path d="M0 196 C60 186 120 194 170 190 C230 185 290 194 340 187 V220 H0 Z" fill="#040405" opacity=".9"/>
   <path d="M8 220 C9 189 9 185 10 179" stroke="#262115" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M40 220 C41 201 37 197 34 191" stroke="#262115" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M72 220 C73 196 74 192 76 186" stroke="#262115" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M104 220 C105 191 102 187 100 181" stroke="#262115" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M136 220 C137 203 139 199 142 193" stroke="#262115" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M168 220 C169 198 167 194 166 188" stroke="#262115" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M200 220 C201 193 204 189 208 183" stroke="#262115" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M232 220 C233 188 232 184 232 178" stroke="#262115" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M264 220 C265 200 260 196 256 190" stroke="#262115" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M296 220 C297 195 297 191 298 185" stroke="#262115" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M328 220 C329 190 325 186 322 180" stroke="#262115" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+  <circle cx="66" cy="112" r="1.44" fill="#9adfd2" opacity="0.28" filter="url(#soft)"/><circle cx="238" cy="60" r="0.80" fill="#c9a35a" opacity="0.55"/><circle cx="98" cy="188" r="0.80" fill="#c9a35a" opacity="0.55"/><circle cx="270" cy="136" r="0.80" fill="#9adfd2" opacity="0.55"/><circle cx="130" cy="84" r="1.44" fill="#c9a35a" opacity="0.28" filter="url(#soft)"/><circle cx="302" cy="32" r="0.80" fill="#c9a35a" opacity="0.55"/><circle cx="162" cy="160" r="0.80" fill="#9adfd2" opacity="0.55"/><circle cx="22" cy="108" r="0.80" fill="#c9a35a" opacity="0.55"/><circle cx="194" cy="56" r="1.44" fill="#c9a35a" opacity="0.28" filter="url(#soft)"/><circle cx="54" cy="184" r="0.80" fill="#9adfd2" opacity="0.55"/><circle cx="226" cy="132" r="0.80" fill="#c9a35a" opacity="0.55"/><circle cx="86" cy="80" r="0.80" fill="#c9a35a" opacity="0.55"/><circle cx="258" cy="28" r="1.44" fill="#9adfd2" opacity="0.28" filter="url(#soft)"/><circle cx="118" cy="156" r="0.80" fill="#c9a35a" opacity="0.55"/>
   
-  <rect width="340" height="220" rx="28" fill="url(#vig-copper-automaton)"/>
+  <rect width="340" height="220" fill="url(#vig-copper-automaton)"/>
   <circle cx="328" cy="212" r=".6" fill="#e6cf9a" opacity=".05"/><circle cx="296" cy="108" r=".6" fill="#e6cf9a" opacity=".05"/><circle cx="264" cy="4" r=".6" fill="#e6cf9a" opacity=".05"/><circle cx="232" cy="120" r=".6" fill="#e6cf9a" opacity=".05"/><circle cx="200" cy="16" r=".6" fill="#e6cf9a" opacity=".05"/><circle cx="168" cy="132" r=".6" fill="#e6cf9a" opacity=".05"/><circle cx="136" cy="28" r=".6" fill="#e6cf9a" opacity=".05"/><circle cx="104" cy="144" r=".6" fill="#e6cf9a" opacity=".05"/><circle cx="72" cy="40" r=".6" fill="#e6cf9a" opacity=".05"/><circle cx="40" cy="156" r=".6" fill="#e6cf9a" opacity=".05"/><circle cx="8" cy="52" r=".6" fill="#e6cf9a" opacity=".05"/><circle cx="316" cy="168" r=".6" fill="#e6cf9a" opacity=".05"/><circle cx="284" cy="64" r=".6" fill="#e6cf9a" opacity=".05"/><circle cx="252" cy="180" r=".6" fill="#e6cf9a" opacity=".05"/><circle cx="220" cy="76" r=".6" fill="#e6cf9a" opacity=".05"/><circle cx="188" cy="192" r=".6" fill="#e6cf9a" opacity=".05"/><circle cx="156" cy="88" r=".6" fill="#e6cf9a" opacity=".05"/><circle cx="124" cy="204" r=".6" fill="#e6cf9a" opacity=".05"/><circle cx="92" cy="100" r=".6" fill="#e6cf9a" opacity=".05"/><circle cx="60" cy="216" r=".6" fill="#e6cf9a" opacity=".05"/><circle cx="28" cy="112" r=".6" fill="#e6cf9a" opacity=".05"/><circle cx="336" cy="8" r=".6" fill="#e6cf9a" opacity=".05"/><circle cx="304" cy="124" r=".6" fill="#e6cf9a" opacity=".05"/><circle cx="272" cy="20" r=".6" fill="#e6cf9a" opacity=".05"/><circle cx="240" cy="136" r=".6" fill="#e6cf9a" opacity=".05"/><circle cx="208" cy="32" r=".6" fill="#e6cf9a" opacity=".05"/>
-  <rect x="10" y="10" width="320" height="200" rx="22" fill="none" stroke="rgba(148,163,184,.35)"/>
 </svg>

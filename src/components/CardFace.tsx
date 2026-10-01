@@ -27,6 +27,11 @@ type CardFaceProps = {
   caption?: ReactNode
   /** Lazy-load the art. Off for the one card a player is looking at. */
   lazy?: boolean
+  /**
+   * The printed stats, for a unit whose attack or health an effect changed.
+   * Above base reads green, damaged health reads red — the genre's colours.
+   */
+  base?: { attack: number; health: number }
 }
 
 /**
@@ -35,8 +40,9 @@ type CardFaceProps = {
  *
  * Layout grammar, from the battle-readability rules in REFACTOR_PLAN.md: cost
  * top-left, keyword seal top-right, art as the centre, attack and health at
- * the bottom corners, rarity gem between them. Attack and health also differ
- * in silhouette (diamond, medallion) so they read without colour.
+ * the bottom corners, rarity gem between them. The stats sit on generated
+ * emblems (mana crystal, crossed swords, blood drop) that differ in silhouette,
+ * so they read without colour.
  *
  * It fills its host absolutely and sizes everything in container units, so
  * the host keeps owning layout — the hand rail's height arithmetic, the
@@ -44,9 +50,11 @@ type CardFaceProps = {
  * is given. The host keeps its own `.card-frame` as a direct child, because
  * the cosmetic frame rules select `> .card-frame`.
  */
-export function CardFace({ card, variant, currentHealth, caption, lazy = true }: CardFaceProps) {
+export function CardFace({ card, variant, currentHealth, caption, lazy = true, base }: CardFaceProps) {
   const health = currentHealth ?? card.health
   const damaged = currentHealth !== undefined && currentHealth < card.health
+  const attackBuffed = base !== undefined && card.attack > base.attack
+  const healthBuffed = !damaged && base !== undefined && health > base.health
   // Two sibling layers around the host's own `.card-frame` (z-index 4): art
   // and plate below it, gems and the rarity hairline above it. Each layer is a
   // size container, and a container is its own stacking context, so a single
@@ -81,13 +89,13 @@ export function CardFace({ card, variant, currentHealth, caption, lazy = true }:
         </span>
       </span>
       <span className={`cf-gems cf-${variant} cf-rarity-${card.rarity}`}>
-        <span className="cf-cost" aria-label={`Costs ${card.cost} mana`}>{card.cost}</span>
+        <span className="cf-cost" aria-label={`Costs ${card.cost} mana`}><span>{card.cost}</span></span>
         {card.effect && <EffectBadge effect={card.effect} compact iconOnly className="cf-seal" />}
-        <span className="cf-stat cf-attack" aria-label={`${card.attack} attack`}>
+        <span className={`cf-stat cf-attack${attackBuffed ? ' is-buffed' : ''}`} aria-label={`${card.attack} attack`}>
           <span>{card.attack}</span>
         </span>
         <RarityBadge rarity={card.rarity} iconOnly className="cf-rarity" />
-        <span className={`cf-stat cf-health${damaged ? ' is-damaged' : ''}`} aria-label={`${health} health`}>
+        <span className={`cf-stat cf-health${damaged ? ' is-damaged' : ''}${healthBuffed ? ' is-buffed' : ''}`} aria-label={`${health} health`}>
           <span>{health}</span>
         </span>
       </span>

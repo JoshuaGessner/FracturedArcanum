@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { CARD_LIBRARY, RARITY_COLORS } from '../game'
-import { CARD_BORDER_OFFERS, ECONOMY_REWARDS, THEME_OFFERS, UI_ASSETS } from '../constants'
+import { CARD_BORDER_OFFERS, ECONOMY_REWARDS, FRAME_SHOWCASE_CARD_ID, THEME_OFFERS, UI_ASSETS } from '../constants'
 import { InterfaceGlyph, PackArt, RarityBadge, TribeSigil } from '../components/AssetBadge'
 import { CardFace } from '../components/CardFace'
 import { PackCeremonyOverlay } from '../components/PackCeremonyOverlay'
@@ -23,6 +23,7 @@ export function ShopScreen() {
   const { startMatch } = useGame()
   const [activeCeremonyPackId, setActiveCeremonyPackId] = useState<string | null>(null)
   const [shopSubview, setShopSubview] = useState<ShopSubview>('hub')
+  const frameShowcaseCard = CARD_LIBRARY.find((card) => card.id === FRAME_SHOWCASE_CARD_ID)
 
   const ceremonyPack = activeCeremonyPackId
     ? packOffers.find((offer) => offer.id === activeCeremonyPackId) ?? null
@@ -288,9 +289,17 @@ export function ShopScreen() {
                 const canAfford = shards >= border.cost
                 return (
                   <div className="theme-offer-card" key={border.id}>
-                    <div className={`border-preview border-${border.id}`} aria-hidden="true">
-                      <InterfaceGlyph name="card" className="border-preview-icon" />
-                    </div>
+                    {frameShowcaseCard && (
+                      <div className="border-preview-stage" aria-hidden="true">
+                        <div
+                          className={`builder-card-face border-preview-card rarity-${frameShowcaseCard.rarity} border-${border.id}`}
+                          style={{ '--rarity-color': RARITY_COLORS[frameShowcaseCard.rarity] } as React.CSSProperties}
+                        >
+                          <span className="card-frame" />
+                          <CardFace card={frameShowcaseCard} variant="collection" />
+                        </div>
+                      </div>
+                    )}
                     <strong>{border.name}</strong>
                     <p className="mini-text">{border.description}</p>
                     <div className="badges">

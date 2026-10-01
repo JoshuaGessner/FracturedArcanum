@@ -11,13 +11,47 @@
     </radialGradient>
     <radialGradient id="vig-aegis-knight" cx="50%" cy="50%" r="72%">
       <stop offset="0%" stop-color="#000" stop-opacity="0"/>
-      <stop offset="76%" stop-color="#000" stop-opacity="0"/>
-      <stop offset="100%" stop-color="#000" stop-opacity="0.5"/>
+      <stop offset="78%" stop-color="#000" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000" stop-opacity="0.4"/>
     </radialGradient>
+    <radialGradient id="back-aegis-knight" cx="50.0%" cy="38.2%" r="58%">
+      <stop offset="0%" stop-color="#d9a866" stop-opacity="0.55"/>
+      <stop offset="35%" stop-color="#d9a866" stop-opacity="0.2"/>
+      <stop offset="100%" stop-color="#d9a866" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="shaft-aegis-knight" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#b8c4d9" stop-opacity="0.22"/>
+      <stop offset="70%" stop-color="#b8c4d9" stop-opacity="0.04"/>
+      <stop offset="100%" stop-color="#b8c4d9" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="soft" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="1.4"/></filter>
+    <filter id="rim-aegis-knight" x="-25%" y="-25%" width="150%" height="150%" color-interpolation-filters="sRGB">
+      <feOffset in="SourceAlpha" dy="2.4" result="down"/>
+      <feComposite in="SourceAlpha" in2="down" operator="out" result="topEdge"/>
+      <feGaussianBlur in="topEdge" stdDeviation="0.7" result="topSoft"/>
+      <feFlood flood-color="#b8c4d9" flood-opacity="0.95"/>
+      <feComposite in2="topSoft" operator="in" result="topRim"/>
+      <feMorphology in="SourceAlpha" operator="dilate" radius="1.3" result="grown"/>
+      <feComposite in="grown" in2="SourceAlpha" operator="out" result="edge"/>
+      <feGaussianBlur in="edge" stdDeviation="1" result="edgeSoft"/>
+      <feFlood flood-color="#b8c4d9" flood-opacity="0.42"/>
+      <feComposite in2="edgeSoft" operator="in" result="allRim"/>
+      <feGaussianBlur in="SourceAlpha" stdDeviation="7" result="haloBlur"/>
+      <feFlood flood-color="#d9a866" flood-opacity="0.5"/>
+      <feComposite in2="haloBlur" operator="in" result="halo"/>
+      <feMerge>
+        <feMergeNode in="halo"/>
+        <feMergeNode in="SourceGraphic"/>
+        <feMergeNode in="allRim"/>
+        <feMergeNode in="topRim"/>
+      </feMerge>
+    </filter>
   </defs>
-  <rect width="340" height="220" rx="28" fill="url(#sky-aegis-knight)"/>
-  <rect width="340" height="220" rx="28" fill="url(#drown-aegis-knight)"/>
+  <rect width="340" height="220" fill="url(#sky-aegis-knight)"/>
+  <rect width="340" height="220" fill="url(#drown-aegis-knight)"/>
+  <rect width="340" height="220" fill="url(#back-aegis-knight)"/>
   <circle cx="303" cy="17" r="1.40" fill="#b8c4d9" opacity="0.17"/><circle cx="298" cy="84" r="1.05" fill="#b8c4d9" opacity="0.22"/><circle cx="293" cy="73" r="0.70" fill="#b8c4d9" opacity="0.27"/><circle cx="288" cy="62" r="1.40" fill="#b8c4d9" opacity="0.12"/><circle cx="283" cy="51" r="1.05" fill="#b8c4d9" opacity="0.17"/><circle cx="278" cy="40" r="0.70" fill="#b8c4d9" opacity="0.22"/><circle cx="273" cy="29" r="1.40" fill="#b8c4d9" opacity="0.27"/><circle cx="268" cy="18" r="1.05" fill="#b8c4d9" opacity="0.12"/><circle cx="263" cy="85" r="0.70" fill="#b8c4d9" opacity="0.17"/>
+  <path d="M103 -10 L118 -10 L163 230 L133 230 Z" fill="url(#shaft-aegis-knight)" opacity="0.55"/><path d="M174 -10 L202 -10 L244 230 L188 230 Z" fill="url(#shaft-aegis-knight)" opacity="0.43"/><path d="M245 -10 L270 -10 L309 230 L259 230 Z" fill="url(#shaft-aegis-knight)" opacity="0.31"/>
   
     <circle cx="170" cy="84" r="54" fill="none" stroke="#d9a866" stroke-width="2.5" opacity=".38"
       stroke-dasharray="238 103"/>
@@ -35,7 +69,7 @@
   
     <ellipse cx="170" cy="184" rx="66" ry="10" fill="none" stroke="#d9a866" stroke-width="1.2" opacity=".3"/>
     <ellipse cx="170" cy="184" rx="46" ry="6" fill="none" stroke="#d9a866" stroke-width="1" opacity=".22"/>
-  
+  <g filter="url(#rim-aegis-knight)">
       <path d="M196 192 C194 156 202 132 218 124 C234 132 242 156 240 192 Z" fill="#1e2431"/>
       <path d="M218 124 C210 118 207 109 210 100 C215 105 221 105 226 100 C229 109 226 118 218 124 Z" fill="#1e2431"/>
       <path d="M112 192 L116 118 C116 104 128 94 148 92 C168 94 180 104 180 118 L184 192 Z" fill="#414a5c"/>
@@ -48,13 +82,13 @@
     <circle cx="214" cy="108" r="1.6" fill="#ffd9a0"/>
     <circle cx="224" cy="108" r="1.6" fill="#ffd9a0"/>
   </g>
-      <circle cx="148" cy="132" r="3" fill="#ffd9a0" opacity=".9"/>
+      <circle cx="148" cy="132" r="3" fill="#ffd9a0" opacity=".9"/></g>
   <path d="M-4 191 C60 185 130 197 190 191 C250 185 300 197 344 188 V225 H-4 Z" fill="#b8c4d9" opacity="0.07"/>
   
   <path d="M0 196 C60 186 120 194 170 190 C230 185 290 194 340 187 V220 H0 Z" fill="#040407" opacity=".9"/>
   <path d="M20 220 C21 199 18 195 16 189" stroke="#1e2431" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M51 220 C52 203 51 199 51 193" stroke="#1e2431" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M82 220 C83 190 84 186 86 180" stroke="#1e2431" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M113 220 C114 194 117 190 121 184" stroke="#1e2431" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M144 220 C145 198 141 194 138 188" stroke="#1e2431" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M175 220 C176 202 174 198 173 192" stroke="#1e2431" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M206 220 C207 189 207 185 208 179" stroke="#1e2431" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M237 220 C238 193 240 189 243 183" stroke="#1e2431" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M268 220 C269 197 264 193 260 187" stroke="#1e2431" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M299 220 C300 201 297 197 295 191" stroke="#1e2431" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M330 220 C331 188 330 184 330 178" stroke="#1e2431" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+  <circle cx="105" cy="109" r="3.42" fill="#ffd9a0" opacity="0.28" filter="url(#soft)"/><circle cx="280" cy="180" r="2.45" fill="#d9a866" opacity="0.55"/><circle cx="143" cy="71" r="0.80" fill="#d9a866" opacity="0.55"/><circle cx="318" cy="142" r="1.35" fill="#ffd9a0" opacity="0.55"/><circle cx="181" cy="33" r="3.42" fill="#d9a866" opacity="0.28" filter="url(#soft)"/><circle cx="44" cy="104" r="2.45" fill="#d9a866" opacity="0.55"/><circle cx="219" cy="175" r="0.80" fill="#ffd9a0" opacity="0.55"/><circle cx="82" cy="66" r="1.35" fill="#d9a866" opacity="0.55"/><circle cx="257" cy="137" r="3.42" fill="#d9a866" opacity="0.28" filter="url(#soft)"/><circle cx="120" cy="28" r="2.45" fill="#ffd9a0" opacity="0.55"/><circle cx="295" cy="99" r="0.80" fill="#d9a866" opacity="0.55"/><circle cx="158" cy="170" r="1.35" fill="#d9a866" opacity="0.55"/><circle cx="21" cy="61" r="3.42" fill="#ffd9a0" opacity="0.28" filter="url(#soft)"/><circle cx="196" cy="132" r="2.45" fill="#d9a866" opacity="0.55"/>
   
-  <rect width="340" height="220" rx="28" fill="url(#vig-aegis-knight)"/>
+  <rect width="340" height="220" fill="url(#vig-aegis-knight)"/>
   <circle cx="81" cy="129" r=".6" fill="#b8c4d9" opacity=".05"/><circle cx="212" cy="46" r=".6" fill="#b8c4d9" opacity=".05"/><circle cx="3" cy="183" r=".6" fill="#b8c4d9" opacity=".05"/><circle cx="134" cy="100" r=".6" fill="#b8c4d9" opacity=".05"/><circle cx="265" cy="17" r=".6" fill="#b8c4d9" opacity=".05"/><circle cx="56" cy="154" r=".6" fill="#b8c4d9" opacity=".05"/><circle cx="187" cy="71" r=".6" fill="#b8c4d9" opacity=".05"/><circle cx="318" cy="208" r=".6" fill="#b8c4d9" opacity=".05"/><circle cx="109" cy="125" r=".6" fill="#b8c4d9" opacity=".05"/><circle cx="240" cy="42" r=".6" fill="#b8c4d9" opacity=".05"/><circle cx="31" cy="179" r=".6" fill="#b8c4d9" opacity=".05"/><circle cx="162" cy="96" r=".6" fill="#b8c4d9" opacity=".05"/><circle cx="293" cy="13" r=".6" fill="#b8c4d9" opacity=".05"/><circle cx="84" cy="150" r=".6" fill="#b8c4d9" opacity=".05"/><circle cx="215" cy="67" r=".6" fill="#b8c4d9" opacity=".05"/><circle cx="6" cy="204" r=".6" fill="#b8c4d9" opacity=".05"/><circle cx="137" cy="121" r=".6" fill="#b8c4d9" opacity=".05"/><circle cx="268" cy="38" r=".6" fill="#b8c4d9" opacity=".05"/><circle cx="59" cy="175" r=".6" fill="#b8c4d9" opacity=".05"/><circle cx="190" cy="92" r=".6" fill="#b8c4d9" opacity=".05"/><circle cx="321" cy="9" r=".6" fill="#b8c4d9" opacity=".05"/><circle cx="112" cy="146" r=".6" fill="#b8c4d9" opacity=".05"/><circle cx="243" cy="63" r=".6" fill="#b8c4d9" opacity=".05"/><circle cx="34" cy="200" r=".6" fill="#b8c4d9" opacity=".05"/><circle cx="165" cy="117" r=".6" fill="#b8c4d9" opacity=".05"/><circle cx="296" cy="34" r=".6" fill="#b8c4d9" opacity=".05"/>
-  <rect x="10" y="10" width="320" height="200" rx="22" fill="none" stroke="rgba(96,165,250,.5)"/>
 </svg>

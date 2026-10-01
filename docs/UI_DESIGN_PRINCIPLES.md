@@ -20,8 +20,14 @@ scene-first layout direction; this covers the rules the screens follow.
 - **One card face.** `src/components/CardFace.tsx` draws every card in hand, on
   the board, in the collection, in inspect and in pack reveals. A card reads
   identically everywhere; never build a second face.
-- **The art gets a light pass** (brightness, contrast, a candle key light) so
-  the generated scenes read at card size rather than as murk.
+- **Every illustration is lit for card size.** `scripts/lib/card-art.mjs`
+  wraps each subject in a rim-light filter (a lit top edge, a thin all-round
+  rim and a soft halo), sets a backlight behind it, and adds light shafts and
+  motes; the vignette stops at 0.4. A rim only reads against a dark ground, so
+  the backgrounds stay dark and the subject is the brightest thing in the
+  frame — one focal subject, separated by value, as character-art readability
+  guides teach. CSS adds only a light lift (brightness, contrast, a candle key
+  light).
 - **The bezel is a material, not a colour.** Aged bronze for every card, gold
   for legendaries. Rarity rides the gem and the hairline inside the bezel —
   Hearthstone's approach — so a full-strength rarity border never turns a
@@ -33,8 +39,17 @@ scene-first layout direction; this covers the rules the screens follow.
 ## 2. Numbers read at a glance, under a thumb
 
 - **Corner layout:** cost top-left, keyword seal top-right, attack bottom-left,
-  health bottom-right. Attack is a diamond and health a medallion so the two
-  numbers that decide every trade differ in *shape*, not only colour.
+  health bottom-right — Hearthstone's vocabulary, which players arrive with.
+- **The stats are emblems, not dots.** `scripts/lib/stat-art.mjs` draws them
+  as objects lit from the upper left and ringed in cast gold: a faceted cyan
+  **mana crystal**, **crossed swords** behind an amber boss for attack, and a
+  **blood drop** for health. The three differ in silhouette, so they read
+  without colour. Each emblem leaves a calm, darker field where its number
+  sits.
+- **Changed stats change colour, the genre's way.** Health below its maximum
+  reads red; attack or health above the printed value reads green
+  (`CardFace`'s `base` prop, fed by `getPrintedStats`). White is always the
+  printed number. The hero's health uses the same blood drop.
 - **Numerals are tabular with a cut outline** (`-webkit-text-stroke` with
   `paint-order`), so they survive any gem colour and never jitter as they
   change.
@@ -114,6 +129,35 @@ game surfaces both; without them a player cannot reason about what is coming.
 - Display face (Cinzel) for names, titles, numbers on gems and primary
   buttons; body face (Inter) for anything read at length.
 - No emoji, no text inside SVGs that depends on an installed font.
+- **Buttons are objects you press.** `.primary` and `.secondary` sit on a
+  solid ledge (`--btn-ledge-depth`, `--btn-primary-ledge`,
+  `--btn-secondary-ledge`); on press the face drops onto it in 60ms and the
+  ledge collapses to a sliver, the tactile press of Clash Royale's buttons.
+  The quiet `.ghost` tier has no ledge. Reduced motion keeps the shadow change
+  and drops the movement.
+
+## 8a. Earnables are materials you can see
+
+What the shop sells must be visible on the thing it decorates, at the size
+the player sees it.
+
+- **Frames are art, not border colours.** `scripts/lib/frame-art.mjs` draws
+  each paid frame as a cast material over the whole card: bezel band, corner
+  caps, a crest at top centre and clasps at the art/plate seam. Ornament stays
+  off the corners, which belong to the stat emblems.
+- **The ladder climbs in structure**, the way Hearthstone's golden frames and
+  Marvel Snap's border ladder do: Bronze is beaded metal, Frost adds etched
+  crystal, Solar adds rising embers and a breathing light, Void adds rune cuts
+  and a travelling sheen. Only the top two move, and both stop under reduced
+  motion. The default frame stays plain — it is the baseline.
+- **Rarity is never for sale.** The gem and the hairline inside the bezel sit
+  above any frame (`.cf-gems`, z 5), so no frame can make a common read as an
+  epic. See "The two frame channels" in `src/styles/cards.css`.
+- **Previews are the real thing.** The shop shows each frame on a real
+  `CardFace` (`FRAME_SHOWCASE_CARD_ID`), and each theme swatch is the
+  main-menu scene under that theme's own two lights — the same
+  `--theme-light-a` / `--theme-light-b` channels the shell uses, so a preview
+  can never drift from what the purchase does.
 
 ## 9. Settings look like settings
 
@@ -138,3 +182,12 @@ guessing which one is the current state.
 - [Marvel Snap: deck selection carousel on the main screen (patch notes)](https://marvelsnap.com/patch-notes-january-6-2026/)
 - [Typography for game UI: the part players read under pressure](https://h-idris.com/blog/game-ui-typography.html)
 - [Disney's 12 animation principles applied to games](https://gamejuice.co.uk/articles/disney-12-animation-principles-games)
+- [Minion: attack on a yellow sword, health on a red blood drop (Hearthstone Wiki)](https://hearthstone.fandom.com/wiki/Minion)
+- [Health: damaged health shows red (Hearthstone Wiki)](https://hearthstone.fandom.com/wiki/Health)
+- [In-depth guide: health and attack colours, buffs in green (HearthPwn)](https://www.hearthpwn.com/forums/hearthstone-general/general-discussion/19517-in-depth-guide-health-and-attack-in-hearthstone)
+- [Golden card: a premium frame and animation, no gameplay difference (Hearthstone Wiki)](https://hearthstone.fandom.com/wiki/Golden_card)
+- [Marvel Snap card rarity: the border ladder from plain to animated (Marvel Snap Zone)](https://marvelsnapzone.com/marvel-snap-card-rarity-guide/)
+- [Custom borders in Marvel Snap (SNAP.FAN)](https://snap.fan/news/custom-borders-in-marvel-snap/)
+- [Character design: shape language and readability](https://medium.com/@EightyLevel/character-design-shape-language-and-readability-6ee4bb6f98a6)
+- [How a character reveal card is built: backlit rim light](https://blog.pixai.art/en/how-to-make-character-reveal-art/)
+- [Building a 3D button with HTML and CSS (Josh W. Comeau)](https://www.joshwcomeau.com/animation/3d-button/)

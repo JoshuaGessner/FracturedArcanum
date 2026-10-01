@@ -521,3 +521,16 @@ export function pickDeckShowcase<T extends { id: string; rarity: string; cost: n
       || a.id.localeCompare(b.id))
     .slice(0, count)
 }
+
+/**
+ * A card's printed attack and health, for telling a buffed unit from a
+ * plain one. Tokens and unknown ids have no printed card and return
+ * undefined, so they never read as buffed.
+ */
+export function getPrintedStats(
+  cardId: string,
+  library: Array<{ id: string; attack: number; health: number }>,
+): { attack: number; health: number } | undefined {
+  const card = library.find((entry) => entry.id === cardId)
+  return card ? { attack: card.attack, health: card.health } : undefined
+}

@@ -35,12 +35,9 @@
    their motion so a frame still reads as itself, but at roughly half the
    alpha they use in hand — the board is the focal plane, and the frame is not
    the thing the player is meant to be reading there. */
-.slot.border-solar > .card-frame {
-  background: radial-gradient(120% 80% at 50% 108%, rgba(193, 118, 43, 0.22), transparent 62%);
-}
-
-.slot.border-void > .card-frame {
-  background: linear-gradient(115deg, transparent 42%, rgba(199, 153, 219, 0.2) 50%, transparent 58%) 0 0 / 300% 100% no-repeat;
+.slot.border-solar > .card-frame::after,
+.slot.border-void > .card-frame::after {
+  filter: opacity(0.5);
 }
 
 /* ─── Card inspect ─────────────────────────────────────────────────────
@@ -108,10 +105,10 @@
    collection.css (#21) on source order alone. Without re-asserting it here the
    ceremony card wore a frame's animated finish over a rarity-coloured bezel —
    half-framed, and the only surface where the two channels disagreed. */
-.pack-ceremony-card-front.border-bronze { border-color: #7b6a4c; }
-.pack-ceremony-card-front.border-frost  { border-color: #bfc9d2; }
-.pack-ceremony-card-front.border-solar  { border-color: #684421; }
-.pack-ceremony-card-front.border-void   { border-color: #2b2523; }
+.pack-ceremony-card-front.border-bronze { border-color: #4a2e10; }
+.pack-ceremony-card-front.border-frost  { border-color: #4e6272; }
+.pack-ceremony-card-front.border-solar  { border-color: #2a1206; }
+.pack-ceremony-card-front.border-void   { border-color: #000; }
 
 /* Rarity's hairline follows the bezel onto both pack surfaces, so the contract
    is identical everywhere: a frame may take the outer ring, never the inner
@@ -135,18 +132,18 @@
    Mirrors the treatment in onboarding.css for the surfaces added above: the
    finish still reads, it just stops moving. */
 @media (prefers-reduced-motion: reduce) {
-  .slot.border-solar > .card-frame,
-  .pack-reveal-card.border-solar > .card-frame,
-  .pack-ceremony-card-front.border-solar > .card-frame,
-  .card-inspect-face.border-solar > .card-frame {
+  .slot.border-solar > .card-frame::after,
+  .pack-reveal-card.border-solar > .card-frame::after,
+  .pack-ceremony-card-front.border-solar > .card-frame::after,
+  .card-inspect-face.border-solar > .card-frame::after {
     animation: none !important;
     opacity: 0.8;
   }
 
-  .slot.border-void > .card-frame,
-  .pack-reveal-card.border-void > .card-frame,
-  .pack-ceremony-card-front.border-void > .card-frame,
-  .card-inspect-face.border-void > .card-frame {
+  .slot.border-void > .card-frame::after,
+  .pack-reveal-card.border-void > .card-frame::after,
+  .pack-ceremony-card-front.border-void > .card-frame::after,
+  .card-inspect-face.border-void > .card-frame::after {
     animation: none !important;
     background-position: 30% 0 !important;
   }

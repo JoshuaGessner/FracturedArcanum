@@ -67,21 +67,30 @@
   inset: 0;
   pointer-events: none;
   background:
-    radial-gradient(circle at 20% 10%, rgba(76, 182, 154, 0.12), transparent 0 28%),
-    radial-gradient(circle at 80% 0%, rgba(155, 88, 183, 0.14), transparent 0 24%);
+    radial-gradient(circle at 20% 10%, rgb(var(--theme-light-a) / 0.16), transparent 0 28%),
+    radial-gradient(circle at 80% 0%, rgb(var(--theme-light-b) / 0.16), transparent 0 24%);
   animation: ambientFloat 12s ease-in-out infinite;
 }
 
-.app-shell.theme-ember::before {
-  background:
-    radial-gradient(circle at 18% 10%, rgba(217, 117, 110, 0.16), transparent 0 28%),
-    radial-gradient(circle at 82% 0%, rgba(213, 130, 47, 0.16), transparent 0 24%);
+/* The two lights each theme sets the scenes in, as RGB channels so each
+   surface picks its own strength. The shop swatch reads the same pair
+   (overlays.css), so a theme is previewed as exactly what it does. */
+.app-shell,
+.theme-swatch.royal {
+  --theme-light-a: 95 168 146;   /* verdigris */
+  --theme-light-b: 138 95 174;   /* violet */
 }
 
-.app-shell.theme-moon::before {
-  background:
-    radial-gradient(circle at 18% 10%, rgba(214, 192, 154, 0.16), transparent 0 28%),
-    radial-gradient(circle at 82% 0%, rgba(211, 187, 147, 0.16), transparent 0 24%);
+.app-shell.theme-ember,
+.theme-swatch.ember {
+  --theme-light-a: 184 64 58;    /* blood */
+  --theme-light-b: 224 168 78;   /* ember */
+}
+
+.app-shell.theme-moon,
+.theme-swatch.moon {
+  --theme-light-a: 143 208 187;  /* verdigris light */
+  --theme-light-b: 241 231 211;  /* bone */
 }
 
 @keyframes ambientFloat {

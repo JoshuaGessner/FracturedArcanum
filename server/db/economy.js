@@ -938,10 +938,10 @@ export function purchaseTheme(accountId, themeId) {
 // stores, so they never change; names and descriptions may.
 const CARD_BORDER_CATALOG = [
   { id: 'default', name: 'Standard Frame',  cost: 0,   description: 'The plain bezel, tinted by the card’s own rarity.' },
-  { id: 'bronze',  name: 'Bronze Filigree', cost: 90,  description: 'Hammered bronze bezel ringed with fine beadwork.' },
-  { id: 'frost',   name: 'Frost Etching',   cost: 180, description: 'Pale silver bezel scored with etched frost lines.' },
-  { id: 'solar',   name: 'Solar Ember',     cost: 280, description: 'Dark copper bezel with an ember that breathes across the card.' },
-  { id: 'void',    name: 'Voidweave',       cost: 420, description: 'Obsidian bezel swept by a travelling violet sheen.' },
+  { id: 'bronze',  name: 'Bronze Filigree', cost: 90,  description: 'Cast bronze bezel with a rosette crest and beaded filigree.' },
+  { id: 'frost',   name: 'Frost Etching',   cost: 180, description: 'Silver bezel crowned with an ice crystal and etched with hoarfrost.' },
+  { id: 'solar',   name: 'Solar Ember',     cost: 280, description: 'Copper bezel crowned with a sun; embers rise off it and breathe across the card.' },
+  { id: 'void',    name: 'Voidweave',       cost: 420, description: 'Obsidian bezel cut with violet runes and swept by a travelling sheen.' },
 ]
 
 export function listCardBorders() {

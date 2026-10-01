@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { appendToast, describeCard, diffHealth, getPileCounts, pickDeckShowcase, hasAvailableAction, formatPasskeyCeremonyError, getCompletionPercent, getComplaintSeverityTone, getEffectIconPath, getHandFanTilt, getPackArtPath, getPasskeyOriginRequirementMessage, getRankAssetPath, getRankBand, getRankLabel, getRarityCompletion, getRarityGemPath, getScreenTransitionClass, getScreenTransitionSound, getStreakTier, shouldPresentScopedReward } from './utils'
+import { appendToast, describeCard, diffHealth, getPileCounts, getPrintedStats, pickDeckShowcase, hasAvailableAction, formatPasskeyCeremonyError, getCompletionPercent, getComplaintSeverityTone, getEffectIconPath, getHandFanTilt, getPackArtPath, getPasskeyOriginRequirementMessage, getRankAssetPath, getRankBand, getRankLabel, getRarityCompletion, getRarityGemPath, getScreenTransitionClass, getScreenTransitionSound, getStreakTier, shouldPresentScopedReward } from './utils'
 
 describe('UI asset helpers', () => {
   it('resolves rank insignia from labels and ratings', () => {
@@ -262,5 +262,17 @@ describe('pickDeckShowcase', () => {
 
   it('ignores cards at zero copies and returns fewer for a thin deck', () => {
     expect(pickDeckShowcase({ a: 1, b: 0 }, library).map((card) => card.id)).toEqual(['a'])
+  })
+})
+
+describe('getPrintedStats', () => {
+  const library = [{ id: 'imp', attack: 2, health: 1 }]
+
+  it('returns the printed attack and health', () => {
+    expect(getPrintedStats('imp', library)).toEqual({ attack: 2, health: 1 })
+  })
+
+  it('returns undefined for tokens and unknown ids', () => {
+    expect(getPrintedStats('token-spark', library)).toBeUndefined()
   })
 })

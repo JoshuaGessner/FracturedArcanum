@@ -161,14 +161,12 @@
   /* Animated cosmetic frames. The finish still reads — the ember sits at its
      mid brightness and the sheen parks off to one side — it just stops
      moving, so the frame keeps its identity without the motion. */
-  .border-solar > .card-frame,
-  .border-preview.border-solar::after {
+  .border-solar > .card-frame::after {
     animation: none !important;
     opacity: 0.8;
   }
 
-  .border-void > .card-frame,
-  .border-preview.border-void::after {
+  .border-void > .card-frame::after {
     animation: none !important;
     background-position: 30% 0 !important;
   }

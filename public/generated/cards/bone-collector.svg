@@ -11,13 +11,47 @@
     </radialGradient>
     <radialGradient id="vig-bone-collector" cx="50%" cy="50%" r="72%">
       <stop offset="0%" stop-color="#000" stop-opacity="0"/>
-      <stop offset="76%" stop-color="#000" stop-opacity="0"/>
-      <stop offset="100%" stop-color="#000" stop-opacity="0.5"/>
+      <stop offset="78%" stop-color="#000" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000" stop-opacity="0.4"/>
     </radialGradient>
+    <radialGradient id="back-bone-collector" cx="35.9%" cy="30.0%" r="58%">
+      <stop offset="0%" stop-color="#8fd3a3" stop-opacity="0.55"/>
+      <stop offset="35%" stop-color="#8fd3a3" stop-opacity="0.2"/>
+      <stop offset="100%" stop-color="#8fd3a3" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="shaft-bone-collector" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#cfe8d4" stop-opacity="0.22"/>
+      <stop offset="70%" stop-color="#cfe8d4" stop-opacity="0.04"/>
+      <stop offset="100%" stop-color="#cfe8d4" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="soft" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="1.4"/></filter>
+    <filter id="rim-bone-collector" x="-25%" y="-25%" width="150%" height="150%" color-interpolation-filters="sRGB">
+      <feOffset in="SourceAlpha" dy="2.4" result="down"/>
+      <feComposite in="SourceAlpha" in2="down" operator="out" result="topEdge"/>
+      <feGaussianBlur in="topEdge" stdDeviation="0.7" result="topSoft"/>
+      <feFlood flood-color="#cfe8d4" flood-opacity="0.95"/>
+      <feComposite in2="topSoft" operator="in" result="topRim"/>
+      <feMorphology in="SourceAlpha" operator="dilate" radius="1.3" result="grown"/>
+      <feComposite in="grown" in2="SourceAlpha" operator="out" result="edge"/>
+      <feGaussianBlur in="edge" stdDeviation="1" result="edgeSoft"/>
+      <feFlood flood-color="#cfe8d4" flood-opacity="0.42"/>
+      <feComposite in2="edgeSoft" operator="in" result="allRim"/>
+      <feGaussianBlur in="SourceAlpha" stdDeviation="7" result="haloBlur"/>
+      <feFlood flood-color="#8fd3a3" flood-opacity="0.5"/>
+      <feComposite in2="haloBlur" operator="in" result="halo"/>
+      <feMerge>
+        <feMergeNode in="halo"/>
+        <feMergeNode in="SourceGraphic"/>
+        <feMergeNode in="allRim"/>
+        <feMergeNode in="topRim"/>
+      </feMerge>
+    </filter>
   </defs>
-  <rect width="340" height="220" rx="28" fill="url(#sky-bone-collector)"/>
-  <rect width="340" height="220" rx="28" fill="url(#drown-bone-collector)"/>
+  <rect width="340" height="220" fill="url(#sky-bone-collector)"/>
+  <rect width="340" height="220" fill="url(#drown-bone-collector)"/>
+  <rect width="340" height="220" fill="url(#back-bone-collector)"/>
   <circle cx="34" cy="86" r="1.40" fill="#cfe8d4" opacity="0.12"/><circle cx="38" cy="18" r="1.05" fill="#cfe8d4" opacity="0.12"/><circle cx="42" cy="28" r="0.70" fill="#cfe8d4" opacity="0.12"/><circle cx="46" cy="38" r="1.40" fill="#cfe8d4" opacity="0.12"/><circle cx="50" cy="48" r="1.05" fill="#cfe8d4" opacity="0.12"/><circle cx="54" cy="58" r="0.70" fill="#cfe8d4" opacity="0.12"/><circle cx="58" cy="68" r="1.40" fill="#cfe8d4" opacity="0.12"/><circle cx="62" cy="78" r="1.05" fill="#cfe8d4" opacity="0.12"/><circle cx="66" cy="88" r="0.70" fill="#cfe8d4" opacity="0.12"/>
+  <path d="M76 -10 L94 -10 L124 230 L88 230 Z" fill="url(#shaft-bone-collector)" opacity="0.55"/><path d="M114 -10 L136 -10 L170 230 L126 230 Z" fill="url(#shaft-bone-collector)" opacity="0.43"/><path d="M182 -10 L208 -10 L246 230 L194 230 Z" fill="url(#shaft-bone-collector)" opacity="0.31"/>
   
     <circle cx="122" cy="66" r="30" fill="#8fd3a3" opacity=".16"/>
     <circle cx="122" cy="66" r="21.599999999999998" fill="#cfe8d4" opacity=".14"/>
@@ -35,7 +69,7 @@
   
     <ellipse cx="170" cy="184" rx="66" ry="10" fill="none" stroke="#8fd3a3" stroke-width="1.2" opacity=".3"/>
     <ellipse cx="170" cy="184" rx="46" ry="6" fill="none" stroke="#8fd3a3" stroke-width="1" opacity=".22"/>
-  
+  <g filter="url(#rim-bone-collector)">
       <path d="M148 192 C144 160 152 134 172 122 C190 132 198 158 196 192 Z" fill="#3c5244"/>
       <path d="M172 122 C162 115 159 105 163 95 C169 101 175 101 181 95 C185 105 182 115 172 122 Z" fill="#1b2b20"/>
       <path d="M186 132 C202 124 214 110 218 92 L226 98 C222 118 210 134 194 144 Z" fill="#1b2b20"/>
@@ -50,13 +84,13 @@
     <circle cx="166" cy="106" r="1.8" fill="#b4ffcf"/>
     <circle cx="178" cy="106" r="1.8" fill="#b4ffcf"/>
   </g>
-      <path d="M158 156 h26 M162 170 h18" stroke="#1b2b20" stroke-width="2.2"/>
+      <path d="M158 156 h26 M162 170 h18" stroke="#1b2b20" stroke-width="2.2"/></g>
   <path d="M-4 188 C60 182 130 194 190 188 C250 182 300 194 344 185 V222 H-4 Z" fill="#cfe8d4" opacity="0.07"/>
   
   <path d="M0 196 C60 186 120 194 170 190 C230 185 290 194 340 187 V220 H0 Z" fill="#030705" opacity=".9"/>
   <path d="M8 220 C9 190 6 186 4 180" stroke="#1b2b20" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M40 220 C41 191 40 187 40 181" stroke="#1b2b20" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M72 220 C73 192 74 188 76 182" stroke="#1b2b20" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M104 220 C105 193 108 189 112 183" stroke="#1b2b20" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M136 220 C137 194 133 190 130 184" stroke="#1b2b20" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M168 220 C169 195 167 191 166 185" stroke="#1b2b20" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M200 220 C201 196 201 192 202 186" stroke="#1b2b20" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M232 220 C233 197 235 193 238 187" stroke="#1b2b20" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M264 220 C265 198 260 194 256 188" stroke="#1b2b20" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M296 220 C297 199 294 195 292 189" stroke="#1b2b20" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M328 220 C329 200 328 196 328 190" stroke="#1b2b20" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+  <circle cx="66" cy="172" r="1.44" fill="#b4ffcf" opacity="0.28" filter="url(#soft)"/><circle cx="70" cy="180" r="0.80" fill="#8fd3a3" opacity="0.55"/><circle cx="74" cy="188" r="0.80" fill="#8fd3a3" opacity="0.55"/><circle cx="78" cy="196" r="0.80" fill="#b4ffcf" opacity="0.55"/><circle cx="82" cy="24" r="1.44" fill="#8fd3a3" opacity="0.28" filter="url(#soft)"/><circle cx="86" cy="32" r="0.80" fill="#8fd3a3" opacity="0.55"/><circle cx="90" cy="40" r="0.80" fill="#b4ffcf" opacity="0.55"/><circle cx="94" cy="48" r="0.80" fill="#8fd3a3" opacity="0.55"/><circle cx="98" cy="56" r="1.44" fill="#8fd3a3" opacity="0.28" filter="url(#soft)"/><circle cx="102" cy="64" r="0.80" fill="#b4ffcf" opacity="0.55"/><circle cx="106" cy="72" r="0.80" fill="#8fd3a3" opacity="0.55"/><circle cx="110" cy="80" r="0.80" fill="#8fd3a3" opacity="0.55"/><circle cx="114" cy="88" r="1.44" fill="#b4ffcf" opacity="0.28" filter="url(#soft)"/><circle cx="118" cy="96" r="0.80" fill="#8fd3a3" opacity="0.55"/>
   
-  <rect width="340" height="220" rx="28" fill="url(#vig-bone-collector)"/>
+  <rect width="340" height="220" fill="url(#vig-bone-collector)"/>
   <circle cx="288" cy="92" r=".6" fill="#cfe8d4" opacity=".05"/><circle cx="36" cy="188" r=".6" fill="#cfe8d4" opacity=".05"/><circle cx="124" cy="64" r=".6" fill="#cfe8d4" opacity=".05"/><circle cx="212" cy="160" r=".6" fill="#cfe8d4" opacity=".05"/><circle cx="300" cy="36" r=".6" fill="#cfe8d4" opacity=".05"/><circle cx="48" cy="132" r=".6" fill="#cfe8d4" opacity=".05"/><circle cx="136" cy="8" r=".6" fill="#cfe8d4" opacity=".05"/><circle cx="224" cy="104" r=".6" fill="#cfe8d4" opacity=".05"/><circle cx="312" cy="200" r=".6" fill="#cfe8d4" opacity=".05"/><circle cx="60" cy="76" r=".6" fill="#cfe8d4" opacity=".05"/><circle cx="148" cy="172" r=".6" fill="#cfe8d4" opacity=".05"/><circle cx="236" cy="48" r=".6" fill="#cfe8d4" opacity=".05"/><circle cx="324" cy="144" r=".6" fill="#cfe8d4" opacity=".05"/><circle cx="72" cy="20" r=".6" fill="#cfe8d4" opacity=".05"/><circle cx="160" cy="116" r=".6" fill="#cfe8d4" opacity=".05"/><circle cx="248" cy="212" r=".6" fill="#cfe8d4" opacity=".05"/><circle cx="336" cy="88" r=".6" fill="#cfe8d4" opacity=".05"/><circle cx="84" cy="184" r=".6" fill="#cfe8d4" opacity=".05"/><circle cx="172" cy="60" r=".6" fill="#cfe8d4" opacity=".05"/><circle cx="260" cy="156" r=".6" fill="#cfe8d4" opacity=".05"/><circle cx="8" cy="32" r=".6" fill="#cfe8d4" opacity=".05"/><circle cx="96" cy="128" r=".6" fill="#cfe8d4" opacity=".05"/><circle cx="184" cy="4" r=".6" fill="#cfe8d4" opacity=".05"/><circle cx="272" cy="100" r=".6" fill="#cfe8d4" opacity=".05"/><circle cx="20" cy="196" r=".6" fill="#cfe8d4" opacity=".05"/><circle cx="108" cy="72" r=".6" fill="#cfe8d4" opacity=".05"/>
-  <rect x="10" y="10" width="320" height="200" rx="22" fill="none" stroke="rgba(96,165,250,.5)"/>
 </svg>

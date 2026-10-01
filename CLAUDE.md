@@ -222,7 +222,8 @@ Read these before touching layout CSS — each cost real debugging time:
   module that owns their family: `scripts/lib/glyph-art.mjs` (mask glyphs,
   tribe sigils), `insignia-art.mjs` (keyword seals, league shields, shard,
   result crests), `scene-art.mjs` (backgrounds, board), `relic-art.mjs`
-  (packs, card back), `card-art.mjs` (card illustrations).
+  (packs, card back), `card-art.mjs` (card illustrations), `stat-art.mjs`
+  (mana, attack and health emblems), `frame-art.mjs` (paid card frames).
 - All generated assets stay original and commercial-safe SVG.
 - **No emoji, anywhere.** Not in cards, labels, buttons or logs —
   `server/no-emoji.test.js` enforces it. Use `InterfaceGlyph` / `TribeSigil`

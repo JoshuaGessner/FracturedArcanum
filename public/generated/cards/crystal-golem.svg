@@ -11,13 +11,47 @@
     </radialGradient>
     <radialGradient id="vig-crystal-golem" cx="50%" cy="50%" r="72%">
       <stop offset="0%" stop-color="#000" stop-opacity="0"/>
-      <stop offset="76%" stop-color="#000" stop-opacity="0"/>
-      <stop offset="100%" stop-color="#000" stop-opacity="0.5"/>
+      <stop offset="78%" stop-color="#000" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000" stop-opacity="0.4"/>
     </radialGradient>
+    <radialGradient id="back-crystal-golem" cx="50.0%" cy="36.4%" r="58%">
+      <stop offset="0%" stop-color="#4fd8c4" stop-opacity="0.55"/>
+      <stop offset="35%" stop-color="#4fd8c4" stop-opacity="0.2"/>
+      <stop offset="100%" stop-color="#4fd8c4" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="shaft-crystal-golem" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#9ff0e2" stop-opacity="0.22"/>
+      <stop offset="70%" stop-color="#9ff0e2" stop-opacity="0.04"/>
+      <stop offset="100%" stop-color="#9ff0e2" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="soft" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="1.4"/></filter>
+    <filter id="rim-crystal-golem" x="-25%" y="-25%" width="150%" height="150%" color-interpolation-filters="sRGB">
+      <feOffset in="SourceAlpha" dy="2.4" result="down"/>
+      <feComposite in="SourceAlpha" in2="down" operator="out" result="topEdge"/>
+      <feGaussianBlur in="topEdge" stdDeviation="0.7" result="topSoft"/>
+      <feFlood flood-color="#9ff0e2" flood-opacity="0.95"/>
+      <feComposite in2="topSoft" operator="in" result="topRim"/>
+      <feMorphology in="SourceAlpha" operator="dilate" radius="1.3" result="grown"/>
+      <feComposite in="grown" in2="SourceAlpha" operator="out" result="edge"/>
+      <feGaussianBlur in="edge" stdDeviation="1" result="edgeSoft"/>
+      <feFlood flood-color="#9ff0e2" flood-opacity="0.42"/>
+      <feComposite in2="edgeSoft" operator="in" result="allRim"/>
+      <feGaussianBlur in="SourceAlpha" stdDeviation="7" result="haloBlur"/>
+      <feFlood flood-color="#4fd8c4" flood-opacity="0.5"/>
+      <feComposite in2="haloBlur" operator="in" result="halo"/>
+      <feMerge>
+        <feMergeNode in="halo"/>
+        <feMergeNode in="SourceGraphic"/>
+        <feMergeNode in="allRim"/>
+        <feMergeNode in="topRim"/>
+      </feMerge>
+    </filter>
   </defs>
-  <rect width="340" height="220" rx="28" fill="url(#sky-crystal-golem)"/>
-  <rect width="340" height="220" rx="28" fill="url(#drown-crystal-golem)"/>
+  <rect width="340" height="220" fill="url(#sky-crystal-golem)"/>
+  <rect width="340" height="220" fill="url(#drown-crystal-golem)"/>
+  <rect width="340" height="220" fill="url(#back-crystal-golem)"/>
   <circle cx="229" cy="19" r="0.70" fill="#9ff0e2" opacity="0.27"/><circle cx="298" cy="64" r="0.70" fill="#9ff0e2" opacity="0.22"/><circle cx="71" cy="31" r="0.70" fill="#9ff0e2" opacity="0.17"/><circle cx="140" cy="76" r="0.70" fill="#9ff0e2" opacity="0.12"/><circle cx="209" cy="43" r="0.70" fill="#9ff0e2" opacity="0.27"/><circle cx="278" cy="88" r="0.70" fill="#9ff0e2" opacity="0.22"/><circle cx="51" cy="55" r="0.70" fill="#9ff0e2" opacity="0.17"/><circle cx="120" cy="22" r="0.70" fill="#9ff0e2" opacity="0.12"/><circle cx="189" cy="67" r="0.70" fill="#9ff0e2" opacity="0.27"/>
+  <path d="M109 -10 L130 -10 L175 230 L133 230 Z" fill="url(#shaft-crystal-golem)" opacity="0.55"/><path d="M172 -10 L188 -10 L230 230 L198 230 Z" fill="url(#shaft-crystal-golem)" opacity="0.43"/><path d="M235 -10 L262 -10 L301 230 L247 230 Z" fill="url(#shaft-crystal-golem)" opacity="0.31"/>
   
     <circle cx="170" cy="80" r="56" fill="none" stroke="#4fd8c4" stroke-width="2.5" opacity=".38"
       stroke-dasharray="246 106"/>
@@ -35,7 +69,7 @@
   
     <ellipse cx="170" cy="184" rx="66" ry="10" fill="none" stroke="#4fd8c4" stroke-width="1.2" opacity=".3"/>
     <ellipse cx="170" cy="184" rx="46" ry="6" fill="none" stroke="#4fd8c4" stroke-width="1" opacity=".22"/>
-  
+  <g filter="url(#rim-crystal-golem)">
       <path d="M120 192 L132 128 L120 116 L142 106 L146 84 L164 96 L170 70 L180 96 L198 82 L200 106 L222 114 L208 128 L220 192 Z" fill="#22525d"/>
       <path d="M142 106 L146 84 L164 96 L170 70 L180 96 L198 82" fill="none" stroke="#9ff0e2" stroke-width="1.4" opacity=".55"/>
       <path d="M152 136 C158 128 166 124 176 126 C186 128 192 134 194 144 C190 152 182 156 172 156 C162 156 154 148 152 136 Z" fill="#0e313b"/>
@@ -43,13 +77,13 @@
       <circle cx="171" cy="140" r="3.4" fill="#d7fff6"/>
       <circle cx="171" cy="140" r="9" fill="#d7fff6" opacity=".15"/>
       <path d="M144 164 h20 M178 168 h22" stroke="#0e313b" stroke-width="2.6"/>
-      <path d="M132 128 L152 134 M208 128 L192 136" stroke="#0e313b" stroke-width="2"/>
+      <path d="M132 128 L152 134 M208 128 L192 136" stroke="#0e313b" stroke-width="2"/></g>
   <path d="M-4 189 C60 183 130 195 190 189 C250 183 300 195 344 186 V223 H-4 Z" fill="#9ff0e2" opacity="0.07"/>
   
   <path d="M0 196 C60 186 120 194 170 190 C230 185 290 194 340 187 V220 H0 Z" fill="#02050a" opacity=".9"/>
   <path d="M10 220 C11 194 6 190 2 184" stroke="#0e313b" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M43 220 C44 202 39 198 35 192" stroke="#0e313b" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M76 220 C77 193 72 189 68 183" stroke="#0e313b" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M109 220 C110 201 105 197 101 191" stroke="#0e313b" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M142 220 C143 192 138 188 134 182" stroke="#0e313b" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M175 220 C176 200 171 196 167 190" stroke="#0e313b" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M208 220 C209 191 204 187 200 181" stroke="#0e313b" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M241 220 C242 199 237 195 233 189" stroke="#0e313b" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M274 220 C275 190 270 186 266 180" stroke="#0e313b" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M307 220 C308 198 303 194 299 188" stroke="#0e313b" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M340 220 C341 189 336 185 332 179" stroke="#0e313b" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+  <circle cx="131" cy="47" r="3.42" fill="#d7fff6" opacity="0.28" filter="url(#soft)"/><circle cx="188" cy="20" r="1.35" fill="#4fd8c4" opacity="0.55"/><circle cx="245" cy="173" r="0.80" fill="#4fd8c4" opacity="0.55"/><circle cx="302" cy="146" r="2.45" fill="#d7fff6" opacity="0.55"/><circle cx="47" cy="119" r="3.42" fill="#4fd8c4" opacity="0.28" filter="url(#soft)"/><circle cx="104" cy="92" r="1.35" fill="#4fd8c4" opacity="0.55"/><circle cx="161" cy="65" r="0.80" fill="#d7fff6" opacity="0.55"/><circle cx="218" cy="38" r="2.45" fill="#4fd8c4" opacity="0.55"/><circle cx="275" cy="191" r="3.42" fill="#4fd8c4" opacity="0.28" filter="url(#soft)"/><circle cx="20" cy="164" r="1.35" fill="#d7fff6" opacity="0.55"/><circle cx="77" cy="137" r="0.80" fill="#4fd8c4" opacity="0.55"/><circle cx="134" cy="110" r="2.45" fill="#4fd8c4" opacity="0.55"/><circle cx="191" cy="83" r="3.42" fill="#d7fff6" opacity="0.28" filter="url(#soft)"/><circle cx="248" cy="56" r="1.35" fill="#4fd8c4" opacity="0.55"/>
   
-  <rect width="340" height="220" rx="28" fill="url(#vig-crystal-golem)"/>
+  <rect width="340" height="220" fill="url(#vig-crystal-golem)"/>
   <circle cx="43" cy="107" r=".6" fill="#9ff0e2" opacity=".05"/><circle cx="16" cy="178" r=".6" fill="#9ff0e2" opacity=".05"/><circle cx="329" cy="29" r=".6" fill="#9ff0e2" opacity=".05"/><circle cx="302" cy="100" r=".6" fill="#9ff0e2" opacity=".05"/><circle cx="275" cy="171" r=".6" fill="#9ff0e2" opacity=".05"/><circle cx="248" cy="22" r=".6" fill="#9ff0e2" opacity=".05"/><circle cx="221" cy="93" r=".6" fill="#9ff0e2" opacity=".05"/><circle cx="194" cy="164" r=".6" fill="#9ff0e2" opacity=".05"/><circle cx="167" cy="15" r=".6" fill="#9ff0e2" opacity=".05"/><circle cx="140" cy="86" r=".6" fill="#9ff0e2" opacity=".05"/><circle cx="113" cy="157" r=".6" fill="#9ff0e2" opacity=".05"/><circle cx="86" cy="8" r=".6" fill="#9ff0e2" opacity=".05"/><circle cx="59" cy="79" r=".6" fill="#9ff0e2" opacity=".05"/><circle cx="32" cy="150" r=".6" fill="#9ff0e2" opacity=".05"/><circle cx="5" cy="1" r=".6" fill="#9ff0e2" opacity=".05"/><circle cx="318" cy="72" r=".6" fill="#9ff0e2" opacity=".05"/><circle cx="291" cy="143" r=".6" fill="#9ff0e2" opacity=".05"/><circle cx="264" cy="214" r=".6" fill="#9ff0e2" opacity=".05"/><circle cx="237" cy="65" r=".6" fill="#9ff0e2" opacity=".05"/><circle cx="210" cy="136" r=".6" fill="#9ff0e2" opacity=".05"/><circle cx="183" cy="207" r=".6" fill="#9ff0e2" opacity=".05"/><circle cx="156" cy="58" r=".6" fill="#9ff0e2" opacity=".05"/><circle cx="129" cy="129" r=".6" fill="#9ff0e2" opacity=".05"/><circle cx="102" cy="200" r=".6" fill="#9ff0e2" opacity=".05"/><circle cx="75" cy="51" r=".6" fill="#9ff0e2" opacity=".05"/><circle cx="48" cy="122" r=".6" fill="#9ff0e2" opacity=".05"/>
-  <rect x="10" y="10" width="320" height="200" rx="22" fill="none" stroke="rgba(96,165,250,.5)"/>
 </svg>

@@ -132,7 +132,7 @@ function vignetteAndGrain(id, h, p) {
     grain += `<circle cx="${x}" cy="${y}" r=".6" fill="${p.rim}" opacity=".05"/>`
   }
   return `
-  <rect width="${W}" height="${H}" rx="28" fill="url(#vig-${id})"/>
+  <rect width="${W}" height="${H}" fill="url(#vig-${id})"/>
   ${grain}`
 }
 
@@ -1163,14 +1163,69 @@ export function glyphShards(p, cx, cy, seed, count = 3) {
   return out
 }
 
-// ── Composition ────────────────────────────────────────────────────────
+// ── Lighting ───────────────────────────────────────────────────────────
+// The scenes were painted as dark silhouettes in a dark sky, which reads as
+// mood at full size and as murk at card size. Card illustration practice is
+// the opposite of more detail: keep values separated, light the subject from
+// behind, and let a rim of light define its outline so it reads as a
+// silhouette at thumbnail scale. These passes apply that to every scene at
+// once, so the whole set stays one hand.
 
-const RARITY_BORDERS = {
-  common: 'rgba(148,163,184,.35)',
-  rare: 'rgba(96,165,250,.5)',
-  epic: 'rgba(168,85,247,.55)',
-  legendary: 'rgba(245,158,11,.65)',
+/**
+ * Rim light and halo on the focal subject. A bright edge along the top of
+ * every shape (the subject is lit from above and behind), a fainter rim all
+ * round, and a soft glow of the tribe's accent bleeding out behind it.
+ */
+function rimLightFilter(id, p) {
+  return `<filter id="rim-${id}" x="-25%" y="-25%" width="150%" height="150%" color-interpolation-filters="sRGB">
+      <feOffset in="SourceAlpha" dy="2.4" result="down"/>
+      <feComposite in="SourceAlpha" in2="down" operator="out" result="topEdge"/>
+      <feGaussianBlur in="topEdge" stdDeviation="0.7" result="topSoft"/>
+      <feFlood flood-color="${p.rim}" flood-opacity="0.95"/>
+      <feComposite in2="topSoft" operator="in" result="topRim"/>
+      <feMorphology in="SourceAlpha" operator="dilate" radius="1.3" result="grown"/>
+      <feComposite in="grown" in2="SourceAlpha" operator="out" result="edge"/>
+      <feGaussianBlur in="edge" stdDeviation="1" result="edgeSoft"/>
+      <feFlood flood-color="${p.rim}" flood-opacity="0.42"/>
+      <feComposite in2="edgeSoft" operator="in" result="allRim"/>
+      <feGaussianBlur in="SourceAlpha" stdDeviation="7" result="haloBlur"/>
+      <feFlood flood-color="${p.glow}" flood-opacity="0.5"/>
+      <feComposite in2="haloBlur" operator="in" result="halo"/>
+      <feMerge>
+        <feMergeNode in="halo"/>
+        <feMergeNode in="SourceGraphic"/>
+        <feMergeNode in="allRim"/>
+        <feMergeNode in="topRim"/>
+      </feMerge>
+    </filter>`
 }
+
+/** Shafts of light falling through the sky toward the subject. */
+function lightShafts(id, h, mx) {
+  let out = ''
+  for (let i = 0; i < 3; i++) {
+    const x = mx - 70 + i * 60 + ((h * (i + 3)) % 30)
+    const lean = 26 + ((h * (i + 1)) % 22)
+    const w = 14 + ((h * (i + 5)) % 16)
+    out += `<path d="M${x} -10 L${x + w} -10 L${x + w + lean} 230 L${x + lean - w} 230 Z" fill="url(#shaft-${id})" opacity="${(0.55 - i * 0.12).toFixed(2)}"/>`
+  }
+  return out
+}
+
+/** Motes drifting in front of the scene — depth between subject and viewer. */
+function motes(h, p) {
+  let out = ''
+  for (let i = 0; i < 14; i++) {
+    const x = 14 + ((h * (i + 13) * 7907) % 312)
+    const y = 20 + ((h * (i + 19) * 6151) % 180)
+    const r = 0.8 + ((h * (i + 2)) % 4) * 0.55
+    const near = i % 4 === 0
+    out += `<circle cx="${x}" cy="${y}" r="${(near ? r * 1.8 : r).toFixed(2)}" fill="${i % 3 === 0 ? p.eye : p.glow}" opacity="${near ? 0.28 : 0.55}"${near ? ' filter="url(#soft)"' : ''}/>`
+  }
+  return out
+}
+
+// ── Composition ────────────────────────────────────────────────────────
 
 /**
  * Rarity is expressed as an aura around the subject, never a different
@@ -1216,7 +1271,6 @@ export function makeCardArt(card) {
     throw new Error(`No card-art scene for "${card.id}" — add one to CARD_SCENES in scripts/lib/card-art.mjs`)
   }
   const [motifKind, mx, my, mr] = scene.motif
-  const border = RARITY_BORDERS[card.rarity] ?? RARITY_BORDERS.common
   const aura = (RARITY_AURAS[card.rarity] ?? RARITY_AURAS.common)(p)
   return `
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="${card.title} illustration">
@@ -1232,22 +1286,36 @@ export function makeCardArt(card) {
     </radialGradient>
     <radialGradient id="vig-${card.id}" cx="50%" cy="50%" r="72%">
       <stop offset="0%" stop-color="#000" stop-opacity="0"/>
-      <stop offset="76%" stop-color="#000" stop-opacity="0"/>
-      <stop offset="100%" stop-color="#000" stop-opacity="0.5"/>
+      <stop offset="78%" stop-color="#000" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000" stop-opacity="0.4"/>
     </radialGradient>
+    <radialGradient id="back-${card.id}" cx="${((mx / W) * 100).toFixed(1)}%" cy="${((my / H) * 100).toFixed(1)}%" r="58%">
+      <stop offset="0%" stop-color="${p.glow}" stop-opacity="0.55"/>
+      <stop offset="35%" stop-color="${p.glow}" stop-opacity="0.2"/>
+      <stop offset="100%" stop-color="${p.glow}" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="shaft-${card.id}" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="${p.rim}" stop-opacity="0.22"/>
+      <stop offset="70%" stop-color="${p.rim}" stop-opacity="0.04"/>
+      <stop offset="100%" stop-color="${p.rim}" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="soft" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="1.4"/></filter>
+    ${rimLightFilter(card.id, p)}
   </defs>
-  <rect width="${W}" height="${H}" rx="28" fill="url(#sky-${card.id})"/>
-  <rect width="${W}" height="${H}" rx="28" fill="url(#drown-${card.id})"/>
+  <rect width="${W}" height="${H}" fill="url(#sky-${card.id})"/>
+  <rect width="${W}" height="${H}" fill="url(#drown-${card.id})"/>
+  <rect width="${W}" height="${H}" fill="url(#back-${card.id})"/>
   ${stars(h, p.rim)}
+  ${lightShafts(card.id, h, mx)}
   ${MOTIFS[motifKind](p, mx, my, mr)}
   ${ruins(h, p)}
   ${fog(p, 168 + (h % 8), 8, 0.05)}
   ${aura}
-  ${scene.draw(p, h)}
+  <g filter="url(#rim-${card.id})">${scene.draw(p, h)}</g>
   ${fog(p, 186 + (h % 6), 6, 0.07)}
   ${ground(h, p)}
+  ${motes(h, p)}
   ${vignetteAndGrain(card.id, h, p)}
-  <rect x="10" y="10" width="${W - 20}" height="${H - 20}" rx="22" fill="none" stroke="${border}"/>
 </svg>`.trim()
 }
 

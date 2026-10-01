@@ -100,7 +100,7 @@
   /* The generated scenes are painted for a full-screen backdrop and read
      murky at card size. A light pass lifts the subject without washing out
      the blacks that give the art its depth. */
-  filter: brightness(1.2) contrast(1.06) saturate(1.18);
+  filter: brightness(1.08) contrast(1.05) saturate(1.12);
   -webkit-user-drag: none;
   user-select: none;
 }
@@ -237,51 +237,68 @@
   text-shadow: 0 1px 0 rgba(0, 0, 0, 0.85), 0 0 3cqw rgba(0, 0, 0, 0.6);
 }
 
+.cf-gems .cf-cost,
+.cf-gems .cf-attack,
+.cf-gems .cf-health {
+  /* The emblem art (scripts/lib/stat-art.mjs) is the shape; a drop shadow
+     seats it on the card. No border-radius or ring: the art carries its own
+     cast-gold rim. */
+  background: center / contain no-repeat;
+  filter: drop-shadow(0 1.4cqw 1.6cqw rgba(0, 0, 0, 0.6));
+}
+
+/* Cost: the faceted mana crystal, top-left — the corner that stays visible
+   when a hand is fanned. */
 .cf-gems .cf-cost {
-  top: 4cqw;
-  left: 4cqw;
-  width: 23cqw;
-  height: 23cqw;
-  border-radius: 50%;
-  font-size: 13cqw;
-  background: radial-gradient(circle at 35% 30%, #8fd0bb 0%, #3f8f7c 45%, #1d4a41 100%);
-  box-shadow: 0 0 0 1.4cqw #b89458, 0 0 0 2.2cqw rgba(30, 20, 10, 0.85), 0 2cqw 4cqw rgba(0, 0, 0, 0.5);
+  top: 2.5cqw;
+  left: 2.5cqw;
+  width: 27cqw;
+  height: 27cqw;
+  font-size: 14cqw;
+  background-image: url('/generated/ui/stat-mana.svg');
 }
 
-/* Attack: a diamond. Health: a medallion. Different shapes, so the two
-   numbers that decide every trade read apart even in greyscale. */
+.cf-gems .cf-cost > span {
+  transform: translateY(1.4cqw);
+}
+
+/* Attack: crossed swords behind an amber boss. Health: a blood drop.
+   Different silhouettes, so the two numbers that decide every trade read
+   apart even in greyscale. */
 .cf-gems .cf-attack {
-  bottom: 5cqw;
-  left: 6cqw;
-  width: 19cqw;
-  height: 19cqw;
-  font-size: 12cqw;
+  bottom: 1.5cqw;
+  left: 2cqw;
+  width: 28cqw;
+  height: 28cqw;
+  font-size: 13cqw;
+  background-image: url('/generated/ui/stat-attack.svg');
 }
 
-.cf-gems .cf-attack::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  transform: rotate(45deg) scale(0.86);
-  border-radius: 2.5cqw;
-  background: linear-gradient(135deg, #f0c46e 0%, #c98a33 50%, #7a4b16 100%);
-  box-shadow: 0 0 0 1.2cqw rgba(40, 24, 8, 0.85), 0 2cqw 4cqw rgba(0, 0, 0, 0.5);
+.cf-gems .cf-attack > span {
+  transform: translateY(1.6cqw);
 }
 
 .cf-gems .cf-health {
-  bottom: 4cqw;
-  right: 5cqw;
-  width: 21cqw;
-  height: 21cqw;
-  border-radius: 50%;
-  font-size: 12cqw;
-  background: radial-gradient(circle at 35% 30%, #e0786c 0%, #a5352f 50%, #5a1715 100%);
-  box-shadow: 0 0 0 1.2cqw #b89458, 0 0 0 2cqw rgba(30, 10, 8, 0.85), 0 2cqw 4cqw rgba(0, 0, 0, 0.5);
+  bottom: 1.5cqw;
+  right: 2cqw;
+  width: 27cqw;
+  height: 27cqw;
+  font-size: 13cqw;
+  background-image: url('/generated/ui/stat-health.svg');
 }
 
+.cf-gems .cf-health > span {
+  transform: translateY(3.4cqw);
+}
+
+/* The genre's stat colours: damaged health red, anything above its printed
+   value green. */
 .cf-gems .cf-health.is-damaged > span {
-  color: #ffd0c6;
+  color: #ff9d8f;
+}
+
+.cf-gems .cf-stat.is-buffed > span {
+  color: #a8f5b4;
 }
 
 .cf-gems .cf-seal {

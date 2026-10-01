@@ -5,6 +5,8 @@ import { buildCardArtFiles } from './lib/card-art.mjs'
 import { buildGlyphFiles } from './lib/glyph-art.mjs'
 import { buildSceneFiles } from './lib/scene-art.mjs'
 import { buildInsigniaFiles } from './lib/insignia-art.mjs'
+import { buildStatFiles } from './lib/stat-art.mjs'
+import { buildFrameFiles } from './lib/frame-art.mjs'
 import { buildRelicFiles } from './lib/relic-art.mjs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -388,6 +390,8 @@ const uiAssets = {
   ...buildGlyphFiles(),
   ...buildSceneFiles(),
   ...buildInsigniaFiles(),
+  ...buildStatFiles(),
+  ...buildFrameFiles(),
 }
 
 const allCards = buildCardArtFiles()
@@ -406,6 +410,8 @@ const uiAssetType = (id) => {
   if (id.startsWith('particle-')) return 'ui-particle'
   if (id.startsWith('tribe-') || id.startsWith('glyph-')) return 'ui-glyph'
   if (id === 'shard.svg') return 'ui-currency'
+  if (id.startsWith('stat-')) return 'ui-stat'
+  if (id.startsWith('frame-')) return 'ui-frame'
   if (id === 'lane-sigil.svg') return 'ui-board'
   if (id === 'card-back.svg') return 'ui-card-back'
   return 'ui-misc'

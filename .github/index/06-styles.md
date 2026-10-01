@@ -55,7 +55,13 @@ imports in `src/main.tsx`, so the CSP's `font-src 'self'` holds.
 Buttons come in three tiers (`buttons.css`): gilded `.primary` via the
 `--btn-primary-*` tokens, lacquer `.secondary`, and `.ghost`. Filter chips,
 difficulty chips and selected states reuse the primary tokens rather than a
-second gold.
+second gold. `.primary` and `.secondary` sit on a solid ledge
+(`--btn-ledge-depth`, `--btn-primary-ledge`, `--btn-secondary-ledge` in
+`tokens.css`) and sink onto it on `:active`; `.ghost` has no ledge.
+
+Themes (`shell.css`) set two RGB light channels, `--theme-light-a` and
+`--theme-light-b`, on `.app-shell.theme-*`. The ambient wash and the shop's
+`.theme-swatch` (overlays.css) both read them, at different strengths.
 
 Mask glyphs (`.glyph`, `.tribe-sigil` in `primitives.css`) paint a black SVG
 through `mask: var(--glyph-src)` in `currentColor`; tint them with `color`.
@@ -63,9 +69,15 @@ through `mask: var(--glyph-src)` in `currentColor`; tint them with `color`.
 ## The card face (`card-face.css`)
 
 `CardFace` renders two sibling layers around the host's `.card-frame`:
-`.cf` (art and name plate, below the frame at z 4) and `.cf-gems` (cost,
-seal, attack diamond, health medallion, rarity gem, hairline — above it at
-z 5), so a cosmetic frame never tints the numbers. Each layer is a size
+`.cf` (art and name plate, below the frame at z 4) and `.cf-gems` (cost
+crystal, seal, attack swords, health drop, rarity gem, hairline — above it at
+z 5), so a cosmetic frame never tints the numbers. The stat emblems are the
+generated `stat-*.svg` backgrounds; `.is-damaged` health reads red and
+`.is-buffed` attack or health reads green.
+
+Cosmetic frames (`collection.css`) paint `frame-*.svg` on
+`.border-* > .card-frame`; Solar and Void animate on `.card-frame::after`,
+with reduced-motion stills in `onboarding.css` and `card-frames.css`. Each layer is a size
 container and everything inside is in `cqw`/`cqh`, so one set of proportions
 serves a 68px phone-hand card and the full inspect view. Below 84px wide the
 name is hidden.

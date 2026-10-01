@@ -1,6 +1,6 @@
 # Generated Asset Pipeline
 
-All shipped visual art is produced by [scripts/generate-brand-assets.mjs](../../scripts/generate-brand-assets.mjs) and written into [public/generated](../../public/generated). The generator is deterministic — scattered marks come from seeded generators — so regenerating with no source change produces no diff beyond the manifest timestamp. The latest pass produced **201 manifest entries**.
+All shipped visual art is produced by [scripts/generate-brand-assets.mjs](../../scripts/generate-brand-assets.mjs) and written into [public/generated](../../public/generated). The generator is deterministic — scattered marks come from seeded generators — so regenerating with no source change produces no diff beyond the manifest timestamp. The latest pass produced **208 manifest entries**.
 
 The art direction is the card art's own light: warm umber dark, candlelight, brass engraving, one tint per meaning. No asset carries a baked backdrop that a screen already provides, and no shipped UI uses an emoji (`server/no-emoji.test.js`).
 
@@ -12,6 +12,8 @@ The art direction is the card art's own light: warm umber dark, candlelight, bra
 | [scripts/lib/glyph-art.mjs](../../scripts/lib/glyph-art.mjs) | One-ink 24×24 line glyphs painted through a CSS mask: the ten tribe sigils (`tribe-*`) and the interface marks (`glyph-*`: close, back, chevrons, crests, quest kinds, contract, edit, delete, theme, frame, lantern, card). |
 | [scripts/lib/insignia-art.mjs](../../scripts/lib/insignia-art.mjs) | Keyword seals (`fx-*`, one tint per effect family), league shields (`rank-*`), the currency `shard.svg`, the versus seal, the victory/defeat/draw crests, and the NEW ribbon. |
 | [scripts/lib/scene-art.mjs](../../scripts/lib/scene-art.mjs) | The battle table (`bg-battle.svg`), the empty-lane `lane-sigil.svg`, and the candle-lit menu rooms (`bg-main-menu`, `bg-collection`, `bg-shop`, `bg-social`, `bg-settings`, `bg-play`). |
+| [scripts/lib/stat-art.mjs](../../scripts/lib/stat-art.mjs) | The three card stat emblems (`stat-mana`, `stat-attack`, `stat-health`): faceted crystal, crossed swords on an amber boss, blood drop. `CardFace` and the hero health medallion paint them as backgrounds. |
+| [scripts/lib/frame-art.mjs](../../scripts/lib/frame-art.mjs) | The paid cosmetic frames (`frame-bronze`, `frame-frost`, `frame-solar`, `frame-void`), drawn at 10× card ratio with a transparent centre and stretched over `.border-* > .card-frame`. |
 | [scripts/lib/relic-art.mjs](../../scripts/lib/relic-art.mjs) | The three packs (bound folio, violet grimoire, gilded reliquary) and `card-back.svg`. |
 | `generate-brand-assets.mjs` itself | Brand marks, nav glyphs, rarity gems, chrome, glows, particles, the remaining overlays, and the manifest. |
 
@@ -20,9 +22,9 @@ The art direction is the card art's own light: warm umber dark, candlelight, bra
 | Category | Count |
 |---------|------:|
 | Root brand and banner art | 10 |
-| UI assets | 116 |
+| UI assets | 123 |
 | Card art files | 75 |
-| Manifest entries | 201 |
+| Manifest entries | 208 |
 
 ## Regeneration
 
@@ -44,6 +46,8 @@ The art direction is the card art's own light: warm umber dark, candlelight, bra
 | `gem-` | rarity gems, tinted to `RARITY_COLORS` | `gem-epic.svg` |
 | `overlay-` | versus seal, result crests, battle overlays | `overlay-vs.svg`, `overlay-victory.svg` |
 | `nav-` | bottom-nav line glyphs (`currentColor`) | `nav-shop.svg` |
+| `stat-` | card stat emblems | `stat-mana.svg`, `stat-health.svg` |
+| `frame-` | paid cosmetic card frames | `frame-void.svg` |
 | `tile-`, `btn-`, `pip-`, `icon-` | legacy chrome still registered | `tile-play.svg` |
 | `glow-`, `particle-` | rarity glows, ambient textures | `glow-legendary.svg` |
 

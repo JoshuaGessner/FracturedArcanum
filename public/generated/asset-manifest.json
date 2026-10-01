@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-01T11:32:47.371Z",
+  "generatedAt": "2026-10-01T13:23:08.936Z",
   "provider": "local-svg",
   "apiReady": false,
   "commercialSafe": true,
@@ -759,6 +759,48 @@
       "id": "overlay-draw.svg",
       "path": "/generated/ui/overlay-draw.svg",
       "type": "ui-overlay",
+      "source": "local-generated"
+    },
+    {
+      "id": "stat-mana.svg",
+      "path": "/generated/ui/stat-mana.svg",
+      "type": "ui-stat",
+      "source": "local-generated"
+    },
+    {
+      "id": "stat-attack.svg",
+      "path": "/generated/ui/stat-attack.svg",
+      "type": "ui-stat",
+      "source": "local-generated"
+    },
+    {
+      "id": "stat-health.svg",
+      "path": "/generated/ui/stat-health.svg",
+      "type": "ui-stat",
+      "source": "local-generated"
+    },
+    {
+      "id": "frame-bronze.svg",
+      "path": "/generated/ui/frame-bronze.svg",
+      "type": "ui-frame",
+      "source": "local-generated"
+    },
+    {
+      "id": "frame-frost.svg",
+      "path": "/generated/ui/frame-frost.svg",
+      "type": "ui-frame",
+      "source": "local-generated"
+    },
+    {
+      "id": "frame-solar.svg",
+      "path": "/generated/ui/frame-solar.svg",
+      "type": "ui-frame",
+      "source": "local-generated"
+    },
+    {
+      "id": "frame-void.svg",
+      "path": "/generated/ui/frame-void.svg",
+      "type": "ui-frame",
       "source": "local-generated"
     },
     {

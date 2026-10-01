@@ -73,11 +73,14 @@ export const THEME_OFFERS: Array<{ id: CosmeticTheme; name: string; cost: number
    stay fixed even when the display name changes. */
 export const CARD_BORDER_OFFERS: CardBorderOffer[] = [
   { id: 'default', name: 'Standard Frame',  cost: 0,   description: 'The plain bezel, tinted by the card’s own rarity.' },
-  { id: 'bronze',  name: 'Bronze Filigree', cost: 90,  description: 'Hammered bronze bezel ringed with fine beadwork.' },
-  { id: 'frost',   name: 'Frost Etching',   cost: 180, description: 'Pale silver bezel scored with etched frost lines.' },
-  { id: 'solar',   name: 'Solar Ember',     cost: 280, description: 'Dark copper bezel with an ember that breathes across the card.' },
-  { id: 'void',    name: 'Voidweave',       cost: 420, description: 'Obsidian bezel swept by a travelling violet sheen.' },
+  { id: 'bronze',  name: 'Bronze Filigree', cost: 90,  description: 'Cast bronze bezel with a rosette crest and beaded filigree.' },
+  { id: 'frost',   name: 'Frost Etching',   cost: 180, description: 'Silver bezel crowned with an ice crystal and etched with hoarfrost.' },
+  { id: 'solar',   name: 'Solar Ember',     cost: 280, description: 'Copper bezel crowned with a sun; embers rise off it and breathe across the card.' },
+  { id: 'void',    name: 'Voidweave',       cost: 420, description: 'Obsidian bezel cut with violet runes and swept by a travelling sheen.' },
 ]
+
+/** The card the shop dresses in each frame, so a frame is judged on a card. */
+export const FRAME_SHOWCASE_CARD_ID = 'storm-titan'
 
 export const ECONOMY_REWARDS = {
   winShards: 30,
@@ -194,6 +197,20 @@ export const UI_ASSETS = {
   },
   /** The currency mark: a cut ember crystal. */
   shard: toUiAsset('shard.svg'),
+  /** The three stat emblems on every card face (scripts/lib/stat-art.mjs). */
+  statEmblems: {
+    mana: toUiAsset('stat-mana.svg'),
+    attack: toUiAsset('stat-attack.svg'),
+    health: toUiAsset('stat-health.svg'),
+  },
+  /** Cosmetic card frames, keyed by CardBorder id. CSS paints them on
+   *  `.border-* > .card-frame`; the default frame has no art by design. */
+  frames: {
+    bronze: toUiAsset('frame-bronze.svg'),
+    frost: toUiAsset('frame-frost.svg'),
+    solar: toUiAsset('frame-solar.svg'),
+    void: toUiAsset('frame-void.svg'),
+  },
   /** Engraved tribe sigils — what stands beside a card name, never an emoji. */
   tribes: {
     beast: toUiAsset('tribe-beast.svg'),

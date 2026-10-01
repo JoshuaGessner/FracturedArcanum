@@ -1,11 +1,12 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
+  CARD_LIBRARY,
   RARITY_COLORS,
   hasKeyword,
   type CardInstance,
 } from '../game'
-import { asCardBorder, describeCard, getHandFanTilt, getPileCounts, hasAvailableAction, pulseFeedback } from '../utils'
+import { asCardBorder, describeCard, getHandFanTilt, getPileCounts, getPrintedStats, hasAvailableAction, pulseFeedback } from '../utils'
 import { ECONOMY_REWARDS, UI_ASSETS } from '../constants'
 import { playSound, startLoopingSound } from '../audio'
 import { InterfaceGlyph } from '../components/AssetBadge'
@@ -800,7 +801,7 @@ export function BattleScreen() {
                       title="Long press to inspect"
                     >
                       <span className="card-frame" aria-hidden="true" />
-                      <CardFace card={unit} variant="board" currentHealth={unit.currentHealth} />
+                      <CardFace card={unit} variant="board" currentHealth={unit.currentHealth} base={getPrintedStats(unit.id, CARD_LIBRARY)} />
                       {unit.frozen && <span className="battle-slot-frozen">Frozen</span>}
                       <HealthPopBadge pop={healthPops[unit.uid]} />
                     </button>
@@ -923,7 +924,7 @@ export function BattleScreen() {
                       title="Long press to inspect"
                     >
                       <span className="card-frame" aria-hidden="true" />
-                      <CardFace card={unit} variant="board" currentHealth={unit.currentHealth} />
+                      <CardFace card={unit} variant="board" currentHealth={unit.currentHealth} base={getPrintedStats(unit.id, CARD_LIBRARY)} />
                       {unit.frozen && <span className="battle-slot-frozen">Frozen</span>}
                       <HealthPopBadge pop={healthPops[unit.uid]} />
                     </button>
