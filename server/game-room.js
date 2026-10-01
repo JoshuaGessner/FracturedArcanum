@@ -13,6 +13,7 @@ import {
 import { generateEnemyTurnSteps } from './ai.js'
 
 const TERMINAL_ROOM_RETENTION_MS = 30 * 60 * 1000
+const UNSETTLED_ROOM_RETENTION_MS = 6 * 60 * 60 * 1000
 const MAX_ROOMS = 200
 const MAX_PROCESSED_ACTIONS = 256
 const RECONNECT_GRACE_MS = 60 * 1000 // 60 seconds to reconnect
@@ -57,6 +58,10 @@ class GameRoom {
     this.disconnectedAt = { player: null, enemy: null }
     /** @type {{ player: ReturnType<typeof setTimeout> | null, enemy: ReturnType<typeof setTimeout> | null }} */
     this.forfeitTimers = { player: null, enemy: null }
+    /** The persisted settlement, once finalizeRoom has written it. */
+    this.terminalSettlement = null
+    /** Completion reason of a terminal match whose settlement write failed and is awaiting retry. */
+    this.settlementPendingReason = null
   }
 
   /**
@@ -239,12 +244,15 @@ class GameRoom {
     if (expectedRevision !== undefined && (!Number.isInteger(expectedRevision) || expectedRevision < 0)) {
       return fail('Invalid expected revision.')
     }
-    if (expectedRevision !== undefined && expectedRevision !== this.revision) {
+    const type = String(action.type ?? '')
+    // Surrender means the same thing at every revision. Refusing it as stale
+    // bounced players who had already been sent back to the lobby, and left
+    // the match running behind them.
+    if (expectedRevision !== undefined && expectedRevision !== this.revision && type !== 'surrender') {
       return fail('Stale action revision.')
     }
     if (this.state.winner) return fail('Game is over.')
 
-    const type = String(action.type ?? '')
     if (type !== 'surrender' && this.state.turn !== side) return fail('Not your turn.')
 
     let newState = this.state
@@ -455,7 +463,13 @@ class GameRoom {
   isExpired(now = Date.now()) {
     if (!this.state) return now - this.createdAt > TERMINAL_ROOM_RETENTION_MS
     if (!this.state.winner) return false
-    return now - this.lastActivityAt > TERMINAL_ROOM_RETENTION_MS
+    // An unsettled result is the only record of the match, so it outlives the
+    // normal retention while retries run — but not forever, or a database that
+    // never recovers would fill the room cap.
+    const retention = this.settlementPendingReason && !this.terminalSettlement
+      ? UNSETTLED_ROOM_RETENTION_MS
+      : TERMINAL_ROOM_RETENTION_MS
+    return now - this.lastActivityAt > retention
   }
 
   cleanup() {

@@ -1,15 +1,17 @@
 import { describe, expect, it, vi } from 'vitest'
 import { registerConnectionHandler } from './connection.js'
-import { destroyRoom, getRoomByAccount } from '../game-room.js'
+import { createRoom, destroyRoom, getRoomByAccount } from '../game-room.js'
 
 // The handler reads profiles and decks straight from db.js. Stubbed so a test
 // can drive whole socket conversations without opening a database.
+const getMatchSettlementForAccount = vi.hoisted(() => vi.fn(() => null))
+
 vi.mock('../db.js', async () => {
   const { DEFAULT_DECK_CONFIG } = await import('../game.js')
   return {
     acknowledgeMatchSettlement: () => false,
     getLatestUnacknowledgedSettlement: () => null,
-    getMatchSettlementForAccount: () => null,
+    getMatchSettlementForAccount,
     getProfile: (accountId) => ({ display_name: `Name ${accountId}`, season_rating: 1200, selected_card_border: 'default' }),
     getSocialOverview: () => ({ friends: [] }),
     isFriendOf: () => true,
@@ -182,5 +184,52 @@ describe('friend challenges', () => {
 
     expect(accepter.received('challenge:error').at(-1)?.payload.error).toBe('Challenger disconnected.')
     expect(ctx.pendingChallenges.get(sent.payload.challengeId)?.status).toBe('cancelled')
+  })
+})
+
+describe('reconnecting to a finished match', () => {
+  function finishedRoom(roomId) {
+    const room = createRoom(roomId, 'duel')
+    const deck = { 'spark-imp': 2, 'tide-caller': 2, 'cave-bat': 2, 'copper-automaton': 2, 'shade-fox': 2 }
+    room.start(
+      { socketId: `${roomId}-old-a`, accountId: 'acct-fin-a', name: 'A', deckConfig: deck },
+      { socketId: `${roomId}-old-b`, accountId: 'acct-fin-b', name: 'B', deckConfig: deck },
+    )
+    room.finalizeForfeit('enemy')
+    return room
+  }
+
+  /**
+   * Regression: the handler passed `room.terminalSettlement` — the whole-match
+   * record, with `outcomes` — where this account's record (`outcome`) belongs,
+   * so a player reconnecting before the room was destroyed heard nothing.
+   */
+  it('sends this account its own settled result', () => {
+    const room = finishedRoom('room-settled')
+    room.terminalSettlement = { ok: true, matchId: room.roomId, outcomes: [{ accountId: 'acct-fin-a', result: 'win' }] }
+    getMatchSettlementForAccount.mockReturnValueOnce({
+      ok: true, matchId: room.roomId, mode: 'duel', reason: 'surrender', outcome: { accountId: 'acct-fin-a', result: 'win' },
+    })
+    const io = fakeIo()
+    registerConnectionHandler(fakeCtx(io))
+    const socket = fakeSocket(io, 'sock-fin-a', 'acct-fin-a')
+    io.handlers.get('connection')(socket)
+
+    const [over] = socket.received('game:over')
+    expect(over?.payload).toMatchObject({ matchId: room.roomId, result: 'win', reason: 'surrender' })
+    destroyRoom(room.roomId)
+  })
+
+  it('retries a pending settlement when a participant comes back', () => {
+    const room = finishedRoom('room-pending')
+    room.settlementPendingReason = 'surrender'
+    const io = fakeIo()
+    const ctx = fakeCtx(io)
+    ctx.finalizeRoom = vi.fn(() => ({ ok: true }))
+    registerConnectionHandler(ctx)
+    io.handlers.get('connection')(fakeSocket(io, 'sock-fin-b', 'acct-fin-b'))
+
+    expect(ctx.finalizeRoom).toHaveBeenCalledWith(room, 'surrender')
+    destroyRoom(room.roomId)
   })
 })

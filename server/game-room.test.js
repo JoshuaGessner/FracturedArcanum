@@ -225,6 +225,30 @@ describe('game room lifecycle hardening', () => {
     expect(room.finalizeAbort()).toMatchObject({ ok: true, revision: 1, duplicate: true, winner: 'draw' })
   })
 
+  it('accepts a surrender sent against a stale revision, but nothing else', () => {
+    const room = startTestRoom()
+    expect(room.handleAction('socket-player', { action: { type: 'endTurn' }, expectedRevision: 0 }).ok).toBe(true)
+    // The player client still believes revision 0.
+    expect(room.handleAction('socket-enemy', { action: { type: 'endTurn' }, expectedRevision: 0 })).toMatchObject({
+      ok: false,
+      error: 'Stale action revision.',
+    })
+    const surrender = room.handleAction('socket-player', { action: { type: 'surrender' }, expectedRevision: 0, actionId: 'quit-1' })
+    expect(surrender.ok).toBe(true)
+    expect(room.state.winner).toBe('enemy')
+  })
+
+  it('keeps an unsettled terminal room past normal retention while retries run', () => {
+    const room = startTestRoom()
+    room.finalizeForfeit('enemy')
+    const hourLater = Date.now() + 60 * 60 * 1000
+    expect(room.isExpired(hourLater)).toBe(true)
+
+    room.settlementPendingReason = 'surrender'
+    expect(room.isExpired(hourLater)).toBe(false)
+    expect(room.isExpired(Date.now() + 7 * 60 * 60 * 1000)).toBe(true)
+  })
+
   it('never expires an active match solely because it is old', () => {
     const room = startTestRoom()
     const farFuture = room.createdAt + 24 * 60 * 60 * 1000

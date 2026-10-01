@@ -45,7 +45,7 @@ The game uses a single soft currency called **Shards**. All code, UI, and docume
 **Streak bonus:** +5 shards per streak past 2 wins (capped at +20 extra). Source: `settleAuthoritativeMatch()` in `server/db/economy.js`
 **Match duration:** Matches typically last ~5 minutes, making shard income very fast per real-time minute of play.
 
-Authoritative AI and Ranked completions are reward-eligible. Friend matches are practice-only and grant no Shards, rating, streak, quest, or W/L progress. A Ranked surrender/disconnect before turn 2 still applies the competitive result and rating but grants no farmable Shards, streak, or quest progress. Maintenance and idle-timeout no-contests grant nothing and never deduct player resources.
+Authoritative AI and Ranked completions are reward-eligible. Friend matches are practice-only and grant no Shards, rating, streak, quest, or W/L progress. A Ranked surrender/disconnect before turn 2 still records the W/L and costs the quitter rating (so conceding early never dodges a loss), but the winner gains no rating, and neither side gets Shards, streak, or quest progress — a turn-one concession from a second account is otherwise a free +25 rating. Maintenance and idle-timeout no-contests grant nothing and never deduct player resources.
 
 ### Weekly Income Model
 

@@ -1475,7 +1475,7 @@ describe('durable authoritative match settlement', () => {
     expect(db.getQuestOverview(firstAccount).quests.map(({ id, progress }) => ({ id, progress }))).toEqual(questsBefore)
   })
 
-  it('applies ranked rating and W/L but no farmable reward for an early surrender', () => {
+  it('charges the quitter rating but pays the winner nothing farmable for an early surrender', () => {
     const winner = makeAccount('settlementsurrendera')
     const loser = makeAccount('settlementsurrenderb')
     const winnerBefore = db.getProfile(winner)
@@ -1494,7 +1494,8 @@ describe('durable authoritative match settlement', () => {
 
     expect(result.ok, result.error).toBe(true)
     expect(result.outcomes.every((outcome) => outcome.shardsEarned === 0)).toBe(true)
-    expect(db.getProfile(winner).season_rating).toBe(winnerBefore.season_rating + 25)
+    // A turn-one concession from a second account must not be a rating farm.
+    expect(db.getProfile(winner).season_rating).toBe(winnerBefore.season_rating)
     expect(db.getProfile(loser).season_rating).toBe(loserBefore.season_rating - 15)
     expect(db.getProfile(winner).wins).toBe(winnerBefore.wins + 1)
     expect(db.getProfile(loser).losses).toBe(loserBefore.losses + 1)

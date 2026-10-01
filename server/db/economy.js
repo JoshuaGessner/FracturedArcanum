@@ -79,7 +79,10 @@ function calculateAuthoritativeMatchEconomy(profile, mode, result, reason, turns
   if (gatedEarlyEnd) {
     return {
       shardsEarned: 0,
-      ratingDelta: base.ratingDelta,
+      // The quitter still loses rating, so surrendering early never dodges a
+      // loss. The winner gains none: otherwise a second account conceding on
+      // turn one is a free +25 per match.
+      ratingDelta: result === 'loss' ? base.ratingDelta : 0,
       newStreak: profile.streak,
       questEligible: false,
       rewardEligible: false,

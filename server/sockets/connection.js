@@ -132,6 +132,22 @@ io.on('connection', (socket) => {
     return true
   }
 
+  /**
+   * Tell this socket how a finished room ended.
+   *
+   * Always read from the database: `room.terminalSettlement` is the
+   * whole-match record (`outcomes`), not this account's (`outcome`), so
+   * passing it here emitted nothing. A room whose settlement write failed is
+   * retried first; on success finalizeRoom has already sent game:over to
+   * every participant, this socket included.
+   */
+  const emitRoomResult = (room) => {
+    if (!room.terminalSettlement && room.settlementPendingReason) {
+      if (finalizeRoom(room, room.settlementPendingReason)?.ok) return true
+    }
+    return emitPersistedSettlement(getMatchSettlementForAccount(room.roomId, socket.data.accountId))
+  }
+
   // ─── Auto-rejoin: return a definitive active, terminal, or none state ────
   const existingRoom = getRoomByAccount(socket.data.accountId)
   if (existingRoom && existingRoom.state && !existingRoom.state.winner) {
@@ -160,9 +176,7 @@ io.on('connection', (socket) => {
       }
     }
   } else if (existingRoom?.state?.winner) {
-    const settlement = existingRoom.terminalSettlement
-      ?? getMatchSettlementForAccount(existingRoom.roomId, socket.data.accountId)
-    emitPersistedSettlement(settlement)
+    emitRoomResult(existingRoom)
   } else {
     emitPersistedSettlement(getLatestUnacknowledgedSettlement(socket.data.accountId))
   }
@@ -180,7 +194,7 @@ io.on('connection', (socket) => {
       return
     }
     if (room.state.winner) {
-      emitPersistedSettlement(room.terminalSettlement ?? getMatchSettlementForAccount(room.roomId, socket.data.accountId))
+      emitRoomResult(room)
       return
     }
 

@@ -298,17 +298,25 @@ export function createRealtime({ io, matchIdleTimeoutMs }) {
       metadata: room.mode === 'ai' ? { aiDifficulty: room.state.aiDifficulty } : {},
     })
     if (!settlement.ok) {
-      for (const accountId of Object.values(room.accounts).filter(Boolean)) {
-        emitToAccount(accountId, 'game:error', {
-          matchId: room.roomId,
-          revision: room.revision,
-          error: 'The match ended, but settlement is pending. Your result has not been lost.',
-        })
+      // Kept on the room so retryPendingSettlements and a rejoin can try
+      // again. Players are told once, not on every failed retry.
+      const firstFailure = !room.settlementPendingReason
+      room.settlementPendingReason = reason
+      console.warn(`Settlement for ${room.roomId} failed; will retry.`, settlement.error)
+      if (firstFailure) {
+        for (const accountId of Object.values(room.accounts).filter(Boolean)) {
+          emitToAccount(accountId, 'game:error', {
+            matchId: room.roomId,
+            revision: room.revision,
+            error: 'The match ended, but settlement is pending. Your result has not been lost.',
+          })
+        }
       }
       return settlement
     }
 
     room.terminalSettlement = settlement
+    room.settlementPendingReason = null
     emitTerminalSettlement(room, settlement)
     trackAnalyticsEvent({
       type: 'match_complete',
@@ -318,6 +326,22 @@ export function createRealtime({ io, matchIdleTimeoutMs }) {
     emitLiveArenaState()
     setTimeout(() => destroyRoom(room.roomId), 10_000).unref?.()
     return settlement
+  }
+
+  /**
+   * Re-attempt every terminal match whose settlement write failed.
+   *
+   * Without this, the "settlement is pending" message players were shown was
+   * untrue: nothing ever tried again, and the room expired with the result.
+   * finalizeRoom is idempotent, so a retry that races a rejoin is harmless.
+   */
+  function retryPendingSettlements() {
+    let settled = 0
+    for (const room of rooms.values()) {
+      if (!room.state?.winner || room.terminalSettlement || !room.settlementPendingReason) continue
+      if (finalizeRoom(room, room.settlementPendingReason)?.ok) settled += 1
+    }
+    return settled
   }
 
   // A connected but abandoned room must not occupy the in-memory room cap
@@ -330,6 +354,7 @@ export function createRealtime({ io, matchIdleTimeoutMs }) {
       const aborted = room.finalizeAbort('Match closed after 15 minutes without activity.')
       if (aborted.ok) finalizeRoom(room, 'timeout')
     }
+    retryPendingSettlements()
   }, 60_000).unref?.()
 
   function findBestWaitingPlayer(socketId, rating, queuedAt = Date.now()) {
@@ -496,6 +521,7 @@ export function createRealtime({ io, matchIdleTimeoutMs }) {
     emitTerminalSettlement,
     broadcastRoomState,
     finalizeRoom,
+    retryPendingSettlements,
     findBestWaitingPlayer,
     startRankedMatch,
     sweepWaitingPlayers,
