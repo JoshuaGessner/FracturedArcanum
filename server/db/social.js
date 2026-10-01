@@ -8,7 +8,7 @@ import { CARD_LIBRARY, MAX_COPIES as GAME_MAX_COPIES, MAX_LEGENDARY_COPIES } fro
 import { USERNAME_RE, _getByUsername } from './accounts.js'
 import { applySchema, db, openDatabase, prepare, transaction } from './connection.js'
 import { _getOwnedCards, _setOwnedCards } from './economy.js'
-import { normalizeOwnedCards } from './profiles.js'
+import { normalizeOwnedCards, savedDeckCopies } from './profiles.js'
 
 // ─── Social (friends + clans) ───────────────────────────────────────────────
 
@@ -338,6 +338,8 @@ const _expireStaleTrades = prepare(
    WHERE status = 'pending' AND expires_at < datetime('now')`,
 )
 
+const TRADEABLE_CARD_IDS = new Set(CARD_LIBRARY.map((card) => card.id))
+
 function normalizeTradeItems(raw) {
   if (!Array.isArray(raw)) return null
   const normalized = []
@@ -347,6 +349,10 @@ function normalizeTradeItems(raw) {
     const cardId = String(item.cardId ?? '').trim()
     const qty = Math.floor(Number(item.qty ?? 0))
     if (!cardId || qty <= 0 || qty > 3) return null
+    // Only real cards. A name like `constructor` resolves to a built-in on any
+    // plain object, which used to satisfy the ownership check and let a
+    // phantom card buy a real one.
+    if (!TRADEABLE_CARD_IDS.has(cardId)) return null
     if (seen.has(cardId)) return null // no duplicate entries; roll into one
     seen.add(cardId)
     normalized.push({ cardId, qty })
@@ -356,11 +362,35 @@ function normalizeTradeItems(raw) {
   return normalized
 }
 
+function ownedCount(owned, cardId) {
+  const count = Object.hasOwn(owned, cardId) ? Number(owned[cardId]) : 0
+  return Number.isInteger(count) && count > 0 ? count : 0
+}
+
 function ownsAll(owned, items) {
   for (const { cardId, qty } of items) {
-    if ((owned[cardId] ?? 0) < qty) return false
+    if (ownedCount(owned, cardId) < qty) return false
   }
   return true
+}
+
+/**
+ * The first item that would take a player below what their saved decks need,
+ * or null. Breakdown already refused this; trades did not, so a deck could
+ * quietly stop being playable after a swap.
+ */
+function itemBreakingSavedDeck(accountId, owned, items) {
+  const reserved = savedDeckCopies(accountId)
+  return items.find(({ cardId, qty }) => ownedCount(owned, cardId) - qty < (reserved[cardId] ?? 0)) ?? null
+}
+
+function cardName(cardId) {
+  return CARD_LIBRARY.find((card) => card.id === cardId)?.name ?? cardId
+}
+
+/** SQLite `datetime()` text is UTC with no zone marker; JS would read it as local time. */
+function sqliteUtcMs(value) {
+  return Date.parse(`${String(value).replace(' ', 'T')}Z`)
 }
 
 export function proposeTrade(fromAccountId, toAccountId, offer, request) {
@@ -377,7 +407,7 @@ export function proposeTrade(fromAccountId, toAccountId, offer, request) {
   const normalizedOffer = normalizeTradeItems(offer)
   const normalizedRequest = normalizeTradeItems(request)
   if (!normalizedOffer || !normalizedRequest) {
-    return { ok: false, status: 400, error: 'Each side must list 1–6 distinct cards with quantities between 1 and 3.' }
+    return { ok: false, status: 400, error: 'Each side must list 1–6 distinct, known cards with quantities between 1 and 3.' }
   }
 
   const fromOwned = _getOwnedCards.get(fromAccountId)
@@ -385,6 +415,10 @@ export function proposeTrade(fromAccountId, toAccountId, offer, request) {
   const fromCollection = normalizeOwnedCards(fromOwned.owned_cards)
   if (!ownsAll(fromCollection, normalizedOffer)) {
     return { ok: false, status: 400, error: 'You do not own all of the offered cards.' }
+  }
+  const reservedOffer = itemBreakingSavedDeck(fromAccountId, fromCollection, normalizedOffer)
+  if (reservedOffer) {
+    return { ok: false, status: 400, error: `One of your saved decks needs your copies of ${cardName(reservedOffer.cardId)}.` }
   }
 
   // Cap: one pending trade per (from,to) pair.
@@ -440,8 +474,7 @@ export function getTradeById(id) {
 function applyCardDelta(owned, items, sign) {
   const next = { ...owned }
   for (const { cardId, qty } of items) {
-    const current = next[cardId] ?? 0
-    const updated = current + sign * qty
+    const updated = ownedCount(next, cardId) + sign * qty
     if (updated < 0) return null
     if (updated === 0) delete next[cardId]
     else next[cardId] = updated
@@ -463,7 +496,7 @@ export function acceptTrade(accepterAccountId, tradeId) {
     if (row.to_account_id !== accepterAccountId) {
       return { ok: false, status: 403, error: 'Only the recipient can accept this trade.' }
     }
-    if (new Date(row.expires_at).getTime() < Date.now()) {
+    if (sqliteUtcMs(row.expires_at) < Date.now()) {
       _updateTradeStatus.run('expired', row.id)
       return { ok: false, status: 410, error: 'Trade has expired.' }
     }
@@ -492,6 +525,15 @@ export function acceptTrade(accepterAccountId, tradeId) {
     }
     if (!ownsAll(toCards, trade.request)) {
       return { ok: false, status: 400, error: 'You do not own all of the requested cards.' }
+    }
+    const reservedRequest = itemBreakingSavedDeck(accepterAccountId, toCards, trade.request)
+    if (reservedRequest) {
+      return { ok: false, status: 400, error: `One of your saved decks needs your copies of ${cardName(reservedRequest.cardId)}.` }
+    }
+    // The proposer may have built a deck around the offered cards since.
+    if (itemBreakingSavedDeck(trade.fromAccountId, fromCards, trade.offer)) {
+      _updateTradeStatus.run('cancelled', row.id)
+      return { ok: false, status: 409, error: 'The proposer now needs the offered cards in a saved deck.' }
     }
 
     // Transfer: proposer loses offer, gains request; accepter gains offer, loses request.

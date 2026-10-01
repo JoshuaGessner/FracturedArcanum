@@ -369,11 +369,14 @@ When releasing a new expansion (see the full 5-year seasonal schedule in [`CARD_
 
 ### Trading System Safeguards
 
-The existing trade system (`server/db/economy.js` — `trades` table) includes:
+The existing trade system (`server/db/social.js` — `trades` table) includes:
 - Friends-only trading (prevents anonymous market exploitation)
 - Trade expiry (7 days via `TRADE_TTL_DAYS`)
 - Maximum 6 items per side (`MAX_TRADE_ITEMS_PER_SIDE`)
-- Ownership validation on both sides
+- Ownership validation on both sides, counting only real card ids (`CARD_LIBRARY`)
+- Saved-deck reservation: neither side may trade away copies one of their saved
+  decks needs — the same floor Shard breakdown enforces, so a trade never leaves
+  a deck unplayable. Checked at proposal and again at acceptance.
 
 **Economy note:** Card trading does not create or destroy shards. It only redistributes cards. Monitor for:
 - Trade inflation (rare cards becoming too easy to acquire through social networks)

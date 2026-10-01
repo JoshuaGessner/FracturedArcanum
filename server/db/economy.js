@@ -8,7 +8,7 @@ import { CARD_LIBRARY, MAX_COPIES as GAME_MAX_COPIES, MAX_LEGENDARY_COPIES } fro
 import { QUEST_DEFINITIONS, QUEST_TIERS, difficultyMeets, getQuestDefinition, renderQuestDescription } from '../quest-definitions.js'
 import { QUEST_CHAINS, chainTier, chainTierLabel, getQuestChain, isChainExhausted, legacyChainMigrations } from '../quest-chains.js'
 import { db, prepare, transaction } from './connection.js'
-import { DECK_CARD_ID_RE, _getProfile, _updateTheme, buildStarterCollection, getProfile, listDecks, normalizeOwnedCards } from './profiles.js'
+import { DECK_CARD_ID_RE, _getProfile, _updateTheme, buildStarterCollection, getProfile, normalizeOwnedCards, savedDeckCopies } from './profiles.js'
 
 // ─── Economy operations (server-authoritative) ──────────────────────────────
 
@@ -1031,15 +1031,6 @@ export function selectCardBorder(accountId, borderId) {
 
 const RARITY_BREAKDOWN_VALUE = { common: 5, rare: 10, epic: 25, legendary: 100 }
 
-function deckCopiesIncluding(decks, cardId) {
-  let max = 0
-  for (const deck of decks) {
-    const n = deck.deckConfig?.[cardId] ?? 0
-    if (n > max) max = n
-  }
-  return max
-}
-
 export function breakdownCard(accountId, cardId, qty) {
   if (typeof cardId !== 'string' || !DECK_CARD_ID_RE.test(cardId)) {
     return { ok: false, error: 'Invalid card identifier.' }
@@ -1057,8 +1048,7 @@ export function breakdownCard(accountId, cardId, qty) {
   const owned = profile.owned_cards?.[cardId] ?? 0
   if (owned <= 0) return { ok: false, error: 'You do not own that card.' }
 
-  const decks = listDecks(accountId)
-  const deckMin = deckCopiesIncluding(decks, cardId)
+  const deckMin = savedDeckCopies(accountId)[cardId] ?? 0
   const breakable = owned - deckMin
   if (breakable <= 0) {
     return { ok: false, error: 'All copies of that card are needed by one of your saved decks.' }

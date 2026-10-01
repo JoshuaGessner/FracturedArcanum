@@ -40,10 +40,26 @@ export function buildStarterCollection() {
   return starter
 }
 
+const KNOWN_CARD_IDS = new Set(CARD_LIBRARY.map((card) => card.id))
+
+/**
+ * Parse a stored collection, keeping only real cards with a positive count.
+ *
+ * The filter is a repair as much as a guard: trades once accepted ids like
+ * `constructor` and wrote values such as "function Object() {…}1" into the
+ * recipient's collection, and those rows are still on disk.
+ */
 export function normalizeOwnedCards(rawValue) {
   const parsed = rawValue ? JSON.parse(rawValue) : {}
-  if (parsed && Object.keys(parsed).length > 0) {
-    return parsed
+  const owned = {}
+  if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+    for (const [cardId, rawCount] of Object.entries(parsed)) {
+      const count = Number(rawCount)
+      if (KNOWN_CARD_IDS.has(cardId) && Number.isInteger(count) && count > 0) owned[cardId] = count
+    }
+  }
+  if (Object.keys(owned).length > 0) {
+    return owned
   }
   return buildStarterCollection()
 }
@@ -260,6 +276,25 @@ export function listDecks(accountId) {
   // getProfile triggers ensureMigratedDecks; safe to call without it though.
   ensureMigratedDecks(accountId, null)
   return _listDecks.all(accountId).map(mapDeckRow)
+}
+
+/**
+ * Copies of each card the account's saved decks need: the most any one deck
+ * uses, since only one deck is played at a time.
+ *
+ * The floor every path that removes cards must respect — breakdown and trades
+ * alike — so that a saved deck never silently stops being playable.
+ *
+ * @returns {Record<string, number>}
+ */
+export function savedDeckCopies(accountId) {
+  const reserved = {}
+  for (const deck of listDecks(accountId)) {
+    for (const [cardId, count] of Object.entries(deck.deckConfig ?? {})) {
+      if (count > (reserved[cardId] ?? 0)) reserved[cardId] = count
+    }
+  }
+  return reserved
 }
 
 export function getActiveDeck(accountId) {

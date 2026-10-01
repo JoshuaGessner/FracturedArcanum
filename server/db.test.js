@@ -1570,6 +1570,8 @@ describe('card trading', () => {
     ).run(JSON.stringify(owned), accountId)
   }
 
+  // Neither card is in the starter Main deck, so saved-deck reservations stay
+  // out of the way unless a test sets one up on purpose.
   function makeFriendPair(prefix) {
     const a = makeAccount(prefix + 'a')
     const b = makeAccount(prefix + 'b')
@@ -1584,32 +1586,32 @@ describe('card trading', () => {
   it('proposeTrade rejects non-friends', () => {
     const a = makeAccount('tradenotfriendx')
     const b = makeAccount('tradenotfriendy')
-    setOwned(a, { 'spark-imp': 2 })
-    const result = db.proposeTrade(a, b, [{ cardId: 'spark-imp', qty: 1 }], [{ cardId: 'shadow-whelp', qty: 1 }])
+    setOwned(a, { 'cave-bat': 2 })
+    const result = db.proposeTrade(a, b, [{ cardId: 'cave-bat', qty: 1 }], [{ cardId: 'copper-automaton', qty: 1 }])
     expect(result.ok).toBe(false)
     expect(result.status).toBe(403)
   })
 
   it('proposeTrade rejects self-trade', () => {
     const a = makeAccount('tradeselfa')
-    setOwned(a, { 'spark-imp': 1 })
-    const result = db.proposeTrade(a, a, [{ cardId: 'spark-imp', qty: 1 }], [{ cardId: 'spark-imp', qty: 1 }])
+    setOwned(a, { 'cave-bat': 1 })
+    const result = db.proposeTrade(a, a, [{ cardId: 'cave-bat', qty: 1 }], [{ cardId: 'cave-bat', qty: 1 }])
     expect(result.ok).toBe(false)
   })
 
   it('proposeTrade rejects when proposer does not own enough copies', () => {
     const [a, b] = makeFriendPair('tradelow1')
-    setOwned(a, { 'spark-imp': 1 })
-    const result = db.proposeTrade(a, b, [{ cardId: 'spark-imp', qty: 3 }], [{ cardId: 'shadow-whelp', qty: 1 }])
+    setOwned(a, { 'cave-bat': 1 })
+    const result = db.proposeTrade(a, b, [{ cardId: 'cave-bat', qty: 3 }], [{ cardId: 'copper-automaton', qty: 1 }])
     expect(result.ok).toBe(false)
     expect(result.error).toMatch(/do not own/i)
   })
 
   it('acceptTrade swaps cards atomically', () => {
     const [a, b] = makeFriendPair('tradeswap1')
-    setOwned(a, { 'spark-imp': 2 })
-    setOwned(b, { 'shadow-whelp': 2 })
-    const prop = db.proposeTrade(a, b, [{ cardId: 'spark-imp', qty: 1 }], [{ cardId: 'shadow-whelp', qty: 1 }])
+    setOwned(a, { 'cave-bat': 2 })
+    setOwned(b, { 'copper-automaton': 2 })
+    const prop = db.proposeTrade(a, b, [{ cardId: 'cave-bat', qty: 1 }], [{ cardId: 'copper-automaton', qty: 1 }])
     expect(prop.ok).toBe(true)
 
     const accept = db.acceptTrade(b, prop.tradeId)
@@ -1617,17 +1619,17 @@ describe('card trading', () => {
 
     const aCollection = db.getCollection(a)
     const bCollection = db.getCollection(b)
-    expect(aCollection['spark-imp']).toBe(1)
-    expect(aCollection['shadow-whelp']).toBe(1)
-    expect(bCollection['shadow-whelp']).toBe(1)
-    expect(bCollection['spark-imp']).toBe(1)
+    expect(aCollection['cave-bat']).toBe(1)
+    expect(aCollection['copper-automaton']).toBe(1)
+    expect(bCollection['copper-automaton']).toBe(1)
+    expect(bCollection['cave-bat']).toBe(1)
   })
 
   it('concurrent accepts: only one wins', () => {
     const [a, b] = makeFriendPair('tradeconcur1')
-    setOwned(a, { 'spark-imp': 2 })
-    setOwned(b, { 'shadow-whelp': 2 })
-    const prop = db.proposeTrade(a, b, [{ cardId: 'spark-imp', qty: 1 }], [{ cardId: 'shadow-whelp', qty: 1 }])
+    setOwned(a, { 'cave-bat': 2 })
+    setOwned(b, { 'copper-automaton': 2 })
+    const prop = db.proposeTrade(a, b, [{ cardId: 'cave-bat', qty: 1 }], [{ cardId: 'copper-automaton', qty: 1 }])
     expect(prop.ok).toBe(true)
 
     const first = db.acceptTrade(b, prop.tradeId)
@@ -1638,9 +1640,9 @@ describe('card trading', () => {
 
   it('cancelTrade (by proposer) ends pending trade', () => {
     const [a, b] = makeFriendPair('tradecancel1')
-    setOwned(a, { 'spark-imp': 1 })
-    setOwned(b, { 'shadow-whelp': 1 })
-    const prop = db.proposeTrade(a, b, [{ cardId: 'spark-imp', qty: 1 }], [{ cardId: 'shadow-whelp', qty: 1 }])
+    setOwned(a, { 'cave-bat': 1 })
+    setOwned(b, { 'copper-automaton': 1 })
+    const prop = db.proposeTrade(a, b, [{ cardId: 'cave-bat', qty: 1 }], [{ cardId: 'copper-automaton', qty: 1 }])
     const cancelled = db.cancelTrade(a, prop.tradeId, 'cancelled')
     expect(cancelled.ok).toBe(true)
     const acceptAfter = db.acceptTrade(b, prop.tradeId)
@@ -1649,9 +1651,9 @@ describe('card trading', () => {
 
   it('cancelTrade rejects wrong actor', () => {
     const [a, b] = makeFriendPair('tradeperm1')
-    setOwned(a, { 'spark-imp': 1 })
-    setOwned(b, { 'shadow-whelp': 1 })
-    const prop = db.proposeTrade(a, b, [{ cardId: 'spark-imp', qty: 1 }], [{ cardId: 'shadow-whelp', qty: 1 }])
+    setOwned(a, { 'cave-bat': 1 })
+    setOwned(b, { 'copper-automaton': 1 })
+    const prop = db.proposeTrade(a, b, [{ cardId: 'cave-bat', qty: 1 }], [{ cardId: 'copper-automaton', qty: 1 }])
     // Recipient cannot use "cancel" action (they must use "reject")
     const wrong = db.cancelTrade(b, prop.tradeId, 'cancelled')
     expect(wrong.ok).toBe(false)
@@ -1663,23 +1665,99 @@ describe('card trading', () => {
 
   it('rejects malformed trade items', () => {
     const [a, b] = makeFriendPair('tradebad1')
-    setOwned(a, { 'spark-imp': 2 })
-    const bad = db.proposeTrade(a, b, [], [{ cardId: 'shadow-whelp', qty: 1 }])
+    setOwned(a, { 'cave-bat': 2 })
+    const bad = db.proposeTrade(a, b, [], [{ cardId: 'copper-automaton', qty: 1 }])
     expect(bad.ok).toBe(false)
-    const bad2 = db.proposeTrade(a, b, [{ cardId: 'spark-imp', qty: 99 }], [{ cardId: 'shadow-whelp', qty: 1 }])
+    const bad2 = db.proposeTrade(a, b, [{ cardId: 'cave-bat', qty: 99 }], [{ cardId: 'copper-automaton', qty: 1 }])
     expect(bad2.ok).toBe(false)
   })
 
   it('acceptTrade fails if it would exceed max-copy limit for receiver', () => {
     const [a, b] = makeFriendPair('tradecap1')
     // a has 1 spark-imp; b already has 3 (MAX_COPIES). Trading 1 more spark-imp to b would overflow.
-    setOwned(a, { 'spark-imp': 1 })
-    setOwned(b, { 'shadow-whelp': 1, 'spark-imp': 3 })
-    const prop = db.proposeTrade(a, b, [{ cardId: 'spark-imp', qty: 1 }], [{ cardId: 'shadow-whelp', qty: 1 }])
+    setOwned(a, { 'cave-bat': 1 })
+    setOwned(b, { 'copper-automaton': 1, 'cave-bat': 3 })
+    const prop = db.proposeTrade(a, b, [{ cardId: 'cave-bat', qty: 1 }], [{ cardId: 'copper-automaton', qty: 1 }])
     expect(prop.ok).toBe(true)
     const accept = db.acceptTrade(b, prop.tradeId)
     expect(accept.ok).toBe(false)
     expect(accept.error).toMatch(/limit/i)
+  })
+
+  // Regression: `constructor` resolves to Object on any plain object, which
+  // passed the ownership check and let a phantom card buy a real one.
+  it('rejects card ids that are not real cards', () => {
+    const [a, b] = makeFriendPair('tradephantom1')
+    setOwned(b, { 'copper-automaton': 2 })
+    for (const phantom of ['constructor', '__proto__', 'toString', 'not-a-card']) {
+      const offered = db.proposeTrade(a, b, [{ cardId: phantom, qty: 1 }], [{ cardId: 'copper-automaton', qty: 1 }])
+      expect(offered.ok, phantom).toBe(false)
+      const requested = db.proposeTrade(b, a, [{ cardId: 'copper-automaton', qty: 1 }], [{ cardId: phantom, qty: 1 }])
+      expect(requested.ok, phantom).toBe(false)
+    }
+    expect(db.getCollection(a)['copper-automaton']).toBeUndefined()
+  })
+
+  it('refuses to offer copies a saved deck needs', () => {
+    const [a, b] = makeFriendPair('tradedeckoffer1')
+    setOwned(a, { 'cave-bat': 2 })
+    setOwned(b, { 'copper-automaton': 1 })
+    expect(db.createDeck(a, 'Bats', { 'cave-bat': 2 }).ok).toBe(true)
+    const prop = db.proposeTrade(a, b, [{ cardId: 'cave-bat', qty: 1 }], [{ cardId: 'copper-automaton', qty: 1 }])
+    expect(prop.ok).toBe(false)
+    expect(prop.error).toMatch(/saved decks needs/i)
+  })
+
+  it('refuses an accept that would break the accepter\'s saved deck', () => {
+    const [a, b] = makeFriendPair('tradedeckaccept1')
+    setOwned(a, { 'cave-bat': 1 })
+    setOwned(b, { 'copper-automaton': 1 })
+    const prop = db.proposeTrade(a, b, [{ cardId: 'cave-bat', qty: 1 }], [{ cardId: 'copper-automaton', qty: 1 }])
+    expect(prop.ok).toBe(true)
+    expect(db.createDeck(b, 'Husks', { 'copper-automaton': 1 }).ok).toBe(true)
+    const accept = db.acceptTrade(b, prop.tradeId)
+    expect(accept.ok).toBe(false)
+    expect(db.getCollection(b)['copper-automaton']).toBe(1)
+  })
+
+  it('cancels a trade whose offer the proposer has since built a deck around', () => {
+    const [a, b] = makeFriendPair('tradedeckproposer1')
+    setOwned(a, { 'cave-bat': 1 })
+    setOwned(b, { 'copper-automaton': 1 })
+    const prop = db.proposeTrade(a, b, [{ cardId: 'cave-bat', qty: 1 }], [{ cardId: 'copper-automaton', qty: 1 }])
+    expect(db.createDeck(a, 'Bats', { 'cave-bat': 1 }).ok).toBe(true)
+    const accept = db.acceptTrade(b, prop.tradeId)
+    expect(accept.ok).toBe(false)
+    expect(accept.status).toBe(409)
+    expect(db.getTradeById(prop.tradeId).status).toBe('cancelled')
+  })
+
+  it('drops junk entries a phantom trade left in a stored collection', () => {
+    const [a] = makeFriendPair('tradejunk1')
+    db.default.prepare(`UPDATE player_profiles SET owned_cards = ? WHERE account_id = ?`)
+      .run(JSON.stringify({ 'cave-bat': 2, constructor: 'function Object() { [native code] }1', 'not-a-card': 3, 'copper-automaton': -1 }), a)
+    expect(db.getCollection(a)).toEqual({ 'cave-bat': 2 })
+  })
+
+  it('reads the stored expiry as UTC', () => {
+    const [a, b] = makeFriendPair('tradeexpiry1')
+    setOwned(a, { 'cave-bat': 1 })
+    setOwned(b, { 'copper-automaton': 1 })
+    const prop = db.proposeTrade(a, b, [{ cardId: 'cave-bat', qty: 1 }], [{ cardId: 'copper-automaton', qty: 1 }])
+    // Expired one minute ago in UTC. A local-time parse would see the future
+    // anywhere west of Greenwich.
+    db.default.prepare(`UPDATE trades SET expires_at = datetime('now', '-1 minute') WHERE id = ?`).run(prop.tradeId)
+    // Pinned west of UTC so the check means something on a UTC CI runner too.
+    const previousTz = process.env.TZ
+    process.env.TZ = 'America/Los_Angeles'
+    try {
+      const accept = db.acceptTrade(b, prop.tradeId)
+      expect(accept.ok).toBe(false)
+      expect(accept.status).toBe(410)
+    } finally {
+      if (previousTz === undefined) delete process.env.TZ
+      else process.env.TZ = previousTz
+    }
   })
 })
 
