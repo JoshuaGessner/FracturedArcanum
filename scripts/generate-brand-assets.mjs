@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url'
 import { buildCardArtFiles } from './lib/card-art.mjs'
 import { buildGlyphFiles } from './lib/glyph-art.mjs'
 import { buildSceneFiles } from './lib/scene-art.mjs'
+import { buildRelicFiles } from './lib/relic-art.mjs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const publicDir = path.resolve(__dirname, '../public')
@@ -295,21 +296,8 @@ const ranks = {
 }
 
 // Pack covers (200×280)
-const pack = (id, label, bgGrad, accent, body) => svg('0 0 200 280',
-  `<defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1">${bgGrad}</linearGradient></defs><rect width="200" height="280" rx="14" fill="url(#${id})" stroke="${accent}" stroke-width="3"/>${body}`,
-  label)
-
-const packs = {
-  'pack-standard.svg': pack('ps', 'Standard pack',
-    '<stop offset="0%" stop-color="#5a3a1a"/><stop offset="100%" stop-color="#2d1d0d"/>', '#a16234',
-    `<rect x="30" y="60" width="140" height="160" rx="8" fill="#7a4a28"/><circle cx="100" cy="140" r="30" fill="#1d4ed8" opacity="0.6"/><circle cx="100" cy="140" r="18" fill="#38bdf8"/><path d="M30 130 H170" stroke="#fbbf24" stroke-width="3" opacity="0.5"/>`),
-  'pack-premium.svg': pack('pp', 'Premium pack',
-    '<stop offset="0%" stop-color="#3d1a55"/><stop offset="100%" stop-color="#1a0a28"/>', '#fbbf24',
-    `<rect x="30" y="50" width="140" height="180" rx="10" fill="#7c3aed" stroke="#fbbf24" stroke-width="2"/><path d="M30 50 L100 130 L170 50" fill="#5b21b6" stroke="#fbbf24" stroke-width="2"/><circle cx="100" cy="170" r="30" fill="rgba(251,191,36,0.5)"/><path d="M100 145 L110 165 L130 168 L116 182 L120 200 L100 192 L80 200 L84 182 L70 168 L90 165 Z" fill="#fbbf24"/>`),
-  'pack-legendary.svg': pack('pl', 'Legendary pack',
-    '<stop offset="0%" stop-color="#5a3a05"/><stop offset="100%" stop-color="#2d1f00"/>', '#fde68a',
-    `<rect x="30" y="80" width="140" height="140" rx="10" fill="#fbbf24" stroke="#fde68a" stroke-width="3"/><path d="M30 80 C50 40 150 40 170 80" fill="#f59e0b" stroke="#fde68a" stroke-width="3"/><rect x="90" y="60" width="20" height="160" rx="4" fill="#7c2d12"/><circle cx="100" cy="150" r="12" fill="#fff8dc"/><g fill="#fff8dc" opacity="0.8"><path d="M100 30 L110 50 L130 52 L114 64 L120 84 L100 74 L80 84 L86 64 L70 52 L90 50 Z"/></g>`),
-}
+// The three packs and the card back live in lib/relic-art.mjs.
+const packs = buildRelicFiles()
 
 // Rarity gems (32×32)
 //
@@ -508,6 +496,7 @@ const uiAssetType = (id) => {
   if (id.startsWith('particle-')) return 'ui-particle'
   if (id.startsWith('tribe-') || id.startsWith('glyph-')) return 'ui-glyph'
   if (id === 'lane-sigil.svg') return 'ui-board'
+  if (id === 'card-back.svg') return 'ui-card-back'
   return 'ui-misc'
 }
 

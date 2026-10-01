@@ -216,6 +216,8 @@ export const UI_ASSETS = {
     crestPlayer: toUiAsset('glyph-crest-player.svg'),
     crestEnemy: toUiAsset('glyph-crest-enemy.svg'),
   },
+  /** The face every card shows while it is still face down. */
+  cardBack: toUiAsset('card-back.svg'),
   /** Board furniture: the carved plate an empty lane shows. */
   board: {
     laneSigil: toUiAsset('lane-sigil.svg'),

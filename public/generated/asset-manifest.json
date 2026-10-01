@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-01T02:06:13.453Z",
+  "generatedAt": "2026-10-01T02:23:09.611Z",
   "provider": "local-svg",
   "apiReady": false,
   "commercialSafe": true,
@@ -213,6 +213,12 @@
       "id": "pack-legendary.svg",
       "path": "/generated/ui/pack-legendary.svg",
       "type": "ui-pack",
+      "source": "local-generated"
+    },
+    {
+      "id": "card-back.svg",
+      "path": "/generated/ui/card-back.svg",
+      "type": "ui-card-back",
       "source": "local-generated"
     },
     {

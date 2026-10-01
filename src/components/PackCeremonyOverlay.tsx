@@ -238,7 +238,7 @@ export function PackCeremonyOverlay({
         )}
 
         {showFan && (
-          <ul className="pack-ceremony-fan" role="list">
+          <ul className="pack-ceremony-fan" role="list" style={{ '--ceremony-fan-count': cards.length } as React.CSSProperties}>
             {cards.map((card, index) => {
               const meta = CARD_LIBRARY.find((entry) => entry.id === card.id)
               const total = cards.length
@@ -274,7 +274,7 @@ export function PackCeremonyOverlay({
                     <span className="pack-ceremony-card-inner">
                       <span className="pack-ceremony-card-back" aria-hidden="true">
                         <img
-                          src={getPackArtPath(packId)}
+                          src={UI_ASSETS.cardBack}
                           alt=""
                           draggable={false}
                         />
