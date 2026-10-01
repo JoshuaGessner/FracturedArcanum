@@ -5,11 +5,12 @@ import {
   hasKeyword,
   type CardInstance,
 } from '../game'
-import { asCardBorder, cardArtPath, describeCard, getHandFanTilt, handleCardArtError, pulseFeedback } from '../utils'
+import { asCardBorder, describeCard, getHandFanTilt, hasAvailableAction, pulseFeedback } from '../utils'
 import { ECONOMY_REWARDS, UI_ASSETS } from '../constants'
 import { playSound, startLoopingSound } from '../audio'
-import { EffectBadge, RarityBadge, StatIcon, TribeSigil } from '../components/AssetBadge'
+import { InterfaceGlyph } from '../components/AssetBadge'
 import { CardFace } from '../components/CardFace'
+import { BattleHeroAnchor } from '../components/BattleHeroAnchor'
 import { SummaryPopup } from '../components/SummaryPopup'
 import { useAppShell, useGame, useProfile } from '../contexts'
 import type { InspectedCard } from '../types'
@@ -117,6 +118,8 @@ export function BattleScreen() {
   // AI and pass-and-play keep them: there the seat needs naming, because
   // "Nemesis AI" and "Player Two" describe a role rather than a person.
   const showHeroSideLabels = !isRankedBattle && battleKind !== 'friend'
+  // Nothing left to do this turn: End Turn starts to glow.
+  const turnSpent = isMyTurn && !game.winner && !hasAvailableAction(activePlayer)
   const authoritativeResult = serverMatch.phase === 'terminal' ? serverMatch.outcome.result : null
   const displayedWinner = authoritativeResult === 'win'
     ? 'player'
@@ -704,24 +707,13 @@ export function BattleScreen() {
           )}
 
           {/* ─── Enemy Hero Anchor ──────────────────────────────── */}
-          <div
-            className={[
-              'battle-hero-anchor',
-              'enemy',
-              enemyHeroFx === 'damaged' ? 'is-damaged' : '',
-              enemyHeroFx === 'healed' ? 'is-healed' : '',
-            ].filter(Boolean).join(' ')}
-          >
-            {showHeroSideLabels && <span className="battle-hero-side">Enemy</span>}
-            <strong className="battle-hero-name">{game.enemy.name}</strong>
-            <span className="battle-hero-hp"><StatIcon kind="health" /> {game.enemy.health}</span>
-            {enemyHeroFx === 'damaged' && (
-              <img className="hero-fx-overlay hero-fx-cracks" src={UI_ASSETS.overlays.heroCracks} alt="" aria-hidden="true" />
-            )}
-            {enemyHeroFx === 'healed' && (
-              <img className="hero-fx-overlay hero-fx-halo" src={UI_ASSETS.overlays.heroHalo} alt="" aria-hidden="true" />
-            )}
-          </div>
+          <BattleHeroAnchor
+            side="enemy"
+            name={game.enemy.name}
+            health={game.enemy.health}
+            showSideLabel={showHeroSideLabels}
+            fx={enemyHeroFx}
+          />
 
           <div className="battle-board-stack">
             <div className="battlefield-side enemy-side">
@@ -729,8 +721,10 @@ export function BattleScreen() {
               {game.enemy.board.map((unit, index) => {
                 if (!unit) {
                   return (
-                    <div className="slot empty" key={`enemy-empty-${index}`} ref={(el) => { enemySlotRefs.current[index] = el }}>
-                      Empty Lane
+                    <div className="lane" key={`enemy-lane-${index}`}>
+                      <div className="slot empty" ref={(el) => { enemySlotRefs.current[index] = el }}>
+                        <span className="sr-only">Empty Lane</span>
+                      </div>
                     </div>
                   )
                 }
@@ -743,48 +737,40 @@ export function BattleScreen() {
                 const isInvalidDefender = selectedAttacker !== null && !isValidDefender
 
                 return (
-                  <button
-                    className={[
-                      'slot',
-                      `rarity-${unit.rarity}`,
-                      `border-${enemyCardBorder}`,
-                      hasKeyword(unit, 'guard') ? 'guard' : '',
-                      unit.exhausted ? 'exhausted' : '',
-                      unit.frozen ? 'frozen' : '',
-                      isSelected ? 'selected' : '',
-                      damagedSlots.has(unit.uid) ? 'damage-flash' : '',
-                      isValidDefender && selectedAttacker !== null ? 'is-valid-defender' : '',
-                      isInvalidDefender ? 'is-invalid-defender' : '',
-                    ]
-                      .filter(Boolean)
-                      .join(' ')}
-                    key={unit.uid}
-                    ref={(el) => { enemySlotRefs.current[index] = el }}
-                    style={{ '--rarity-color': RARITY_COLORS[unit.rarity] } as React.CSSProperties}
-                    onClick={() => {
-                      if (consumeLongPressAction()) return
-                      if (isSelectable) handleSelectAttacker(index)
-                      else handleAttackTarget(index)
-                    }}
-                    {...getLongPressProps({ name: unit.name, id: unit.id, cost: unit.cost, attack: unit.attack, health: unit.health, currentHealth: unit.currentHealth, rarity: unit.rarity, tribe: unit.tribe, text: unit.text, effect: unit.effect ?? null, cardBorder: enemyCardBorder })}
-                    aria-disabled={Boolean(game.winner) || (isSelectable ? unit.exhausted : selectedAttacker === null)}
-                    title="Long press to inspect"
-                  >
-                    <img className="unit-portrait" src={cardArtPath(unit.id)} alt={`${unit.name} artwork`} loading="lazy" onError={handleCardArtError} draggable={false} />
-                    <div className="slot-head">
-                      <strong>
-                        <TribeSigil tribe={unit.tribe} />{unit.name}
-                      </strong>
-                      <span className="stats battle-stats-inline">
-                        <span><StatIcon kind="attack" />{unit.attack}</span>
-                        <span><StatIcon kind="health" />{unit.currentHealth}</span>
-                      </span>
-                    </div>
-                    <span className="card-frame" aria-hidden="true" />
-                    <RarityBadge rarity={unit.rarity} iconOnly className="battle-slot-rarity" />
-                    {unit.effect && <EffectBadge effect={unit.effect} compact iconOnly className="battle-slot-effect" />}
-                    {unit.frozen && <span className="battle-slot-frozen">Frozen</span>}
-                  </button>
+                  <div className="lane" key={`enemy-lane-${index}`}>
+                    <button
+                      className={[
+                        'slot',
+                        `rarity-${unit.rarity}`,
+                        `border-${enemyCardBorder}`,
+                        hasKeyword(unit, 'guard') ? 'guard' : '',
+                        unit.exhausted ? 'exhausted' : '',
+                        unit.frozen ? 'frozen' : '',
+                        isSelected ? 'selected' : '',
+                        damagedSlots.has(unit.uid) ? 'damage-flash' : '',
+                        isValidDefender && selectedAttacker !== null ? 'is-valid-defender' : '',
+                        isInvalidDefender ? 'is-invalid-defender' : '',
+                      ]
+                        .filter(Boolean)
+                        .join(' ')}
+                      key={unit.uid}
+                      ref={(el) => { enemySlotRefs.current[index] = el }}
+                      style={{ '--rarity-color': RARITY_COLORS[unit.rarity] } as React.CSSProperties}
+                      onClick={() => {
+                        if (consumeLongPressAction()) return
+                        if (isSelectable) handleSelectAttacker(index)
+                        else handleAttackTarget(index)
+                      }}
+                      {...getLongPressProps({ name: unit.name, id: unit.id, cost: unit.cost, attack: unit.attack, health: unit.health, currentHealth: unit.currentHealth, rarity: unit.rarity, tribe: unit.tribe, text: unit.text, effect: unit.effect ?? null, cardBorder: enemyCardBorder })}
+                      aria-disabled={Boolean(game.winner) || (isSelectable ? unit.exhausted : selectedAttacker === null)}
+                      aria-label={describeCard(unit, unit.currentHealth)}
+                      title="Long press to inspect"
+                    >
+                      <span className="card-frame" aria-hidden="true" />
+                      <CardFace card={unit} variant="board" currentHealth={unit.currentHealth} />
+                      {unit.frozen && <span className="battle-slot-frozen">Frozen</span>}
+                    </button>
+                  </div>
                 )
               })}
             </div>
@@ -810,20 +796,21 @@ export function BattleScreen() {
               {game.player.board.map((unit, index) => {
                 if (!unit) {
                   return (
-                    <div
-                      className={[
-                        'slot',
-                        'empty',
-                        dragActive ? 'drop-target-active' : '',
-                        dragActive ? 'drop-target-valid' : '',
-                        dragHoverLane === index ? 'drop-target-hover' : '',
-                        slamLane === index ? 'is-slamming' : '',
-                      ].filter(Boolean).join(' ')}
-                      key={`player-empty-${index}`}
-                      data-drop-lane={index}
-                      ref={(el) => { playerSlotRefs.current[index] = null; void el }}
-                    >
-                      Empty Lane
+                    <div className="lane" key={`player-lane-${index}`}>
+                      <div
+                        className={[
+                          'slot',
+                          'empty',
+                          dragActive ? 'drop-target-active' : '',
+                          dragActive ? 'drop-target-valid' : '',
+                          dragHoverLane === index ? 'drop-target-hover' : '',
+                          slamLane === index ? 'is-slamming' : '',
+                        ].filter(Boolean).join(' ')}
+                        data-drop-lane={index}
+                        ref={(el) => { playerSlotRefs.current[index] = null; void el }}
+                      >
+                        <span className="sr-only">Empty Lane</span>
+                      </div>
                     </div>
                   )
                 }
@@ -842,75 +829,67 @@ export function BattleScreen() {
                 }>
 
                 return (
-                  <button
-                    className={[
-                      'slot',
-                      `rarity-${unit.rarity}`,
-                      `border-${selectedCardBorder}`,
-                      hasKeyword(unit, 'guard') ? 'guard' : '',
-                      unit.exhausted ? 'exhausted' : '',
-                      unit.frozen ? 'frozen' : '',
-                      isSelected ? 'selected' : '',
-                      attackDrag?.active && attackDrag.attackerIndex === index ? 'is-attack-dragging' : '',
-                      damagedSlots.has(unit.uid) ? 'damage-flash' : '',
-                      dragActive ? 'drop-target-active' : '',
-                      dragActive ? 'drop-target-invalid' : '',
-                      dragHoverLane === index ? 'drop-target-hover' : '',
-                      slamLane === index ? 'is-slamming' : '',
-                    ]
-                      .filter(Boolean)
-                      .join(' ')}
-                    key={unit.uid}
-                    data-drop-lane={index}
-                    ref={(el) => { playerSlotRefs.current[index] = el }}
-                    style={{ '--rarity-color': RARITY_COLORS[unit.rarity] } as React.CSSProperties}
-                    onClick={() => {
-                      if (consumeLongPressAction()) return
-                      if (consumeDragHandled()) return
-                      if (consumeAttackDragHandled()) return
-                      if (isSelectable) handleSelectAttacker(index)
-                      else handleAttackTarget(index)
-                    }}
-                    onPointerDown={(event) => {
-                      longPress.onPointerDown?.(event)
-                      handleUnitAttackPointerDown(event, index, canAttack)
-                    }}
-                    onPointerMove={(event) => {
-                      longPress.onPointerMove?.(event)
-                      handleUnitAttackPointerMove(event)
-                    }}
-                    onPointerUp={(event) => {
-                      longPress.onPointerUp?.(event)
-                      handleUnitAttackPointerUp(event)
-                    }}
-                    onPointerLeave={(event) => {
-                      longPress.onPointerLeave?.(event)
-                    }}
-                    onPointerCancel={(event) => {
-                      longPress.onPointerCancel?.(event)
-                      handleUnitAttackPointerCancel(event)
-                    }}
-                    onContextMenu={(event) => {
-                      longPress.onContextMenu?.(event)
-                    }}
-                    aria-disabled={Boolean(game.winner) || (isSelectable ? unit.exhausted : selectedAttacker === null)}
-                    title="Long press to inspect"
-                  >
-                    <img className="unit-portrait" src={cardArtPath(unit.id)} alt={`${unit.name} artwork`} loading="lazy" onError={handleCardArtError} draggable={false} />
-                    <div className="slot-head">
-                      <strong>
-                        <TribeSigil tribe={unit.tribe} />{unit.name}
-                      </strong>
-                      <span className="stats battle-stats-inline">
-                        <span><StatIcon kind="attack" />{unit.attack}</span>
-                        <span><StatIcon kind="health" />{unit.currentHealth}</span>
-                      </span>
-                    </div>
-                    <span className="card-frame" aria-hidden="true" />
-                    <RarityBadge rarity={unit.rarity} iconOnly className="battle-slot-rarity" />
-                    {unit.effect && <EffectBadge effect={unit.effect} compact iconOnly className="battle-slot-effect" />}
-                    {unit.frozen && <span className="battle-slot-frozen">Frozen</span>}
-                  </button>
+                  <div className="lane" key={`player-lane-${index}`}>
+                    <button
+                      className={[
+                        'slot',
+                        `rarity-${unit.rarity}`,
+                        `border-${selectedCardBorder}`,
+                        hasKeyword(unit, 'guard') ? 'guard' : '',
+                        unit.exhausted ? 'exhausted' : '',
+                        unit.frozen ? 'frozen' : '',
+                        isSelected ? 'selected' : '',
+                        attackDrag?.active && attackDrag.attackerIndex === index ? 'is-attack-dragging' : '',
+                        damagedSlots.has(unit.uid) ? 'damage-flash' : '',
+                        dragActive ? 'drop-target-active' : '',
+                        dragActive ? 'drop-target-invalid' : '',
+                        dragHoverLane === index ? 'drop-target-hover' : '',
+                        slamLane === index ? 'is-slamming' : '',
+                      ]
+                        .filter(Boolean)
+                        .join(' ')}
+                      key={unit.uid}
+                      data-drop-lane={index}
+                      ref={(el) => { playerSlotRefs.current[index] = el }}
+                      style={{ '--rarity-color': RARITY_COLORS[unit.rarity] } as React.CSSProperties}
+                      onClick={() => {
+                        if (consumeLongPressAction()) return
+                        if (consumeDragHandled()) return
+                        if (consumeAttackDragHandled()) return
+                        if (isSelectable) handleSelectAttacker(index)
+                        else handleAttackTarget(index)
+                      }}
+                      onPointerDown={(event) => {
+                        longPress.onPointerDown?.(event)
+                        handleUnitAttackPointerDown(event, index, canAttack)
+                      }}
+                      onPointerMove={(event) => {
+                        longPress.onPointerMove?.(event)
+                        handleUnitAttackPointerMove(event)
+                      }}
+                      onPointerUp={(event) => {
+                        longPress.onPointerUp?.(event)
+                        handleUnitAttackPointerUp(event)
+                      }}
+                      onPointerLeave={(event) => {
+                        longPress.onPointerLeave?.(event)
+                      }}
+                      onPointerCancel={(event) => {
+                        longPress.onPointerCancel?.(event)
+                        handleUnitAttackPointerCancel(event)
+                      }}
+                      onContextMenu={(event) => {
+                        longPress.onContextMenu?.(event)
+                      }}
+                      aria-disabled={Boolean(game.winner) || (isSelectable ? unit.exhausted : selectedAttacker === null)}
+                      aria-label={describeCard(unit, unit.currentHealth)}
+                      title="Long press to inspect"
+                    >
+                      <span className="card-frame" aria-hidden="true" />
+                      <CardFace card={unit} variant="board" currentHealth={unit.currentHealth} />
+                      {unit.frozen && <span className="battle-slot-frozen">Frozen</span>}
+                    </button>
+                  </div>
                 )
               })}
             </div>
@@ -919,50 +898,38 @@ export function BattleScreen() {
           </div>
 
           {/* ─── Player Hero Anchor ─────────────────────────────── */}
-          <div
-            className={[
-              'battle-hero-anchor',
-              'player',
-              playerHeroFx === 'damaged' ? 'is-damaged' : '',
-              playerHeroFx === 'healed' ? 'is-healed' : '',
-              playerLowHp ? 'is-low-hp' : '',
-            ].filter(Boolean).join(' ')}
-          >
-            {showHeroSideLabels && <span className="battle-hero-side">You</span>}
-            <strong className="battle-hero-name">{game.player.name}</strong>
-            <span className="battle-hero-resource momentum" aria-label={`Momentum ${activePlayer.momentum} of 10`}>
-              M {activePlayer.momentum}/10
-            </span>
-            <span className="battle-hero-resource" aria-label={`Mana ${activePlayer.mana} of ${activePlayer.maxMana}`}>
-              <StatIcon kind="mana" /> {activePlayer.mana}/{activePlayer.maxMana}
-            </span>
-            <span className="battle-hero-hp" aria-label={`Health ${game.player.health}`}><StatIcon kind="health" /> {game.player.health}</span>
-            {playerHeroFx === 'damaged' && (
-              <img className="hero-fx-overlay hero-fx-cracks" src={UI_ASSETS.overlays.heroCracks} alt="" aria-hidden="true" />
-            )}
-            {playerHeroFx === 'healed' && (
-              <img className="hero-fx-overlay hero-fx-halo" src={UI_ASSETS.overlays.heroHalo} alt="" aria-hidden="true" />
-            )}
-          </div>
+          <BattleHeroAnchor
+            side="player"
+            name={game.player.name}
+            health={game.player.health}
+            showSideLabel={showHeroSideLabels}
+            fx={playerHeroFx}
+            lowHealth={playerLowHp}
+            resources={{ momentum: activePlayer.momentum, mana: activePlayer.mana, maxMana: activePlayer.maxMana }}
+          />
 
           {/* ─── Action Dock ────────────────────────────────────── */}
           <div className={`battle-action-dock ${selectedAttacker !== null ? 'battle-action-dock-attack' : ''}`}>
+            <button className="ghost battle-leave-button" onClick={handleLeaveBattle}>
+              <InterfaceGlyph name="back" /> Leave
+            </button>
             <button
-              className="primary"
+              className="secondary battle-burst-button"
               onClick={handleBurst}
               disabled={activePlayer.momentum < 3 || Boolean(game.winner) || !isMyTurn}
             >
               Burst
             </button>
-            <button className="secondary" onClick={handleEndTurn} disabled={Boolean(game.winner) || !isMyTurn}>
+            <button
+              className={`primary battle-end-turn-button${turnSpent ? ' is-ready' : ''}`}
+              onClick={handleEndTurn}
+              disabled={Boolean(game.winner) || !isMyTurn}
+            >
               {!isMyTurn ? (
                 <><span className="spinner spinner-inline" aria-hidden="true" />Waiting<span className="thinking-dots" /></>
               ) : (
                 'End Turn'
               )}
-            </button>
-            <button className="ghost" onClick={handleLeaveBattle}>
-              Leave
             </button>
           </div>
 

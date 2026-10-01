@@ -213,6 +213,12 @@ export const UI_ASSETS = {
     chevronDown: toUiAsset('glyph-chevron-down.svg'),
     activeMark: toUiAsset('glyph-active-mark.svg'),
     card: toUiAsset('glyph-card.svg'),
+    crestPlayer: toUiAsset('glyph-crest-player.svg'),
+    crestEnemy: toUiAsset('glyph-crest-enemy.svg'),
+  },
+  /** Board furniture: the carved plate an empty lane shows. */
+  board: {
+    laneSigil: toUiAsset('lane-sigil.svg'),
   },
 } as const
 

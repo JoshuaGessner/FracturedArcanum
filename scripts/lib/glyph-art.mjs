@@ -79,6 +79,13 @@ const interfaceGlyphs = {
   'chevron-right': glyph('Expand', '<path d="M9.5 5.5l6.5 6.5-6.5 6.5"/>'),
   'chevron-down': glyph('Collapse', '<path d="M5.5 9.5l6.5 6.5 6.5-6.5"/>'),
   'active-mark': glyph('Active', '<path d="M12 5.5l6.5 6.5-6.5 6.5-6.5-6.5z" fill="#000"/>'),
+  'crest-player': glyph('Your ward',
+    '<path d="M12 3.2l7 2.6v5.6c0 4.4-2.9 7.8-7 9.4-4.1-1.6-7-5-7-9.4V5.8z"/>'
+    + '<path d="M12 7.4v8.2M8.5 10.1l7 2.8M15.5 10.1l-7 2.8"/>'),
+  'crest-enemy': glyph('Opponent',
+    '<path d="M3.8 12c2.4-3.4 5.2-5.1 8.2-5.1s5.8 1.7 8.2 5.1c-2.4 3.4-5.2 5.1-8.2 5.1S6.2 15.4 3.8 12z"/>'
+    + '<circle cx="12" cy="12" r="2.4" fill="#000"/>'
+    + '<path d="M12 6.9V3.6M7.4 8.1L5.5 5.5M16.6 8.1l1.9-2.6M12 17.1v3.3M7.4 15.9l-1.9 2.6M16.6 15.9l1.9 2.6"/>'),
   card: glyph('Card',
     '<rect x="6" y="3.5" width="12" height="17" rx="1.8"/>'
     + '<path d="M9 7.5h6M12 11l2.4 2.4-2.4 2.4-2.4-2.4z"/>'),

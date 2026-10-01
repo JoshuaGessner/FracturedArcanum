@@ -5,21 +5,6 @@
 .rarity-epic { --rarity-color: var(--rarity-epic); }
 .rarity-legendary { --rarity-color: var(--rarity-legendary); }
 
-.rarity-rare .slot-head strong,
-.rarity-rare .card-name {
-  color: #a8c6e8;
-}
-
-.rarity-epic .slot-head strong,
-.rarity-epic .card-name {
-  color: #d2aee2;
-}
-
-.rarity-legendary .slot-head strong,
-.rarity-legendary .card-name {
-  color: var(--gold-light);
-}
-
 .rarity-legendary {
   box-shadow: 0 0 16px rgba(217, 159, 59, 0.2);
 }
@@ -246,6 +231,14 @@
   background: linear-gradient(180deg, rgba(19, 15, 14, 0.96), rgba(45, 35, 33, 0.94));
   border: 1px solid rgba(214, 192, 154, 0.12);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 -10px 24px rgba(19, 15, 14, 0.18);
+}
+
+/* Roomy screens: the hand is the player's own cards and earns real size.
+   Same single variable, so the rail's arithmetic still follows. */
+@media (min-width: 900px) and (min-height: 760px) {
+  .battle-hand-rail {
+    --hand-card-h: clamp(150px, 21svh, 200px);
+  }
 }
 
 .hand-grid {

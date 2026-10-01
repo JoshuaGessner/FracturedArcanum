@@ -445,3 +445,22 @@ export function describeCard(
   const health = currentHealth ?? card.health
   return `${card.name}, ${card.cost} mana, ${card.attack} attack, ${health} health`
 }
+
+/**
+ * Whether a player still has anything to do this turn: a card they can afford
+ * with a lane to put it in, a ready unit, or enough Momentum to Burst.
+ *
+ * Drives the End Turn glow — the cue, borrowed from the genre, that the turn
+ * is spent and the next press should be End Turn.
+ */
+export function hasAvailableAction(player: {
+  mana: number
+  momentum: number
+  hand: Array<{ cost: number }>
+  board: Array<{ exhausted: boolean } | null>
+}): boolean {
+  const openLane = player.board.some((slot) => slot === null)
+  const canPlay = openLane && player.hand.some((card) => card.cost <= player.mana)
+  const canAttack = player.board.some((unit) => unit !== null && !unit.exhausted)
+  return canPlay || canAttack || player.momentum >= 3
+}

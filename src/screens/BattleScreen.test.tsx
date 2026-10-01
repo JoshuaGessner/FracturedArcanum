@@ -520,7 +520,7 @@ describe('BattleScreen mobile layout', () => {
       value: elementFromPoint,
     })
     const playerSide = document.querySelector('.player-side') as HTMLElement
-    const unitButton = within(playerSide).getByRole('button', { name: /crawling spark artwork/i })
+    const unitButton = within(playerSide).getByRole('button', { name: /crawling spark, 1 mana/i })
 
     fireEvent.pointerDown(unitButton, { pointerId: 1, pointerType: 'mouse', button: 0, clientX: 120, clientY: 320 })
     fireEvent.pointerMove(unitButton, { pointerId: 1, pointerType: 'mouse', clientX: 120, clientY: 280 })

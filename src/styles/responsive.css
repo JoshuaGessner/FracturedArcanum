@@ -244,16 +244,6 @@
     min-height: clamp(200px, 38svh, 300px);
     gap: var(--space-1-5);
   }
-  .board-grid-battle .slot {
-    min-height: 68px;
-    padding: 0;
-  }
-  .board-grid-battle .slot .effect-badge:not(.icon-only) {
-    display: none;
-  }
-  .board-grid-battle .unit-portrait {
-    /* inherits position:absolute + height:100% from base overlay rule */
-  }
   .battle-centerline {
     flex-direction: row;
     align-items: center;

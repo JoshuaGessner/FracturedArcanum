@@ -3,6 +3,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { buildCardArtFiles } from './lib/card-art.mjs'
 import { buildGlyphFiles } from './lib/glyph-art.mjs'
+import { buildSceneFiles } from './lib/scene-art.mjs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const publicDir = path.resolve(__dirname, '../public')
@@ -215,10 +216,6 @@ const backgrounds = {
   'bg-shop.svg': bg('sh', 'Shop screen background',
     '<linearGradient id="sh-grad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#2a1545"/><stop offset="100%" stop-color="#0a0414"/></linearGradient>',
     `<g fill="#7c3aed" opacity="0.4"><path d="M200 0 L240 200 L160 200 Z"/><path d="M600 0 L640 200 L560 200 Z"/><path d="M1000 0 L1040 200 L960 200 Z"/></g><g fill="#fbbf24" opacity="0.4"><path d="M400 0 L440 240 L360 240 Z"/><path d="M800 0 L840 240 L760 240 Z"/><path d="M1200 0 L1240 240 L1160 240 Z"/></g><g><rect x="100" y="600" width="180" height="180" rx="14" fill="#3d2350" stroke="#fbbf24" stroke-width="4"/><rect x="1160" y="600" width="180" height="180" rx="14" fill="#3d2350" stroke="#fbbf24" stroke-width="4"/></g><g fill="#fde68a" opacity="0.7"><circle cx="190" cy="690" r="20"/><circle cx="1250" cy="690" r="20"/></g>`,
-  ),
-  'bg-battle.svg': bg('bt', 'Battle screen background',
-    '<radialGradient id="bt-grad" cx="50%" cy="50%" r="70%"><stop offset="0%" stop-color="#263d78"/><stop offset="100%" stop-color="#0b1020"/></radialGradient>',
-    `<g><rect x="60" y="180" width="1320" height="100" rx="20" fill="rgba(124,58,237,0.18)"/><rect x="60" y="380" width="1320" height="100" rx="20" fill="rgba(56,189,248,0.18)"/><rect x="60" y="580" width="1320" height="100" rx="20" fill="rgba(124,58,237,0.18)"/></g><circle cx="720" cy="430" r="140" fill="none" stroke="rgba(251,191,36,0.4)" stroke-width="4"/><circle cx="720" cy="430" r="80" fill="none" stroke="rgba(251,191,36,0.6)" stroke-width="3"/><g fill="#fbbf24" opacity="0.8"><circle cx="120" cy="820" r="16"/><circle cx="1320" cy="820" r="16"/></g>`,
   ),
   'bg-settings.svg': bg('st', 'Settings screen background',
     '<linearGradient id="st-grad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#241a14"/><stop offset="100%" stop-color="#0d0805"/></linearGradient>',
@@ -492,6 +489,7 @@ const uiAssets = {
   ...overlays,
   ...particles,
   ...buildGlyphFiles(),
+  ...buildSceneFiles(),
 }
 
 const allCards = buildCardArtFiles()
@@ -509,6 +507,7 @@ const uiAssetType = (id) => {
   if (id.startsWith('overlay-') || id.startsWith('glow-')) return 'ui-overlay'
   if (id.startsWith('particle-')) return 'ui-particle'
   if (id.startsWith('tribe-') || id.startsWith('glyph-')) return 'ui-glyph'
+  if (id === 'lane-sigil.svg') return 'ui-board'
   return 'ui-misc'
 }
 

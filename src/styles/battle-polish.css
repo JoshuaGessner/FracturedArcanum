@@ -234,7 +234,7 @@
 }
 
 /* Mana spend sparkle — card-play animation gets an extra glow burst. */
-.slot.is-slamming .unit-portrait {
+.slot.is-slamming .cf-art {
   animation: manaSpendGlow 400ms ease-out;
 }
 
@@ -311,7 +311,7 @@
   .battle-hero-anchor .hero-fx-halo,
   .battlefield-stage.turn-pulse-player,
   .battlefield-stage.turn-pulse-enemy,
-  .slot.is-slamming .unit-portrait,
+  .slot.is-slamming .cf-art,
   .attack-arrow-svg line,
   .slot.damage-flash::after,
   .battle-center-phase.is-player-turn,

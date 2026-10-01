@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { appendToast, describeCard, formatPasskeyCeremonyError, getCompletionPercent, getComplaintSeverityTone, getEffectIconPath, getHandFanTilt, getPackArtPath, getPasskeyOriginRequirementMessage, getRankAssetPath, getRankBand, getRankLabel, getRarityCompletion, getRarityGemPath, getScreenTransitionClass, getScreenTransitionSound, getStreakTier, shouldPresentScopedReward } from './utils'
+import { appendToast, describeCard, hasAvailableAction, formatPasskeyCeremonyError, getCompletionPercent, getComplaintSeverityTone, getEffectIconPath, getHandFanTilt, getPackArtPath, getPasskeyOriginRequirementMessage, getRankAssetPath, getRankBand, getRankLabel, getRarityCompletion, getRarityGemPath, getScreenTransitionClass, getScreenTransitionSound, getStreakTier, shouldPresentScopedReward } from './utils'
 
 describe('UI asset helpers', () => {
   it('resolves rank insignia from labels and ratings', () => {
@@ -202,5 +202,24 @@ describe('describeCard', () => {
     const card = { name: 'Pallid Fox', cost: 2, attack: 2, health: 2 }
     expect(describeCard(card)).toBe('Pallid Fox, 2 mana, 2 attack, 2 health')
     expect(describeCard(card, 1)).toBe('Pallid Fox, 2 mana, 2 attack, 1 health')
+  })
+})
+
+describe('hasAvailableAction', () => {
+  const base = { mana: 2, momentum: 0, hand: [{ cost: 3 }], board: [null, null, null] as Array<{ exhausted: boolean } | null> }
+
+  it('is false when nothing is affordable, nothing is ready and Burst is short', () => {
+    expect(hasAvailableAction(base)).toBe(false)
+  })
+
+  it('sees an affordable card only when a lane is open', () => {
+    expect(hasAvailableAction({ ...base, hand: [{ cost: 2 }] })).toBe(true)
+    const full = [{ exhausted: true }, { exhausted: true }, { exhausted: true }]
+    expect(hasAvailableAction({ ...base, hand: [{ cost: 1 }], board: full })).toBe(false)
+  })
+
+  it('sees a ready unit and an available Burst', () => {
+    expect(hasAvailableAction({ ...base, board: [{ exhausted: false }, null, null] })).toBe(true)
+    expect(hasAvailableAction({ ...base, momentum: 3 })).toBe(true)
   })
 })

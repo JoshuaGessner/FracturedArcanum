@@ -7,8 +7,12 @@
   gap: var(--space-1-5);
   padding: var(--space-2-5);
   overflow: hidden;
-  background: linear-gradient(180deg, rgba(24, 19, 17, 0.96), rgba(70, 54, 51, 0.92));
-  backdrop-filter: blur(12px);
+  /* The candle-lit ritual table (scripts/lib/scene-art.mjs), with the
+     gradient underneath as the colour it settles to while it loads. */
+  background:
+    url('/generated/ui/bg-battle.svg') center / cover no-repeat,
+    radial-gradient(ellipse at 50% 48%, #33241b 0%, #1d1511 55%, #0a0706 100%);
+  border-color: rgba(201, 169, 110, 0.22);
 }
 
 .battle-fx-canvas {
@@ -20,28 +24,45 @@
   border-radius: inherit;
 }
 
-/* ─── Hero Anchors (mirrored pair) ─────────────────────────────── */
+/* ─── Hero plaques (mirrored pair, BattleHeroAnchor.tsx) ─────────── */
 .battle-hero-anchor {
   position: relative;
   z-index: 3;
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  min-height: 36px;
-  padding: 5px 10px;
-  border-radius: var(--radius-md);
-  background: rgba(23, 17, 16, 0.76);
-  border: 1px solid rgba(214, 192, 154, 0.14);
+  min-height: 42px;
+  padding: 4px 10px 4px 4px;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(180deg, rgba(42, 32, 27, 0.92), rgba(20, 15, 13, 0.94));
+  border: 1px solid rgba(201, 169, 110, 0.3);
+  box-shadow: inset 0 1px 0 rgba(255, 232, 190, 0.08), 0 6px 16px rgba(0, 0, 0, 0.35);
   overflow: hidden;
   transition: box-shadow var(--motion-fast), border-color var(--motion-fast);
 }
 
 .battle-hero-anchor.enemy {
-  border-color: rgba(214, 117, 110, 0.22);
+  border-color: rgba(184, 64, 58, 0.42);
 }
 
-.battle-hero-anchor.player {
-  border-color: rgba(214, 192, 154, 0.22);
+/* The crest medallion: the seat's mark, struck in brass. */
+.battle-hero-crest {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  font-size: 19px;
+  color: var(--ember-light);
+  background: radial-gradient(circle at 35% 30%, #4a3826, #1c140f 75%);
+  box-shadow: 0 0 0 1.5px #b89458, 0 0 0 3px rgba(20, 12, 8, 0.9);
+}
+
+.battle-hero-anchor.enemy .battle-hero-crest {
+  color: var(--blood-light);
+  background: radial-gradient(circle at 35% 30%, #4a2421, #1c0f0e 75%);
+  box-shadow: 0 0 0 1.5px #9a4a40, 0 0 0 3px rgba(20, 8, 8, 0.9);
 }
 
 .battle-hero-side {
@@ -49,12 +70,12 @@
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: rgba(247, 240, 227, 0.6);
+  color: var(--muted);
   flex-shrink: 0;
 }
 
 .battle-hero-anchor.enemy .battle-hero-side {
-  color: rgba(235, 179, 175, 0.72);
+  color: var(--blood-light);
 }
 
 /* The name is the only shrinkable item in the hero row — every sibling here
@@ -63,7 +84,10 @@
    entirely. `min-width: 5ch` gives it a floor: it still truncates, but it
    always renders enough to identify who is on the other side. */
 .battle-hero-name {
-  font-size: 0.82rem;
+  font-family: var(--font-display);
+  font-size: 0.86rem;
+  letter-spacing: 0.03em;
+  color: var(--bone);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -71,46 +95,79 @@
   flex: 1 1 auto;
 }
 
+/* Health: the same blood medallion the cards use, a size up. */
 .battle-hero-hp {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  font-size: 0.82rem;
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  font-family: var(--font-display);
+  font-size: 0.95rem;
   font-weight: 700;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.battle-hero-anchor.enemy .battle-hero-hp {
-  color: #e39a95;
-}
-
-.battle-hero-anchor.player .battle-hero-hp {
-  color: var(--text);
+  color: #fff8e8;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.8);
+  background: radial-gradient(circle at 35% 30%, #e0786c 0%, #a5352f 50%, #5a1715 100%);
+  box-shadow: 0 0 0 1.5px #b89458, 0 0 0 3px rgba(30, 10, 8, 0.85);
 }
 
 .battle-hero-resource {
   display: inline-flex;
   align-items: center;
-  gap: 3px;
-  font-size: 0.72rem;
-  font-weight: 700;
-  padding: 2px 6px;
-  border-radius: var(--radius-pill);
-  background: rgba(72, 159, 136, 0.14);
-  border: 1px solid rgba(214, 192, 154, 0.16);
-  color: #f7f0e3;
-  white-space: nowrap;
+  gap: 5px;
   flex-shrink: 0;
+  font-weight: 700;
+  color: var(--bone);
 }
 
-.battle-hero-resource.momentum {
-  background: rgba(217, 159, 59, 0.12);
-  border-color: rgba(217, 159, 59, 0.18);
-  color: #f6e6cb;
+/* Momentum: an orb that fills from the bottom; full at 10, Burst at 3. */
+.momentum-orb {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  font-family: var(--font-display);
+  font-size: 0.78rem;
+  color: #fff4dc;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.8);
+  background:
+    linear-gradient(to top, rgba(224, 168, 78, 0.95) var(--momentum-fill, 0%), rgba(30, 22, 16, 0.92) var(--momentum-fill, 0%));
+  box-shadow: 0 0 0 1.5px rgba(184, 148, 88, 0.85), inset 0 2px 6px rgba(0, 0, 0, 0.45);
 }
 
-/* ─── Action Dock ──────────────────────────────────────────────── */
+/* Mana: crystals, filled up to what is left this turn. */
+.mana-crystals {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.mana-crystal {
+  width: 7px;
+  height: 7px;
+  transform: rotate(45deg);
+  border-radius: 1px;
+  border: 1px solid rgba(143, 208, 187, 0.55);
+  background: rgba(20, 30, 28, 0.6);
+}
+
+.mana-crystal.is-filled {
+  border-color: #b8ecd9;
+  background: linear-gradient(135deg, #b8ecd9, #3f8f7c);
+  box-shadow: 0 0 5px rgba(143, 208, 187, 0.55);
+}
+
+.mana-count {
+  font-family: var(--font-display);
+  font-size: 0.74rem;
+  color: var(--verdigris-light);
+}
+
+/* ─── Action dock ──────────────────────────────────────────────── */
+/* Leave · Burst · End Turn. End Turn is the dominant control and sits on the
+   thumb side; Leave is a small way out, not a third equal choice. */
 .battle-action-dock {
   display: flex;
   gap: var(--space-1-5);
@@ -118,11 +175,44 @@
 }
 
 .battle-action-dock > button {
-  flex: 1 1 0;
   min-width: 0;
-  min-height: 34px;
-  padding: 5px 4px;
-  font-size: 0.78rem;
+  min-height: 38px;
+  padding: 5px 8px;
+  font-size: 0.8rem;
+}
+
+.battle-action-dock .battle-leave-button {
+  flex: 0 0 auto;
+  gap: 4px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.battle-action-dock .battle-burst-button {
+  flex: 1 1 0;
+}
+
+.battle-action-dock .battle-end-turn-button {
+  flex: 2 1 0;
+  font-size: 0.92rem;
+}
+
+/* The turn is spent — nothing affordable, nothing ready, no Burst — so the
+   next press should be this one. */
+.battle-end-turn-button.is-ready:not(:disabled) {
+  animation: endTurnReady 1.6s ease-in-out infinite;
+}
+
+@keyframes endTurnReady {
+  0%, 100% { box-shadow: var(--btn-primary-glow), 0 0 0 0 rgba(243, 208, 138, 0); }
+  50% { box-shadow: var(--btn-primary-glow), 0 0 22px 4px rgba(243, 208, 138, 0.55); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .battle-end-turn-button.is-ready:not(:disabled) {
+    animation: none;
+    box-shadow: var(--btn-primary-glow), 0 0 18px 3px rgba(243, 208, 138, 0.5);
+  }
 }
 
 .battle-action-dock-attack {
@@ -403,37 +493,49 @@
   color: #e39a95;
 }
 
-.board-grid-battle .slot {
-  min-height: 86px;
-  padding: 3px;
+/* ─── Lanes ───────────────────────────────────────────────────────
+   Each lane is a sized box on the table. Empty, it shows a carved sigil
+   plate; occupied, it holds the unit as a real card, centred and as large as
+   the lane allows at 63×88 — tall phone lanes and wide desktop lanes both get
+   a correctly proportioned card rather than a stretched box. */
+.board-grid-battle .lane {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  min-height: 0;
+  container-type: size;
+  border-radius: 14px;
+  border: 1px solid rgba(201, 169, 110, 0.2);
+  background:
+    url('/generated/ui/lane-sigil.svg') center / min(70cqw, 70cqh, 120px) no-repeat,
+    radial-gradient(ellipse at 50% 50%, rgba(46, 34, 27, 0.55), rgba(14, 10, 9, 0.42));
+  box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.55), inset 0 -1px 0 rgba(255, 232, 190, 0.05);
+}
+
+/* The empty slot is the lane's hit area and drop target: invisible until a
+   drag or selection lights it. */
+.board-grid-battle .lane > .slot.empty {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding: 0;
+  border-radius: inherit;
+  border: 1px solid transparent;
+  background: transparent;
+}
+
+.board-grid-battle .lane > .slot:not(.empty) {
+  /* A hair inside the plate so its carved edge still frames the card. */
+  width: min(100cqw - 8px, (100cqh - 8px) * 63 / 88);
+  height: auto;
+  aspect-ratio: 63 / 88;
+  min-height: 0;
+  padding: 0;
   overflow: hidden;
-}
-
-.board-grid-battle .unit-portrait {
-  position: absolute;
-  inset: 3px;
-  width: calc(100% - 6px);
-  height: calc(100% - 6px);
-  border-radius: 9px;
-  object-fit: cover;
-  z-index: 0;
-  filter: brightness(0.78);
-  border: none;
-}
-
-.board-grid-battle .slot-head {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  z-index: 1;
-  align-items: flex-end;
-  justify-content: space-between;
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.88) 0%, transparent 100%);
-  padding: 12px 5px 4px;
-  border-radius: 0 0 var(--radius-md) var(--radius-md);
-  gap: 3px;
-  font-size: 0.6rem;
+  border-radius: 12px;
+  background: #120e0d;
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.45);
 }
 
 .slot {
@@ -458,21 +560,18 @@
 
 .slot:hover:not(:disabled):not(.empty) {
   transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.5);
 }
 
 .slot.empty {
-  border-style: dashed;
-  border-color: rgba(214, 192, 154, 0.28);
-  color: #f4ebd9;
-  background: rgba(45, 38, 36, 0.52);
+  color: var(--bone-dim);
   justify-content: center;
   text-align: center;
-  font-size: 0.76rem;
 }
 
 .slot.selected {
-  outline: 2px solid #6ac1aa;
+  outline: 2px solid var(--verdigris-light);
+  outline-offset: 2px;
   box-shadow: 0 0 0 2px rgba(106, 193, 170, 0.18), 0 12px 24px rgba(71, 160, 136, 0.18);
   animation: selectPulse 1s ease-in-out infinite;
 }
@@ -489,6 +588,13 @@
 }
 
 .slot.exhausted { opacity: 0.65; filter: saturate(0.6); }
+
+/* On the board a spent unit dims rather than fades: translucency would show
+   the lane's sigil through the card. */
+.board-grid-battle .lane > .slot.exhausted {
+  opacity: 1;
+  filter: saturate(0.45) brightness(0.68);
+}
 
 /* Frostbitten: sits out its owner's next turn. Distinct from plain
    exhaustion, which every turn start clears. */
@@ -515,20 +621,8 @@
 }
 
 .slot.guard {
-  border-color: rgba(224, 174, 87, 0.7);
-  box-shadow: inset 0 0 12px rgba(224, 174, 87, 0.15);
+  border-color: rgba(224, 174, 87, 0.8);
+  box-shadow: 0 0 0 2px rgba(224, 174, 87, 0.25), 0 0 16px rgba(224, 174, 87, 0.25), 0 10px 22px rgba(0, 0, 0, 0.45);
 }
 
-.unit-portrait {
-  width: 100%;
-  height: 48px;
-  border-radius: 12px;
-  border: 1px solid rgba(217, 159, 59, 0.24);
-  object-fit: cover;
-  background: rgba(20, 15, 14, 0.55);
-  -webkit-user-drag: none;
-  -webkit-touch-callout: none;
-  user-select: none;
-  pointer-events: none;
-}
 

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-01T01:44:09.104Z",
+  "generatedAt": "2026-10-01T02:06:13.453Z",
   "provider": "local-svg",
   "apiReady": false,
   "commercialSafe": true,
@@ -92,12 +92,6 @@
     {
       "id": "bg-shop.svg",
       "path": "/generated/ui/bg-shop.svg",
-      "type": "ui-background",
-      "source": "local-generated"
-    },
-    {
-      "id": "bg-battle.svg",
-      "path": "/generated/ui/bg-battle.svg",
       "type": "ui-background",
       "source": "local-generated"
     },
@@ -648,9 +642,33 @@
       "source": "local-generated"
     },
     {
+      "id": "glyph-crest-player.svg",
+      "path": "/generated/ui/glyph-crest-player.svg",
+      "type": "ui-glyph",
+      "source": "local-generated"
+    },
+    {
+      "id": "glyph-crest-enemy.svg",
+      "path": "/generated/ui/glyph-crest-enemy.svg",
+      "type": "ui-glyph",
+      "source": "local-generated"
+    },
+    {
       "id": "glyph-card.svg",
       "path": "/generated/ui/glyph-card.svg",
       "type": "ui-glyph",
+      "source": "local-generated"
+    },
+    {
+      "id": "bg-battle.svg",
+      "path": "/generated/ui/bg-battle.svg",
+      "type": "ui-background",
+      "source": "local-generated"
+    },
+    {
+      "id": "lane-sigil.svg",
+      "path": "/generated/ui/lane-sigil.svg",
+      "type": "ui-board",
       "source": "local-generated"
     },
     {
