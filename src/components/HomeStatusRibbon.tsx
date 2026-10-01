@@ -12,7 +12,6 @@ type HomeStatusRibbonProps = {
   profileName: string
   rankLabel: string
   seasonLabel: string
-  shards: number
   streak: number
   streakTier: string
   seasonRating: number
@@ -26,7 +25,6 @@ export function HomeStatusRibbon({
   profileName,
   rankLabel,
   seasonLabel,
-  shards,
   streak,
   streakTier,
   seasonRating,
@@ -43,7 +41,10 @@ export function HomeStatusRibbon({
         <RankBadge rank={rankLabel} className="home-rank-badge" />
         <div>
           <strong>{profileName}</strong>
-          <span>{seasonLabel}</span>
+          <span>
+            {seasonLabel}
+            {streak > 0 && <span className={`home-streak-mark streak-${streakTier}`}>{streak} win streak</span>}
+          </span>
         </div>
       </div>
 
@@ -53,11 +54,6 @@ export function HomeStatusRibbon({
         </div>
         <strong>{seasonRating} / {nextRankTarget}</strong>
         <span>{ratingProgressLabel}</span>
-      </div>
-
-      <div className="home-status-ribbon-badges">
-        <span className="badge">{shards} Shards</span>
-        <span className={`badge streak-badge streak-${streakTier}`}>{streak} Streak</span>
       </div>
 
       <div className="home-status-rail" aria-label="Home status summary">

@@ -23,7 +23,7 @@ export function HomeScreen() {
   const { gameInProgress, game, handleResumeBattle, handleAbandonBattle, isRankedBattle } = useGame()
   const { queueState, queueSeconds } = useQueue()
   const {
-    record, winRate, selectedDeckSize, serverProfile, rankLabel, shards,
+    record, winRate, selectedDeckSize, serverProfile, rankLabel,
     canClaimDailyReward, nextRewardLabel, seasonRating, rankProgress, nextRankTarget,
     questOverview, handleClaimQuestReward, handleClaimQuestRewards, deckReady,
   } = useProfile()
@@ -98,9 +98,9 @@ export function HomeScreen() {
   const seasonLabel = `${seasonName}${seasonCountdown ? ` · ${seasonCountdown}` : ''}`
   const homeStatusCards = [
     {
-      label: 'League',
-      value: rankLabel,
-      note: `${record.wins}W ${record.losses}L · ${winRate}%`,
+      label: 'Record',
+      value: `${record.wins}–${record.losses}`,
+      note: `${winRate}% win rate`,
     },
     {
       label: 'Deck',
@@ -110,7 +110,7 @@ export function HomeScreen() {
     {
       label: 'Vault',
       value: rewardVaultLabel,
-      note: canClaimDailyReward ? 'Daily reward available' : dailyQuest,
+      note: canClaimDailyReward ? 'Daily reward' : dailyQuest,
       accent: canClaimDailyReward,
     },
   ]
@@ -138,7 +138,6 @@ export function HomeScreen() {
               profileName={profileName}
               rankLabel={rankLabel}
               seasonLabel={seasonLabel}
-              shards={shards}
               streak={record.streak}
               streakTier={streakTier}
               seasonRating={seasonRating}

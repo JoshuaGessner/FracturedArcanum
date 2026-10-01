@@ -51,7 +51,7 @@
 }
 
 .collection-progress-value {
-  stroke: #9b58b7;
+  stroke: var(--ember);
   stroke-linecap: round;
   transition: stroke-dashoffset 280ms ease;
 }

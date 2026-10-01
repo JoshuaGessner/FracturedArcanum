@@ -337,9 +337,6 @@
   .screen-panel.active,
   .nav-tile-notice,
   .reward-vault-card.claim-ready .primary,
-  .streak-badge::after,
-  .streak-badge::before,
-  .streak-badge.streak-inferno,
   .rarity-chip.rarity-celebrate { animation: none !important; }
   .hand-card.unplayable::after,
   .mode-card,

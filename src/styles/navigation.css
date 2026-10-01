@@ -128,8 +128,8 @@
   width: 22px;
   height: 3px;
   border-radius: 0 0 var(--radius-pill) var(--radius-pill);
-  background: linear-gradient(90deg, #4cb69a, #9b58b7);
-  box-shadow: 0 0 12px rgba(155, 88, 183, 0.6);
+  background: linear-gradient(90deg, var(--ember-deep), var(--ember-light), var(--ember-deep));
+  box-shadow: 0 0 12px rgba(224, 168, 78, 0.55);
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -34,9 +34,13 @@
   .topbar-home {
     gap: var(--space-1-5);
   }
+  /* The wordmark stacks onto two lines here rather than truncating: the
+     name is the brand, and "Fractured Ar…" is not it. */
   .brand-wordmark {
-    font-size: clamp(1.35rem, 6.2vw, 1.8rem);
-    line-height: 1;
+    font-size: clamp(1rem, 4.6vw, 1.3rem);
+    line-height: 1.02;
+    white-space: normal;
+    text-overflow: clip;
   }
   .username-label {
     display: none;
@@ -752,7 +756,6 @@
      targets are no longer something small screens pay for. */
   .brand-logo-home { width: clamp(44px, 13vw, 54px); }
   .brand-block-home { min-height: 58px; }
-  .brand-wordmark { font-size: clamp(1.28rem, 6vw, 1.58rem); }
   .home-status-card.scene-status-tile { padding: 9px 11px; }
   .home-status-card strong { font-size: 0.96rem; }
   .home-status-card .mini-text { font-size: 0.82rem; }
@@ -781,10 +784,6 @@
 
   .brand-logo-home {
     width: 46px;
-  }
-
-  .brand-wordmark {
-    font-size: clamp(1.34rem, 5.6vw, 1.72rem);
   }
 
   .home-status-card.scene-status-tile {

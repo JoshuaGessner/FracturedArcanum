@@ -215,6 +215,13 @@ export const UI_ASSETS = {
     card: toUiAsset('glyph-card.svg'),
     crestPlayer: toUiAsset('glyph-crest-player.svg'),
     crestEnemy: toUiAsset('glyph-crest-enemy.svg'),
+    questBattle: toUiAsset('glyph-quest-battle.svg'),
+    questSkirmish: toUiAsset('glyph-quest-skirmish.svg'),
+    questMomentum: toUiAsset('glyph-quest-momentum.svg'),
+    questPack: toUiAsset('glyph-quest-pack.svg'),
+    questShards: toUiAsset('glyph-quest-shards.svg'),
+    questDeck: toUiAsset('glyph-quest-deck.svg'),
+    contract: toUiAsset('glyph-contract.svg'),
   },
   /** The face every card shows while it is still face down. */
   cardBack: toUiAsset('card-back.svg'),

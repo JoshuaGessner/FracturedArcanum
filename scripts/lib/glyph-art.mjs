@@ -86,6 +86,35 @@ const interfaceGlyphs = {
     '<path d="M3.8 12c2.4-3.4 5.2-5.1 8.2-5.1s5.8 1.7 8.2 5.1c-2.4 3.4-5.2 5.1-8.2 5.1S6.2 15.4 3.8 12z"/>'
     + '<circle cx="12" cy="12" r="2.4" fill="#000"/>'
     + '<path d="M12 6.9V3.6M7.4 8.1L5.5 5.5M16.6 8.1l1.9-2.6M12 17.1v3.3M7.4 15.9l-1.9 2.6M16.6 15.9l1.9 2.6"/>'),
+  contract: glyph('Contract',
+    '<path d="M8 4.5h9.6c1.1 0 2 .9 2 2V16"/>'
+    + '<path d="M8 4.5c-1.1 0-2 .9-2 2V8h3.4"/>'
+    + '<path d="M9.4 6.5v11c0 1.1.9 2 2 2h7.2c1.1 0 2-.9 2-2V16h-9.2"/>'
+    + '<path d="M12 9.6h5M12 12.4h5"/>'
+    + '<circle cx="17.2" cy="17.6" r="1.7" fill="#000"/>'),
+  'quest-battle': glyph('Battle',
+    '<path d="M4.5 4.5l10.2 10.2M19.5 4.5L9.3 14.7"/>'
+    + '<path d="M4.5 4.5h3l.2 3M19.5 4.5h-3l-.2 3"/>'
+    + '<path d="M12.6 16.8l4.4-4.4M11.4 16.8L7 12.4"/>'
+    + '<path d="M15.6 15.6l3.2 3.2M8.4 15.6l-3.2 3.2"/>'),
+  'quest-skirmish': glyph('Skirmish',
+    '<circle cx="11" cy="13" r="7.2"/><circle cx="11" cy="13" r="3.6"/>'
+    + '<circle cx="11" cy="13" r=".9" fill="#000"/>'
+    + '<path d="M11 13l8.6-8.6M16.8 4.4h2.8v2.8"/>'),
+  'quest-momentum': glyph('Momentum',
+    '<path d="M6 19l6-5 6 5M6 13.5l6-5 6 5M6 8l6-5 6 5"/>'),
+  'quest-pack': glyph('Card pack',
+    '<path d="M6 4.5h10.5c1 0 1.8.8 1.8 1.8v12.4c0 1-.8 1.8-1.8 1.8H6z"/>'
+    + '<path d="M6 4.5c-.9 0-1.5.7-1.5 1.5v12.9c0 .9.6 1.6 1.5 1.6"/>'
+    + '<path d="M18.3 10.2h1.8v3.6h-1.8"/>'
+    + '<path d="M12.2 8.6l2.4 3.4-2.4 3.4-2.4-3.4z"/>'),
+  'quest-shards': glyph('Shards',
+    '<path d="M12 3l6.8 6.2L12 21 5.2 9.2z"/>'
+    + '<path d="M5.2 9.2h13.6M9 9.2L12 21l3-11.8M9 9.2L12 3l3 6.2"/>'),
+  'quest-deck': glyph('Deck',
+    '<rect x="8.4" y="3.8" width="10.4" height="14.6" rx="1.6"/>'
+    + '<path d="M8.4 7.2L5.6 7.9c-.8.2-1.3 1.1-1.1 1.9l2.6 9.6c.2.8 1.1 1.3 1.9 1.1l6.2-1.7"/>'
+    + '<path d="M13.6 8.6l2 2.5-2 2.5-2-2.5z"/>'),
   card: glyph('Card',
     '<rect x="6" y="3.5" width="12" height="17" rx="1.8"/>'
     + '<path d="M9 7.5h6M12 11l2.4 2.4-2.4 2.4-2.4-2.4z"/>'),

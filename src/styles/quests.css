@@ -89,10 +89,18 @@ button.quest-summary:focus-visible {
   display: grid;
   gap: 2px;
   min-width: 0;
+  text-align: start;
+}
+
+.quest-ledger-toolbar .subview-label,
+.quest-ledger-hero-copy .subview-label {
+  text-align: start;
+  color: var(--bone-dim);
 }
 
 .quest-ledger-toolbar strong {
   color: #fdfbf7;
+  font-family: var(--font-display);
   font-size: var(--font-md);
 }
 
@@ -107,22 +115,15 @@ button.quest-summary:focus-visible {
 
 .quest-ledger-hero-medallion {
   display: grid;
-  place-items: center;
+  place-content: center;
+  justify-items: center;
+  gap: 2px;
   width: 94px;
   aspect-ratio: 1;
   position: relative;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(217, 159, 59, 0.18), rgba(33, 26, 25, 0.82));
-  border: 1px solid rgba(217, 159, 59, 0.2);
-}
-
-.quest-ledger-hero-medallion img {
-  position: absolute;
-  inset: var(--space-2-5);
-  width: calc(100% - 20px);
-  height: calc(100% - 20px);
-  opacity: 0.28;
-  object-fit: contain;
+  background: radial-gradient(circle at 38% 32%, var(--umber-700), var(--umber-950));
+  box-shadow: 0 0 0 1px var(--brass-dim), 0 0 0 5px rgba(13, 10, 10, 0.6), 0 0 0 6px rgba(201, 169, 110, 0.22), inset 0 1px 0 rgba(255, 232, 190, 0.12);
 }
 
 .quest-ledger-hero-medallion strong,
@@ -132,7 +133,8 @@ button.quest-summary:focus-visible {
 }
 
 .quest-ledger-hero-medallion strong {
-  color: #f6e7cc;
+  color: var(--ember-light);
+  font-family: var(--font-display);
   font-size: 1.8rem;
   line-height: 1;
 }
@@ -215,10 +217,17 @@ button.quest-summary:focus-visible {
   border: 1px solid rgba(214, 192, 154, 0.14);
 }
 
-.quest-ledger-card-icon img {
-  width: 34px;
-  height: 34px;
-  object-fit: contain;
+.quest-ledger-card-icon {
+  color: var(--ember);
+}
+
+.quest-ledger-card-icon .glyph {
+  width: 28px;
+  height: 28px;
+}
+
+.quest-ledger-card.is-claimed .quest-ledger-card-icon {
+  color: var(--bone-dim);
 }
 
 .quest-ledger-card-main,
@@ -267,7 +276,7 @@ button.quest-summary:focus-visible {
   height: 100%;
   min-width: 8px;
   border-radius: inherit;
-  background: linear-gradient(90deg, #4cb69a, #d6982e);
+  background: linear-gradient(90deg, var(--ember-deep), var(--ember) 70%, var(--ember-light));
 }
 
 .quest-ledger-card-reward {

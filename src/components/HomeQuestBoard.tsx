@@ -1,4 +1,4 @@
-import { UI_ASSETS } from '../constants'
+import { InterfaceGlyph } from './AssetBadge'
 import type { QuestOverview, QuestProgress } from '../types'
 
 type FallbackQuestItem = {
@@ -99,7 +99,7 @@ export function HomeQuestBoard({
       <div className="home-quest-board-glow" aria-hidden="true" />
       <div className="home-quest-board-header">
         <div className="home-quest-board-title">
-          <img src={UI_ASSETS.overlays.ribbonNew} alt="" aria-hidden="true" />
+          <span className="home-quest-board-seal" aria-hidden="true"><InterfaceGlyph name="contract" /></span>
           <div>
             <span className="subview-label">Quest Board</span>
             <strong id="home-quest-board-title">{questsDone}/{questTotal} Contracts</strong>

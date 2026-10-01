@@ -150,11 +150,6 @@
   /* Collection card selection ring and social challenge banner pulses. */
   .challenge-banner.incoming { animation: none !important; }
 
-  /* Streak badge decorative loops (emberFloat, fireGlow, rewardSweep). */
-  .streak-badge::before,
-  .streak-badge::after,
-  .streak-badge.streak-inferno { animation: none !important; }
-
   /* Slot selection pulse + claim-ready vault pulse. */
   .slot.selected,
   .reward-vault-card.claim-ready .primary { animation: none !important; }

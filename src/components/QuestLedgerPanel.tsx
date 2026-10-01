@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { UI_ASSETS } from '../constants'
+import type { INTERFACE_GLYPHS } from '../constants'
 import { QUEST_CADENCE_LABELS } from '../quests'
 import type { QuestCadence, QuestOverview, QuestProgress } from '../types'
+import { InterfaceGlyph } from './AssetBadge'
 
 type QuestLedgerPanelProps = {
   overview: QuestOverview | null
@@ -12,13 +13,13 @@ type QuestLedgerPanelProps = {
 
 const QUEST_TABS: QuestCadence[] = ['daily', 'weekly', 'milestone', 'skirmish']
 
-const questIconAsset: Record<QuestProgress['icon'], string> = {
-  battle: UI_ASSETS.tiles.battle,
-  skirmish: UI_ASSETS.tiles.play,
-  momentum: UI_ASSETS.pips.momentumFilled,
-  pack: UI_ASSETS.packs.standard,
-  shards: UI_ASSETS.tiles.shop,
-  deck: UI_ASSETS.tiles.collection,
+const questGlyph: Record<QuestProgress['icon'], keyof typeof INTERFACE_GLYPHS> = {
+  battle: 'questBattle',
+  skirmish: 'questSkirmish',
+  momentum: 'questMomentum',
+  pack: 'questPack',
+  shards: 'questShards',
+  deck: 'questDeck',
 }
 
 function QuestCard({ quest, onClaimQuest }: { quest: QuestProgress; onClaimQuest: (questId: string) => void }) {
@@ -28,7 +29,7 @@ function QuestCard({ quest, onClaimQuest }: { quest: QuestProgress; onClaimQuest
   return (
     <article className={`quest-ledger-card ${quest.completed ? 'is-complete' : ''} ${quest.claimed ? 'is-claimed' : ''}`.trim()}>
       <div className="quest-ledger-card-icon" aria-hidden="true">
-        <img src={questIconAsset[quest.icon]} alt="" />
+        <InterfaceGlyph name={questGlyph[quest.icon]} />
       </div>
       <div className="quest-ledger-card-main">
         <div className="quest-ledger-card-title">
@@ -73,7 +74,6 @@ export function QuestLedgerPanel({ overview, onBack, onClaimQuest, onClaimQuests
 
       <div className="quest-ledger-hero">
         <div className="quest-ledger-hero-medallion">
-          <img src={UI_ASSETS.overlays.ribbonNew} alt="" />
           <strong>{overview?.summary.claimable ?? 0}</strong>
           <span>Rewards</span>
         </div>

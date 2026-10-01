@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-01T02:23:09.611Z",
+  "generatedAt": "2026-10-01T02:36:24.391Z",
   "provider": "local-svg",
   "apiReady": false,
   "commercialSafe": true,
@@ -656,6 +656,48 @@
     {
       "id": "glyph-crest-enemy.svg",
       "path": "/generated/ui/glyph-crest-enemy.svg",
+      "type": "ui-glyph",
+      "source": "local-generated"
+    },
+    {
+      "id": "glyph-contract.svg",
+      "path": "/generated/ui/glyph-contract.svg",
+      "type": "ui-glyph",
+      "source": "local-generated"
+    },
+    {
+      "id": "glyph-quest-battle.svg",
+      "path": "/generated/ui/glyph-quest-battle.svg",
+      "type": "ui-glyph",
+      "source": "local-generated"
+    },
+    {
+      "id": "glyph-quest-skirmish.svg",
+      "path": "/generated/ui/glyph-quest-skirmish.svg",
+      "type": "ui-glyph",
+      "source": "local-generated"
+    },
+    {
+      "id": "glyph-quest-momentum.svg",
+      "path": "/generated/ui/glyph-quest-momentum.svg",
+      "type": "ui-glyph",
+      "source": "local-generated"
+    },
+    {
+      "id": "glyph-quest-pack.svg",
+      "path": "/generated/ui/glyph-quest-pack.svg",
+      "type": "ui-glyph",
+      "source": "local-generated"
+    },
+    {
+      "id": "glyph-quest-shards.svg",
+      "path": "/generated/ui/glyph-quest-shards.svg",
+      "type": "ui-glyph",
+      "source": "local-generated"
+    },
+    {
+      "id": "glyph-quest-deck.svg",
+      "path": "/generated/ui/glyph-quest-deck.svg",
       "type": "ui-glyph",
       "source": "local-generated"
     },
