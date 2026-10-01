@@ -303,14 +303,12 @@ button.danger:disabled { opacity: 0.55; transform: none; box-shadow: none; }
 
 @media (max-width: 720px) {
   .queue-search-portal,
-  .versus-grid,
-  .intro-versus-grid {
+  .versus-grid {
     grid-template-columns: 1fr;
   }
 
   .queue-search-portal,
-  .versus-side,
-  .intro-side {
+  .versus-side {
     justify-items: center;
     text-align: center;
   }

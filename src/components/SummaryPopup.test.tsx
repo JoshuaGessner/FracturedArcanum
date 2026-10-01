@@ -148,4 +148,14 @@ describe('SummaryPopup', () => {
     expect(screen.getByText('Rematch').className).toBe('primary')
     expect(screen.getByText('Leave').className).toBe('ghost')
   })
+
+  it('sets a decorative result crest above the title when one is given', () => {
+    const { container } = render(
+      <SummaryPopup visible ariaLabel="a" title="Won" tone="victory" crest="/generated/ui/overlay-victory.svg" actions={actions} />,
+    )
+    const crest = container.querySelector('.summary-popup-crest')
+    expect(crest?.getAttribute('src')).toBe('/generated/ui/overlay-victory.svg')
+    expect(crest?.getAttribute('aria-hidden')).toBe('true')
+    expect(container.querySelector('.summary-popup-card.has-crest')).toBeTruthy()
+  })
 })

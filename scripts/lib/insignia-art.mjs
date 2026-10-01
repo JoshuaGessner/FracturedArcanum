@@ -240,7 +240,10 @@ export function buildInsigniaFiles() {
     'overlay-victory.svg': resultCrest('victory', RESULT_METALS.victory,
       '<path d="M76 124l48-48M124 124L76 76"/><path d="M70 82l12-12M130 82l-12-12"/>'),
     'overlay-defeat.svg': resultCrest('defeat', RESULT_METALS.defeat,
-      '<path d="M100 66v26M100 104v30"/><path d="M88 76h24"/><path d="M94 96l12 6"/>'),
+      // A sword snapped in two: hilt and guard low left, the broken tip
+      // knocked askew above the break.
+      '<circle cx="66" cy="134" r="4"/><path d="M69 131l9-9"/><path d="M68 112l22 22"/>'
+      + '<path d="M79 121l19-19"/><path d="M106 99l22-22 4-10-10 4-22 22"/>'),
     'overlay-draw.svg': resultCrest('draw', RESULT_METALS.draw,
       '<path d="M100 70v62M80 132h40M72 80h56"/><path d="M72 80l-12 26h24zM128 80l-12 26h24z"/>'),
   }

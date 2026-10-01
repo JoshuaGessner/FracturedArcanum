@@ -11,44 +11,125 @@
   backdrop-filter: blur(10px);
 }
 
-.intro-overlay { background: rgba(16, 12, 12, 0.62); }
+.intro-overlay {
+  background:
+    radial-gradient(70% 55% at 18% 22%, rgba(95, 168, 146, 0.24), transparent 70%),
+    radial-gradient(70% 55% at 82% 78%, rgba(176, 66, 54, 0.28), transparent 70%),
+    rgba(10, 7, 6, 0.86);
+}
 
-.intro-versus-grid {
+/* Phone: the two seats stack, the seal between them. Wide: they face each
+   other across it. */
+.intro-stage {
   display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  gap: var(--space-3);
-  align-items: center;
+  grid-template-rows: auto auto auto auto;
+  justify-items: center;
+  gap: clamp(12px, 3svh, 28px);
+  width: min(100%, 960px);
+  text-align: center;
+}
+
+@media (min-width: 760px) {
+  .intro-stage {
+    grid-template-columns: 1fr auto 1fr;
+    grid-template-rows: auto auto;
+    align-items: center;
+  }
+
+  .intro-callout {
+    grid-column: 1 / -1;
+  }
 }
 
 .intro-side {
   display: grid;
-  gap: var(--space-1-5);
   justify-items: center;
-  text-align: center;
+  gap: var(--space-1-5);
+  min-width: 0;
+  max-width: 100%;
 }
 
-.intro-side-card {
-  padding: var(--space-2-5) var(--space-3);
-  border-radius: var(--radius-lg);
-  border: 1px solid rgba(214, 192, 154, 0.18);
-  background: linear-gradient(135deg, rgba(27, 20, 19, 0.84), rgba(58, 48, 46, 0.78));
+.intro-side.is-player { animation: introFromLeft 520ms cubic-bezier(0.2, 0.9, 0.3, 1) both; }
+.intro-side.is-enemy { animation: introFromRight 520ms cubic-bezier(0.2, 0.9, 0.3, 1) 80ms both; }
+
+.intro-crest {
+  display: grid;
+  place-items: center;
+  width: clamp(72px, 12svh, 104px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  font-size: clamp(36px, 6svh, 52px);
+  color: var(--verdigris-light);
+  background: radial-gradient(circle at 38% 32%, #2f4a42, #0f1715 78%);
+  box-shadow: 0 0 0 2px rgba(143, 208, 187, 0.75), 0 0 0 7px rgba(10, 7, 6, 0.8), 0 0 0 8px rgba(201, 169, 110, 0.35), 0 0 40px rgba(95, 168, 146, 0.35);
+}
+
+.intro-side.is-enemy .intro-crest {
+  color: var(--blood-light);
+  background: radial-gradient(circle at 38% 32%, #4a2421, #170b0a 78%);
+  box-shadow: 0 0 0 2px rgba(236, 138, 124, 0.75), 0 0 0 7px rgba(10, 7, 6, 0.8), 0 0 0 8px rgba(201, 169, 110, 0.35), 0 0 40px rgba(176, 66, 54, 0.4);
+}
+
+.intro-role {
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--verdigris-light);
+}
+
+.intro-side.is-enemy .intro-role {
+  color: var(--blood-light);
+}
+
+.intro-name {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-display);
+  font-size: clamp(1.5rem, 4.6vw, 2.2rem);
+  letter-spacing: 0.04em;
+  color: var(--bone);
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.7);
 }
 
 .intro-callout {
-  margin-top: var(--space-2-5);
+  max-width: 34ch;
+  margin: 0;
+  color: var(--bone-dim);
+  font-size: var(--font-sm);
 }
 
 .intro-vs-art {
-  width: min(180px, 40vw);
+  width: min(170px, 38vw);
   display: block;
   margin-inline: auto;
-  filter: drop-shadow(0 12px 22px rgba(0, 0, 0, 0.34));
-  animation: vsSlam 320ms ease-out;
+  filter: drop-shadow(0 12px 22px rgba(0, 0, 0, 0.5));
+  animation: vsSlam 420ms cubic-bezier(0.2, 1.4, 0.4, 1) 260ms both;
 }
 
 @keyframes vsSlam {
-  from { transform: scale(1.18); opacity: 0; }
+  from { transform: scale(1.8); opacity: 0; }
   to { transform: scale(1); opacity: 1; }
+}
+
+@keyframes introFromLeft {
+  from { opacity: 0; transform: translateX(-40px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes introFromRight {
+  from { opacity: 0; transform: translateX(40px); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .intro-side.is-player,
+  .intro-side.is-enemy,
+  .intro-vs-art {
+    animation: none;
+  }
 }
 
 .queue-modal {
@@ -58,11 +139,6 @@
   background: linear-gradient(135deg, rgba(24, 19, 17, 0.98), rgba(70, 54, 51, 0.92));
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.42);
   animation: modalPop 220ms ease;
-}
-
-.intro-modal {
-  text-align: center;
-  border-color: rgba(199, 170, 119, 0.28);
 }
 
 @keyframes modalPop {

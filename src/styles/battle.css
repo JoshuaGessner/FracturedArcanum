@@ -569,6 +569,81 @@ button.battle-hero-anchor {
   grid-template-columns: minmax(0, 1fr);
 }
 
+/* With a crest the popup is a ceremony, not a panel: centred, the crest as
+   its focal point, the title in the tone's colour, the reward on a ribbon. */
+.summary-popup-card.has-crest {
+  justify-items: center;
+  text-align: center;
+  padding-top: var(--space-5);
+  background:
+    radial-gradient(80% 45% at 50% 0%, color-mix(in srgb, var(--summary-tone, var(--ember)) 18%, transparent), transparent 70%),
+    linear-gradient(180deg, rgba(28, 21, 20, 0.98), rgba(22, 17, 15, 0.98));
+}
+
+.summary-popup-victory { --summary-tone: var(--ember); }
+.summary-popup-defeat { --summary-tone: var(--blood-light); }
+.summary-popup-draw { --summary-tone: var(--bone-dim); }
+
+.summary-popup-crest {
+  width: clamp(96px, 16svh, 132px);
+  height: auto;
+  margin-top: calc(var(--space-5) * -0.5);
+  filter: drop-shadow(0 10px 24px rgba(0, 0, 0, 0.55)) drop-shadow(0 0 26px color-mix(in srgb, var(--summary-tone, var(--ember)) 35%, transparent));
+  animation: summaryCrestIn 520ms cubic-bezier(0.2, 1.3, 0.4, 1) both;
+}
+
+.summary-popup-card.has-crest .summary-popup-head {
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.summary-popup-card.has-crest .summary-popup-head h2 {
+  font-family: var(--font-display);
+  font-size: clamp(1.6rem, 6vw, 2rem);
+  letter-spacing: 0.04em;
+  color: color-mix(in srgb, var(--summary-tone, var(--ember)) 70%, var(--bone));
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.6);
+}
+
+.summary-popup-card.has-crest .summary-popup-head .deck-status {
+  padding: 5px 16px;
+  border-radius: var(--radius-sm);
+  border: 1px solid color-mix(in srgb, var(--summary-tone, var(--ember)) 55%, transparent);
+  background: linear-gradient(180deg, rgba(58, 42, 22, 0.9), rgba(26, 19, 12, 0.9));
+  color: var(--ember-light);
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.summary-popup-card.has-crest .summary-popup-highlights {
+  justify-content: center;
+}
+
+.summary-popup-card.has-crest .summary-popup-highlights .badge {
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--brass-dim);
+  background: rgba(13, 10, 10, 0.5);
+  color: var(--bone-dim);
+  font-size: 0.8rem;
+}
+
+.summary-popup-card.has-crest .summary-popup-actions {
+  width: 100%;
+}
+
+@keyframes summaryCrestIn {
+  from { opacity: 0; transform: scale(0.6) rotate(-8deg); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .summary-popup-crest {
+    animation: none;
+  }
+}
+
 /* ─── Board Battlefield ─────────────────────────────────────────── */
 
 .board-grid {

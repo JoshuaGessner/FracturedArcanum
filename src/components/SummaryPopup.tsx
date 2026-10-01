@@ -13,6 +13,8 @@ export type SummaryPopupProps = {
   tone?: 'victory' | 'defeat' | 'draw' | 'reward' | 'neutral'
   statusBadge?: string
   highlights?: string[]
+  /** A result crest (victory laurel, broken blade, scales) set above the title. */
+  crest?: string
   actions: SummaryPopupAction[]
 }
 
@@ -25,6 +27,7 @@ export function SummaryPopup({
   tone = 'neutral',
   statusBadge,
   highlights = [],
+  crest,
   actions,
 }: SummaryPopupProps) {
   if (!visible) return null
@@ -37,7 +40,8 @@ export function SummaryPopup({
       aria-label={ariaLabel}
       data-scene-swipe-opt-out="true"
     >
-      <div className={["summary-popup-card", 'section-card', `summary-popup-${tone}`].join(' ')}>
+      <div className={['summary-popup-card', 'section-card', `summary-popup-${tone}`, crest ? 'has-crest' : ''].filter(Boolean).join(' ')}>
+        {crest && <img className="summary-popup-crest" src={crest} alt="" aria-hidden="true" />}
         <div className="summary-popup-head">
           <div>
             <p className="eyebrow">{eyebrow}</p>

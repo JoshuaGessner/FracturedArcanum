@@ -1074,6 +1074,7 @@ export function BattleScreen() {
         note={battleSummaryNote}
         tone={resultTone}
         statusBadge={battleSummaryBadge}
+        crest={UI_ASSETS.overlays[resultTone]}
         highlights={[
           rankLabel,
           `Rating ${seasonRating}`,
