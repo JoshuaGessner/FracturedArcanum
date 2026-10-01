@@ -11,15 +11,6 @@
   object-fit: contain;
   pointer-events: none;
 }
-
-.inline-stat {
-  width: 0.95em;
-  height: 0.95em;
-  vertical-align: -0.1em;
-  object-fit: contain;
-  pointer-events: none;
-}
-
 /* Single-owner chrome rule: buttons own ONE edge treatment (the
    border + gradient) — no stacked SVG button art behind them. The
    SVG button frames never aligned to arbitrary button widths and

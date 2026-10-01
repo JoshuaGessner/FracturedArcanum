@@ -54,7 +54,6 @@ button:disabled {
   margin: 0;
 }
 
-
 /* Read by assistive technology, not drawn. */
 .sr-only {
   position: absolute;

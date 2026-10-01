@@ -131,17 +131,13 @@
   isolation: isolate;
 }
 
-/* The mode-card art is sized `cover` for the old three-across grid. Stretched
-   to full sheet width it sits directly behind the label and swamps it, so
-   here it becomes a contained motif tucked against the trailing edge. */
+/* In the sheet the mode's engraved mark sits centred on the trailing edge,
+   clear of the label. */
 .mode-card-grid-sheet .mode-card::before {
-  inset: 0 0 0 auto;
-  width: 38%;
-  background-size: contain;
-  background-position: right center;
-  opacity: 0.16;
-  -webkit-mask-image: linear-gradient(to right, transparent, #000000 55%);
-  mask-image: linear-gradient(to right, transparent, #000000 55%);
+  inset: 50% 16px auto auto;
+  width: 44px;
+  height: 44px;
+  transform: translateY(-50%);
 }
 
 .mode-card-grid-sheet .mode-card > * {

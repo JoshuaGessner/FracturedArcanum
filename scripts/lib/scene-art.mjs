@@ -1,5 +1,6 @@
 /**
- * Scene art: the battle table and the carved plate an empty lane shows.
+ * Scene art: the battle table, the carved plate an empty lane shows, and the
+ * candle-lit rooms behind each menu screen.
  *
  * Drawn in the card art's light — umber dark, a candle at each corner, a
  * ritual circle worn into the wood under the lanes — so the board reads as a
@@ -115,10 +116,139 @@ function laneSigil() {
   return svg('0 0 120 120', body, 'Lane sigil')
 }
 
+/** Shared ground for the menu scenes: warm umber, one light source, vignette. */
+function menuGround(id, lightX, lightY) {
+  return '<defs>'
+    + `<radialGradient id="${id}-base" cx="${lightX}%" cy="${lightY}%" r="85%">`
+    + '<stop offset="0%" stop-color="#3a2a1f"/><stop offset="50%" stop-color="#1d1511"/><stop offset="100%" stop-color="#0a0706"/>'
+    + '</radialGradient>'
+    + `<radialGradient id="${id}-vignette" cx="50%" cy="50%" r="72%">`
+    + '<stop offset="58%" stop-color="#000" stop-opacity="0"/><stop offset="100%" stop-color="#000" stop-opacity="0.6"/>'
+    + '</radialGradient>'
+    + '<radialGradient id="candle-glow" cx="50%" cy="50%" r="50%">'
+    + '<stop offset="0%" stop-color="#e0a84e" stop-opacity="0.24"/><stop offset="45%" stop-color="#e0a84e" stop-opacity="0.07"/><stop offset="100%" stop-color="#e0a84e" stop-opacity="0"/>'
+    + '</radialGradient>'
+    + '</defs>'
+    + `<rect width="1440" height="900" fill="url(#${id}-base)"/>`
+}
+
+const vignette = (id) => `<rect width="1440" height="900" fill="url(#${id}-vignette)"/>`
+const brass = (body, opacity = 0.18, width = 2) =>
+  `<g fill="none" stroke="#c9a96e" stroke-opacity="${opacity}" stroke-width="${width}" stroke-linecap="round" stroke-linejoin="round">${body}</g>`
+
+/** A row of book spines along a shelf, heights and widths seeded. */
+function shelf(x0, x1, baseY, random) {
+  const spines = []
+  let x = x0
+  while (x < x1) {
+    const w = 18 + random() * 22
+    const h = 90 + random() * 70
+    const lean = random() < 0.12 ? (random() - 0.5) * 16 : 0
+    spines.push(`<path d="M${x.toFixed(1)} ${baseY}l${lean.toFixed(1)} ${(-h).toFixed(1)}h${w.toFixed(1)}l${(-lean).toFixed(1)} ${h.toFixed(1)}"/>`)
+    if (random() < 0.5) spines.push(`<path d="M${(x + 4 + lean / 2).toFixed(1)} ${(baseY - h * 0.7).toFixed(1)}h${(w - 8).toFixed(1)}"/>`)
+    x += w + 3 + random() * 4
+  }
+  return spines.join('') + `<path d="M${x0 - 20} ${baseY + 4}H${x1 + 20}" stroke-width="4"/>`
+}
+
+function archiveScene() {
+  const random = seeded(4242)
+  const body = menuGround('ar', 50, 30)
+    + brass(shelf(80, 1360, 300, random) + shelf(80, 1360, 560, random) + shelf(80, 1360, 820, random), 0.13)
+    + candle(720, 200)
+    + ritualCircle(720, 450, 300, random)
+    + vignette('ar')
+  return svg('0 0 1440 900', body, 'Archive of bound folios by candlelight')
+}
+
+function hallScene() {
+  const random = seeded(1213)
+  const arches = [260, 720, 1180].map((cx) =>
+    `<path d="M${cx - 170} 900V380a170 170 0 0 1 340 0V900"/><path d="M${cx - 140} 900V392a140 140 0 0 1 280 0V900"/>`).join('')
+  const body = menuGround('hl', 50, 26)
+    + brass(arches, 0.12, 2.4)
+    + ritualCircle(720, 470, 330, random)
+    + candle(150, 760) + candle(1290, 760)
+    + vignette('hl')
+  return svg('0 0 1440 900', body, 'Vaulted hall around the arena circle')
+}
+
+function lantern(cx, top, length) {
+  return `<path d="M${cx} 0V${top}"/>`
+    + `<path d="M${cx - 18} ${top + 6}h36l8 14v${length}l-8 14h-36l-8-14v${-length}z"/>`
+    + `<path d="M${cx - 26} ${top + 20}h52M${cx - 26} ${top + 20 + length}h52"/>`
+}
+
+function bazaarScene() {
+  const random = seeded(808)
+  const awning = Array.from({ length: 12 }, (_, index) => {
+    const x = index * 120
+    return `<path d="M${x} 70q60 54 120 0"/>`
+  }).join('')
+  const crates = Array.from({ length: 7 }, (_, index) => {
+    const x = 90 + index * 190 + random() * 30
+    const w = 110 + random() * 50
+    const h = 70 + random() * 60
+    return `<rect x="${x.toFixed(1)}" y="${(840 - h).toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" rx="4"/><path d="M${x.toFixed(1)} ${(840 - h / 2).toFixed(1)}h${w.toFixed(1)}"/>`
+  }).join('')
+  const scale = '<path d="M720 220V560M620 560h200M600 250h240"/>'
+    + '<path d="M600 250l-50 120h100zM840 250l-50 120h100z"/>'
+    + '<path d="M550 370a50 18 0 0 0 100 0M790 370a50 18 0 0 0 100 0"/>'
+  const body = menuGround('bz', 50, 38)
+    + brass(awning + '<path d="M0 70H1440"/>', 0.16)
+    + brass(lantern(260, 80, 50) + lantern(1180, 80, 50) + lantern(720, 70, 34), 0.2)
+    + `<circle cx="260" cy="180" r="200" fill="url(#candle-glow)"/><circle cx="1180" cy="180" r="200" fill="url(#candle-glow)"/>`
+    + brass(scale, 0.14, 2.4)
+    + brass(crates, 0.1)
+    + vignette('bz')
+  return svg('0 0 1440 900', body, 'Merchant bazaar under hanging lanterns')
+}
+
+function tankard(x, y) {
+  return `<path d="M${x} ${y}v-70h56v70z"/><path d="M${x + 56} ${y - 54}h14a14 14 0 0 1 0 28h-14"/><path d="M${x} ${y - 52}h56"/>`
+}
+
+function tavernScene() {
+  const random = seeded(2718)
+  const planks = Array.from({ length: 6 }, (_, index) => `<path d="M60 ${640 + index * 40}H1380"/>`).join('')
+  const mugs = [220, 470, 900, 1130].map((x) => tankard(x + random() * 30, 620)).join('')
+  const hearth = '<path d="M520 520V260a200 160 0 0 1 400 0V520"/><path d="M560 520V290a160 128 0 0 1 320 0V520"/>'
+    + '<path d="M640 520c10-60 40-80 80-120 40 40 70 60 80 120"/>'
+  const body = menuGround('tv', 50, 44)
+    + `<circle cx="720" cy="430" r="420" fill="url(#candle-glow)"/>`
+    + brass(hearth, 0.16, 2.4)
+    + brass(planks + '<path d="M40 620H1400"/>', 0.12)
+    + brass(mugs, 0.15)
+    + candle(110, 560) + candle(1330, 560)
+    + vignette('tv')
+  return svg('0 0 1440 900', body, 'Tavern hearth and long table')
+}
+
+function astrolabeScene() {
+  const random = seeded(99)
+  const rings = [300, 240, 180].map((r, index) => `<circle cx="720" cy="450" r="${r}" stroke-opacity="${0.16 - index * 0.03}"/>`).join('')
+  const spokes = Array.from({ length: 12 }, (_, index) => {
+    const a = (index / 12) * Math.PI * 2
+    return `M${(720 + Math.cos(a) * 180).toFixed(1)} ${(450 + Math.sin(a) * 180).toFixed(1)}L${(720 + Math.cos(a) * 300).toFixed(1)} ${(450 + Math.sin(a) * 300).toFixed(1)}`
+  }).join('')
+  const body = menuGround('as', 50, 50)
+    + brass(rings, 1) + brass(`<path d="${spokes}"/>`, 0.1)
+    + brass('<ellipse cx="720" cy="450" rx="300" ry="110" transform="rotate(-24 720 450)"/>', 0.12)
+    + ritualCircle(720, 450, 120, random)
+    + vignette('as')
+  return svg('0 0 1440 900', body, 'Brass astrolabe')
+}
+
 /** File name → SVG for public/generated/ui/. */
 export function buildSceneFiles() {
   return {
     'bg-battle.svg': battleTable(),
+    'bg-main-menu.svg': hallScene(),
+    'bg-play.svg': hallScene(),
+    'bg-collection.svg': archiveScene(),
+    'bg-shop.svg': bazaarScene(),
+    'bg-social.svg': tavernScene(),
+    'bg-settings.svg': astrolabeScene(),
     'lane-sigil.svg': laneSigil(),
   }
 }

@@ -79,18 +79,6 @@
   align-items: center;
   gap: var(--space-1-5);
 }
-
-.card-meta-row {
-  display: flex;
-  align-items: center;
-  gap: var(--space-1-5);
-  margin-top: 2px;
-  /* Carries the rarity gem on collection cards — same reason .card-top sits
-     above .card-frame. */
-  position: relative;
-  z-index: 5;
-}
-
 /* ─── Effect Badges ─────────────────────────────────────────────── */
 
 .effect-badge {
@@ -139,13 +127,6 @@
   height: 14px;
 }
 
-.battle-slot-effect {
-  position: absolute;
-  top: 5px;
-  right: 5px;
-  z-index: 2;
-}
-
 .battle-hand-effect {
   position: absolute;
   top: 6px;
@@ -161,33 +142,6 @@
 .rarity-gem.icon-only {
   gap: 0;
   margin-bottom: 0;
-}
-
-/* Board units — mirrors .battle-slot-effect on the opposite corner. */
-.battle-slot-rarity {
-  position: absolute;
-  top: 5px;
-  left: 5px;
-  z-index: 2;
-}
-
-.battle-slot-rarity .rarity-gem-icon {
-  width: 13px;
-  height: 13px;
-  filter: drop-shadow(0 1px 2px rgba(17, 13, 12, 0.7));
-}
-
-/* Hand cards — inline beside the cost pill. `.card-top` is a space-between
-   flex row, so the auto margin is what keeps the gem tucked against the pill
-   instead of drifting right into the absolutely-placed effect badge. */
-.battle-hand-rarity {
-  margin-right: auto;
-}
-
-.battle-hand-rarity .rarity-gem-icon {
-  width: 13px;
-  height: 13px;
-  filter: drop-shadow(0 1px 2px rgba(17, 13, 12, 0.7));
 }
 
 .hand-card .card-top {
@@ -392,22 +346,11 @@
   z-index: 5;
 }
 
-.card-stats {
-  font-weight: 700;
-  font-size: 0.92rem;
-}
-
-.card-stats span,
-.battle-stats-inline span,
 .rank-badge-art,
 .badge-with-art {
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
-}
-
-.battle-stats-inline {
-  gap: var(--space-2);
 }
 
 .stat-icon {
@@ -756,7 +699,7 @@
   inset: 14px;
   z-index: -1;
   opacity: 0.2;
-  background: url('/generated/ui/tile-shop.svg') center / contain no-repeat;
+  background: url('/generated/ui/shard.svg') center / contain no-repeat;
 }
 
 .reward-vault-medallion span {
@@ -1096,17 +1039,6 @@
 }
 
 /* ─── Card Art ──────────────────────────────────────────────────── */
-
-.card-art-shell {
-  height: 92px;
-  overflow: hidden;
-  border-radius: var(--radius-lg);
-  border: 1px solid rgba(217, 159, 59, 0.22);
-  background: linear-gradient(135deg, rgba(28, 21, 19, 0.95), rgba(56, 43, 40, 0.7));
-}
-
-.card-art-shell.large { height: 104px; }
-.card-art-shell.thumb { height: 52px; border-radius: var(--radius-md); }
 
 .card-illustration {
   width: 100%;

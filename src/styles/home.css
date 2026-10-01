@@ -242,7 +242,6 @@
   font-size: var(--font-xs);
 }
 
-
 .home-status-rail {
   grid-column: 1 / -1;
   display: grid;
@@ -567,7 +566,6 @@
     gap: var(--space-2);
   }
 
-
   .home-status-ribbon-meter,
   .home-status-rail {
     grid-column: 1 / -1;
@@ -618,7 +616,6 @@
   .home-status-ribbon-meter {
     gap: 2px;
   }
-
 
   .home-status-rail {
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -762,7 +759,6 @@
     gap: var(--space-1);
   }
 
-
   /* Footer text truncates rather than disappearing (see base rule). */
 }
 
@@ -901,19 +897,22 @@
 }
 
 .mode-card::before {
+  /* The mode's engraved mark, struck in brass in the card's right corner. */
   content: '';
   position: absolute;
-  inset: 0;
-  background-position: center;
-  background-repeat: no-repeat;
-  background-size: cover;
-  opacity: 0.14;
+  inset: 12px 12px auto auto;
+  width: 64px;
+  height: 64px;
+  background-color: var(--ember);
+  -webkit-mask: var(--mode-mark) center / contain no-repeat;
+  mask: var(--mode-mark) center / contain no-repeat;
+  opacity: 0.22;
   pointer-events: none;
 }
 
-.mode-card-ai::before { background-image: url('/generated/ui/tile-play.svg'); }
-.mode-card-duel::before { background-image: url('/generated/ui/tile-battle.svg'); }
-.mode-card-ranked::before { background-image: url('/generated/ui/overlay-vs.svg'); }
+.mode-card-ai { --mode-mark: url('/generated/ui/glyph-quest-skirmish.svg'); }
+.mode-card-duel { --mode-mark: url('/generated/ui/glyph-quest-battle.svg'); }
+.mode-card-ranked { --mode-mark: url('/generated/ui/glyph-crest-player.svg'); }
 
 .mode-card > * {
   position: relative;

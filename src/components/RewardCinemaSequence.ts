@@ -68,7 +68,7 @@ export function buildBattleVictorySequence(input: BattleVictoryInput): RewardBea
     beats.push({
       id: 'battle-shards',
       kind: 'count',
-      iconAsset: UI_ASSETS.tiles.shop,
+      iconAsset: UI_ASSETS.shard,
       label: 'Shards Earned',
       value: shards,
       valueLabel: 'Shards',
@@ -115,7 +115,7 @@ export function buildDailyClaimSequence(input: DailyClaimInput): RewardBeat[] {
     {
       id: 'daily-banner',
       kind: 'banner',
-      iconAsset: UI_ASSETS.overlays.victory,
+      iconAsset: UI_ASSETS.shard,
       label: 'Daily Stipend Claimed',
       caption: 'The vault refreshes again at the next dawn.',
       sound: 'questComplete',
@@ -123,7 +123,7 @@ export function buildDailyClaimSequence(input: DailyClaimInput): RewardBeat[] {
     {
       id: 'daily-shards',
       kind: 'count',
-      iconAsset: UI_ASSETS.tiles.shop,
+      iconAsset: UI_ASSETS.shard,
       label: 'Shards Added',
       value: Math.max(0, input.shards),
       valueLabel: 'Shards',
@@ -135,7 +135,7 @@ export function buildDailyClaimSequence(input: DailyClaimInput): RewardBeat[] {
     beats.push({
       id: 'daily-total',
       kind: 'card',
-      iconAsset: UI_ASSETS.overlays.ribbonNew,
+      iconAsset: UI_ASSETS.shard,
       label: 'Vault Lifetime',
       caption: `${input.totalEarned.toLocaleString()} Shards earned across the season.`,
     })
@@ -173,7 +173,7 @@ export function buildQuestClaimBatchSequence(claims: QuestClaimInput[]): RewardB
     {
       id: 'quest-banner',
       kind: 'banner',
-      iconAsset: UI_ASSETS.overlays.ribbonNew,
+      iconAsset: UI_ASSETS.overlays.victory,
       label: claims.length === 1 ? 'Quest Reward Claimed' : `${claims.length} Quest Rewards Claimed`,
       caption,
       sound: 'questComplete',
@@ -181,7 +181,7 @@ export function buildQuestClaimBatchSequence(claims: QuestClaimInput[]): RewardB
     {
       id: 'quest-shards',
       kind: 'count',
-      iconAsset: UI_ASSETS.tiles.shop,
+      iconAsset: UI_ASSETS.shard,
       label: 'Ledger Payout',
       value: totalShards,
       valueLabel: 'Shards',
@@ -237,7 +237,7 @@ export function buildPackSummarySequence(input: PackSummaryInput): RewardBeat[] 
     beats.push({
       id: 'pack-credit',
       kind: 'count',
-      iconAsset: UI_ASSETS.tiles.shop,
+      iconAsset: UI_ASSETS.shard,
       label: 'Vault Credit',
       value: refund,
       valueLabel: 'Refunded',

@@ -33,7 +33,7 @@
 .topbar-currency-glyph {
   width: 16px;
   height: 16px;
-  background: url('/generated/ui/gem-rare.svg') center / contain no-repeat;
+  background: url('/generated/ui/shard.svg') center / contain no-repeat;
 }
 
 /* Settings is a 44px icon target rather than a nav tab. */
@@ -168,7 +168,7 @@
 
 /* ─── Generic Flex Rows ─────────────────────────────────────────── */
 
-.section-head, .slot-head, .card-top, .card-stats, .stepper {
+.section-head, .slot-head, .card-top, .stepper {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -181,7 +181,6 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-
 
 /* ─── Section Cards ─────────────────────────────────────────────── */
 /* Single-owner chrome rule: the card owns the border + radius +

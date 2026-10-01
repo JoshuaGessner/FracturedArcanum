@@ -412,7 +412,6 @@ button.danger:hover { filter: brightness(1.08); }
 
 .toast-line { margin-top: var(--space-2-5); }
 
-
 /* ─── Social hub empty state ─────────────────────────────────────── */
 /* A first-time player's tavern: one lit lantern and a clear next step,
    rather than a lone sentence under the form. */

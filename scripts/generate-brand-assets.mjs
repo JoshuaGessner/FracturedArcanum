@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url'
 import { buildCardArtFiles } from './lib/card-art.mjs'
 import { buildGlyphFiles } from './lib/glyph-art.mjs'
 import { buildSceneFiles } from './lib/scene-art.mjs'
+import { buildInsigniaFiles } from './lib/insignia-art.mjs'
 import { buildRelicFiles } from './lib/relic-art.mjs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -190,39 +191,7 @@ const sharedFiles = {
 const svg = (viewBox, body, label) =>
   `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}" role="img" aria-label="${label}">${body}</svg>`
 
-// Backgrounds (1440×900, full-bleed, layered gradient + scene shapes)
-const bg = (id, label, defs, scene) => svg(
-  '0 0 1440 900',
-  `<defs>${defs}</defs><rect width="1440" height="900" fill="url(#${id}-grad)"/>${scene}`,
-  label,
-)
-
-const backgrounds = {
-  'bg-main-menu.svg': bg('mm', 'Main menu background',
-    '<linearGradient id="mm-grad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#0a0f24"/><stop offset="60%" stop-color="#1a1240"/><stop offset="100%" stop-color="#070914"/></linearGradient>',
-    `<g opacity="0.55"><path d="M0 700 L240 540 L480 640 L720 480 L960 600 L1200 500 L1440 660 L1440 900 L0 900 Z" fill="#181530"/><path d="M0 780 L300 660 L600 760 L900 640 L1200 740 L1440 680 L1440 900 L0 900 Z" fill="#0d0d24"/></g><g opacity="0.4"><circle cx="220" cy="180" r="3" fill="#7c3aed"/><circle cx="640" cy="120" r="2" fill="#38bdf8"/><circle cx="1040" cy="220" r="3" fill="#fbbf24"/><circle cx="1290" cy="140" r="2" fill="#a78bfa"/><circle cx="380" cy="260" r="2" fill="#fff"/><circle cx="860" cy="320" r="3" fill="#7c3aed"/></g><path d="M120 80 Q720 0 1320 80 Q720 30 120 80 Z" fill="rgba(124,58,237,0.18)"/>`,
-  ),
-  'bg-play.svg': bg('pl', 'Play screen background',
-    '<radialGradient id="pl-grad" cx="50%" cy="55%" r="80%"><stop offset="0%" stop-color="#3a1c2c"/><stop offset="100%" stop-color="#0e0815"/></radialGradient>',
-    `<g fill="#1a0d1a"><rect x="0" y="700" width="1440" height="200"/></g><g stroke="#7c3aed" stroke-width="6" fill="none" opacity="0.5"><path d="M120 800 L120 200 Q120 100 220 100 L1220 100 Q1320 100 1320 200 L1320 800"/><path d="M260 800 L260 280 Q260 200 340 200 L1100 200 Q1180 200 1180 280 L1180 800"/></g><circle cx="720" cy="450" r="180" fill="none" stroke="#fbbf24" stroke-width="4" opacity="0.4"/><circle cx="720" cy="450" r="120" fill="none" stroke="#fbbf24" stroke-width="3" opacity="0.6"/><g fill="#fbbf24" opacity="0.7"><circle cx="160" cy="780" r="14"/><circle cx="1280" cy="780" r="14"/></g>`,
-  ),
-  'bg-collection.svg': bg('cl', 'Collection screen background',
-    '<linearGradient id="cl-grad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#1d1530"/><stop offset="100%" stop-color="#0a0814"/></linearGradient>',
-    `<g fill="#241a3d"><rect x="60" y="120" width="80" height="780"/><rect x="160" y="180" width="80" height="720"/><rect x="260" y="100" width="80" height="800"/><rect x="1100" y="140" width="80" height="760"/><rect x="1200" y="200" width="80" height="700"/><rect x="1300" y="120" width="80" height="780"/></g><g fill="rgba(251,191,36,0.18)"><rect x="60" y="320" width="80" height="6"/><rect x="60" y="540" width="80" height="6"/><rect x="160" y="380" width="80" height="6"/><rect x="260" y="280" width="80" height="6"/><rect x="1100" y="360" width="80" height="6"/><rect x="1200" y="420" width="80" height="6"/><rect x="1300" y="320" width="80" height="6"/></g><g opacity="0.4"><circle cx="500" cy="280" r="2" fill="#fbbf24"/><circle cx="700" cy="200" r="3" fill="#fbbf24"/><circle cx="900" cy="280" r="2" fill="#fbbf24"/></g>`,
-  ),
-  'bg-social.svg': bg('sc', 'Social screen background',
-    '<linearGradient id="sc-grad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#251d12"/><stop offset="100%" stop-color="#0d0a05"/></linearGradient>',
-    `<g fill="#3d2818"><rect x="0" y="600" width="1440" height="300"/></g><g fill="#5a3820"><rect x="200" y="650" width="1040" height="60" rx="8"/><rect x="160" y="710" width="1120" height="40" rx="6"/></g><g stroke="#7a4a28" stroke-width="6" fill="none"><line x1="120" y1="120" x2="120" y2="600"/><line x1="1320" y1="120" x2="1320" y2="600"/></g><g><rect x="100" y="100" width="120" height="180" fill="#7c3aed" opacity="0.5"/><rect x="1220" y="100" width="120" height="180" fill="#fbbf24" opacity="0.5"/></g><circle cx="200" cy="550" r="80" fill="rgba(251,127,36,0.4)"/>`,
-  ),
-  'bg-shop.svg': bg('sh', 'Shop screen background',
-    '<linearGradient id="sh-grad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#2a1545"/><stop offset="100%" stop-color="#0a0414"/></linearGradient>',
-    `<g fill="#7c3aed" opacity="0.4"><path d="M200 0 L240 200 L160 200 Z"/><path d="M600 0 L640 200 L560 200 Z"/><path d="M1000 0 L1040 200 L960 200 Z"/></g><g fill="#fbbf24" opacity="0.4"><path d="M400 0 L440 240 L360 240 Z"/><path d="M800 0 L840 240 L760 240 Z"/><path d="M1200 0 L1240 240 L1160 240 Z"/></g><g><rect x="100" y="600" width="180" height="180" rx="14" fill="#3d2350" stroke="#fbbf24" stroke-width="4"/><rect x="1160" y="600" width="180" height="180" rx="14" fill="#3d2350" stroke="#fbbf24" stroke-width="4"/></g><g fill="#fde68a" opacity="0.7"><circle cx="190" cy="690" r="20"/><circle cx="1250" cy="690" r="20"/></g>`,
-  ),
-  'bg-settings.svg': bg('st', 'Settings screen background',
-    '<linearGradient id="st-grad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#241a14"/><stop offset="100%" stop-color="#0d0805"/></linearGradient>',
-    `<g fill="#3a2615"><rect x="100" y="200" width="600" height="500" rx="14"/></g><g fill="#5a3820" opacity="0.7"><rect x="800" y="240" width="540" height="80" rx="6"/><rect x="800" y="360" width="540" height="80" rx="6"/><rect x="800" y="480" width="540" height="80" rx="6"/></g><g fill="#fbbf24" opacity="0.6"><circle cx="780" cy="240" r="12"/><circle cx="780" cy="360" r="12"/><circle cx="780" cy="480" r="12"/></g><path d="M150 220 L650 220 L650 680 L150 680 Z" fill="none" stroke="#7a4a28" stroke-width="3"/>`,
-  ),
-}
+// The menu backgrounds live in lib/scene-art.mjs.
 
 // Navigation tile illustrations (240×320)
 const tileBg = (defs, accent) => `<defs>${defs}</defs><rect width="240" height="320" rx="20" fill="#181230"/><rect x="8" y="8" width="224" height="304" rx="14" fill="url(#tile-grad)" stroke="${accent}" stroke-width="2"/>`
@@ -279,21 +248,7 @@ const tiles = {
   ...navGlyphs,
 }
 
-// Rank insignia (120×120)
-const rankShield = (id, label, fill, accent, ornament) => svg('0 0 120 120',
-  `<defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${fill}"/><stop offset="100%" stop-color="${accent}"/></linearGradient></defs><path d="M60 8 L100 24 V64 C100 88 84 104 60 114 C36 104 20 88 20 64 V24 Z" fill="url(#${id})" stroke="#fbbf24" stroke-width="3"/>${ornament}`,
-  label)
-
-const ranks = {
-  'rank-bronze.svg': rankShield('rb', 'Bronze rank', '#a16234', '#5a3818',
-    `<path d="M40 50 L80 80 M80 50 L40 80" stroke="#fde68a" stroke-width="6" stroke-linecap="round"/>`),
-  'rank-silver.svg': rankShield('rs', 'Silver rank', '#cbd5e1', '#64748b',
-    `<path d="M60 38 C50 50 50 70 60 90 C70 70 70 50 60 38 Z" fill="#fff" opacity="0.8"/><circle cx="60" cy="65" r="6" fill="#fbbf24"/>`),
-  'rank-gold.svg': rankShield('rg', 'Gold rank', '#fbbf24', '#a16207',
-    `<g><path d="M60 28 L65 48 L86 50 L70 64 L75 86 L60 76 L45 86 L50 64 L34 50 L55 48 Z" fill="#fff8dc"/><circle cx="60" cy="60" r="20" fill="none" stroke="#fff8dc" stroke-width="2"/></g>`),
-  'rank-diamond.svg': rankShield('rd', 'Diamond rank', '#a78bfa', '#5b21b6',
-    `<path d="M60 30 L88 60 L60 100 L32 60 Z" fill="#e9d5ff" stroke="#fff" stroke-width="2"/><path d="M60 30 L60 100 M32 60 L88 60" stroke="#fff" stroke-width="2" opacity="0.6"/><circle cx="60" cy="22" r="6" fill="#fbbf24"/>`),
-}
+// League shields, keyword seals and the shard live in lib/insignia-art.mjs.
 
 // Pack covers (200×280)
 // The three packs and the card back live in lib/relic-art.mjs.
@@ -310,25 +265,25 @@ const packs = buildRelicFiles()
 // Rarity is the one card signal cosmetic frames may never override, so the gem
 // has to carry it alone at thumbnail size.
 const gem = (id, label, color, dark, shape, facets) => svg('0 0 32 32',
-  `<defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${color}"/><stop offset="100%" stop-color="${dark}"/></linearGradient></defs>${shape.replace('__FILL__', `url(#${id})`)}<path d="${facets}" stroke="#fff" stroke-width="0.5" opacity="0.6" fill="none"/>`,
+  `<defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${color}"/><stop offset="100%" stop-color="${dark}"/></linearGradient></defs>${shape.replace('__FILL__', `url(#${id})`)}<path d="${facets}" stroke="#fff8e8" stroke-width="0.6" opacity="0.55" fill="none"/>`,
   label)
 
 const gems = {
   // Disc — the plainest form.
-  'gem-common.svg': gem('gc', 'Common gem', '#cbd5e1', '#64748b',
-    '<circle cx="16" cy="16" r="10.5" fill="__FILL__" stroke="#fff" stroke-width="1"/>',
+  'gem-common.svg': gem('gc', 'Common gem', '#e4e0d8', '#6e6862',
+    '<circle cx="16" cy="16" r="10.5" fill="__FILL__" stroke="#2a1606" stroke-width="1.2"/>',
     'M16 5.5 A10.5 10.5 0 0 1 26.5 16'),
-  // Cut block — four flat sides.
-  'gem-rare.svg': gem('gr', 'Rare gem', '#60a5fa', '#1d4ed8',
-    '<rect x="5.5" y="5.5" width="21" height="21" rx="3.5" fill="__FILL__" stroke="#fff" stroke-width="1"/>',
+  // Cut block — four flat sides. Tints follow RARITY_COLORS in src/game.ts.
+  'gem-rare.svg': gem('gr', 'Rare gem', '#a9cdf0', '#2f5a8c',
+    '<rect x="5.5" y="5.5" width="21" height="21" rx="3.5" fill="__FILL__" stroke="#2a1606" stroke-width="1.2"/>',
     'M5.5 11 H26.5 M11 5.5 V26.5'),
   // Faceted shard — pentagon, point up.
-  'gem-epic.svg': gem('ge', 'Epic gem', '#a78bfa', '#5b21b6',
-    '<path d="M16 4 L27 12 L22.8 25 L9.2 25 L5 12 Z" fill="__FILL__" stroke="#fff" stroke-width="1"/>',
+  'gem-epic.svg': gem('ge', 'Epic gem', '#d0aef0', '#5a3576',
+    '<path d="M16 4 L27 12 L22.8 25 L9.2 25 L5 12 Z" fill="__FILL__" stroke="#2a1606" stroke-width="1.2"/>',
     'M16 4 L16 25 M5 12 L27 12'),
   // Starburst — eight points.
-  'gem-legendary.svg': gem('gl', 'Legendary gem', '#fde68a', '#d97706',
-    '<path d="M16 3 L18.4 10.5 L24.6 6.4 L21.5 13.6 L29 16 L21.5 18.4 L24.6 25.6 L18.4 21.5 L16 29 L13.6 21.5 L7.4 25.6 L10.5 18.4 L3 16 L10.5 13.6 L7.4 6.4 L13.6 10.5 Z" fill="__FILL__" stroke="#fff" stroke-width="1" stroke-linejoin="round"/>',
+  'gem-legendary.svg': gem('gl', 'Legendary gem', '#fbe3a8', '#b07424',
+    '<path d="M16 3 L18.4 10.5 L24.6 6.4 L21.5 13.6 L29 16 L21.5 18.4 L24.6 25.6 L18.4 21.5 L16 29 L13.6 21.5 L7.4 25.6 L10.5 18.4 L3 16 L10.5 13.6 L7.4 6.4 L13.6 10.5 Z" fill="__FILL__" stroke="#2a1606" stroke-width="1.2" stroke-linejoin="round"/>',
     'M16 9 L16 23 M9 16 L23 16'),
 }
 
@@ -378,48 +333,8 @@ const chrome = {
     'Delete icon'),
 }
 
-// Effect icons (40×40, 20 entries)
-const fx = (id, label, color, body) => svg('0 0 40 40',
-  `<defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${color}"/><stop offset="100%" stop-color="#1a1530"/></linearGradient></defs><rect width="40" height="40" rx="8" fill="url(#${id})" opacity="0.85"/>${body}`,
-  label)
-
-const effects = {
-  'fx-charge.svg': fx('fc', 'Charge', '#facc15', `<path d="M22 6 L12 22 L18 22 L14 34 L28 18 L22 18 L26 6 Z" fill="#fef9c3" stroke="#fff" stroke-width="0.5"/>`),
-  'fx-guard.svg': fx('fg', 'Guard', '#1d4ed8', `<path d="M20 6 L30 10 V20 C30 27 26 32 20 34 C14 32 10 27 10 20 V10 Z" fill="#dbeafe" stroke="#fff" stroke-width="1"/>`),
-  'fx-rally.svg': fx('fr', 'Rally', '#f97316', `<path d="M8 18 L20 14 L20 26 Z" fill="#fed7aa"/><path d="M22 14 Q30 18 30 22 Q30 26 22 26" fill="none" stroke="#fed7aa" stroke-width="2"/><path d="M28 12 Q34 18 34 22 Q34 26 28 28" fill="none" stroke="#fed7aa" stroke-width="1.5" opacity="0.6"/>`),
-  'fx-blast.svg': fx('fb', 'Blast', '#ef4444', `<g fill="#fbbf24" stroke="#fff" stroke-width="0.5"><path d="M20 6 L24 18 L36 16 L26 24 L32 36 L20 28 L8 36 L14 24 L4 16 L16 18 Z"/></g>`),
-  'fx-heal.svg': fx('fh', 'Heal', '#22c55e', `<path d="M16 8 H24 V16 H32 V24 H24 V32 H16 V24 H8 V16 H16 Z" fill="#bbf7d0" stroke="#fff" stroke-width="1"/>`),
-  'fx-draw.svg': fx('fd', 'Draw', '#38bdf8', `<rect x="12" y="8" width="16" height="22" rx="2" fill="#dbeafe" stroke="#fff" stroke-width="1"/><path d="M20 12 V26 M14 19 L26 19" stroke="#1d4ed8" stroke-width="2"/>`),
-  'fx-fury.svg': fx('ff', 'Fury', '#dc2626', `<path d="M12 16 Q16 10 20 14 Q24 8 28 14 Q26 22 20 24 Q14 22 12 16 Z" fill="#fbbf24"/><circle cx="20" cy="28" r="4" fill="#fef3c7"/>`),
-  'fx-drain.svg': fx('fdr', 'Drain', '#7c3aed', `<circle cx="20" cy="16" r="8" fill="#3b1d80" stroke="#a78bfa" stroke-width="1"/><path d="M16 22 L14 32 M20 24 L20 34 M24 22 L26 32" stroke="#a78bfa" stroke-width="1.5"/>`),
-  'fx-empower.svg': fx('fe', 'Empower', '#fbbf24', `<g stroke="#fff8dc" stroke-width="2" fill="none"><path d="M14 30 L14 16 L10 20 M14 16 L18 20"/><path d="M26 30 L26 12 L22 16 M26 12 L30 16"/></g>`),
-  'fx-poison.svg': fx('fp', 'Poison', '#16a34a', `<path d="M14 8 H26 L24 16 L28 16 L20 32 L12 16 L16 16 Z" fill="#86efac"/><circle cx="20" cy="14" r="2" fill="#000"/><circle cx="17" cy="11" r="1" fill="#000"/><circle cx="23" cy="11" r="1" fill="#000"/>`),
-  'fx-shield.svg': fx('fs', 'Shield', '#0ea5e9', `<g fill="none" stroke="#dbeafe" stroke-width="2"><path d="M10 10 H30 V14 H10 Z"/><path d="M12 14 H28 V18 H12 Z"/><path d="M14 18 H26 V22 H14 Z"/><path d="M16 22 H24 V26 H16 Z"/></g>`),
-  'fx-siphon.svg': fx('fsi', 'Siphon', '#a855f7', `<g stroke="#e9d5ff" stroke-width="2" fill="none"><path d="M8 14 Q14 8 20 14 Q26 20 32 14"/><path d="M8 26 Q14 32 20 26 Q26 20 32 26"/></g><circle cx="20" cy="20" r="3" fill="#fbbf24"/>`),
-  'fx-bolster.svg': fx('fbo', 'Bolster', '#06b6d4', `<path d="M6 28 Q12 16 20 14 Q28 16 34 28" fill="#67e8f9" stroke="#fff" stroke-width="1"/><path d="M14 22 L20 16 L26 22" stroke="#fff" stroke-width="2" fill="none"/>`),
-  'fx-cleave.svg': fx('fcl', 'Cleave', '#94a3b8', `<path d="M6 28 Q14 4 34 12" fill="none" stroke="#e2e8f0" stroke-width="3"/><path d="M30 8 L34 12 L30 16" fill="#cbd5e1"/>`),
-  'fx-lifesteal.svg': fx('fl', 'Lifesteal', '#dc2626', `<circle cx="20" cy="20" r="10" fill="#7f1d1d" stroke="#fff" stroke-width="1"/><path d="M16 16 L20 12 L24 16" fill="#fff"/><path d="M16 24 L20 28 L24 24" fill="#fff"/><circle cx="14" cy="14" r="2" fill="#fbbf24"/>`),
-  'fx-summon.svg': fx('fsu', 'Summon', '#a78bfa', `<ellipse cx="20" cy="22" rx="12" ry="6" fill="#5b21b6" stroke="#fbbf24" stroke-width="1"/><path d="M14 22 L18 8 L22 8 L26 22" fill="#a78bfa" stroke="#fff" stroke-width="0.5"/>`),
-  'fx-silence.svg': fx('fsl', 'Silence', '#64748b', `<circle cx="20" cy="20" r="12" fill="none" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="4 3"/><path d="M10 30 L30 10" stroke="#ef4444" stroke-width="3"/>`),
-  'fx-frostbite.svg': fx('ffr', 'Frostbite', '#06b6d4', `<g stroke="#bae6fd" stroke-width="2" fill="none"><path d="M20 6 L20 34"/><path d="M6 20 L34 20"/><path d="M10 10 L30 30"/><path d="M30 10 L10 30"/></g>`),
-  'fx-enrage.svg': fx('fen', 'Enrage', '#dc2626', `<ellipse cx="20" cy="20" rx="14" ry="10" fill="#fef2f2"/><path d="M6 14 L14 18 M34 14 L26 18 M6 26 L14 22 M34 26 L26 22" stroke="#7f1d1d" stroke-width="2"/><circle cx="20" cy="20" r="4" fill="#000"/>`),
-  'fx-deathrattle.svg': fx('fde', 'Deathrattle', '#52525b', `<circle cx="20" cy="20" r="10" fill="#e7e5e4" stroke="#fff" stroke-width="1"/><circle cx="16" cy="18" r="2" fill="#000"/><circle cx="24" cy="18" r="2" fill="#000"/><path d="M14 24 L26 24" stroke="#000" stroke-width="2"/><path d="M16 28 L20 32 L24 28" stroke="#a78bfa" stroke-width="1.5" fill="none"/>`),
-}
-
 // Overlays + glows
 const overlays = {
-  'overlay-vs.svg': svg('0 0 600 400',
-    `<defs><linearGradient id="vs" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#fde68a"/><stop offset="100%" stop-color="#d97706"/></linearGradient></defs><rect width="600" height="400" fill="rgba(0,0,0,0.6)"/><path d="M180 100 L260 300 L300 200 L340 300 L420 100" fill="none" stroke="url(#vs)" stroke-width="14" stroke-linejoin="round" stroke-linecap="round"/><text x="300" y="240" text-anchor="middle" font-size="120" font-family="Verdana,Segoe UI,sans-serif" font-weight="900" fill="url(#vs)" stroke="#fff" stroke-width="2">VS</text>`,
-    'Versus splash'),
-  'overlay-victory.svg': svg('0 0 600 200',
-    `<defs><linearGradient id="ov" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#fde68a"/><stop offset="100%" stop-color="#a16207"/></linearGradient></defs><path d="M40 20 L560 20 L540 160 L300 180 L60 160 Z" fill="url(#ov)" stroke="#fff" stroke-width="3"/><text x="300" y="120" text-anchor="middle" font-size="64" font-family="Verdana,Segoe UI,sans-serif" font-weight="900" fill="#7c2d12">VICTORY</text>`,
-    'Victory banner'),
-  'overlay-defeat.svg': svg('0 0 600 200',
-    `<defs><linearGradient id="od" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#3d1010"/><stop offset="100%" stop-color="#1a0505"/></linearGradient></defs><path d="M40 20 L560 30 L520 170 L300 180 L80 160 Z" fill="url(#od)" stroke="#ef4444" stroke-width="3"/><text x="300" y="120" text-anchor="middle" font-size="64" font-family="Verdana,Segoe UI,sans-serif" font-weight="900" fill="#ef4444">DEFEAT</text>`,
-    'Defeat banner'),
-  'overlay-draw.svg': svg('0 0 600 200',
-    `<rect x="40" y="20" width="520" height="160" rx="14" fill="#3a3025" stroke="#cbd5e1" stroke-width="3"/><text x="300" y="120" text-anchor="middle" font-size="64" font-family="Verdana,Segoe UI,sans-serif" font-weight="900" fill="#e2e8f0">DRAW</text>`,
-    'Draw banner'),
   'overlay-attack-arrow.svg': svg('0 0 64 64',
     `<defs><linearGradient id="aagrad" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#fde68a"/><stop offset="55%" stop-color="#f97316"/><stop offset="100%" stop-color="#dc2626"/></linearGradient></defs><path d="M2 28 L36 28 L36 18 L62 32 L36 46 L36 36 L2 36 Z" fill="url(#aagrad)" stroke="#fff7ed" stroke-width="2" stroke-linejoin="round"/>`,
     'Attack target arrowhead'),
@@ -444,9 +359,6 @@ const overlays = {
   'pack-burst.svg': svg('0 0 400 400',
     `<defs><radialGradient id="pbCore" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="rgba(255,251,214,1)"/><stop offset="35%" stop-color="rgba(254,230,138,0.85)"/><stop offset="70%" stop-color="rgba(217,119,6,0.35)"/><stop offset="100%" stop-color="rgba(120,53,15,0)"/></radialGradient><linearGradient id="pbRay" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="rgba(255,251,214,0.95)"/><stop offset="100%" stop-color="rgba(254,230,138,0)"/></linearGradient></defs><circle cx="200" cy="200" r="200" fill="url(#pbCore)"/><g fill="url(#pbRay)" transform="translate(200 200)"><polygon points="-12,-200 12,-200 0,-40"/><polygon points="-12,200 12,200 0,40" transform="rotate(180)"/><polygon points="-12,-200 12,-200 0,-40" transform="rotate(45)"/><polygon points="-12,-200 12,-200 0,-40" transform="rotate(90)"/><polygon points="-12,-200 12,-200 0,-40" transform="rotate(135)"/><polygon points="-12,-200 12,-200 0,-40" transform="rotate(225)"/><polygon points="-12,-200 12,-200 0,-40" transform="rotate(270)"/><polygon points="-12,-200 12,-200 0,-40" transform="rotate(315)"/><polygon points="-6,-180 6,-180 0,-30" transform="rotate(22.5)" opacity="0.65"/><polygon points="-6,-180 6,-180 0,-30" transform="rotate(67.5)" opacity="0.65"/><polygon points="-6,-180 6,-180 0,-30" transform="rotate(112.5)" opacity="0.65"/><polygon points="-6,-180 6,-180 0,-30" transform="rotate(157.5)" opacity="0.65"/><polygon points="-6,-180 6,-180 0,-30" transform="rotate(202.5)" opacity="0.65"/><polygon points="-6,-180 6,-180 0,-30" transform="rotate(247.5)" opacity="0.65"/><polygon points="-6,-180 6,-180 0,-30" transform="rotate(292.5)" opacity="0.65"/><polygon points="-6,-180 6,-180 0,-30" transform="rotate(337.5)" opacity="0.65"/></g>`,
     'Pack opening golden burst'),
-  'ribbon-new.svg': svg('0 0 120 60',
-    `<defs><linearGradient id="rnFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#fef2f2"/><stop offset="35%" stop-color="#ef4444"/><stop offset="100%" stop-color="#7f1d1d"/></linearGradient></defs><path d="M6 14 L98 14 L114 30 L98 46 L6 46 L18 30 Z" fill="url(#rnFill)" stroke="#fde68a" stroke-width="2" stroke-linejoin="round"/><path d="M6 14 L18 30 L6 46 L0 30 Z" fill="#7f1d1d" stroke="#fde68a" stroke-width="1.5"/><text x="58" y="38" text-anchor="middle" font-size="22" font-family="Verdana,Segoe UI,sans-serif" font-weight="900" fill="#fff8dc" stroke="#7f1d1d" stroke-width="0.6">NEW!</text>`,
-    'New card discovery ribbon'),
 }
 
 // Particles (16×16)
@@ -467,17 +379,15 @@ const particles = {
 
 // Combine all UI assets — these write into public/generated/ui/
 const uiAssets = {
-  ...backgrounds,
   ...tiles,
-  ...ranks,
   ...packs,
   ...gems,
   ...chrome,
-  ...effects,
   ...overlays,
   ...particles,
   ...buildGlyphFiles(),
   ...buildSceneFiles(),
+  ...buildInsigniaFiles(),
 }
 
 const allCards = buildCardArtFiles()
@@ -495,6 +405,7 @@ const uiAssetType = (id) => {
   if (id.startsWith('overlay-') || id.startsWith('glow-')) return 'ui-overlay'
   if (id.startsWith('particle-')) return 'ui-particle'
   if (id.startsWith('tribe-') || id.startsWith('glyph-')) return 'ui-glyph'
+  if (id === 'shard.svg') return 'ui-currency'
   if (id === 'lane-sigil.svg') return 'ui-board'
   if (id === 'card-back.svg') return 'ui-card-back'
   return 'ui-misc'

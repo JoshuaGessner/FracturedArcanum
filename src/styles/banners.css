@@ -220,38 +220,13 @@
 }
 
 /* ─── Compact card stats row ─── */
-.card-stats {
-  display: flex;
-  gap: var(--space-2-5);
-  font-size: 0.85rem;
-  font-weight: 700;
-}
 
 /* Attack and health decide every trade, so they are the last thing allowed to
    clip. On a 360px phone a four-card hand leaves ~92px per card, which the
    fixed 10px gap and 0.85rem type overflowed — the health value was cut off by
    the card's own `overflow: hidden`. Both now scale with the card. */
-.hand-card .card-stats {
-  gap: clamp(2px, 0.8vw, 8px);
-  font-size: clamp(0.68rem, calc(var(--hand-card-h, 142px) * 0.075), 0.86rem);
-  min-width: 0;
-}
-
-.hand-card .card-stats span {
-  gap: 2px;
-  min-width: 0;
-  white-space: nowrap;
-}
 
 /* Stat icons shrink with the row rather than holding a fixed box. */
-.hand-card .card-stats span > img,
-.hand-card .card-stats span > svg {
-  width: 1em;
-  height: 1em;
-  flex: 0 0 auto;
-}
-
-
 
 /* ─── Connection Status Banners ─── */
 .connection-banner {

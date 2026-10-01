@@ -259,8 +259,8 @@
 .enemy-turn-banner {
   width: min(calc(100% - 24px), 330px);
   padding: var(--space-2) var(--space-3);
-  background: linear-gradient(135deg, rgba(155, 88, 183, 0.94), rgba(130, 76, 153, 0.9));
-  border: 1px solid rgba(223, 196, 234, 0.34);
+  background: linear-gradient(180deg, rgba(58, 24, 20, 0.95), rgba(26, 12, 10, 0.94));
+  border: 1px solid rgba(236, 138, 124, 0.45);
   border-radius: var(--radius-lg);
   box-shadow: 0 12px 28px rgba(43, 32, 30, 0.34);
   backdrop-filter: blur(12px);
@@ -282,9 +282,10 @@
 .enemy-turn-crest {
   width: 26px;
   height: 26px;
-  border-radius: 50%;
-  background: url('/generated/ui/icon-guard.svg') center / contain no-repeat;
-  filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.24));
+  background-color: var(--blood-light);
+  -webkit-mask: url('/generated/ui/glyph-crest-enemy.svg') center / contain no-repeat;
+  mask: url('/generated/ui/glyph-crest-enemy.svg') center / contain no-repeat;
+  filter: drop-shadow(0 0 8px rgba(236, 138, 124, 0.4));
 }
 
 .enemy-turn-copy {
@@ -624,5 +625,4 @@
   border-color: rgba(224, 174, 87, 0.8);
   box-shadow: 0 0 0 2px rgba(224, 174, 87, 0.25), 0 0 16px rgba(224, 174, 87, 0.25), 0 10px 22px rgba(0, 0, 0, 0.45);
 }
-
 

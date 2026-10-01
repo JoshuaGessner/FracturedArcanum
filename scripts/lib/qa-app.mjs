@@ -463,11 +463,33 @@ async function authenticate(page, url, apiOrigin) {
   await page.waitForSelector('.screen-panel.active', { timeout: 10_000 })
 }
 
+/**
+ * A server that has never finished first-launch setup serves the setup screen
+ * in place of the app, signed in or not. Every state then "fails to open" with
+ * a selector timeout that says nothing about why — a fresh container or a
+ * reset data/ directory produced exactly that. Name the cause instead.
+ */
+async function assertServerSetUp(page, apiOrigin) {
+  const response = await page.request.get(`${apiOrigin}/api/setup/status`).catch(() => null)
+  if (!response?.ok()) return
+  const status = await response.json().catch(() => ({}))
+  if (status.setupComplete === false) {
+    throw new Error(
+      'QA cannot run: the server has not finished first-launch setup, so it serves the setup screen '
+      + 'instead of the app. Complete setup once (start the server and finish the setup screen), '
+      + 'which marks setupComplete in data/server-config.json, then re-run.',
+    )
+  }
+}
+
 /** Navigate to the app, signing in only if the shell is not already up. */
 export async function ensureAuthenticated(page, url, apiOrigin) {
   await page.goto(url, { waitUntil: 'domcontentloaded' })
   const active = await page
     .waitForSelector('.screen-panel.active', { timeout: 2_000 })
     .catch(() => null)
-  if (!active) await authenticate(page, url, apiOrigin)
+  if (!active) {
+    await assertServerSetUp(page, apiOrigin)
+    await authenticate(page, url, apiOrigin)
+  }
 }

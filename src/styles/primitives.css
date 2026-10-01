@@ -316,7 +316,6 @@ button.danger:disabled { opacity: 0.55; transform: none; box-shadow: none; }
   }
 }
 
-
 /* ─── Line glyphs ───────────────────────────────────────────────────
    One-ink SVGs painted through a mask, so they take the text colour. They
    replace every emoji the UI used to render; see scripts/lib/glyph-art.mjs. */

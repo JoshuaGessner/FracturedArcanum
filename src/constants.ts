@@ -190,7 +190,10 @@ export const UI_ASSETS = {
     frostbite: toUiAsset('fx-frostbite.svg'),
     enrage: toUiAsset('fx-enrage.svg'),
     deathrattle: toUiAsset('fx-deathrattle.svg'),
+    overwhelm: toUiAsset('fx-overwhelm.svg'),
   },
+  /** The currency mark: a cut ember crystal. */
+  shard: toUiAsset('shard.svg'),
   /** Engraved tribe sigils — what stands beside a card name, never an emoji. */
   tribes: {
     beast: toUiAsset('tribe-beast.svg'),

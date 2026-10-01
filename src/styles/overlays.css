@@ -41,6 +41,7 @@
 .intro-vs-art {
   width: min(180px, 40vw);
   display: block;
+  margin-inline: auto;
   filter: drop-shadow(0 12px 22px rgba(0, 0, 0, 0.34));
   animation: vsSlam 320ms ease-out;
 }

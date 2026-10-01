@@ -308,15 +308,11 @@
     line-height: 1.08;
     -webkit-line-clamp: 2;
   }
-  .hand-card .card-art-shell.thumb {
-    height: 40px;
-  }
   .hand-card .cost-pill {
     width: 26px;
     height: 26px;
     font-size: 0.8rem;
   }
-  /* (stat sizing is derived from --hand-card-h; see .hand-card .card-stats) */
 
   /* Deck-builder card sizing moved to `@container card` — see the Deck
      Builder section. Card width and viewport width are not the same number,
