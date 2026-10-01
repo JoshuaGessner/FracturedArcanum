@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { CARD_LIBRARY, RARITY_COLORS } from '../game'
-import { CARD_BORDER_OFFERS, ECONOMY_REWARDS, THEME_OFFERS } from '../constants'
-import { PackArt, RarityBadge, TribeSigil } from '../components/AssetBadge'
+import { CARD_BORDER_OFFERS, ECONOMY_REWARDS, THEME_OFFERS, UI_ASSETS } from '../constants'
+import { InterfaceGlyph, PackArt, RarityBadge, TribeSigil } from '../components/AssetBadge'
 import { CardFace } from '../components/CardFace'
 import { PackCeremonyOverlay } from '../components/PackCeremonyOverlay'
 import { buildPackSummarySequence } from '../components/RewardCinemaSequence'
@@ -40,7 +40,7 @@ export function ShopScreen() {
           : shopSubview === 'breakdown'
             ? 'Breakdown'
             : 'Shop'
-  const vaultSignalLabel = canClaimDailyReward ? 'Ready to claim' : 'Charging'
+  const vaultSignalLabel = canClaimDailyReward ? 'Ready' : 'Charging'
   const dailyShardReward = ECONOMY_REWARDS.dailyShards
   const claimButtonLabel = canClaimDailyReward ? `Claim +${dailyShardReward}` : 'Claimed Today'
   const vaultPrimaryLabel = canClaimDailyReward ? `${nextRewardLabel} waiting` : 'Vault charging'
@@ -140,13 +140,13 @@ export function ShopScreen() {
         <article className={`section-card utility-card shop-market-card shop-view-${shopSubview} ${canClaimDailyReward ? 'claim-ready' : ''}`}>
           <div className="shop-market-ledger">
             <div className="shop-market-title">
-              <span className="subview-label">{viewLabel}</span>
+              {shopSubview !== 'hub' && <span className="subview-label">{viewLabel}</span>}
               <strong>Merchant's Bazaar</strong>
             </div>
             <div className="shop-resource-strip" aria-label="Shop resources">
-              <span className="shop-resource-chip"><strong>{shards}</strong> Shards</span>
-              <span className={`shop-resource-chip ${canClaimDailyReward ? 'is-accent' : ''}`.trim()}><strong>{vaultSignalLabel}</strong> Vault</span>
-              <span className="shop-resource-chip"><strong>{packOffers.length}</strong> Packs</span>
+              <span className={`shop-resource-chip ${canClaimDailyReward ? 'is-accent' : ''}`.trim()}>Vault <strong>{vaultSignalLabel}</strong></span>
+              <span className="shop-resource-chip">Packs <strong>{openablePackCount}/{packOffers.length}</strong></span>
+              <span className="shop-resource-chip">Excess <strong>{breakable.length}</strong></span>
             </div>
           </div>
 
@@ -189,24 +189,28 @@ export function ShopScreen() {
                   <strong>{packAccessLabel}</strong>
                   <span>{packDetailLabel}</span>
                   <span className="shop-hub-panel-stat">{totalOwnedCards} cards logged</span>
+                  <img className="shop-hub-panel-emblem is-pack" src={UI_ASSETS.packs.standard} alt="" aria-hidden="true" />
                 </button>
                 <button className="shop-hub-panel shop-hub-panel-themes" onClick={() => setShopSubview('themes')}>
                   <span className="shop-hub-panel-kicker">Themes</span>
                   <strong>{ownedThemes.length}/{THEME_OFFERS.length} owned</strong>
                   <span>{themeUnlockLabel}</span>
                   <span className="shop-hub-panel-stat">Equipped · {selectedThemeName}</span>
+                  <span className="shop-hub-panel-emblem" aria-hidden="true"><InterfaceGlyph name="theme" /></span>
                 </button>
                 <button className="shop-hub-panel shop-hub-panel-borders" onClick={() => setShopSubview('borders')}>
                   <span className="shop-hub-panel-kicker">Borders</span>
                   <strong>{ownedCardBorders.length}/{CARD_BORDER_OFFERS.length} owned</strong>
                   <span>{borderUnlockLabel}</span>
                   <span className="shop-hub-panel-stat">Equipped · {selectedBorderName}</span>
+                  <span className="shop-hub-panel-emblem" aria-hidden="true"><InterfaceGlyph name="frame" /></span>
                 </button>
                 <button className="shop-hub-panel shop-hub-panel-breakdown" onClick={() => setShopSubview('breakdown')}>
                   <span className="shop-hub-panel-kicker">Breakdown</span>
                   <strong>{breakable.length} excess cards</strong>
                   <span>Convert duplicates into shards</span>
                   <span className="shop-hub-panel-stat">Next cosmetic · {nextCosmeticLabel}</span>
+                  <span className="shop-hub-panel-emblem" aria-hidden="true"><InterfaceGlyph name="questShards" /></span>
                 </button>
               </div>
             </div>
@@ -285,7 +289,7 @@ export function ShopScreen() {
                 return (
                   <div className="theme-offer-card" key={border.id}>
                     <div className={`border-preview border-${border.id}`} aria-hidden="true">
-                      <img className="border-preview-icon" src="/generated/ui/icon-attack.svg" alt="" aria-hidden="true" />
+                      <InterfaceGlyph name="card" className="border-preview-icon" />
                     </div>
                     <strong>{border.name}</strong>
                     <p className="mini-text">{border.description}</p>

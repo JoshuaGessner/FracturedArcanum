@@ -412,3 +412,54 @@ button.danger:hover { filter: brightness(1.08); }
 
 .toast-line { margin-top: var(--space-2-5); }
 
+
+/* ─── Social hub empty state ─────────────────────────────────────── */
+/* A first-time player's tavern: one lit lantern and a clear next step,
+   rather than a lone sentence under the form. */
+.social-empty-state {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-2);
+  padding: var(--space-5) var(--space-3) var(--space-3);
+  text-align: center;
+}
+
+.social-empty-emblem {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  color: var(--ember-light);
+  background: radial-gradient(circle at 50% 45%, rgba(224, 168, 78, 0.22), var(--umber-950) 70%);
+  box-shadow: 0 0 0 1px var(--brass-dim), 0 0 0 6px rgba(13, 10, 10, 0.55), 0 0 0 7px rgba(201, 169, 110, 0.18), 0 0 28px rgba(224, 168, 78, 0.18);
+}
+
+.social-empty-emblem .glyph {
+  width: 54%;
+  height: 54%;
+}
+
+.social-empty-state strong {
+  font-family: var(--font-display);
+  font-size: var(--font-lg);
+  letter-spacing: 0.04em;
+  color: var(--ember-light);
+}
+
+.social-empty-state .note {
+  max-width: 34ch;
+  margin: 0;
+}
+
+.social-empty-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.social-empty-links button {
+  min-width: 140px;
+}

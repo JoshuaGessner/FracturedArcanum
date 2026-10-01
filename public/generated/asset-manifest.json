@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-01T02:36:24.391Z",
+  "generatedAt": "2026-10-01T02:43:50.734Z",
   "provider": "local-svg",
   "apiReady": false,
   "commercialSafe": true,
@@ -698,6 +698,36 @@
     {
       "id": "glyph-quest-deck.svg",
       "path": "/generated/ui/glyph-quest-deck.svg",
+      "type": "ui-glyph",
+      "source": "local-generated"
+    },
+    {
+      "id": "glyph-edit.svg",
+      "path": "/generated/ui/glyph-edit.svg",
+      "type": "ui-glyph",
+      "source": "local-generated"
+    },
+    {
+      "id": "glyph-delete.svg",
+      "path": "/generated/ui/glyph-delete.svg",
+      "type": "ui-glyph",
+      "source": "local-generated"
+    },
+    {
+      "id": "glyph-theme.svg",
+      "path": "/generated/ui/glyph-theme.svg",
+      "type": "ui-glyph",
+      "source": "local-generated"
+    },
+    {
+      "id": "glyph-frame.svg",
+      "path": "/generated/ui/glyph-frame.svg",
+      "type": "ui-glyph",
+      "source": "local-generated"
+    },
+    {
+      "id": "glyph-lantern.svg",
+      "path": "/generated/ui/glyph-lantern.svg",
       "type": "ui-glyph",
       "source": "local-generated"
     },

@@ -27,7 +27,7 @@ export function CollectionScreen() {
   const { handleStartQueue, queueState } = useQueue()
   const ownedUniqueCards = CARD_LIBRARY.filter((card) => (collection[card.id] ?? 0) > 0).length
   const collectionCompletion = getCompletionPercent(ownedUniqueCards, CARD_LIBRARY.length)
-  const collectionCircumference = 2 * Math.PI * 20
+  const collectionCircumference = 2 * Math.PI * 42
   const collectionOffset = collectionCircumference * (1 - collectionCompletion / 100)
   const rarityStats = getRarityCompletion(collection, CARD_LIBRARY)
   const activeDeckName = savedDecks.find((deck) => deck.id === activeDeckId)?.name ?? 'Choose a deck'
@@ -92,12 +92,12 @@ export function CollectionScreen() {
           visual={(
             <div className="collection-progress-ring" aria-label={`Collection completion ${collectionCompletion}%`}>
               <svg className="collection-progress-svg" viewBox="0 0 100 100" role="presentation" aria-hidden="true">
-                <circle className="collection-progress-track" cx="50" cy="50" r="20" />
+                <circle className="collection-progress-track" cx="50" cy="50" r="42" />
                 <circle
                   className="collection-progress-value"
                   cx="50"
                   cy="50"
-                  r="20"
+                  r="42"
                   style={{ strokeDasharray: collectionCircumference, strokeDashoffset: collectionOffset }}
                 />
               </svg>
@@ -150,7 +150,7 @@ export function CollectionScreen() {
                     </button>
                     <div className="deck-roster-actions">
                       <button className="ghost mini icon-only" onClick={() => handleRenameDeck(deck)} aria-label={`Rename ${deck.name}`} title="Rename">
-                        <img className="action-icon" src="/generated/ui/icon-edit.svg" alt="" aria-hidden="true" />
+                        <InterfaceGlyph name="edit" className="action-icon" />
                       </button>
                       <button
                         className="ghost mini icon-only"
@@ -159,7 +159,7 @@ export function CollectionScreen() {
                         aria-label={`Delete ${deck.name}`}
                         title={savedDecks.length <= 1 ? 'You need at least one deck' : 'Delete'}
                       >
-                        <img className="action-icon" src="/generated/ui/icon-delete.svg" alt="" aria-hidden="true" />
+                        <InterfaceGlyph name="delete" className="action-icon" />
                       </button>
                     </div>
                   </li>
@@ -222,10 +222,10 @@ export function CollectionScreen() {
               const maxCurve = Math.max(1, ...Object.values(curve))
               return (
                 <>
-                  <span className="deck-rarity-summary"><RarityBadge rarity="common" /> <strong>{breakdown.common}</strong></span>
-                  <span className="deck-rarity-summary"><RarityBadge rarity="rare" /> <strong>{breakdown.rare}</strong></span>
-                  <span className="deck-rarity-summary"><RarityBadge rarity="epic" /> <strong>{breakdown.epic}</strong></span>
-                  <span className="deck-rarity-summary"><RarityBadge rarity="legendary" /> <strong>{breakdown.legendary}</strong></span>
+                  <span className="deck-rarity-summary"><RarityBadge rarity="common" iconOnly /> <strong>{breakdown.common}</strong></span>
+                  <span className="deck-rarity-summary"><RarityBadge rarity="rare" iconOnly /> <strong>{breakdown.rare}</strong></span>
+                  <span className="deck-rarity-summary"><RarityBadge rarity="epic" iconOnly /> <strong>{breakdown.epic}</strong></span>
+                  <span className="deck-rarity-summary"><RarityBadge rarity="legendary" iconOnly /> <strong>{breakdown.legendary}</strong></span>
                   <span className="mana-curve" aria-label="Mana curve">
                     {[0, 1, 2, 3, 4, 5, 6, 7].map((cost) => (
                       <span key={cost} className="mana-curve-col" title={`${cost === 7 ? '7+' : cost} mana: ${curve[cost] ?? 0}`}>
@@ -313,7 +313,7 @@ export function CollectionScreen() {
               onClick={() => handleQuickBattle(preset.name, preset.config)}
               title={`Battle AI with a curated ${preset.name} deck`}
             >
-              <img className="action-icon" src="/generated/ui/icon-attack.svg" alt="" aria-hidden="true" /> {preset.name}
+              <InterfaceGlyph name="questBattle" className="action-icon" /> {preset.name}
             </button>
           ))}
         </div>

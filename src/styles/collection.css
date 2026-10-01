@@ -29,21 +29,23 @@
 
 .collection-progress-ring {
   position: relative;
-  width: 48px;
-  height: 48px;
+  width: 52px;
+  height: 52px;
   flex: 0 0 auto;
 }
 
 .collection-progress-svg {
-  width: 48px;
-  height: 48px;
+  display: block;
+  width: 100%;
+  height: 100%;
   transform: rotate(-90deg);
+  filter: drop-shadow(0 0 6px rgba(224, 168, 78, 0.25));
 }
 
 .collection-progress-track,
 .collection-progress-value {
   fill: none;
-  stroke-width: 7;
+  stroke-width: 9;
 }
 
 .collection-progress-track {
@@ -58,7 +60,7 @@
 
 .collection-progress-core {
   position: absolute;
-  inset: var(--space-1-5);
+  inset: 7px;
   border-radius: 50%;
   display: grid;
   place-items: center;
@@ -67,8 +69,49 @@
 }
 
 .collection-progress-core strong {
-  font-size: 0.7rem;
-  color: var(--text);
+  font-family: var(--font-display);
+  font-size: 0.72rem;
+  color: var(--ember-light);
+}
+
+/* The archive header is status, not the scene: one row of ring, title and
+   badge, then the two tiles side by side, so the cards start above the fold
+   on a phone. */
+.collection-scene-header .scene-header-top.has-visual {
+  align-items: center;
+}
+
+.collection-scene-header .scene-header-copy {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.collection-scene-header .scene-header-copy-main strong {
+  font-family: var(--font-display);
+  letter-spacing: 0.03em;
+}
+
+.collection-scene-header .scene-header-badges {
+  flex: none;
+}
+
+.collection-scene-header .scene-status-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.collection-scene-header .scene-status-tile {
+  padding: 6px 10px;
+}
+
+.collection-scene-header .scene-status-tile .mini-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* ─── Multi-deck roster ───────────────────────────────────────────── */
@@ -86,6 +129,31 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: var(--space-1);
+}
+
+.deck-roster-head strong {
+  font-family: var(--font-display);
+  font-size: var(--font-sm);
+  letter-spacing: 0.06em;
+  color: var(--bone-dim);
+}
+
+.deck-roster-head button {
+  min-height: 36px;
+  padding: 4px 12px;
+  white-space: nowrap;
+}
+
+.deck-roster-actions button {
+  color: var(--bone-dim);
+}
+
+.deck-roster-actions button:hover:not(:disabled) {
+  color: var(--ember-light);
+}
+
+.deck-roster-actions button[aria-label^="Delete"]:hover:not(:disabled) {
+  color: var(--blood-light);
 }
 
 .deck-roster-list {
@@ -109,8 +177,8 @@
 }
 
 .deck-roster-item.active {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 1px var(--accent) inset, inset 4px 0 0 rgba(217, 159, 59, 0.36), 0 8px 18px rgba(0, 0, 0, 0.18);
+  border-color: rgba(224, 168, 78, 0.6);
+  box-shadow: 0 0 0 1px rgba(224, 168, 78, 0.35) inset, inset 4px 0 0 var(--ember), 0 8px 18px rgba(0, 0, 0, 0.18);
 }
 
 .deck-roster-select {
@@ -134,7 +202,9 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-1-5);
-  font-weight: 600;
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: 0.02em;
 }
 
 .deck-roster-active-dot {
@@ -188,7 +258,7 @@ button.icon-only {
   cursor: pointer;
 }
 
-.builder-toggle input { accent-color: var(--accent); }
+.builder-toggle input { accent-color: var(--ember); }
 
 .builder-search {
   flex: 1 1 160px;
@@ -203,7 +273,7 @@ button.icon-only {
 
 .builder-search:focus {
   outline: none;
-  border-color: var(--accent);
+  border-color: var(--ember);
   box-shadow: var(--focus-ring);
 }
 
@@ -211,6 +281,31 @@ button.icon-only {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-1);
+}
+
+/* On a phone the five filters ride one scrolling rail instead of wrapping
+   into two rows of pills. */
+@media (max-width: 720px) {
+  .builder-rarity-chips {
+    flex: 1 1 100%;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    overscroll-behavior-x: contain;
+  }
+
+  .builder-rarity-chips::-webkit-scrollbar {
+    display: none;
+  }
+
+  .builder-rarity-chips .chip {
+    flex: none;
+    min-height: 40px;
+  }
+
+  .builder-search {
+    min-width: 0;
+  }
 }
 
 .builder-rarity-chips .rarity-gem {
@@ -235,10 +330,10 @@ button.icon-only {
 
 .chip:hover { color: var(--text); }
 .chip.chip-active {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: white;
-  box-shadow: 0 4px 14px rgba(155, 88, 183, 0.22);
+  background: var(--btn-primary-bg);
+  border-color: var(--btn-primary-border);
+  color: var(--btn-primary-text);
+  box-shadow: var(--btn-primary-glow);
 }
 
 /* ─── Deck stats: rarity counts + mana curve ─────────────────────── */
@@ -281,7 +376,7 @@ button.icon-only {
   display: block;
   width: 100%;
   min-height: 2px;
-  background: linear-gradient(180deg, var(--accent), var(--accent-blue));
+  background: linear-gradient(180deg, var(--verdigris-light), var(--verdigris-deep));
   border-radius: 2px 2px 0 0;
   transition: height 200ms ease;
 }

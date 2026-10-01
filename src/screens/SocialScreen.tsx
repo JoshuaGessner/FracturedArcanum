@@ -57,6 +57,13 @@ export function SocialScreen() {
 
           {socialSubview === 'hub' && (
             <div className="social-hub-panel">
+                {!friends.length && (
+                  <div className="social-empty-state">
+                    <span className="social-empty-emblem" aria-hidden="true"><InterfaceGlyph name="lantern" /></span>
+                    <strong>An empty table</strong>
+                    <p className="note">Add a friend by username to challenge them to unranked duels and trade cards.</p>
+                  </div>
+                )}
                 <form className="social-inline-form" onSubmit={(event) => void handleAddFriend(event)}>
                   <input
                     className="text-input"
@@ -120,8 +127,14 @@ export function SocialScreen() {
                       </div>
                     )
                   })}
-                  {!friends.length && <p className="note">No friends yet. Enter a username above to add your first friend.</p>}
                 </div>
+
+                {!friends.length && (
+                  <div className="social-empty-links">
+                    <button className="ghost" onClick={() => setSocialSubview('rankings')}>View Rankings</button>
+                    <button className="ghost" onClick={() => setSocialSubview('clan')}>Find a Clan</button>
+                  </div>
+                )}
             </div>
           )}
         </article>

@@ -483,8 +483,10 @@
 }
 
 .shop-market-title strong {
-  font-size: clamp(1rem, 2.4vw, 1.18rem);
-  color: #fdfcfa;
+  font-family: var(--font-display);
+  font-size: clamp(1.05rem, 2.6vw, 1.3rem);
+  letter-spacing: 0.03em;
+  color: var(--ember-light);
 }
 
 .shop-resource-strip {
@@ -500,17 +502,26 @@
   gap: 5px;
   min-height: 30px;
   padding: 5px 9px;
-  border-radius: var(--radius-pill);
-  border: 1px solid rgba(214, 192, 154, 0.16);
-  background: rgba(199, 170, 119, 0.13);
-  color: #faf6ed;
-  font-size: 0.78rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--brass-dim);
+  background: rgba(13, 10, 10, 0.45);
+  color: var(--bone-dim);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
   white-space: nowrap;
 }
 
 .shop-resource-chip strong {
   color: #f6e7cc;
-  font-size: 0.9rem;
+  font-size: 0.86rem;
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
+
+.shop-resource-chip.is-accent strong {
+  color: var(--ember-light);
 }
 
 .shop-resource-chip.is-accent {
@@ -564,9 +575,25 @@
 @media (min-width: 820px) {
   .shop-hub-surface {
     grid-template-columns: minmax(260px, 0.8fr) minmax(0, 1.2fr);
-    grid-template-rows: auto;
-    align-content: start;
-    align-items: start;
+    grid-template-rows: minmax(0, 1fr);
+    align-content: stretch;
+    align-items: stretch;
+  }
+
+  .shop-hub-surface > .shop-hub-panels {
+    grid-auto-rows: minmax(164px, 1fr);
+  }
+
+  .shop-hub-surface .shop-hub-panel-emblem {
+    width: 72px;
+    height: 72px;
+    right: 18px;
+    bottom: 18px;
+  }
+
+  .shop-hub-surface .shop-hub-panel-emblem.is-pack {
+    width: 64px;
+    height: 90px;
   }
 }
 
@@ -611,7 +638,7 @@
 @media (min-width: 820px) {
   .shop-feature-panel {
     grid-template-columns: 1fr;
-    align-content: start;
+    align-content: center;
     min-height: 0;
     padding: 18px;
   }
@@ -856,17 +883,44 @@
   color: #fdfbf7;
 }
 
-.shop-hub-panel::before {
-  content: '';
+/* An engraved emblem in the lower corner: the pack's own reliquary art, or
+   the section's glyph in brass. */
+.shop-hub-panel-emblem {
   position: absolute;
-  inset: auto 12px 12px auto;
-  width: 48px;
-  height: 48px;
-  border-radius: 16px;
-  opacity: 0.18;
+  right: 12px;
+  bottom: 12px;
+  z-index: 0;
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  color: var(--ember);
+  opacity: 0.7;
   pointer-events: none;
-  background: linear-gradient(135deg, rgba(217, 159, 59, 0.7), rgba(199, 170, 119, 0.72));
-  transform: rotate(10deg);
+}
+
+.shop-hub-panel-emblem .glyph {
+  width: 100%;
+  height: 100%;
+}
+
+.shop-hub-panel-emblem.is-pack {
+  width: 46px;
+  height: 64px;
+  object-fit: contain;
+  opacity: 0.9;
+  transform: rotate(-6deg);
+  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.5));
+}
+
+.shop-hub-panel:hover .shop-hub-panel-emblem,
+.shop-hub-panel:focus-visible .shop-hub-panel-emblem {
+  opacity: 0.85;
+}
+
+.shop-hub-panel:hover .shop-hub-panel-emblem.is-pack,
+.shop-hub-panel:focus-visible .shop-hub-panel-emblem.is-pack {
+  opacity: 1;
 }
 
 .shop-hub-panel::after {
@@ -878,7 +932,7 @@
   background: radial-gradient(circle at top right, rgba(214, 192, 154, 0.12), transparent 48%);
 }
 
-.shop-hub-panel > * {
+.shop-hub-panel > :not(.shop-hub-panel-emblem) {
   position: relative;
   z-index: 1;
 }
@@ -898,15 +952,16 @@
 
 /* Contents, keyed to the panel itself. */
 @container shoppanel (width < 190px) {
-  .shop-hub-panel::before {
-    width: 36px;
-    height: 36px;
-    inset: auto 10px 10px auto;
-    opacity: 0.16;
+  .shop-hub-panel-emblem {
+    right: 10px;
+    bottom: 10px;
+    width: 38px;
+    height: 38px;
   }
 
-  .shop-hub-panel-packs::before {
-    opacity: 0.28;
+  .shop-hub-panel-emblem.is-pack {
+    width: 34px;
+    height: 48px;
   }
 
   .shop-hub-panel > span:not(.shop-hub-panel-kicker) {
@@ -924,25 +979,6 @@
 .shop-hub-panel:focus-visible {
   border-color: rgba(217, 159, 59, 0.32);
   filter: brightness(1.06);
-}
-
-.shop-hub-panel-packs::before {
-  background: url('/generated/ui/pack-standard.svg') center / contain no-repeat;
-  opacity: 0.34;
-  transform: none;
-}
-
-.shop-hub-panel-themes::before {
-  background: linear-gradient(135deg, rgba(217, 159, 59, 0.74), rgba(211, 187, 147, 0.76));
-}
-
-.shop-hub-panel-borders::before {
-  border: 2px solid rgba(214, 192, 154, 0.62);
-  background: linear-gradient(135deg, rgba(33, 26, 25, 0.08), rgba(78, 181, 154, 0.42));
-}
-
-.shop-hub-panel-breakdown::before {
-  background: linear-gradient(135deg, rgba(86, 158, 134, 0.62), rgba(217, 159, 59, 0.68));
 }
 
 .shop-hub-panel-kicker {

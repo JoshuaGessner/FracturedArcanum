@@ -222,6 +222,11 @@ export const UI_ASSETS = {
     questShards: toUiAsset('glyph-quest-shards.svg'),
     questDeck: toUiAsset('glyph-quest-deck.svg'),
     contract: toUiAsset('glyph-contract.svg'),
+    edit: toUiAsset('glyph-edit.svg'),
+    theme: toUiAsset('glyph-theme.svg'),
+    lantern: toUiAsset('glyph-lantern.svg'),
+    frame: toUiAsset('glyph-frame.svg'),
+    delete: toUiAsset('glyph-delete.svg'),
   },
   /** The face every card shows while it is still face down. */
   cardBack: toUiAsset('card-back.svg'),

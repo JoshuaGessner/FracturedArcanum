@@ -323,10 +323,9 @@
      and this block used to assert that they were. */
 
   /* Collection density — compact roster, tighter hero */
-  .collection-progress-ring,
-  .collection-progress-svg { width: 40px; height: 40px; }
-  .collection-progress-core { inset: 4px; }
-  .collection-progress-core strong { font-size: 0.6rem; }
+  .collection-progress-ring { width: 44px; height: 44px; }
+  .collection-progress-core { inset: 6px; }
+  .collection-progress-core strong { font-size: 0.62rem; }
   .deck-roster {
     padding: 6px 8px;
     max-height: none;
