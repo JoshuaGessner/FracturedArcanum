@@ -563,6 +563,60 @@ describe('BattleScreen mobile layout', () => {
     expect(screen.getByText(/guard blocks the hero/i)).toBeTruthy()
   })
 
+  it('marks a frozen unit and treats a granted-keyword Guard as a guard', () => {
+    const game = createGame('ai', {})
+    // Rimebound Colossus: primary effect is Frostbite, Guard is granted.
+    game.enemy.board[0] = {
+      instanceId: 'colossus-instance-1',
+      uid: 'colossus-1',
+      id: 'glacial-colossus',
+      name: 'Rimebound Colossus',
+      icon: '🏔️',
+      cost: 7,
+      attack: 4,
+      health: 10,
+      currentHealth: 10,
+      exhausted: true,
+      frozen: true,
+      effect: 'frostbite',
+      keywords: ['guard'],
+      rarity: 'epic',
+      tribe: 'elemental',
+      text: 'Test colossus',
+    }
+    game.player.board[0] = {
+      instanceId: 'ally-instance-1',
+      uid: 'ally-1',
+      id: 'spark-imp',
+      name: 'Crawling Spark',
+      icon: '⚡',
+      cost: 1,
+      attack: 2,
+      health: 1,
+      currentHealth: 1,
+      exhausted: false,
+      rarity: 'common',
+      tribe: 'elemental',
+      text: 'Test ally',
+    }
+
+    const { container } = renderBattleScreen({
+      activePlayer: game.player,
+      defendingPlayer: game.enemy,
+      defenderHasGuard: true,
+    }, {
+      game,
+      selectedAttacker: 0,
+    })
+
+    const colossus = container.querySelector('[class*="slot"].frozen')
+    expect(colossus).toBeTruthy()
+    expect(colossus?.classList.contains('guard')).toBe(true)
+    expect(colossus?.classList.contains('is-valid-defender')).toBe(true)
+    expect(colossus?.classList.contains('is-invalid-defender')).toBe(false)
+    expect(screen.getByText('Frozen')).toBeTruthy()
+  })
+
   it('marks battle card art as non-draggable so long press stays inside inspect flow', () => {
     renderBattleScreen()
 
