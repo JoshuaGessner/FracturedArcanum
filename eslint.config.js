@@ -20,4 +20,20 @@ export default defineConfig([
       globals: globals.browser,
     },
   },
+  {
+    // Server modules are plain JS, so nothing else catches a name that stayed
+    // behind when code moved between files — it is only a free variable until
+    // the line runs. That is how `challenge:accept` came to crash the process.
+    // server/game.js and server/ai.js are compiled from src/ and linted there.
+    files: ['server/**/*.js'],
+    ignores: ['server/game.js', 'server/ai.js'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'module',
+      globals: globals.node,
+    },
+    rules: {
+      'no-undef': 'error',
+    },
+  },
 ])

@@ -36,6 +36,7 @@ describe('createRealtime', () => {
       trackPresence: ['acct-a', 'socket-1'],
       untrackPresence: ['acct-a', 'socket-1'],
       isOnline: ['acct-a'],
+      findConnectedSocket: ['acct-a'],
       emitToAccount: ['acct-a', 'test:event', {}],
       disconnectAccountSockets: ['acct-a', 'testing'],
       findChallengeForAccount: ['acct-a', 'outgoing'],
@@ -111,5 +112,18 @@ describe('createRealtime', () => {
     expect(realtime.isOnline('acct-a')).toBe(true)
     realtime.untrackPresence('acct-a', 'socket-1')
     expect(realtime.isOnline('acct-a')).toBe(false)
+  })
+
+  it('finds a connected socket for an account, skipping dead ones', () => {
+    const io = fakeIo()
+    const realtime = createRealtime({ io, matchIdleTimeoutMs: 15 * 60 * 1000 })
+    const live = { id: 'live', connected: true }
+    io.sockets.sockets.set('dead', { id: 'dead', connected: false })
+    io.sockets.sockets.set('live', live)
+    expect(realtime.findConnectedSocket('acct-a')).toBeNull()
+    realtime.trackPresence('acct-a', 'dead')
+    expect(realtime.findConnectedSocket('acct-a')).toBeNull()
+    realtime.trackPresence('acct-a', 'live')
+    expect(realtime.findConnectedSocket('acct-a')).toBe(live)
   })
 })

@@ -51,6 +51,23 @@ export function createRealtime({ io, matchIdleTimeoutMs }) {
     return presence.has(accountId)
   }
 
+  /**
+   * The first still-connected socket an account holds, or null.
+   *
+   * Callers that need one concrete socket for an account (a duel seat) ask for
+   * it here rather than reading the presence map — the map has one owner, and
+   * the socket handler once crashed the whole process by reaching for it.
+   */
+  function findConnectedSocket(accountId) {
+    const socketIds = presence.get(accountId)
+    if (!socketIds) return null
+    for (const socketId of socketIds) {
+      const socket = io.sockets.sockets.get(socketId)
+      if (socket?.connected) return socket
+    }
+    return null
+  }
+
   function emitToAccount(accountId, event, payload) {
     const sockets = presence.get(accountId)
     if (!sockets) return 0
@@ -459,6 +476,7 @@ export function createRealtime({ io, matchIdleTimeoutMs }) {
     trackPresence,
     untrackPresence,
     isOnline,
+    findConnectedSocket,
     emitToAccount,
     disconnectAccountSockets,
     findChallengeForAccount,

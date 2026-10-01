@@ -1,5 +1,22 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { registerConnectionHandler } from './connection.js'
+import { destroyRoom, getRoomByAccount } from '../game-room.js'
+
+// The handler reads profiles and decks straight from db.js. Stubbed so a test
+// can drive whole socket conversations without opening a database.
+vi.mock('../db.js', async () => {
+  const { DEFAULT_DECK_CONFIG } = await import('../game.js')
+  return {
+    acknowledgeMatchSettlement: () => false,
+    getLatestUnacknowledgedSettlement: () => null,
+    getMatchSettlementForAccount: () => null,
+    getProfile: (accountId) => ({ display_name: `Name ${accountId}`, season_rating: 1200, selected_card_border: 'default' }),
+    getSocialOverview: () => ({ friends: [] }),
+    isFriendOf: () => true,
+    sanitizeCardBorder: () => 'default',
+    validateDeckForMatch: () => ({ ok: true, deckConfig: { ...DEFAULT_DECK_CONFIG } }),
+  }
+})
 
 /**
  * The connection handler was lifted out of server.js along with its
@@ -39,6 +56,7 @@ function fakeCtx(io) {
     trackPresence: noop,
     untrackPresence: noop,
     isOnline: () => false,
+    findConnectedSocket: () => null,
     emitToAccount: noop,
     findChallengeForAccount: () => null,
     pendingChallenges: new Map(),
@@ -88,5 +106,81 @@ describe('registerConnectionHandler', () => {
     registerConnectionHandler(ctx)
     expect(ctx.socketRateLimits).toBeUndefined()
     expect(ctx.checkSocketRate).toBeUndefined()
+  })
+})
+
+/** A socket double that records what it is sent and lets a test fire events. */
+function fakeSocket(io, id, accountId) {
+  const listeners = new Map()
+  const socket = {
+    id,
+    connected: true,
+    data: { accountId, username: accountId, displayName: accountId },
+    sent: [],
+    on: (event, fn) => listeners.set(event, fn),
+    emit: (event, payload) => socket.sent.push({ event, payload }),
+    join: () => {},
+    leave: () => {},
+    fire: (event, payload) => listeners.get(event)?.(payload, () => {}),
+    received: (event) => socket.sent.filter((entry) => entry.event === event),
+  }
+  io.sockets.sockets.set(id, socket)
+  return socket
+}
+
+describe('friend challenges', () => {
+  /**
+   * Regression: accepting read a `presence` map that never moved into this
+   * module. socket.io runs listeners on a bare process.nextTick, so the
+   * ReferenceError took the whole server down — and every live match with it.
+   */
+  it('accepting a challenge seats both players in a duel', () => {
+    const io = fakeIo()
+    const ctx = fakeCtx(io)
+    const online = new Set(['acct-a', 'acct-b'])
+    ctx.isOnline = (accountId) => online.has(accountId)
+    ctx.findConnectedSocket = (accountId) =>
+      [...io.sockets.sockets.values()].find((s) => s.data.accountId === accountId && s.connected) ?? null
+    ctx.findChallengeForAccount = () => null
+    registerConnectionHandler(ctx)
+    const connect = io.handlers.get('connection')
+
+    const challenger = fakeSocket(io, 'sock-a', 'acct-a')
+    const accepter = fakeSocket(io, 'sock-b', 'acct-b')
+    connect(challenger)
+    connect(accepter)
+
+    challenger.fire('challenge:send', { targetAccountId: 'acct-b' })
+    const [sent] = challenger.received('challenge:sent')
+    expect(sent?.payload.challengeId).toBeTruthy()
+
+    expect(() => accepter.fire('challenge:accept', { challengeId: sent.payload.challengeId })).not.toThrow()
+    expect(challenger.received('game:start')).toHaveLength(1)
+    expect(accepter.received('game:start')).toHaveLength(1)
+    expect(ctx.pendingChallenges.get(sent.payload.challengeId)?.status).toBe('accepted')
+
+    const room = getRoomByAccount('acct-a')
+    expect(room?.mode).toBe('unranked')
+    if (room) destroyRoom(room.roomId)
+  })
+
+  it('cancels when the challenger has no connected socket left', () => {
+    const io = fakeIo()
+    const ctx = fakeCtx(io)
+    ctx.isOnline = () => true
+    ctx.findConnectedSocket = () => null
+    registerConnectionHandler(ctx)
+    const connect = io.handlers.get('connection')
+    const challenger = fakeSocket(io, 'sock-c', 'acct-c')
+    const accepter = fakeSocket(io, 'sock-d', 'acct-d')
+    connect(challenger)
+    connect(accepter)
+
+    challenger.fire('challenge:send', { targetAccountId: 'acct-d' })
+    const [sent] = challenger.received('challenge:sent')
+    accepter.fire('challenge:accept', { challengeId: sent.payload.challengeId })
+
+    expect(accepter.received('challenge:error').at(-1)?.payload.error).toBe('Challenger disconnected.')
+    expect(ctx.pendingChallenges.get(sent.payload.challengeId)?.status).toBe('cancelled')
   })
 })

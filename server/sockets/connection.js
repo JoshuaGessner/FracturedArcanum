@@ -46,6 +46,7 @@ export function registerConnectionHandler(ctx) {
     trackPresence,
     untrackPresence,
     isOnline,
+    findConnectedSocket,
     emitToAccount,
     findChallengeForAccount,
     pendingChallenges,
@@ -436,24 +437,9 @@ io.on('connection', (socket) => {
       return
     }
 
-    // Make sure the challenger is still connected with at least one socket.
-    const challengerSocketIds = presence.get(challenge.fromAccountId)
-    if (!challengerSocketIds || challengerSocketIds.size === 0) {
-      challenge.status = 'cancelled'
-      socket.emit('challenge:error', { error: 'Challenger disconnected.' })
-      return
-    }
-    // Pick the first still-connected socket as the "room owner" for the
-    // challenger's side. If there are multiple tabs, all of them will be
-    // notified via emitToAccount below so every tab's UI stays in sync.
-    let challengerSocket = null
-    for (const socketId of challengerSocketIds) {
-      const candidate = io.sockets.sockets.get(socketId)
-      if (candidate?.connected) {
-        challengerSocket = candidate
-        break
-      }
-    }
+    // The challenger's seat goes to their first still-connected socket. If
+    // they have several tabs, every one is told via emitToAccount below.
+    const challengerSocket = findConnectedSocket(challenge.fromAccountId)
     if (!challengerSocket) {
       challenge.status = 'cancelled'
       socket.emit('challenge:error', { error: 'Challenger disconnected.' })
