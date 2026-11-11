@@ -533,6 +533,25 @@ backup_local_data() {
   fi
 }
 
+resolve_docker_volume_name() {
+  if ! command_exists docker || docker volume inspect "$DOCKER_VOLUME_NAME" >/dev/null 2>&1; then
+    return 0
+  fi
+
+  detect_compose || return 0
+
+  local container_id=""
+  local mounted_volume=""
+  container_id="$("${COMPOSE_CMD[@]}" ps -q "$COMPOSE_SERVICE" 2>/dev/null | head -n 1 || true)"
+  [[ -n "$container_id" ]] || return 0
+
+  mounted_volume="$(docker inspect --format '{{range .Mounts}}{{if eq .Destination "/app/data"}}{{.Name}}{{end}}{{end}}' "$container_id" 2>/dev/null || true)"
+  if [[ -n "$mounted_volume" ]] && docker volume inspect "$mounted_volume" >/dev/null 2>&1; then
+    log "Resolved Docker data volume from the running service: $mounted_volume"
+    DOCKER_VOLUME_NAME="$mounted_volume"
+  fi
+}
+
 backup_docker_volume() {
   if ! command_exists docker; then
     warn "Docker is not available; skipping Docker volume backup."
@@ -590,6 +609,10 @@ create_backup() {
   fi
 
   CURRENT_BACKUP_DIR="$BACKUP_ROOT/update-$(date '+%Y%m%d-%H%M%S')"
+
+  if [[ "$MODE" == "docker" ]]; then
+    resolve_docker_volume_name
+  fi
 
   if [[ "$DRY_RUN" -eq 1 ]]; then
     log "Would create hard backup at $CURRENT_BACKUP_DIR"
