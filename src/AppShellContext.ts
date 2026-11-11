@@ -10,6 +10,7 @@ import type {
   AdminUser,
   AdminAccountDetail,
   AdminDeletedAccount,
+  GrantTtlHours,
   IssuedGrant,
   AccountRecoveryStatus,
   AccountSessionSummary,
@@ -262,8 +263,12 @@ export type AppShellContextValue = {
   adminDeletedAccounts: AdminDeletedAccount[]
   adminDeletedLoading: boolean
   refreshDeletedAccounts: () => Promise<void>
+  /** Failure from the open account's action buttons, shown beside them. */
+  adminAccountError: string
   issuedGrant: IssuedGrant | null
   setIssuedGrant: React.Dispatch<React.SetStateAction<IssuedGrant | null>>
+  grantTtlHours: GrantTtlHours
+  setGrantTtlHours: React.Dispatch<React.SetStateAction<GrantTtlHours>>
   handleAdminIssueRecoveryGrant: (
     target: AdminUser | AdminAccountDetail,
     resetCredentials: boolean,

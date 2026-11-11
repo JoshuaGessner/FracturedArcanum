@@ -19,6 +19,7 @@ export {
   defaultDataDir,
   getCurrentLegalVersions,
   openDatabase,
+  parseDbTimestamp,
   resolveDataDir,
 } from './db/connection.js'
 
@@ -31,6 +32,7 @@ export {
 } from './db/crypto.js'
 
 export {
+  RECOVERY_GRANT_TTL_HOURS,
   acknowledgeAccountRecoveryCodes,
   authenticateAccount,
   cleanupSessions,
@@ -140,6 +142,7 @@ export {
 export {
   adminDeleteAccount,
   adminIssueRecoveryGrant,
+  resetCredentialsWithGrant,
   adminResetAccountCredentials,
   adminRestoreAccount,
   adminSuspendAccount,

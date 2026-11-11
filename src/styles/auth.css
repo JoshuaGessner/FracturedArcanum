@@ -284,6 +284,82 @@
   padding: 0;
 }
 
+.auth-screen-title {
+  margin: 0;
+  font-size: var(--font-md);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* "Trouble signing in?" and "No recovery codes?" — secondary paths kept one
+   tap away without competing with the passkey button. */
+.auth-help {
+  width: 100%;
+  display: grid;
+  gap: var(--space-2);
+  justify-items: center;
+}
+
+.auth-help > summary {
+  list-style: none;
+  cursor: pointer;
+  color: var(--accent);
+  font-size: 0.82rem;
+  text-decoration: underline;
+  border-radius: var(--radius-sm);
+}
+
+.auth-help > summary::-webkit-details-marker { display: none; }
+
+.auth-help > summary::after {
+  content: ' +';
+  text-decoration: none;
+  display: inline-block;
+  margin-left: var(--space-1);
+}
+
+.auth-help[open] > summary::after { content: ' \2212'; }
+
+.auth-help > summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.auth-form .auth-help { justify-items: stretch; }
+.auth-form .auth-help > summary { justify-self: center; }
+
+.auth-route-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+  width: 100%;
+  text-align: center;
+}
+
+.auth-route-list li {
+  display: grid;
+  gap: 2px;
+}
+
+.auth-route-list .link {
+  justify-self: center;
+  background: none;
+  color: var(--accent);
+  text-decoration: underline;
+  font: inherit;
+  font-size: 0.82rem;
+  padding: 0;
+}
+
+.auth-route-list span {
+  color: var(--muted);
+  font-size: 0.74rem;
+}
+
 .username-label {
   font-size: 0.78rem;
   font-weight: 600;

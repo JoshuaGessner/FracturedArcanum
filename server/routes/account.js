@@ -185,7 +185,7 @@ app.post('/api/auth/login', (request, response) => {
   const { username, password } = request.body ?? {}
   const result = authenticateAccount(String(username ?? ''), String(password ?? ''))
   if (!result.ok) {
-    response.status(401).json(result)
+    response.status(result.status ?? 401).json({ ok: false, error: result.error })
     return
   }
 
@@ -238,7 +238,15 @@ app.post('/api/auth/passkey/login/verify', async (request, response) => {
   try {
     const result = await verifyPasskeyLogin(request.body ?? {}, request)
     if (!result.ok) {
-      response.status(result.status ?? 400).json({ ok: false, error: result.error })
+      response.status(result.status ?? 400).json({
+        ok: false,
+        error: result.error,
+        // Only ever describes the credential the caller's own device just
+        // presented, so echoing it back reveals nothing new.
+        ...(result.unknownCredential
+          ? { unknownCredential: true, credentialId: result.credentialId, rpId: result.rpId }
+          : {}),
+      })
       return
     }
 
@@ -249,6 +257,7 @@ app.post('/api/auth/passkey/login/verify', async (request, response) => {
       token: session.token,
       expiresAt: session.expiresAt,
       profile: sanitizeProfile(profile, result.username, result.accountId),
+      passkeyUser: result.passkeyUser,
     })
   } catch (error) {
     console.warn('Passkey login verification failed:', error)

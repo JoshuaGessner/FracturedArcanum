@@ -7,9 +7,10 @@
  */
 import { createHash, randomBytes } from 'node:crypto'
 import { DEFAULT_DECK_CONFIG } from '../game.js'
-import { CURRENT_ACCOUNT_STANDARD_VERSION, CURRENT_AGE_GATE_VERSION, CURRENT_PRIVACY_VERSION, CURRENT_TERMS_VERSION, LEGACY_MIGRATION_EXPIRY_ENABLED, LEGACY_MIGRATION_WINDOW_DAYS, PASSKEY_DEVICE_LINK_TTL_MS, PENDING_SIGNUP_TTL_MS, RECOVERY_CODE_COUNT, db, getCurrentLegalVersions, prepare, transaction } from './connection.js'
+import { CURRENT_ACCOUNT_STANDARD_VERSION, CURRENT_AGE_GATE_VERSION, CURRENT_PRIVACY_VERSION, CURRENT_TERMS_VERSION, LEGACY_MIGRATION_EXPIRY_ENABLED, LEGACY_MIGRATION_WINDOW_DAYS, PASSKEY_DEVICE_LINK_TTL_MS, PENDING_SIGNUP_TTL_MS, RECOVERY_CODE_COUNT, db, getCurrentLegalVersions, parseDbTimestamp, prepare, transaction } from './connection.js'
 import { hashFingerprint, hashPassword, hashUserAgent, verifyPassword } from './crypto.js'
 import { buildStarterCollection } from './profiles.js'
+import { normalizeAaguid, passkeyProviderName } from '../passkey-providers.js'
 
 // ─── Account operations ──────────────────────────────────────────────────────
 
@@ -36,7 +37,7 @@ export const _getByUsername = prepare(`SELECT * FROM accounts WHERE username = ?
 export const _getById = prepare(`SELECT * FROM accounts WHERE id = ?`)
 const _countAuthenticatorsByAccount = prepare(`SELECT COUNT(*) as cnt FROM account_authenticators WHERE account_id = ?`)
 const _listAuthenticatorsByAccount = prepare(`
-  SELECT id, credential_id, transports, backed_up, device_type, name, created_at, last_used_at
+  SELECT id, credential_id, transports, backed_up, device_type, name, aaguid, created_at, last_used_at
   FROM account_authenticators
   WHERE account_id = ?
   ORDER BY created_at DESC
@@ -48,15 +49,15 @@ const _listAuthenticatorCredentialsByAccount = prepare(`
   ORDER BY created_at DESC
 `)
 const _getAuthenticatorByCredentialId = prepare(`
-  SELECT a.*, acct.username, acct.display_name, acct.role
+  SELECT a.*, acct.username, acct.display_name, acct.role, acct.account_status, acct.deleted_at
   FROM account_authenticators a
   JOIN accounts acct ON acct.id = a.account_id
   WHERE a.credential_id = ?
 `)
 const _insertAuthenticator = prepare(`
   INSERT INTO account_authenticators (
-    id, account_id, credential_id, credential_public_key, counter, transports, backed_up, device_type, name
-  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    id, account_id, credential_id, credential_public_key, counter, transports, backed_up, device_type, name, aaguid
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `)
 const _updateAuthenticatorCounter = prepare(`
   UPDATE account_authenticators
@@ -79,7 +80,7 @@ const _getActiveAuthChallenge = prepare(`
   WHERE id = ?
     AND purpose = ?
     AND consumed_at IS NULL
-    AND expires_at > datetime('now')
+    AND datetime(expires_at) > datetime('now')
 `)
 const _consumeAuthChallenge = prepare(`UPDATE auth_challenges SET consumed_at = datetime('now') WHERE id = ?`)
 const _insertPasskeyDeviceLink = prepare(`
@@ -94,17 +95,17 @@ const _getPendingPasskeyDeviceLink = prepare(`
     AND link.secret_hash = ?
     AND link.status = 'pending'
     AND link.consumed_at IS NULL
-    AND link.expires_at > datetime('now')
+    AND datetime(link.expires_at) > datetime('now')
 `)
 const _consumePasskeyDeviceLink = prepare(`
   UPDATE passkey_device_links
   SET status = 'consumed', consumed_at = datetime('now')
-  WHERE id = ? AND account_id = ? AND status = 'pending' AND consumed_at IS NULL AND expires_at > datetime('now')
+  WHERE id = ? AND account_id = ? AND status = 'pending' AND consumed_at IS NULL AND datetime(expires_at) > datetime('now')
 `)
 const _expirePasskeyDeviceLinks = prepare(`
   UPDATE passkey_device_links
   SET status = 'expired'
-  WHERE status = 'pending' AND expires_at <= datetime('now')
+  WHERE status = 'pending' AND datetime(expires_at) <= datetime('now')
 `)
 const _insertAccountConsent = prepare(`
   INSERT INTO account_consents (id, account_id, document_type, document_version, ip_hash, ua_hash, locale, source)
@@ -255,6 +256,7 @@ function mapAuthenticatorSummary(row) {
     backedUp: Boolean(row.backed_up),
     deviceType: row.device_type,
     name: row.name,
+    providerName: passkeyProviderName(row.aaguid),
     createdAt: row.created_at,
     lastUsedAt: row.last_used_at,
   }
@@ -369,6 +371,13 @@ export function generateAccountRecoveryCodes(accountId, details = {}) {
 // code from the transport layer — no schema or redemption change.
 
 const RECOVERY_GRANT_TTL_MS = 60 * 60 * 1000
+/**
+ * Lifetimes an operator may pick. One hour is the default, matching
+ * temporary-access-pass practice; the longer options exist because a manually
+ * relayed code may sit in a support inbox overnight, and an expired code just
+ * sends the player back to the queue.
+ */
+export const RECOVERY_GRANT_TTL_HOURS = Object.freeze([1, 8, 24])
 const RECOVERY_GRANT_CHANNELS = new Set(['manual', 'email'])
 
 const _insertRecoveryGrant = prepare(`
@@ -387,12 +396,12 @@ const _findRecoveryGrantsByPrefix = prepare(`
   WHERE token_prefix = ?
     AND consumed_at IS NULL
     AND revoked_at IS NULL
-    AND expires_at > datetime('now')
+    AND datetime(expires_at) > datetime('now')
 `)
 const _consumeRecoveryGrant = prepare(`
   UPDATE account_recovery_grants
   SET consumed_at = datetime('now')
-  WHERE id = ? AND consumed_at IS NULL AND revoked_at IS NULL AND expires_at > datetime('now')
+  WHERE id = ? AND consumed_at IS NULL AND revoked_at IS NULL AND datetime(expires_at) > datetime('now')
 `)
 const _listRecoveryGrantsByAccount = prepare(`
   SELECT id, channel, purpose, issued_by_account_id, delivery_hint, note,
@@ -511,12 +520,28 @@ export function completeAccountRecoveryWithGrant(accountId, grantId, credential,
       details.backedUp ? 1 : 0,
       String(details.deviceType ?? ''),
       name,
+      normalizeAaguid(details.aaguid),
     )
     _deleteOtherAuthenticatorsByAccount.run(accountId, passkeyId)
     _revokeSessionsByAccount.run(accountId)
+    // The player now holds a working passkey, so the admin-reset lockout has
+    // done its job. Setup is cleared only when the account's legal standards
+    // are already current — otherwise it stays set, exactly as the schema
+    // backfill would set it, and the player re-accepts on their way in.
     db.prepare(`
       UPDATE accounts
-      SET recovery_codes_acknowledged_at = NULL, last_security_event_at = datetime('now')
+      SET recovery_codes_acknowledged_at = NULL,
+          password_reset_required = 0,
+          account_setup_required = CASE
+            WHEN password_reset_required = 1
+              AND account_standard_version >= ${CURRENT_ACCOUNT_STANDARD_VERSION}
+              AND TRIM(COALESCE(terms_version, '')) = '${CURRENT_TERMS_VERSION}'
+              AND TRIM(COALESCE(privacy_version, '')) = '${CURRENT_PRIVACY_VERSION}'
+              AND TRIM(COALESCE(age_gate_version, '')) = '${CURRENT_AGE_GATE_VERSION}'
+            THEN 0
+            ELSE account_setup_required
+          END,
+          last_security_event_at = datetime('now')
       WHERE id = ?
     `).run(accountId)
     recordSecurityEvent(accountId, 'account_recovered_via_grant', {
@@ -645,6 +670,7 @@ export function completeAccountRecoveryWithPasskey(accountId, recoveryCodeId, cr
       details.backedUp ? 1 : 0,
       String(details.deviceType ?? ''),
       name,
+      normalizeAaguid(details.aaguid),
     )
     _deleteOtherAuthenticatorsByAccount.run(accountId, passkeyId)
     _revokeSessionsByAccount.run(accountId)
@@ -689,7 +715,7 @@ export function getAccountReadiness(accountId) {
 
   const requirements = []
   const now = Date.now()
-  const lockedUntil = account.locked_until ? Date.parse(account.locked_until) : 0
+  const lockedUntil = account.locked_until ? parseDbTimestamp(account.locked_until) : 0
 
   if (account.account_status !== 'active') {
     requirements.push(requirement('account_status', 'Account status', 'This account must be active before play can continue.'))
@@ -780,6 +806,10 @@ export function getPasskeyCredential(credentialId) {
     username: row.username,
     displayName: String(row.display_name ?? '').trim() || row.username,
     role: row.role,
+    // Sign-in reads these so a passkey can never open a deleted or unfinished
+    // account, whichever way the ceremony found it.
+    accountStatus: row.account_status,
+    deletedAt: row.deleted_at,
     credential: {
       id: row.credential_id,
       publicKey: row.credential_public_key,
@@ -889,6 +919,7 @@ export function completePasskeyDeviceLinkRegistration(token, accountId, credenti
       details.backedUp ? 1 : 0,
       String(details.deviceType ?? ''),
       name,
+      normalizeAaguid(details.aaguid),
     )
     recordSecurityEvent(row.account_id, 'passkey_device_link_completed', details)
     return row.account_id
@@ -927,6 +958,7 @@ export function registerAccountPasskey(accountId, credential, details = {}) {
       details.backedUp ? 1 : 0,
       String(details.deviceType ?? ''),
       name,
+      normalizeAaguid(details.aaguid),
     )
   } catch (error) {
     if (String(error?.message ?? '').toLowerCase().includes('unique')) {
@@ -1048,21 +1080,22 @@ export function createAccount(username, password, displayName, deviceFp, ip, use
     return { ok: false, error: `Password must be at least ${PASSWORD_MIN} characters.` }
   }
 
+  const fpHash = hashFingerprint(deviceFp)
+  const ipHash = hashIp(ip)
+  const userAgentHash = hashUserAgent(userAgent)
+
   const existing = _getByUsername.get(resolved.username)
   if (existing) {
-    // A `pending_passkey` row whose auth challenge has already expired can no
-    // longer complete its ceremony, so it is a dead reservation rather than a
-    // real account. Release it so the player can retry their own username
-    // instead of being told it is taken by their own abandoned attempt.
-    if (!releaseDeadSignupReservation(existing)) {
+    // A `pending_passkey` row is a reservation, not an account. Release it when
+    // it can no longer complete, or when this same device is retrying it — the
+    // usual case is a player who cancelled the Touch ID or Windows Hello prompt
+    // and pressed Create again, and used to be told their own name was taken.
+    if (!releaseDeadSignupReservation(existing, { fpHash, ipHash, userAgentHash })) {
       return { ok: false, error: 'That username is already taken.' }
     }
   }
 
   // Anti-sybil: limit accounts per device fingerprint
-  const fpHash = hashFingerprint(deviceFp)
-  const ipHash = hashIp(ip)
-  const userAgentHash = hashUserAgent(userAgent)
   const deviceCount = fpHash ? getCount(_countByFp.get(fpHash)) : 0
   const ipCount = ipHash ? getCount(_countByCreatedIp.get(ipHash)) : 0
   const ipDayCount = ipHash ? getCount(_countByCreatedIpPerDay.get(ipHash)) : 0
@@ -1143,6 +1176,16 @@ export function authenticateAccount(username, password) {
   if (!verifyPassword(password, row.password_hash)) {
     return { ok: false, error: 'Invalid username or password.' }
   }
+  // An operator credential reset retires the legacy password along with the
+  // passkeys. Checked after the password verifies, so the message reveals
+  // nothing to someone who does not already hold it.
+  if (Number(row.password_reset_required) === 1) {
+    return {
+      ok: false,
+      status: 403,
+      error: 'Support reset this account\'s sign-in. Use the recovery code support gave you: choose "No codes left?" then "Use a support code".',
+    }
+  }
   return {
     ok: true,
     accountId: row.id,
@@ -1164,27 +1207,27 @@ const _insertSession = prepare(`
 const _getSessionByRawToken = prepare(`
   SELECT s.*, a.username, COALESCE(NULLIF(TRIM(a.display_name), ''), a.username) as display_name FROM sessions s
   JOIN accounts a ON a.id = s.account_id
-  WHERE s.token = ? AND s.expires_at > datetime('now') AND s.revoked_at IS NULL
+  WHERE s.token = ? AND datetime(s.expires_at) > datetime('now') AND s.revoked_at IS NULL
 `)
 
 const _getSessionByHash = prepare(`
   SELECT s.*, a.username, COALESCE(NULLIF(TRIM(a.display_name), ''), a.username) as display_name FROM sessions s
   JOIN accounts a ON a.id = s.account_id
-  WHERE s.token_hash = ? AND s.expires_at > datetime('now') AND s.revoked_at IS NULL
+  WHERE s.token_hash = ? AND datetime(s.expires_at) > datetime('now') AND s.revoked_at IS NULL
 `)
 
 const _touchSession = prepare(`UPDATE sessions SET last_seen_at = datetime('now') WHERE token = ?`)
 const _markSessionPasskeyReauthenticated = prepare(`
   UPDATE sessions
   SET last_passkey_reauth_at = datetime('now'), last_seen_at = datetime('now')
-  WHERE (token = ? OR token_hash = ?) AND revoked_at IS NULL AND expires_at > datetime('now')
+  WHERE (token = ? OR token_hash = ?) AND revoked_at IS NULL AND datetime(expires_at) > datetime('now')
 `)
 
 const _revokeSession = prepare(`UPDATE sessions SET revoked_at = datetime('now') WHERE token = ? OR token_hash = ?`)
 
 export const _revokeSessionsByAccount = prepare(`UPDATE sessions SET revoked_at = datetime('now') WHERE account_id = ? AND revoked_at IS NULL`)
 
-const _cleanExpiredSessions = prepare(`DELETE FROM sessions WHERE expires_at <= datetime('now') OR revoked_at IS NOT NULL`)
+const _cleanExpiredSessions = prepare(`DELETE FROM sessions WHERE datetime(expires_at) <= datetime('now') OR revoked_at IS NOT NULL`)
 
 const _updateLastLogin = prepare(`UPDATE accounts SET last_login = datetime('now') WHERE id = ?`)
 
@@ -1223,7 +1266,7 @@ export function markSessionPasskeyReauthenticated(token) {
 
 export function sessionHasRecentPasskeyReauth(session, maxAgeMs) {
   if (!session?.last_passkey_reauth_at) return false
-  const reauthAt = Date.parse(session.last_passkey_reauth_at)
+  const reauthAt = parseDbTimestamp(session.last_passkey_reauth_at)
   return Number.isFinite(reauthAt) && Date.now() - reauthAt <= maxAgeMs
 }
 
@@ -1417,23 +1460,41 @@ export function expireLegacyMigrationAccounts(details = {}) {
   return { ok: true, deleted: expired.length }
 }
 
+/** True when a signup reservation was started from the device now asking for it. */
+function reservationIsFromRequester(account, requester) {
+  if (requester.fpHash && account.device_fp === requester.fpHash) return true
+  return Boolean(
+    requester.ipHash && requester.userAgentHash
+    && account.created_ip_hash === requester.ipHash
+    && account.created_ua_hash === requester.userAgentHash,
+  )
+}
+
 /**
- * Delete a signup reservation that can provably never complete, freeing its
- * username immediately. Returns true when the row was released.
- * @param {{ id: string, account_status: string, created_at: string }} account
+ * Delete a signup reservation that can never complete, or that the requesting
+ * device itself started, freeing its username. Returns true when released.
+ *
+ * Only a `pending_passkey` row with no authenticator qualifies — never a real
+ * account. Releasing one mid-ceremony is harmless: that ceremony's verify step
+ * then finds no account and the player simply starts again.
+ * @param {{ id: string, account_status: string, created_at: string, device_fp?: string, created_ip_hash?: string, created_ua_hash?: string }} account
+ * @param {{ fpHash?: string | null, ipHash?: string | null, userAgentHash?: string | null }} [requester]
  */
-function releaseDeadSignupReservation(account) {
+function releaseDeadSignupReservation(account, requester = {}) {
   if (!account || account.account_status !== 'pending_passkey') return false
   if (getCount(_countAuthenticatorsByAccount.get(account.id)) > 0) return false
 
-  // The age test runs in SQL so `created_at` is read back in the same format
-  // SQLite wrote it. The WebAuthn challenge expires well before this cutoff,
-  // so anything older can no longer be verified and is safe to reclaim.
-  const cutoffSeconds = Math.floor(AUTH_CHALLENGE_TTL_MS / 1000)
+  // Another device's reservation is released only once its challenge has
+  // expired. The age test runs in SQL so `created_at` is read back in the
+  // format SQLite wrote it.
+  const cutoffSeconds = reservationIsFromRequester(account, requester)
+    ? 0
+    : Math.floor(AUTH_CHALLENGE_TTL_MS / 1000)
   return db.prepare(`
     DELETE FROM accounts
     WHERE id = ?
       AND account_status = 'pending_passkey'
+      AND id NOT IN (SELECT account_id FROM account_authenticators)
       AND created_at <= datetime('now', ?)
   `).run(account.id, `-${cutoffSeconds} seconds`).changes === 1
 }
@@ -1469,8 +1530,18 @@ export function reapAbandonedSignups(details = {}) {
   return { ok: true, released: abandoned.length, usernames: abandoned.map((row) => row.username) }
 }
 
+// Challenges are single-use and live five minutes; an hour's grace keeps any
+// in-flight ceremony safe. Passkey autofill mints one each time the sign-in
+// screen opens, most of which are never answered, so without this sweep the
+// table would grow with every visit.
+const _cleanStaleAuthChallenges = prepare(`
+  DELETE FROM auth_challenges
+  WHERE datetime(expires_at) <= datetime('now', '-1 hour')
+`)
+
 export function cleanupSessions() {
   _cleanExpiredSessions.run()
+  _cleanStaleAuthChallenges.run()
 }
 
 // Run cleanup periodically

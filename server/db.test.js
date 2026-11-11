@@ -2079,6 +2079,77 @@ describe('owner and admin account management', () => {
     expect(db.findAccountRecoveryGrant(reset.grantCode)).toBeNull()
   })
 
+  it('retires the legacy password on reset and restores sign-in once the grant is redeemed', () => {
+    const target = makeAccount('mgmt_reset_pw')
+    expect(db.authenticateAccount('mgmt_reset_pw', 'password12345').ok).toBe(true)
+
+    const reset = db.adminResetAccountCredentials(owner, target)
+    expect(reset.ok, reset.error).toBe(true)
+
+    // The correct old password no longer signs in, and says why.
+    const blocked = db.authenticateAccount('mgmt_reset_pw', 'password12345')
+    expect(blocked.ok).toBe(false)
+    expect(blocked.status).toBe(403)
+    expect(blocked.error).toMatch(/support code/i)
+    // A wrong password still gets the generic answer, so nothing leaks.
+    expect(db.authenticateAccount('mgmt_reset_pw', 'wrong-password').error).toBe('Invalid username or password.')
+
+    const found = db.findAccountRecoveryGrant(reset.grantCode)
+    const completed = db.completeAccountRecoveryWithGrant(target, found.grantId, {
+      id: 'cred-mgmt-reset-pw', publicKey: Buffer.from('pk-mgmt-reset-pw'), counter: 0, transports: ['internal'],
+    })
+    expect(completed.ok, completed.error).toBe(true)
+    expect(db.getAdminAccountDetail(target).passwordResetRequired).toBe(false)
+  })
+
+  it('clears the reset setup flag on redemption only when legal standards are current', () => {
+    const legal = db.getCurrentLegalVersions()
+    const current = makeAccount('mgmt_reset_current')
+    db.default.prepare(`
+      UPDATE accounts
+      SET account_standard_version = ?, terms_version = ?, privacy_version = ?, age_gate_version = ?
+      WHERE id = ?
+    `).run(legal.accountStandardVersion, legal.termsVersion, legal.privacyVersion, legal.ageGateVersion, current)
+    const stale = makeAccount('mgmt_reset_stale')
+
+    for (const [target, credentialId] of [[current, 'cred-reset-current'], [stale, 'cred-reset-stale']]) {
+      const reset = db.adminResetAccountCredentials(owner, target)
+      const found = db.findAccountRecoveryGrant(reset.grantCode)
+      const completed = db.completeAccountRecoveryWithGrant(target, found.grantId, {
+        id: credentialId, publicKey: Buffer.from(credentialId), counter: 0, transports: ['internal'],
+      })
+      expect(completed.ok, completed.error).toBe(true)
+    }
+
+    expect(db.getAdminAccountDetail(current).setupRequired).toBe(false)
+    // Out-of-date terms still route the player through setup, as the backfill would.
+    expect(db.getAdminAccountDetail(stale).setupRequired).toBe(true)
+  })
+
+  it('refuses a grant the moment it expires, not at the end of the UTC day', () => {
+    const target = makeAccount('mgmt_grant_expiry')
+    const issued = db.adminIssueRecoveryGrant(owner, target)
+    expect(issued.ok, issued.error).toBe(true)
+    expect(db.findAccountRecoveryGrant(issued.grantCode)).not.toBeNull()
+
+    // Same calendar day, one minute in the past. A plain string comparison of
+    // an ISO timestamp against datetime('now') used to call this still live.
+    db.default.prepare('UPDATE account_recovery_grants SET expires_at = ? WHERE id = ?')
+      .run(new Date(Date.now() - 60_000).toISOString(), issued.grantId)
+    expect(db.findAccountRecoveryGrant(issued.grantCode)).toBeNull()
+  })
+
+  it('honours the operator-chosen grant lifetime', () => {
+    const target = makeAccount('mgmt_grant_ttl')
+    const eightHours = 8 * 60 * 60 * 1000
+    const issued = db.adminIssueRecoveryGrant(owner, target, { ttlMs: eightHours })
+    expect(issued.ok, issued.error).toBe(true)
+    const lifetime = Date.parse(issued.expiresAt) - Date.now()
+    expect(lifetime).toBeGreaterThan(eightHours - 60_000)
+    expect(lifetime).toBeLessThanOrEqual(eightHours)
+    expect(db.RECOVERY_GRANT_TTL_HOURS).toEqual([1, 8, 24])
+  })
+
   it('suspends an account, cutting sessions and blocking play until lifted', () => {
     const target = makeAccount('mgmt_suspend')
     const session = db.createSession(target, '', '', 'password')
@@ -2120,5 +2191,38 @@ describe('owner and admin account management', () => {
       .map((row) => row.action)
     expect(actions).toContain('account_suspended')
     expect(actions).toContain('account_unsuspended')
+  })
+})
+
+describe('database timestamps on a host that is not on UTC', () => {
+  const originalTz = process.env.TZ
+
+  afterEach(() => {
+    if (originalTz === undefined) delete process.env.TZ
+    else process.env.TZ = originalTz
+  })
+
+  /** What SQLite's datetime('now') writes: UTC with no zone marker. */
+  function sqliteNow(offsetMs = 0) {
+    return new Date(Date.now() + offsetMs).toISOString().replace('T', ' ').slice(0, 19)
+  }
+
+  it('reads zone-less SQLite timestamps as UTC', () => {
+    process.env.TZ = 'Asia/Tokyo'
+    expect(db.parseDbTimestamp('2026-10-02 12:00:00')).toBe(Date.UTC(2026, 9, 2, 12))
+    expect(db.parseDbTimestamp('2026-10-02T12:00:00.000Z')).toBe(Date.UTC(2026, 9, 2, 12))
+    expect(Number.isNaN(db.parseDbTimestamp(''))).toBe(true)
+    expect(Number.isNaN(db.parseDbTimestamp(null))).toBe(true)
+  })
+
+  it('keeps the ten-minute passkey reauth window exact east and west of UTC', () => {
+    const tenMinutes = 10 * 60 * 1000
+    for (const zone of ['Asia/Tokyo', 'America/Chicago', 'UTC']) {
+      process.env.TZ = zone
+      // East of UTC this was always false, so every admin action dead-ended in
+      // a passkey prompt; west of UTC the window stretched by hours.
+      expect(db.sessionHasRecentPasskeyReauth({ last_passkey_reauth_at: sqliteNow(-2 * 60 * 1000) }, tenMinutes), zone).toBe(true)
+      expect(db.sessionHasRecentPasskeyReauth({ last_passkey_reauth_at: sqliteNow(-20 * 60 * 1000) }, tenMinutes), zone).toBe(false)
+    }
   })
 })

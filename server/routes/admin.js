@@ -12,7 +12,7 @@ import express from 'express'
 import rateLimit from 'express-rate-limit'
 import { existsSync } from 'node:fs'
 import path from 'node:path'
-import { adminDeleteAccount, adminIssueRecoveryGrant, adminResetAccountCredentials, adminRestoreAccount, adminSuspendAccount, adminUnsuspendAccount, assignInitialOwner, findOwnerAccountId, getAccountById, getAdminAccountDetail, hashIp, listAccounts, listAudit, listDeletedAccounts, recordAudit, setAccountRole, transferOwnership } from '../db.js'
+import { RECOVERY_GRANT_TTL_HOURS, adminDeleteAccount, adminIssueRecoveryGrant, adminResetAccountCredentials, adminRestoreAccount, adminSuspendAccount, adminUnsuspendAccount, assignInitialOwner, findOwnerAccountId, getAccountById, getAdminAccountDetail, hashIp, listAccounts, listAudit, listDeletedAccounts, recordAudit, setAccountRole, transferOwnership } from '../db.js'
 
 export function registerAdminRoutes(app, ctx) {
   const {
@@ -239,6 +239,12 @@ app.post('/api/admin/owner/transfer', requireOwnerRole, requireRecentPasskeyAuth
 // the one-time grant code is a single-use token the player must redeem
 // themselves through a WebAuthn ceremony.
 
+/** Requested grant lifetime, or undefined for the default. Anything else is ignored. */
+function requestedGrantTtlMs(body) {
+  const hours = Number(body?.ttlHours)
+  return RECOVERY_GRANT_TTL_HOURS.includes(hours) ? hours * 60 * 60 * 1000 : undefined
+}
+
 app.get('/api/admin/users/:accountId', requireAdminRole, (request, response) => {
   const detail = getAdminAccountDetail(String(request.params?.accountId ?? ''))
   if (!detail) {
@@ -272,7 +278,7 @@ app.post(
     const result = adminResetAccountCredentials(request.accountId, String(request.params?.accountId ?? ''), {
       revokePasskeys: request.body?.revokePasskeys !== false,
       note: request.body?.note,
-      ttlMs: Number(request.body?.ttlMs) || undefined,
+      ttlMs: requestedGrantTtlMs(request.body),
       ipHash: hashIp(clientIp(request)),
     })
     if (!result.ok) {
@@ -292,7 +298,7 @@ app.post(
   (request, response) => {
     const result = adminIssueRecoveryGrant(request.accountId, String(request.params?.accountId ?? ''), {
       note: request.body?.note,
-      ttlMs: Number(request.body?.ttlMs) || undefined,
+      ttlMs: requestedGrantTtlMs(request.body),
       ipHash: hashIp(clientIp(request)),
     })
     if (!result.ok) {

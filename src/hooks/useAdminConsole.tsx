@@ -9,6 +9,7 @@ import type {
   AdminUser,
   ComplaintFormState,
   ConfirmOptions,
+  GrantTtlHours,
   IssuedGrant,
   ServerProfile,
 } from '../types'
@@ -49,8 +50,11 @@ export type AdminConsoleDeps = {
   isOwnerRole: boolean
   serverProfile: ServerProfile | null
   setServerProfile: Dispatch<SetStateAction<ServerProfile | null>>
-  /** Privileged actions re-prompt for a passkey; returns false if declined. */
-  ensureRecentPasskeyAuth: () => Promise<boolean>
+  /**
+   * Privileged actions re-prompt for a passkey; returns false if declined.
+   * `onFailure` receives the reason so it can be shown in the admin console.
+   */
+  ensureRecentPasskeyAuth: (onFailure?: (message: string) => void) => Promise<boolean>
   askConfirm: (options: ConfirmOptions) => Promise<boolean>
   askTextPrompt: (options: TextPromptOptions) => Promise<string | null>
   setToastMessage: (message: string) => void
@@ -104,8 +108,13 @@ export function useAdminConsole({
   const [adminAccountLoading, setAdminAccountLoading] = useState(false)
   const [adminDeletedAccounts, setAdminDeletedAccounts] = useState<AdminDeletedAccount[]>([])
   const [adminDeletedLoading, setAdminDeletedLoading] = useState(false)
+  // Errors from the open account's action buttons, shown beside those buttons.
+  // The console-wide `adminError` renders at the top of a long scrolling panel,
+  // out of sight of an operator working in the account detail at the bottom.
+  const [adminAccountError, setAdminAccountError] = useState('')
   // Shown once after issuing; the code cannot be retrieved again.
   const [issuedGrant, setIssuedGrant] = useState<IssuedGrant | null>(null)
+  const [grantTtlHours, setGrantTtlHours] = useState<GrantTtlHours>(1)
   const [transferForm, setTransferForm] = useState({ targetAccountId: '', password: '' })
   const [transferStatus, setTransferStatus] = useState('')
   const [adminSettings, setAdminSettings] = useState({
@@ -238,6 +247,7 @@ export function useAdminConsole({
     if (!authToken || !isAdminRole) return
     setAdminAccountLoading(true)
     setAdminError('')
+    setAdminAccountError('')
     try {
       const response = await authFetch(`/api/admin/users/${encodeURIComponent(accountId)}`, authToken)
       const data = (await response.json()) as { ok: boolean; account?: AdminAccountDetail; error?: string }
@@ -256,6 +266,7 @@ export function useAdminConsole({
   function closeAdminAccount() {
     setAdminAccountDetail(null)
     setAdminError('')
+    setAdminAccountError('')
   }
 
   async function refreshDeletedAccounts() {
@@ -301,8 +312,10 @@ export function useAdminConsole({
       let attempt = await send()
 
       if (!attempt.response.ok && attempt.data.passkeyReauthRequired) {
-        if (!await ensureRecentPasskeyAuth()) {
-          return { ok: false, error: 'Passkey confirmation is required for this action.' }
+        let reauthFailure = ''
+        if (!await ensureRecentPasskeyAuth((message) => { reauthFailure = message })) {
+          const error = ['Passkey confirmation is required for this action.', reauthFailure].filter(Boolean).join(' ')
+          return { ok: false, error }
         }
         attempt = await send()
       }
@@ -324,28 +337,33 @@ export function useAdminConsole({
   async function handleAdminIssueRecoveryGrant(target: AdminUser | AdminAccountDetail, resetCredentials: boolean) {
     if (!authToken || !isAdminRole) return
     const name = target.displayName || target.username
+    const ttlHours = grantTtlHours
+    const lifetime = `${ttlHours} hour${ttlHours === 1 ? '' : 's'}`
     const ok = await askConfirm({
       title: resetCredentials ? 'Reset credentials?' : 'Issue a recovery code?',
       body: (
         <>
           {resetCredentials ? (
             <p>
-              Every passkey and session for <strong>@{target.username}</strong> will be revoked. They
-              will need the one-time code below to get back in.
+              Every passkey and session for <strong>@{target.username}</strong> is revoked now, and
+              their old password stops working. They get back in with the one-time code you are
+              shown next. Use this when you believe the account is compromised.
             </p>
           ) : (
             <p>
               <strong>@{target.username}</strong> gets a one-time code to attach a new passkey.
-              Their existing passkeys keep working.
+              Nothing changes until they use it; when they do, the new passkey replaces their old
+              ones and other devices are signed out.
             </p>
           )}
           <p className="mini-text">
-            The code is shown once and cannot be recovered afterwards. Only give it to someone you
-            have confirmed is the account holder — it grants full access to the account.
+            The code is valid for {lifetime} and is shown once, on the next screen. Only give it to
+            someone you have confirmed is the account holder — it grants full access to the
+            account. Their collection, rating, and match history are never touched.
           </p>
         </>
       ),
-      confirmLabel: resetCredentials ? 'Reset and issue code' : 'Issue code',
+      confirmLabel: resetCredentials ? 'Reset and show code' : 'Show code',
       danger: resetCredentials,
     })
     if (!ok) return
@@ -353,17 +371,18 @@ export function useAdminConsole({
     const result = await postAdminAccountAction(
       target.accountId,
       resetCredentials ? 'reset-credentials' : 'recovery-grant',
-      { note: resetCredentials ? 'Admin credential reset' : 'Support-issued recovery grant' },
+      { note: resetCredentials ? 'Admin credential reset' : 'Support-issued recovery grant', ttlHours },
     )
-    if (!result.ok) {
-      setAdminError(result.error ?? 'Could not issue a recovery code.')
+    if (!result.ok || !result.grantCode) {
+      setAdminAccountError(result.error ?? 'The server did not return a recovery code. Nothing was shown, so issue a new one.')
       return
     }
-    setAdminError('')
+    setAdminAccountError('')
     setIssuedGrant({
       username: String(result.username ?? target.username),
-      grantCode: String(result.grantCode ?? ''),
+      grantCode: String(result.grantCode),
       expiresAt: String(result.expiresAt ?? ''),
+      ttlHours,
       revokedPasskeys: Boolean(result.revokedPasskeys),
     })
     setToastMessage(`Recovery code issued for ${name}.`)
@@ -383,10 +402,10 @@ export function useAdminConsole({
 
     const result = await postAdminAccountAction(target.accountId, 'suspend', { hours: 24, reason })
     if (!result.ok) {
-      setAdminError(result.error ?? 'Could not suspend that account.')
+      setAdminAccountError(result.error ?? 'Could not suspend that account.')
       return
     }
-    setAdminError('')
+    setAdminAccountError('')
     setToastMessage(`@${target.username} is suspended for 24 hours.`)
     await afterAdminAccountAction(target.accountId)
   }
@@ -395,10 +414,10 @@ export function useAdminConsole({
     if (!authToken || !isAdminRole) return
     const result = await postAdminAccountAction(target.accountId, 'unsuspend')
     if (!result.ok) {
-      setAdminError(result.error ?? 'Could not lift that suspension.')
+      setAdminAccountError(result.error ?? 'Could not lift that suspension.')
       return
     }
-    setAdminError('')
+    setAdminAccountError('')
     setToastMessage(`@${target.username} can play again.`)
     await afterAdminAccountAction(target.accountId)
   }
@@ -427,10 +446,10 @@ export function useAdminConsole({
 
     const result = await postAdminAccountAction(target.accountId, 'delete', { confirmUsername: target.username })
     if (!result.ok) {
-      setAdminError(result.error ?? 'Could not delete that account.')
+      setAdminAccountError(result.error ?? 'Could not delete that account.')
       return
     }
-    setAdminError('')
+    setAdminAccountError('')
     setToastMessage(`@${target.username} was deleted. You can restore them from Accounts.`)
     closeAdminAccount()
     await Promise.all([refreshAdminUsers(), refreshAdminAudit(), refreshDeletedAccounts()])
@@ -657,8 +676,11 @@ export function useAdminConsole({
     adminDeletedAccounts,
     adminDeletedLoading,
     refreshDeletedAccounts,
+    adminAccountError,
     issuedGrant,
     setIssuedGrant,
+    grantTtlHours,
+    setGrantTtlHours,
     handleAdminIssueRecoveryGrant,
     handleAdminSuspendAccount,
     handleAdminUnsuspendAccount,

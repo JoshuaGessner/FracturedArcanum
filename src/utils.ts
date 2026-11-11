@@ -161,13 +161,45 @@ export function getScreenBucket(): string {
   return 'desktop'
 }
 
+/**
+ * Epoch ms for a server timestamp. SQLite's `datetime('now')` is UTC but
+ * carries no zone marker, and `new Date()` would read it as local time —
+ * shifting every audit row and expiry by the viewer's UTC offset.
+ */
+export function parseServerTimestamp(value: string): number {
+  const text = String(value ?? '').trim()
+  const hasZone = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(text)
+  return Date.parse(hasZone || !text ? text : `${text.replace(' ', 'T')}Z`)
+}
+
 export function formatTimestamp(value: string): string {
-  return new Date(value).toLocaleString([], {
+  return new Date(parseServerTimestamp(value)).toLocaleString([], {
     month: 'short',
     day: 'numeric',
     hour: 'numeric',
     minute: '2-digit',
   })
+}
+
+/**
+ * The message an operator sends a player along with their recovery code.
+ * Written to be pasted into any support channel as-is, so it names the exact
+ * buttons the player will see rather than describing the flow abstractly.
+ */
+export function buildRecoveryCodeMessage(code: string, expiresLabel: string): string {
+  return [
+    `Here is your Fractured Arcanum recovery code. It works once and expires ${expiresLabel}.`,
+    '',
+    code,
+    '',
+    'To get back into your account:',
+    '1. Open the game and go to the sign-in screen.',
+    '2. Tap "No codes left?" then "Use a support code".',
+    '3. Enter the code above and create a new passkey when your device asks.',
+    '4. Save the new recovery codes you are shown. They are how you get back in next time without contacting support.',
+    '',
+    'Your cards, rating, and match history are untouched. Do not share this code with anyone else.',
+  ].join('\n')
 }
 
 export function cardArtPath(cardId: string): string {

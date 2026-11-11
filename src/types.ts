@@ -297,6 +297,8 @@ export type PasskeySummary = {
   backedUp: boolean
   deviceType: string
   name: string
+  /** The app that stores it, when its AAGUID is known ("Apple Passwords"); else ''. */
+  providerName?: string
   createdAt: string
   lastUsedAt: string | null
 }
@@ -408,8 +410,12 @@ export type IssuedGrant = {
   username: string
   grantCode: string
   expiresAt: string
+  ttlHours: GrantTtlHours
   revokedPasskeys?: boolean
 }
+
+/** Lifetimes the server accepts for an operator-issued recovery code. */
+export type GrantTtlHours = 1 | 8 | 24
 
 export type AdminAuditEntry = {
   id: string

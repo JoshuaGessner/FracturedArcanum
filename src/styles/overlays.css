@@ -339,7 +339,8 @@
 
 .settings-nav-strip button,
 .social-nav-strip button,
-.settings-admin-nav button {
+.settings-admin-nav button,
+.admin-grant-ttl button {
   min-width: 0;
   min-height: 34px;
   padding: 7px 10px;
@@ -358,7 +359,8 @@
 
 .settings-nav-strip button.active,
 .social-nav-strip button.active,
-.settings-admin-nav button.active {
+.settings-admin-nav button.active,
+.admin-grant-ttl button.active {
   border-color: rgba(217, 159, 59, 0.6);
   background: linear-gradient(135deg, rgba(217, 159, 59, 0.3), rgba(95, 168, 146, 0.16));
   color: #fff7d6;

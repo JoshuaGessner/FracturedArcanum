@@ -41,6 +41,7 @@ effects, keywords, tribes, economy values, collectibles, or cosmetic pricing.
 | `docs/CARD_CATALOG.md` | Card-by-card reference with stats, balance deltas, distributions, flagged outliers |
 | `docs/monetization-plan.md` | Paid offerings, cosmetic pricing, fairness covenant |
 | `docs/ACCOUNT_OPERATIONS.md` | Account lifecycle, support operations |
+| `docs/PASSKEY_SIGN_IN_PLAN.md` | Passkey sign-in vs. industry practice: what is done, what is next, RP ID and user-handle rules |
 | `docs/deployment-permissions.md` | Deploy and server-update permissions |
 | `docs/release-checklist.md` | Pre-release verification |
 | `docs/layout-qa.md` | The four layout-QA tools, their invariants, and the traps they encode |
@@ -261,6 +262,7 @@ Read these before touching layout CSS — each cost real debugging time:
 | `src/utils.ts` | Pure helpers (asset lookup, transitions, completion, severity, fan layout) | No React, no app state |
 | `src/App.css` | Ordered index of `src/styles/*.css` — imports only | **Import order is load-bearing**; add a module where its cascade requires |
 | `src/styles/` | 26 stylesheet modules: 24 slices of the original single file, then `card-face.css` and `card-frames.css` | Edit the module that owns the surface; never reorder the index |
+| `src/passkeys.ts` | Ceremony timeout, autofill detection, WebAuthn Signal API | Signals are fire-and-forget; never send `signalAllAcceptedCredentials` an unverified list |
 | `src/audio.ts` | Web Audio synthesis | |
 | `src/ambient.ts` | Ambient scene audio/visual bed | |
 | `src/feedback.ts` | Sound + haptic pairing | |

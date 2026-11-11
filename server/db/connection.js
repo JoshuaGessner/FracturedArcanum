@@ -180,6 +180,24 @@ export const PENDING_SIGNUP_TTL_MS = 30 * 60 * 1000
 // when an operator opts in explicitly, and never implicitly at import time.
 export const LEGACY_MIGRATION_EXPIRY_ENABLED = process.env.LEGACY_MIGRATION_EXPIRY === '1'
 
+/**
+ * Epoch milliseconds for a timestamp read back from the database.
+ *
+ * Two formats live in these tables: `datetime('now')` writes
+ * `YYYY-MM-DD HH:MM:SS` in UTC with no zone marker, and JS-side writes use
+ * `toISOString()`. `Date.parse` reads the first as *local* time, so on a host
+ * whose clock is not UTC every age check drifts by the zone offset — east of
+ * UTC a ten-minute passkey window can never be satisfied, west of it the
+ * window silently stretches by hours. Returns NaN for empty or unparseable
+ * input so callers keep their existing `Number.isFinite` guards.
+ */
+export function parseDbTimestamp(value) {
+  const text = String(value ?? '').trim()
+  if (!text) return Number.NaN
+  const hasZone = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(text)
+  return Date.parse(hasZone ? text : `${text.replace(' ', 'T')}Z`)
+}
+
 export function getCurrentLegalVersions() {
   return {
     accountStandardVersion: CURRENT_ACCOUNT_STANDARD_VERSION,
@@ -650,6 +668,14 @@ export function applySchema() {
     CREATE INDEX IF NOT EXISTS idx_security_events_account ON security_events(account_id, created_at DESC);
     CREATE INDEX IF NOT EXISTS idx_session_families_account ON session_families(account_id);
   `)
+
+  // The authenticator model ID reported at registration. It names a passkey by
+  // the app that stores it ("iCloud Keychain", "Google Password Manager") rather
+  // than a generic label. Rows registered before this column existed keep ''
+  // and simply keep the name they were saved with.
+  ensureColumns('account_authenticators', [
+    ['aaguid', "TEXT NOT NULL DEFAULT ''"],
+  ])
 
   db.exec(`
     UPDATE accounts

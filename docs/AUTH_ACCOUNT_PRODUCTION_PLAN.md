@@ -365,7 +365,10 @@ If the browser does not support passkeys, show a clear unsupported-browser messa
 
 ### Login
 
-Login asks for username and offers `Sign In With Passkey`.
+> Superseded by [`PASSKEY_SIGN_IN_PLAN.md`](PASSKEY_SIGN_IN_PLAN.md). Sign-in no
+> longer asks for a username: passkeys are offered from the username field's
+> autofill and from a username-free "Sign in with a passkey" button, with the
+> username path kept for older non-discoverable passkeys.
 
 Keep legacy password login hidden behind a migration-only path until all existing users are migrated. Label it clearly as `Upgrade Existing Password Account` rather than normal login.
 

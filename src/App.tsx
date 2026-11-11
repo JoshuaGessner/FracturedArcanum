@@ -49,6 +49,7 @@ import {
 import { createPwaInstallState, getInitialServiceWorkerStatus, isPwaStandaloneMode, type PwaServiceWorkerStatus } from './pwa'
 import { ToastStack } from './components/ToastStack'
 import { ConfirmModal } from './components/ConfirmModal'
+import { AuthGate } from './components/AuthGate'
 import { TextPromptModal } from './components/TextPromptModal'
 import { CardInspectModal } from './components/CardInspectModal'
 import { NavBar } from './components/NavBar'
@@ -79,7 +80,6 @@ import { BattleScreen } from './screens/BattleScreen'
 import { AppShellContext, type AppShellContextValue, type LongPressOptions } from './AppShellContext'
 import type {
   AppScreen,
-  AuthScreen,
   CardBorder,
   CardCollection,
   CosmeticTheme,
@@ -141,20 +141,6 @@ function App() {
     </AccountProvider>
   )
 }
-
-/**
- * Every way into an account, in the order a lost player should consider them.
- * The auth footer renders all of these except the current screen, so no route
- * is ever a dead end — the previous hand-written links left, for example, a
- * legacy account with no way to reach the support-code path.
- */
-const AUTH_ROUTES: { screen: AuthScreen; prompt: string; label: string }[] = [
-  { screen: 'login', prompt: 'Already have a passkey?', label: 'Sign in' },
-  { screen: 'signup', prompt: 'New here?', label: 'Create account' },
-  { screen: 'recover', prompt: 'Lost your device?', label: 'Use a recovery code' },
-  { screen: 'grant', prompt: 'No codes left?', label: 'Use a support code' },
-  { screen: 'legacy', prompt: 'Old password account?', label: 'Upgrade it' },
-]
 
 /** Title shown in the top bar. Exhaustive over AppScreen by construction. */
 const SCREEN_TITLES: Record<AppScreen, string> = {
@@ -2330,7 +2316,7 @@ function AppShell() {
     visitorId,
   })
   const {
-    handleSetup, handleAuth, handlePasskeyLogin, 
+    handleSetup, handleAuth, handlePasskeyLogin, armPasskeyAutofill, cancelPasskeyAutofill,
     handleSubmitRecoverySupport, ensureRecentPasskeyAuth,
     refreshPasskeys, refreshAccountSessions, refreshRecoveryStatus,
     downloadRecoveryCodes, copyRecoveryCodes, handleGenerateRecoveryCodes,
@@ -2942,147 +2928,30 @@ function AppShell() {
 
       {/* ─── Auth gate ─────────────────────────────────────────────── */}
       {!setupRequired && !loggedIn && !incomingPasskeyDeviceLinkToken && (
-        <div className="auth-gate">
-          <div className="auth-card">
-            <img className="auth-app-icon" src="/fractured-arcanum-icon-512.svg" alt="Fractured Arcanum app icon" />
-            <h1>Fractured Arcanum</h1>
-            <p className="auth-tagline">Cosmic horror card battles await</p>
-            <form className="auth-form" onSubmit={handleAuth}>
-              {/* A support-issued code carries its own account, so asking for a
-                  username here would only be one more thing to remember. */}
-              {authScreen !== 'grant' && (
-                <label>
-                  Username
-                  <input
-                    type="text"
-                    placeholder="3-20 chars, letters/numbers/_"
-                    maxLength={20}
-                    autoComplete="username"
-                    required
-                    value={authForm.username}
-                    onChange={(event) => setAuthForm((f) => ({ ...f, username: event.target.value }))}
-                  />
-                </label>
-              )}
-              {authScreen === 'legacy' ? (
-                <label>
-                  Legacy Password
-                  <input
-                    type="password"
-                    placeholder="Legacy password"
-                    minLength={8}
-                    autoComplete="current-password"
-                    required
-                    value={authForm.password}
-                    onChange={(event) => setAuthForm((f) => ({ ...f, password: event.target.value }))}
-                  />
-                </label>
-              ) : authScreen === 'recover' ? (
-                <>
-                  <label>
-                    Recovery Code
-                    <input
-                      type="text"
-                      placeholder="FA-XXXX-XXXX-XXXX"
-                      autoComplete="one-time-code"
-                      required
-                      value={authForm.recoveryCode}
-                      onChange={(event) => setAuthForm((f) => ({ ...f, recoveryCode: event.target.value }))}
-                    />
-                  </label>
-                  <p className="auth-note">Recovery replaces old passkeys and signs out old sessions. Use Settings on a signed-in device to link a phone without recovery. If you did not save codes, submit an account recovery support ticket with your username and details only you would know.</p>
-                  <label>
-                    Support Details
-                    <textarea
-                      className="text-input text-area"
-                      rows={3}
-                      placeholder="Use this only if you have no recovery code. Include account details for admin review."
-                      value={recoverySupportDetails}
-                      onChange={(event) => setRecoverySupportDetails(event.target.value)}
-                    />
-                  </label>
-                  <button className="ghost" type="button" disabled={authLoading} onClick={() => void handleSubmitRecoverySupport()}>
-                    Send Recovery Support Ticket
-                  </button>
-                </>
-              ) : authScreen === 'grant' ? (
-                <>
-                  <label>
-                    Recovery Code From Support
-                    <input
-                      type="text"
-                      placeholder="FAR-XXXXX-XXXXX-XXXXX-XXXXX"
-                      autoComplete="one-time-code"
-                      required
-                      value={authForm.grantCode}
-                      onChange={(event) => setAuthForm((f) => ({ ...f, grantCode: event.target.value }))}
-                    />
-                  </label>
-                  {/* The grant identifies its own account, so no username is asked for. */}
-                  <p className="auth-note">
-                    Use the one-time code an admin sent you. It finds your account on its own, so
-                    you do not need your username. You will create a new passkey, and any old
-                    passkeys and sessions will be replaced.
-                  </p>
-                </>
-              ) : authScreen === 'signup' ? (
-                <>
-                  <label className="legal-check">
-                    <input
-                      type="checkbox"
-                      required
-                      checked={accountUpgradeForm.acceptTerms && accountUpgradeForm.acceptPrivacy && Boolean(accountUpgradeForm.ageAttestation)}
-                      onChange={(event) => setAccountUpgradeForm((current) => ({
-                        ...current,
-                        acceptTerms: event.target.checked,
-                        acceptPrivacy: event.target.checked,
-                        ageAttestation: event.target.checked ? 'adult' : '',
-                      }))}
-                    />
-                    <span>I accept the Terms of Service and Privacy Policy and confirm I meet the age requirement or have guardian consent. I understand this passkey may stay on this device unless my passkey provider syncs it.</span>
-                  </label>
-                </>
-              ) : null}
-              {authStatus && <p className="auth-note">{authStatus}</p>}
-              {authError && <p className="auth-error">{authError}</p>}
-              {authScreen === 'login' && (
-                <button className="primary" type="button" disabled={authLoading || !passkeySupported} onClick={() => void handlePasskeyLogin()}>
-                  Sign In With Passkey
-                </button>
-              )}
-              {authScreen !== 'login' && (
-                <button
-                  className="primary"
-                  type="submit"
-                  disabled={authLoading || (authScreen !== 'legacy' && !passkeySupported)}
-                >
-                  {authLoading
-                    ? 'Please wait...'
-                    : authScreen === 'signup'
-                      ? 'Create Passkey Account'
-                      : authScreen === 'recover'
-                        ? 'Recover With Code'
-                        : authScreen === 'grant'
-                          ? 'Restore My Account'
-                          : 'Upgrade Existing Password Account'}
-                </button>
-              )}
-            </form>
-            <div className="auth-switch">
-              {AUTH_ROUTES.filter((route) => route.screen !== authScreen).map((route) => (
-                <span className="auth-switch-line" key={route.screen}>
-                  <span>{route.prompt}</span>
-                  <button
-                    className="link"
-                    onClick={() => { setAuthScreen(route.screen); setAuthError(''); setAuthStatus('') }}
-                  >
-                    {route.label}
-                  </button>
-                </span>
-              ))}
-            </div>
-          </div>
-        </div>
+        <AuthGate
+          screen={authScreen}
+          onScreenChange={(screen) => { setAuthScreen(screen); setAuthError(''); setAuthStatus('') }}
+          form={authForm}
+          onFormChange={setAuthForm}
+          legalAccepted={accountUpgradeForm.acceptTerms && accountUpgradeForm.acceptPrivacy && Boolean(accountUpgradeForm.ageAttestation)}
+          onLegalAcceptedChange={(accepted) => setAccountUpgradeForm((current) => ({
+            ...current,
+            acceptTerms: accepted,
+            acceptPrivacy: accepted,
+            ageAttestation: accepted ? 'adult' : '',
+          }))}
+          supportDetails={recoverySupportDetails}
+          onSupportDetailsChange={setRecoverySupportDetails}
+          status={authStatus}
+          error={authError}
+          loading={authLoading}
+          passkeySupported={passkeySupported}
+          onSubmit={handleAuth}
+          onPasskeySignIn={() => void handlePasskeyLogin()}
+          onSubmitSupportTicket={() => void handleSubmitRecoverySupport()}
+          onArmAutofill={() => void armPasskeyAutofill()}
+          onCancelAutofill={cancelPasskeyAutofill}
+        />
       )}
 
       {loggedIn && !forcedAccountGateActive && activeScreen !== 'battle' && (

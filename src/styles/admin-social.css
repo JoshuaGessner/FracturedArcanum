@@ -301,6 +301,109 @@
   font-size: 0.85rem;
 }
 
+/* ─── Account detail + recovery codes ────────────────────────────── */
+
+.admin-account-detail {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(214, 192, 154, 0.2);
+  background: rgba(23, 17, 16, 0.55);
+  scroll-margin-top: var(--space-3);
+}
+
+.admin-account-detail h4 { margin: 0; }
+
+.admin-account-facts {
+  display: grid;
+  gap: var(--space-1-5);
+  margin: 0;
+}
+
+.admin-account-facts > div {
+  display: grid;
+  grid-template-columns: minmax(92px, auto) 1fr;
+  gap: var(--space-2);
+  align-items: baseline;
+}
+
+.admin-account-facts dt {
+  color: var(--muted);
+  font-size: var(--font-xs);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.admin-account-facts dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.admin-grant-ttl {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.admin-grant-ttl .mini-text { margin-right: var(--space-1); }
+
+.recovery-code-modal .modal-body { color: var(--text); }
+
+/* Focus is moved onto the dialog itself on open so screen readers start there;
+   it is not a control, so it gets no ring. Its buttons keep theirs. */
+.recovery-code-modal:focus { outline: none; }
+
+.recovery-code-value {
+  display: block;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(217, 159, 59, 0.55);
+  background: rgba(23, 17, 16, 0.75);
+  color: #fff7d6;
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: var(--font-lg);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-align: center;
+  overflow-wrap: anywhere;
+  user-select: all;
+  -webkit-user-select: all;
+}
+
+.recovery-code-facts {
+  display: grid;
+  gap: var(--space-1-5);
+  margin: 0;
+}
+
+.recovery-code-facts > div {
+  display: grid;
+  grid-template-columns: minmax(84px, auto) 1fr;
+  gap: var(--space-2);
+}
+
+.recovery-code-facts dt {
+  color: var(--muted);
+  font-size: var(--font-xs);
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.recovery-code-facts dd { margin: 0; }
+
+.recovery-code-steps {
+  margin: 0;
+  padding-left: var(--space-4);
+  display: grid;
+  gap: var(--space-1);
+}
+
+.recovery-code-actions .primary { flex: 1 1 100%; }
+
 button.danger {
   background: linear-gradient(135deg, rgba(199, 85, 77, 0.95), rgba(140, 58, 52, 0.95));
   border-color: rgba(199, 85, 77, 0.65);

@@ -9,6 +9,8 @@ import {
   getPasskeyOriginRequirementMessage,
 } from '../utils'
 import { useAccountState } from '../contexts/AccountProvider'
+import { PASSKEY_PROMPT_STATUS, signalAcceptedPasskeys, withPasskeyCeremonyTimeout, type PasskeyRelyingParty } from '../passkeys'
+import { usePasskeySignIn } from './usePasskeySignIn'
 import { useGameState } from '../contexts/GameProvider'
 import { useProfileState } from '../contexts/ProfileProvider'
 import { useSocialState } from '../contexts/SocialProvider'
@@ -25,15 +27,6 @@ import type {
 type RegistrationOptionsJSON = Parameters<typeof startRegistration>[0]['optionsJSON']
 type AuthenticationOptionsJSON = Parameters<typeof startAuthentication>[0]['optionsJSON']
 
-const PASSKEY_CEREMONY_TIMEOUT_MS = 75_000
-const PASSKEY_PROMPT_STATUS = 'Complete the passkey prompt in your browser or system window.'
-
-function createPasskeyTimeoutError(message: string): Error {
-  const error = new Error(message)
-  error.name = 'PasskeyCeremonyTimeout'
-  return error
-}
-
 /** Strip the one-time device-link token from the URL once it has been used. */
 function clearPasskeyDeviceLinkParam(): void {
   if (typeof window === 'undefined') return
@@ -41,24 +34,6 @@ function clearPasskeyDeviceLinkParam(): void {
   if (!url.searchParams.has('passkeyDeviceLink')) return
   url.searchParams.delete('passkeyDeviceLink')
   window.history.replaceState({}, '', url.toString())
-}
-
-/**
- * A WebAuthn ceremony can hang indefinitely if the platform dialog is never
- * dismissed. Racing it against a timeout keeps the UI recoverable.
- */
-async function withPasskeyCeremonyTimeout<T>(operation: Promise<T>, message: string): Promise<T> {
-  let timer: ReturnType<typeof setTimeout> | undefined
-  try {
-    return await Promise.race([
-      operation,
-      new Promise<never>((_, reject) => {
-        timer = setTimeout(() => reject(createPasskeyTimeoutError(message)), PASSKEY_CEREMONY_TIMEOUT_MS)
-      }),
-    ])
-  } finally {
-    if (timer) clearTimeout(timer)
-  }
 }
 
 /**
@@ -136,6 +111,31 @@ export function useAccountActions(deps: AccountActionsDeps) {
   const { setBattleKind, setBattleSessionActive, setServerMatch } = useGameState()
   const { setDeckConfig, setCollection, setPackOffers, setQuestOverview } = useProfileState()
   const { setFriends, setClan, setClanForm, setFriendUsernameInput } = useSocialState()
+
+  /**
+   * Every way into an account — passkey, signup, legacy password — ends the
+   * same way. Kept in one place so a new sign-in path cannot forget a step.
+   */
+  function applySignedInSession(
+    { token, profile }: { token: string; profile: ServerProfile | null },
+    welcomeMessage?: string,
+  ) {
+    setAuthToken(token)
+    setServerProfile(profile)
+    setLoggedIn(true)
+    if (profile?.deckConfig && Object.keys(profile.deckConfig).length > 0) {
+      setDeckConfig(profile.deckConfig)
+    }
+    void refreshPasskeys(token)
+    void refreshAccountSessions(token)
+    void refreshRecoveryStatus(token)
+    setAuthError('')
+    setToastMessage(welcomeMessage ?? `Welcome${profile?.username ? `, ${profile.username}` : ''}!`)
+  }
+
+  const { handlePasskeyLogin, armPasskeyAutofill, cancelPasskeyAutofill } = usePasskeySignIn({
+    onSignedIn: (session) => applySignedInSession(session),
+  })
 
   async function handleSetup(event: FormEvent) {
     event.preventDefault()
@@ -268,19 +268,9 @@ export function useAccountActions(deps: AccountActionsDeps) {
           return
         }
 
-        setAuthToken(data.token ?? '')
-        setServerProfile(data.profile ?? null)
-        setLoggedIn(true)
-        if (data.profile?.deckConfig && Object.keys(data.profile.deckConfig).length > 0) {
-          setDeckConfig(data.profile.deckConfig)
-        }
-        void refreshPasskeys(data.token ?? '')
-        void refreshAccountSessions(data.token ?? '')
-        void refreshRecoveryStatus(data.token ?? '')
+        applySignedInSession({ token: data.token ?? '', profile: data.profile ?? null })
         if (data.recovery) setRecoveryStatus(data.recovery)
         if (data.recoveryCodes?.length) setPendingRecoveryCodes(data.recoveryCodes)
-        setAuthError('')
-        setToastMessage(`Welcome${data.profile?.username ? ', ' + data.profile.username : ''}!`)
       } catch (error) {
         setAuthStatus('')
         setAuthError(formatPasskeyCeremonyError(error, 'Passkey account creation failed. Please try again.'))
@@ -306,92 +296,12 @@ export function useAccountActions(deps: AccountActionsDeps) {
         return
       }
 
-      setAuthToken(data.token ?? '')
-      setServerProfile(data.profile ?? null)
-      setLoggedIn(true)
-      if (data.profile?.deckConfig && Object.keys(data.profile.deckConfig).length > 0) {
-        setDeckConfig(data.profile.deckConfig)
-      }
-      void refreshPasskeys(data.token ?? '')
-      void refreshAccountSessions(data.token ?? '')
-      void refreshRecoveryStatus(data.token ?? '')
-      setAuthError('')
-      setToastMessage(data.profile?.accountSetupRequired ? 'Legacy password verified. Finish passkey setup.' : `Welcome${data.profile?.username ? ', ' + data.profile.username : ''}!`)
+      applySignedInSession(
+        { token: data.token ?? '', profile: data.profile ?? null },
+        data.profile?.accountSetupRequired ? 'Legacy password verified. Finish passkey setup.' : undefined,
+      )
     } catch {
       setAuthError('Network error. Please try again.')
-    }
-
-    setAuthLoading(false)
-  }
-
-  async function handlePasskeyLogin() {
-    setAuthError('')
-    setAuthStatus('')
-    setPasskeyStatus('')
-    if (!passkeySupported) {
-      setAuthError('This browser does not support passkeys.')
-      return
-    }
-    const passkeyOriginMessage = getPasskeyOriginRequirementMessage()
-    if (passkeyOriginMessage) {
-      setAuthError(passkeyOriginMessage)
-      return
-    }
-
-    const identifier = authForm.username.trim()
-    if (!identifier) {
-      setAuthError('Enter your username before using a passkey.')
-      return
-    }
-
-    setAuthLoading(true)
-    try {
-      const optionsResponse = await fetch(`${ARENA_URL}/api/auth/passkey/login/options`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ identifier }),
-      })
-      const optionsData = await optionsResponse.json() as {
-        ok: boolean; error?: string; options?: AuthenticationOptionsJSON; challengeId?: string
-      }
-      if (!optionsData.ok || !optionsData.options || !optionsData.challengeId) {
-        setAuthError(optionsData.error ?? 'Passkey login could not be started.')
-        setAuthLoading(false)
-        return
-      }
-
-      setAuthStatus(PASSKEY_PROMPT_STATUS)
-      const credential = await withPasskeyCeremonyTimeout(
-        startAuthentication({ optionsJSON: optionsData.options }),
-        'Passkey prompt timed out. Try again and watch for the browser or system passkey window.',
-      )
-      setAuthStatus('')
-      const verifyResponse = await fetch(`${ARENA_URL}/api/auth/passkey/login/verify`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ challengeId: optionsData.challengeId, response: credential }),
-      })
-      const data = await verifyResponse.json() as { ok: boolean; error?: string; token?: string; profile?: ServerProfile }
-      if (!data.ok) {
-        setAuthError(data.error ?? 'Passkey login failed.')
-        setAuthLoading(false)
-        return
-      }
-
-      setAuthToken(data.token ?? '')
-      setServerProfile(data.profile ?? null)
-      setLoggedIn(true)
-      if (data.profile?.deckConfig && Object.keys(data.profile.deckConfig).length > 0) {
-        setDeckConfig(data.profile.deckConfig)
-      }
-      void refreshPasskeys(data.token ?? '')
-      void refreshAccountSessions(data.token ?? '')
-      void refreshRecoveryStatus(data.token ?? '')
-      setAuthError('')
-      setToastMessage(`Welcome${data.profile?.username ? ', ' + data.profile.username : ''}!`)
-    } catch (error) {
-      setAuthStatus('')
-      setAuthError(formatPasskeyCeremonyError(error, 'Passkey login failed. Use account recovery if this device does not have your passkey.'))
     }
 
     setAuthLoading(false)
@@ -592,20 +502,27 @@ export function useAccountActions(deps: AccountActionsDeps) {
     setAuthLoading(false)
   }
 
-  async function ensureRecentPasskeyAuth(): Promise<boolean> {
-    if (!authToken) return false
-    if (passkeyCeremonyInFlightRef.current) {
-      setAccountActionStatus('Passkey confirmation is already in progress.')
+  /**
+   * Run the passkey reauth ceremony. Failures are written to the Account
+   * panel's status line; callers on another screen (the admin console) pass
+   * `onFailure` so the reason reaches the panel the operator is looking at.
+   */
+  async function ensureRecentPasskeyAuth(onFailure?: (message: string) => void): Promise<boolean> {
+    const fail = (message: string) => {
+      setAccountActionStatus(message)
+      onFailure?.(message)
       return false
     }
+    if (!authToken) return false
+    if (passkeyCeremonyInFlightRef.current) {
+      return fail('Passkey confirmation is already in progress.')
+    }
     if (!passkeySupported) {
-      setAccountActionStatus('This browser does not support passkey confirmation.')
-      return false
+      return fail('This browser does not support passkey confirmation.')
     }
     const passkeyOriginMessage = getPasskeyOriginRequirementMessage()
     if (passkeyOriginMessage) {
-      setAccountActionStatus(passkeyOriginMessage)
-      return false
+      return fail(passkeyOriginMessage)
     }
 
     passkeyCeremonyInFlightRef.current = true
@@ -613,8 +530,7 @@ export function useAccountActions(deps: AccountActionsDeps) {
       const optionsResponse = await authFetch('/api/auth/passkey/reauth/options', authToken, { method: 'POST' })
       const optionsData = await optionsResponse.json() as { ok: boolean; error?: string; options?: AuthenticationOptionsJSON; challengeId?: string }
       if (!optionsData.ok || !optionsData.options || !optionsData.challengeId) {
-        setAccountActionStatus(optionsData.error ?? 'Passkey confirmation could not be started.')
-        return false
+        return fail(optionsData.error ?? 'Passkey confirmation could not be started.')
       }
 
       setAccountActionStatus(PASSKEY_PROMPT_STATUS)
@@ -628,14 +544,12 @@ export function useAccountActions(deps: AccountActionsDeps) {
       })
       const data = await verifyResponse.json().catch(() => ({})) as { ok?: boolean; error?: string }
       if (!verifyResponse.ok || data.ok !== true) {
-        setAccountActionStatus(data.error ?? 'Passkey confirmation failed.')
-        return false
+        return fail(data.error ?? 'Passkey confirmation failed.')
       }
       setAccountActionStatus('')
       return true
     } catch (error) {
-      setAccountActionStatus(formatPasskeyCeremonyError(error, 'Passkey confirmation failed.', 'Passkey confirmation was cancelled.'))
-      return false
+      return fail(formatPasskeyCeremonyError(error, 'Passkey confirmation failed.', 'Passkey confirmation was cancelled.'))
     } finally {
       passkeyCeremonyInFlightRef.current = false
     }
@@ -1066,13 +980,19 @@ export function useAccountActions(deps: AccountActionsDeps) {
     setPasskeyStatus('')
     try {
       const response = await authFetch(`/api/me/passkeys/${encodeURIComponent(passkeyId)}`, authToken, { method: 'DELETE' })
-      const data = await response.json() as { ok: boolean; error?: string; passkeys?: PasskeySummary[] }
+      const data = await response.json() as {
+        ok: boolean; error?: string; passkeys?: PasskeySummary[]; webauthn?: PasskeyRelyingParty | null
+      }
       if (!data.ok) {
         setPasskeyStatus(data.error ?? 'Passkey could not be removed.')
         setPasskeyLoading(false)
         return
       }
-      setPasskeys(data.passkeys ?? [])
+      const remaining = data.passkeys ?? []
+      setPasskeys(remaining)
+      // The removed passkey still sits on the device that made it. Tell that
+      // device's passkey manager which ones still work so it stops offering it.
+      void signalAcceptedPasskeys(data.webauthn, remaining.map((passkey) => passkey.credentialId))
       setPasskeyStatus('Passkey removed.')
     } catch {
       setPasskeyStatus('Network error. Please try again.')
@@ -1158,6 +1078,8 @@ export function useAccountActions(deps: AccountActionsDeps) {
     handleSetup,
     handleAuth,
     handlePasskeyLogin,
+    armPasskeyAutofill,
+    cancelPasskeyAutofill,
     handleRedeemGrantCode,
     handleRecoverAccount,
     handleSubmitRecoverySupport,

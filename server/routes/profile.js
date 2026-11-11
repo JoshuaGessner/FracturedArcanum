@@ -5,7 +5,7 @@
  * and every shared helper this module reads off `ctx`.
  */
 import { acknowledgeAccountRecoveryCodes, breakdownCard, checkRateLimit, completeAccountUpgrade, createDeck, deleteAccount, deleteAccountPasskey, deleteDeck, exportAccountData, generateAccountRecoveryCodes, getAccountReadiness, getProfile, listAccountPasskeys, listAccountRecoveryStatus, listAccountSessions, listDecks, markSessionPasskeyReauthenticated, renameDeck, saveDeck, selectActiveDeck, updateDeck, validateDeckConfig } from '../db.js'
-import { createPasskeyRegistrationOptions, verifyPasskeyRegistration } from '../passkey-service.js'
+import { createPasskeyRegistrationOptions, passkeyRelyingParty, verifyPasskeyRegistration } from '../passkey-service.js'
 
 export function registerProfileRoutes(app, ctx) {
   const {
@@ -99,8 +99,20 @@ app.post('/api/me/delete', requireAuth, requireAccountReady, requireRecentPasske
   response.json({ ok: true })
 })
 
+/**
+ * The account's passkeys, plus the relying-party details the client hands to
+ * the browser's Signal API so the device's own passkey list matches this one.
+ * Every route that changes the list answers in this same shape.
+ */
+function passkeyListPayload(request) {
+  return {
+    passkeys: listAccountPasskeys(request.accountId),
+    webauthn: passkeyRelyingParty(request.accountId, request),
+  }
+}
+
 app.get('/api/me/passkeys', requireAuth, (request, response) => {
-  response.json({ ok: true, passkeys: listAccountPasskeys(request.accountId) })
+  response.json({ ok: true, ...passkeyListPayload(request) })
 })
 
 app.post('/api/auth/passkey/register/options', requireAuth, async (request, response) => {
@@ -141,7 +153,7 @@ app.post('/api/auth/passkey/register/verify', requireAuth, async (request, respo
     markSessionPasskeyReauthenticated(request.authToken)
     response.json({
       ok: true,
-      passkeys: listAccountPasskeys(request.accountId),
+      ...passkeyListPayload(request),
       profile: sanitizeProfile(profile, request.username, request.accountId),
     })
   } catch (error) {
@@ -162,7 +174,7 @@ app.delete('/api/me/passkeys/:id', requireAuth, requireAccountReady, requireRece
     response.status(result.status ?? 400).json({ ok: false, error: result.error })
     return
   }
-  response.json({ ok: true, passkeys: listAccountPasskeys(request.accountId) })
+  response.json({ ok: true, ...passkeyListPayload(request) })
 })
 
 app.post('/api/me/account-upgrade/complete', requireAuth, (request, response) => {

@@ -89,36 +89,78 @@ gets back in:
 
 ## Recovery grants
 
-A grant is a single-use, one-hour credential that lets its holder attach a new
-passkey to one account. It is the last-resort path for a player who lost both
-their device and their recovery codes.
+A grant is a single-use credential that lets its holder attach a new passkey to
+one account. It is the last-resort path for a player who lost both their device
+and their recovery codes. It never touches their collection, rating, or match
+history.
 
 **Issuing.** In the app: **Settings → Admin → Accounts**, search for the player,
-**Manage**, then either *Issue recovery code* (leaves their existing passkeys
-working) or *Reset credentials* (revokes everything first). Or by API:
+**Manage**, pick a **code lifetime** (1, 8, or 24 hours; default 1), then either:
+
+| Action | Effect now | Effect when the player redeems |
+|---|---|---|
+| *Issue recovery code* | Nothing. | New passkey replaces the old ones; other devices are signed out. |
+| *Reset credentials* | Every passkey and session revoked; the legacy password stops working. | New passkey; legacy password stays retired. |
+
+Prefer *Issue recovery code*. Use *Reset credentials* only when you believe the
+account is compromised and the current holder must be cut off immediately.
+
+The code appears in a dialog that stays open until you press **I have saved
+it** — a backdrop tap or Escape does not dismiss it. **Copy message for player**
+copies the code plus step-by-step redeem instructions, ready to paste into any
+support channel.
+
+By API (both require recent passkey reauth on your own session; `ttlHours` is
+optional and must be 1, 8, or 24):
 
 ```
-POST /api/admin/users/:accountId/recovery-grant     # rescue, changes nothing else
-POST /api/admin/users/:accountId/reset-credentials  # also revokes passkeys + sessions
+POST /api/admin/users/:accountId/recovery-grant     { ttlHours }  # rescue, changes nothing yet
+POST /api/admin/users/:accountId/reset-credentials  { ttlHours }  # revokes everything now
 ```
 
-Both require recent passkey reauth on your own session.
+From the server, when the console is unreachable (also works while the service
+runs):
+
+```bash
+node scripts/issue-recovery-grant.mjs --username someplayer --status   # inspect only
+node scripts/issue-recovery-grant.mjs --username someplayer --hours 24
+node scripts/issue-recovery-grant.mjs --username someplayer --reset     # compromise only
+```
+
+Set `DATA_DIR` if the database is not at `./data`, exactly as for
+`restore-account.mjs`.
 
 **The code is shown exactly once.** It is hashed at rest and cannot be read back
 from the database, the API, or the audit log. If you lose it, issue another —
-issuing revokes any earlier unconsumed grant, so only one is ever live.
+issuing revokes any earlier unconsumed grant, so only one is ever live. A reset
+account with no live grant shows *"Reset, and no recovery code is live"* in its
+Sign-in row; that player cannot get in until you issue one.
 
 **Relaying it.** Send it over whatever support channel you already use. Verify
-the person is the account holder first; a grant is full account access. Prefer
-`recovery-grant` over `reset-credentials` unless you believe the account is
-compromised — the gentler action leaves their existing passkeys working.
+the person is the account holder first; a grant is full account access.
 
 **Redeeming.** The player opens the app, chooses **No codes left? → Use a
 support code** from any auth screen, and enters the code. It identifies its own
 account, so they are not asked for a username. They then register a new passkey.
 The grant is consumed only when that passkey verifies, so an abandoned attempt
 does not burn it. On success they receive a fresh batch of recovery codes — tell
-them to save it.
+them to save it. A player who tries their old password after a reset is told to
+use the support code instead.
+
+### If a reset left a player locked out
+
+Before this was fixed, *Reset credentials* revoked the player's sign-in but drew
+the one-time code above the visible part of the Accounts panel, so operators
+never saw it. Those players hold no passkey and no usable code. Their data is
+intact. To rescue one:
+
+```bash
+node scripts/issue-recovery-grant.mjs --username theplayer --status
+node scripts/issue-recovery-grant.mjs --username theplayer --hours 24
+```
+
+or press *Issue recovery code* on their account in the console. Do not run
+*Reset credentials* again; there is nothing left to revoke.
 
 ## Suspension
 

@@ -7,7 +7,7 @@
 import { randomBytes } from 'node:crypto'
 import path from 'node:path'
 import { _deleteAuthChallengesByAccount, _deleteAuthenticatorsByAccount, _getById, _markAccountDeleted, _revokeRecoveryGrantsByAccount, _revokeSessionsByAccount, issueAccountRecoveryGrant, listAccountPasskeys, listAccountRecoveryGrants, recordSecurityEvent, recoveryStatusForAccount, restoreAccount } from './accounts.js'
-import { db, prepare, transaction } from './connection.js'
+import { db, parseDbTimestamp, prepare, transaction } from './connection.js'
 import { _getProfile } from './profiles.js'
 
 // ─── Admin role management ──────────────────────────────────────────────────
@@ -224,7 +224,7 @@ export function listAccounts({ search = '', limit = 25, offset = 0 } = {}) {
   const rows = _searchAccounts.all(normalized, like, like, normalized, safeLimit, safeOffset)
   const now = Date.now()
   return rows.map((row) => {
-    const lockedUntil = row.lockedUntil ? Date.parse(row.lockedUntil) : 0
+    const lockedUntil = row.lockedUntil ? parseDbTimestamp(row.lockedUntil) : 0
     const suspended = Number.isFinite(lockedUntil) && lockedUntil > now
     return {
       accountId: row.id,
@@ -293,6 +293,60 @@ function writeAudit(actorAccountId, targetAccountId, action, metadata, ipHash) {
 }
 
 /**
+ * Revoke sign-in for an account and mint the grant that restores it, as one
+ * transaction. Revoking first and minting the grant afterwards left a window
+ * where a failure stranded the player with every credential gone and no code
+ * to get back in with; now either all of it lands or none of it does.
+ *
+ * No authorisation check here. The callers are `adminResetAccountCredentials`
+ * below, which role-checks an operator account, and the server-side CLI, which
+ * acts with shell access instead of an account. `afterIssue` runs inside the
+ * transaction so an audit row is never written for a reset that rolled back.
+ */
+export function resetCredentialsWithGrant(targetAccountId, options = {}) {
+  const target = _getById.get(targetAccountId)
+  if (!target) return { ok: false, status: 404, error: 'Account not found.' }
+  if (target.deleted_at || target.account_status === 'deleted') {
+    return { ok: false, status: 400, error: 'Restore the account before resetting its credentials.' }
+  }
+
+  const revokePasskeys = options.revokePasskeys !== false
+  const actorAccountId = options.actorAccountId ?? null
+  const tx = db.transaction(() => {
+    _revokeSessionsByAccount.run(targetAccountId)
+    if (revokePasskeys) _deleteAuthenticatorsByAccount.run(targetAccountId)
+    // A legacy password is a live credential. `authenticateAccount` refuses it
+    // while this flag is set, and redeeming the grant clears it.
+    db.prepare(`
+      UPDATE accounts
+      SET password_reset_required = 1, account_setup_required = 1, last_security_event_at = datetime('now')
+      WHERE id = ?
+    `).run(targetAccountId)
+    recordSecurityEvent(targetAccountId, 'admin_credential_reset', {
+      metadata: { ...(options.metadata ?? {}), actorAccountId, revokePasskeys },
+    })
+
+    const issued = issueAccountRecoveryGrant(targetAccountId, {
+      issuedByAccountId: actorAccountId,
+      channel: options.channel ?? 'manual',
+      ttlMs: options.ttlMs,
+      note: String(options.note ?? 'Admin credential reset'),
+      metadata: { ...(options.metadata ?? {}), actorAccountId },
+    })
+    if (!issued.ok) throw Object.assign(new Error('grant-not-issued'), { result: issued })
+    return { grant: issued, afterIssue: options.afterIssue?.(issued) }
+  })
+
+  try {
+    const { grant, afterIssue } = tx()
+    return { ok: true, username: target.username, grant, revokePasskeys, afterIssue }
+  } catch (error) {
+    if (error?.message === 'grant-not-issued') return error.result
+    throw error
+  }
+}
+
+/**
  * Force a credential reset. Revokes every session and, when `revokePasskeys` is
  * set, every registered passkey, then mints a one-time grant the player uses to
  * attach a new one. The returned code is the only copy — relay it to the player
@@ -301,53 +355,27 @@ function writeAudit(actorAccountId, targetAccountId, action, metadata, ipHash) {
 export function adminResetAccountCredentials(actorAccountId, targetAccountId, options = {}) {
   const guard = authorizeAccountAction(actorAccountId, targetAccountId)
   if (!guard.ok) return guard
-  const target = guard.target
-  if (target.deleted_at || target.account_status === 'deleted') {
-    return { ok: false, status: 400, error: 'Restore the account before resetting its credentials.' }
-  }
 
-  const revokePasskeys = options.revokePasskeys !== false
-  let grant = null
-  const tx = db.transaction(() => {
-    _revokeSessionsByAccount.run(targetAccountId)
-    if (revokePasskeys) _deleteAuthenticatorsByAccount.run(targetAccountId)
-    // A legacy password is a live credential; flag it so the account cannot
-    // simply be signed back into with a password the operator may have reset.
-    db.prepare(`
-      UPDATE accounts
-      SET password_reset_required = 1, account_setup_required = 1, last_security_event_at = datetime('now')
-      WHERE id = ?
-    `).run(targetAccountId)
-    recordSecurityEvent(targetAccountId, 'admin_credential_reset', {
-      metadata: { actorAccountId, revokePasskeys },
-    })
+  const reset = resetCredentialsWithGrant(targetAccountId, {
+    ...options,
+    actorAccountId,
+    afterIssue: (issued) => writeAudit(actorAccountId, targetAccountId, 'credential_reset', {
+      revokePasskeys: options.revokePasskeys !== false,
+      grantId: issued.grantId,
+      channel: issued.channel,
+    }, options.ipHash),
   })
-  tx()
-
-  grant = issueAccountRecoveryGrant(targetAccountId, {
-    issuedByAccountId: actorAccountId,
-    channel: options.channel ?? 'manual',
-    ttlMs: options.ttlMs,
-    note: String(options.note ?? 'Admin credential reset'),
-    metadata: { actorAccountId },
-  })
-  if (!grant.ok) return grant
-
-  const auditId = writeAudit(actorAccountId, targetAccountId, 'credential_reset', {
-    revokePasskeys,
-    grantId: grant.grantId,
-    channel: grant.channel,
-  }, options.ipHash)
+  if (!reset.ok) return reset
 
   return {
     ok: true,
-    auditId,
-    username: target.username,
+    auditId: reset.afterIssue,
+    username: reset.username,
     // Surfaced exactly once; never stored in plaintext and never retrievable again.
-    grantCode: grant.code,
-    grantId: grant.grantId,
-    expiresAt: grant.expiresAt,
-    revokedPasskeys: revokePasskeys,
+    grantCode: reset.grant.code,
+    grantId: reset.grant.grantId,
+    expiresAt: reset.grant.expiresAt,
+    revokedPasskeys: reset.revokePasskeys,
   }
 }
 
@@ -472,7 +500,7 @@ export function getAdminAccountDetail(accountId) {
   const account = _getById.get(accountId)
   if (!account) return null
   const profile = _getProfile.get(accountId)
-  const lockedUntil = account.locked_until ? Date.parse(account.locked_until) : 0
+  const lockedUntil = account.locked_until ? parseDbTimestamp(account.locked_until) : 0
 
   return {
     accountId: account.id,

@@ -1,5 +1,5 @@
 import { type AIDifficulty, type DeckConfig, DEFAULT_DECK_CONFIG } from './game'
-import type { CardBorderOffer, CosmeticTheme } from './types'
+import type { AuthScreen, CardBorderOffer, CosmeticTheme, GrantTtlHours } from './types'
 
 export const DEFAULT_ARENA_PORT = '43173'
 
@@ -286,6 +286,29 @@ export const STORAGE_KEYS = {
 }
 
 export const DECK_MAX_TOTAL_DISPLAY = 16
+
+/**
+ * Ways back into an account when a passkey is not available, in the order a
+ * locked-out player should try them. The sign-in screen tucks these behind
+ * "Trouble signing in?" so the first view has one job — sign in with a passkey
+ * — while every path stays one tap away and none is ever a dead end.
+ */
+export const AUTH_RECOVERY_ROUTES: Array<{ screen: AuthScreen; label: string; hint: string }> = [
+  { screen: 'recover', label: 'Use a recovery code', hint: 'You saved codes when you created your account.' },
+  { screen: 'grant', label: 'Use a support code', hint: 'An admin sent you a one-time code.' },
+  { screen: 'legacy', label: 'Upgrade an old password account', hint: 'Your account predates passkeys.' },
+]
+
+/**
+ * Recovery-code lifetimes offered in the admin console. Must match
+ * RECOVERY_GRANT_TTL_HOURS on the server, which ignores any other value and
+ * falls back to one hour.
+ */
+export const GRANT_TTL_OPTIONS: Array<{ hours: GrantTtlHours; label: string }> = [
+  { hours: 1, label: '1 hour' },
+  { hours: 8, label: '8 hours' },
+  { hours: 24, label: '24 hours' },
+]
 
 export const AI_DIFFICULTY_OPTIONS: Array<{ id: 'auto' | AIDifficulty; label: string }> = [
   { id: 'auto', label: 'Auto' },

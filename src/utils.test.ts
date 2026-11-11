@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { appendToast, describeCard, diffHealth, getPileCounts, getPrintedStats, pickDeckShowcase, hasAvailableAction, formatPasskeyCeremonyError, getCompletionPercent, getComplaintSeverityTone, getEffectIconPath, getHandFanTilt, getPackArtPath, getPasskeyOriginRequirementMessage, getRankAssetPath, getRankBand, getRankLabel, getRarityCompletion, getRarityGemPath, getScreenTransitionClass, getScreenTransitionSound, getStreakTier, shouldPresentScopedReward } from './utils'
+import { appendToast, describeCard, diffHealth, getPileCounts, getPrintedStats, pickDeckShowcase, hasAvailableAction, formatPasskeyCeremonyError, getCompletionPercent, getComplaintSeverityTone, getEffectIconPath, getHandFanTilt, getPackArtPath, getPasskeyOriginRequirementMessage, getRankAssetPath, getRankBand, getRankLabel, getRarityCompletion, getRarityGemPath, getScreenTransitionClass, getScreenTransitionSound, getStreakTier, parseServerTimestamp, shouldPresentScopedReward } from './utils'
+
+describe('server timestamps', () => {
+  it('reads SQLite datetime() output as UTC rather than the viewer\'s local time', () => {
+    expect(parseServerTimestamp('2026-10-02 12:00:00')).toBe(Date.UTC(2026, 9, 2, 12))
+    expect(parseServerTimestamp('2026-10-02T12:00:00.000Z')).toBe(Date.UTC(2026, 9, 2, 12))
+    expect(parseServerTimestamp('2026-10-02T07:00:00-05:00')).toBe(Date.UTC(2026, 9, 2, 12))
+  })
+})
 
 describe('UI asset helpers', () => {
   it('resolves rank insignia from labels and ratings', () => {

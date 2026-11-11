@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest'
 import Database from 'better-sqlite3'
 import { copyFileSync, existsSync, mkdtempSync, rmSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
@@ -26,6 +26,20 @@ import path from 'node:path'
  */
 
 const LIVE_DB = path.resolve('data/fractured-arcanum.db')
+
+// The suite's own shared connection must never be the live database. Without
+// this, importing db.js — and `migrateAgainst` restoring the connection after
+// each run — opened ./data with DATA_DIR unset and applied every migration to
+// the developer's real data: the one thing this suite exists to rule out.
+const SHARED_DATA_DIR = mkdtempSync(path.join(tmpdir(), 'fa-migration-shared-'))
+const ORIGINAL_DATA_DIR = process.env.DATA_DIR
+process.env.DATA_DIR = SHARED_DATA_DIR
+
+afterAll(() => {
+  if (ORIGINAL_DATA_DIR === undefined) delete process.env.DATA_DIR
+  else process.env.DATA_DIR = ORIGINAL_DATA_DIR
+  try { rmSync(SHARED_DATA_DIR, { recursive: true, force: true }) } catch { /* ignore */ }
+})
 
 /** Row counts, columns, and full row contents for every user table. */
 function snapshot(dbPath) {

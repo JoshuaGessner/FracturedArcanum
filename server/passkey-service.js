@@ -20,6 +20,7 @@ import {
   registerAccountPasskey,
   updatePasskeyAfterAuthentication,
 } from './db.js'
+import { defaultPasskeyName } from './passkey-providers.js'
 
 const RP_NAME = process.env.WEBAUTHN_RP_NAME || 'Fractured Arcanum'
 const DEFAULT_APP_ORIGIN = 'http://localhost:43173'
@@ -113,6 +114,56 @@ function credentialDescriptors(credentials) {
   }))
 }
 
+function isPrivilegedRole(role) {
+  return role === 'owner' || role === 'admin'
+}
+
+/**
+ * The WebAuthn user handle for an account. It must never change for an
+ * existing account: a provider files passkeys under it, so a new value would
+ * make the player's device hold two unrelated entries for one account.
+ */
+function userHandleFor(accountId) {
+  return Buffer.from(String(accountId))
+}
+
+/**
+ * Registration options shared by every flow that creates a passkey: signup,
+ * adding one in Settings, a device link, and both recovery paths.
+ *
+ * `residentKey: 'required'` makes every new passkey discoverable. That is what
+ * lets the sign-in screen offer it from autofill, or from one button press,
+ * without asking for a username first — the pattern Google, Apple, GitHub and
+ * the FIDO Alliance guidance all use. Passkeys registered before this change
+ * keep working through the username path in `createPasskeyLoginOptions`.
+ */
+async function buildRegistrationOptions({ accountId, username, displayName, role }, rpID) {
+  return generateRegistrationOptions({
+    rpName: RP_NAME,
+    rpID,
+    userID: userHandleFor(accountId),
+    userName: username,
+    userDisplayName: displayName || username,
+    attestationType: 'none',
+    excludeCredentials: credentialDescriptors(listAccountPasskeyCredentials(accountId)),
+    authenticatorSelection: {
+      residentKey: 'required',
+      userVerification: isPrivilegedRole(role) ? 'required' : 'preferred',
+    },
+    timeout: 60_000,
+  })
+}
+
+/** What the DB layer needs from a verified registration. */
+function registrationDetails(registrationInfo, fallbackName) {
+  return {
+    name: defaultPasskeyName(registrationInfo.aaguid, fallbackName),
+    aaguid: registrationInfo.aaguid,
+    backedUp: registrationInfo.credentialBackedUp,
+    deviceType: registrationInfo.credentialDeviceType,
+  }
+}
+
 export async function createPasskeyRegistrationOptions(accountId, request) {
   const account = getAccountById(accountId)
   if (!account) return { ok: false, status: 404, error: 'Account not found.' }
@@ -120,21 +171,12 @@ export async function createPasskeyRegistrationOptions(accountId, request) {
   const context = webAuthnContext(request)
   if (!context.ok) return context
   const { origin, rpID } = context
-  const existingCredentials = listAccountPasskeyCredentials(accountId)
-  const options = await generateRegistrationOptions({
-    rpName: RP_NAME,
-    rpID,
-    userID: Buffer.from(account.id),
-    userName: account.username,
-    userDisplayName: account.display_name || account.username,
-    attestationType: 'none',
-    excludeCredentials: credentialDescriptors(existingCredentials),
-    authenticatorSelection: {
-      residentKey: 'preferred',
-      userVerification: account.role === 'owner' || account.role === 'admin' ? 'required' : 'preferred',
-    },
-    timeout: 60_000,
-  })
+  const options = await buildRegistrationOptions({
+    accountId: account.id,
+    username: account.username,
+    displayName: account.display_name,
+    role: account.role,
+  }, rpID)
   const challenge = createAuthChallenge(accountId, 'passkey_registration', options.challenge, { origin, rpID })
   return { ok: true, options, challengeId: challenge.id, expiresAt: challenge.expiresAt }
 }
@@ -162,12 +204,11 @@ export async function verifyPasskeyRegistration(accountId, payload, request) {
     return { ok: false, status: 400, error: 'Passkey registration could not be verified.' }
   }
 
-  const { credential, credentialBackedUp, credentialDeviceType } = verification.registrationInfo
-  return registerAccountPasskey(accountId, credential, {
-    name: payload?.name,
-    backedUp: credentialBackedUp,
-    deviceType: credentialDeviceType,
-  })
+  return registerAccountPasskey(
+    accountId,
+    verification.registrationInfo.credential,
+    registrationDetails(verification.registrationInfo, payload?.name),
+  )
 }
 
 export async function createPasskeyDeviceLinkRegistrationOptions(token, request) {
@@ -177,21 +218,12 @@ export async function createPasskeyDeviceLinkRegistrationOptions(token, request)
   const context = webAuthnContext(request)
   if (!context.ok) return context
   const { origin, rpID } = context
-  const existingCredentials = listAccountPasskeyCredentials(link.accountId)
-  const options = await generateRegistrationOptions({
-    rpName: RP_NAME,
-    rpID,
-    userID: Buffer.from(link.accountId),
-    userName: link.username,
-    userDisplayName: link.displayName || link.username,
-    attestationType: 'none',
-    excludeCredentials: credentialDescriptors(existingCredentials),
-    authenticatorSelection: {
-      residentKey: 'preferred',
-      userVerification: link.role === 'owner' || link.role === 'admin' ? 'required' : 'preferred',
-    },
-    timeout: 60_000,
-  })
+  const options = await buildRegistrationOptions({
+    accountId: link.accountId,
+    username: link.username,
+    displayName: link.displayName,
+    role: link.role,
+  }, rpID)
   const challenge = createAuthChallenge(link.accountId, 'passkey_device_link_registration', options.challenge, {
     origin,
     rpID,
@@ -234,11 +266,8 @@ export async function verifyPasskeyDeviceLinkRegistration(payload, request) {
     return { ok: false, status: 400, error: 'Linked device passkey could not be verified.' }
   }
 
-  const { credential, credentialBackedUp, credentialDeviceType } = verification.registrationInfo
-  const completed = completePasskeyDeviceLinkRegistration(payload?.deviceLinkToken, link.accountId, credential, {
-    name: payload?.name ?? 'Linked device passkey',
-    backedUp: credentialBackedUp,
-    deviceType: credentialDeviceType,
+  const completed = completePasskeyDeviceLinkRegistration(payload?.deviceLinkToken, link.accountId, verification.registrationInfo.credential, {
+    ...registrationDetails(verification.registrationInfo, payload?.name ?? 'Linked device passkey'),
     ip: request.ip,
     userAgent: request.get('user-agent'),
     metadata: { source: 'passkey_device_link' },
@@ -254,24 +283,62 @@ export async function verifyPasskeyDeviceLinkRegistration(payload, request) {
   }
 }
 
+/**
+ * Start a passkey sign-in.
+ *
+ * With no identifier this is a discoverable ("usernameless") request: no
+ * allow-list, so the device offers whichever Fractured Arcanum passkeys it
+ * holds — from the username field's autofill or from one button press. That is
+ * the primary path.
+ *
+ * With a username it narrows to that account's passkeys. That path stays for
+ * passkeys created before registration required discoverable credentials, and
+ * for hardware keys that cannot store them. An unknown or passkey-less username
+ * gets the discoverable request instead of an error, so this endpoint no longer
+ * answers "does this account exist?" for anyone who asks.
+ */
 export async function createPasskeyLoginOptions(identifier, request) {
-  const account = findAccountForPasskeyIdentifier(identifier)
-  if (!account) return { ok: false, status: 404, error: 'No active account with passkeys was found.' }
-
-  const credentials = listAccountPasskeyCredentials(account.id)
-  if (credentials.length === 0) return { ok: false, status: 404, error: 'No passkeys are registered for this account.' }
-
   const context = webAuthnContext(request)
   if (!context.ok) return context
   const { origin, rpID } = context
+
+  const account = String(identifier ?? '').trim() ? findAccountForPasskeyIdentifier(identifier) : null
+  const credentials = account ? listAccountPasskeyCredentials(account.id) : []
+  const targeted = credentials.length > 0
   const options = await generateAuthenticationOptions({
     rpID,
-    allowCredentials: credentialDescriptors(credentials),
-    userVerification: account.role === 'owner' || account.role === 'admin' ? 'required' : 'preferred',
+    allowCredentials: targeted ? credentialDescriptors(credentials) : undefined,
+    userVerification: targeted && isPrivilegedRole(account.role) ? 'required' : 'preferred',
     timeout: 60_000,
   })
-  const challenge = createAuthChallenge(account.id, 'passkey_login', options.challenge, { origin, rpID })
-  return { ok: true, options, challengeId: challenge.id, expiresAt: challenge.expiresAt, accountId: account.id }
+  const challenge = createAuthChallenge(targeted ? account.id : null, 'passkey_login', options.challenge, { origin, rpID })
+  return { ok: true, options, challengeId: challenge.id, expiresAt: challenge.expiresAt }
+}
+
+/**
+ * The account a WebAuthn user handle names, when it is one of ours. Every
+ * passkey this server registers uses the account id as its handle; anything
+ * else (or nothing — the field is optional for non-discoverable passkeys)
+ * returns '' and the credential lookup alone decides.
+ */
+function accountIdFromUserHandle(userHandle) {
+  if (!userHandle) return ''
+  try {
+    const decoded = Buffer.from(String(userHandle), 'base64url').toString('utf8')
+    return decoded.startsWith('acct-') ? decoded : ''
+  } catch {
+    return ''
+  }
+}
+
+/**
+ * What the browser's Signal API needs to keep the device's passkey list in
+ * step with this account: the RP ID and the base64url user handle.
+ */
+export function passkeyRelyingParty(accountId, request) {
+  const context = webAuthnContext(request)
+  if (!context.ok) return null
+  return { rpId: context.rpID, userId: userHandleFor(accountId).toString('base64url') }
 }
 
 export async function createPasskeyReauthOptions(accountId, request) {
@@ -341,21 +408,12 @@ export async function createPasskeyRecoveryOptions(identifier, recoveryCode, req
   const context = webAuthnContext(request)
   if (!context.ok) return context
   const { origin, rpID } = context
-  const existingCredentials = listAccountPasskeyCredentials(account.id)
-  const options = await generateRegistrationOptions({
-    rpName: RP_NAME,
-    rpID,
-    userID: Buffer.from(account.id),
-    userName: account.username,
-    userDisplayName: account.display_name || account.username,
-    attestationType: 'none',
-    excludeCredentials: credentialDescriptors(existingCredentials),
-    authenticatorSelection: {
-      residentKey: 'preferred',
-      userVerification: account.role === 'owner' || account.role === 'admin' ? 'required' : 'preferred',
-    },
-    timeout: 60_000,
-  })
+  const options = await buildRegistrationOptions({
+    accountId: account.id,
+    username: account.username,
+    displayName: account.display_name,
+    role: account.role,
+  }, rpID)
   const challenge = createAuthChallenge(account.id, 'passkey_recovery_registration', options.challenge, {
     origin,
     rpID,
@@ -389,11 +447,8 @@ export async function verifyPasskeyRecovery(payload, request) {
     return { ok: false, status: 400, error: 'Replacement passkey could not be verified.' }
   }
 
-  const { credential, credentialBackedUp, credentialDeviceType } = verification.registrationInfo
-  const completed = completeAccountRecoveryWithPasskey(account.id, challenge.metadata.recoveryCodeId, credential, {
-    name: payload?.name ?? 'Recovery passkey',
-    backedUp: credentialBackedUp,
-    deviceType: credentialDeviceType,
+  const completed = completeAccountRecoveryWithPasskey(account.id, challenge.metadata.recoveryCodeId, verification.registrationInfo.credential, {
+    ...registrationDetails(verification.registrationInfo, payload?.name ?? 'Recovery passkey'),
     ip: request.ip,
     userAgent: request.get('user-agent'),
     metadata: { revokedOldPasskeys: true },
@@ -424,20 +479,12 @@ export async function createPasskeyGrantRecoveryOptions(grantCode, request) {
   const context = webAuthnContext(request)
   if (!context.ok) return context
   const { origin, rpID } = context
-  const options = await generateRegistrationOptions({
-    rpName: RP_NAME,
-    rpID,
-    userID: Buffer.from(account.id),
-    userName: account.username,
-    userDisplayName: account.display_name || account.username,
-    attestationType: 'none',
-    excludeCredentials: credentialDescriptors(listAccountPasskeyCredentials(account.id)),
-    authenticatorSelection: {
-      residentKey: 'preferred',
-      userVerification: account.role === 'owner' || account.role === 'admin' ? 'required' : 'preferred',
-    },
-    timeout: 60_000,
-  })
+  const options = await buildRegistrationOptions({
+    accountId: account.id,
+    username: account.username,
+    displayName: account.display_name,
+    role: account.role,
+  }, rpID)
   const challenge = createAuthChallenge(account.id, 'passkey_grant_registration', options.challenge, {
     origin,
     rpID,
@@ -479,11 +526,8 @@ export async function verifyPasskeyGrantRecovery(payload, request) {
     return { ok: false, status: 400, error: 'Replacement passkey could not be verified.' }
   }
 
-  const { credential, credentialBackedUp, credentialDeviceType } = verification.registrationInfo
-  const completed = completeAccountRecoveryWithGrant(account.id, challenge.metadata.grantId, credential, {
-    name: payload?.name ?? 'Recovery passkey',
-    backedUp: credentialBackedUp,
-    deviceType: credentialDeviceType,
+  const completed = completeAccountRecoveryWithGrant(account.id, challenge.metadata.grantId, verification.registrationInfo.credential, {
+    ...registrationDetails(verification.registrationInfo, payload?.name ?? 'Recovery passkey'),
     ip: request.ip,
     userAgent: request.get('user-agent'),
   })
@@ -500,13 +544,36 @@ export async function verifyPasskeyGrantRecovery(payload, request) {
 export async function verifyPasskeyLogin(payload, request) {
   const challenge = consumeAuthChallenge(payload?.challengeId, 'passkey_login')
   if (!challenge) {
-    return { ok: false, status: 400, error: 'Passkey login challenge expired. Try again.' }
+    return { ok: false, status: 400, error: 'That sign-in attempt expired. Try again.' }
   }
 
-  const credentialId = payload?.response?.id
+  const credentialId = String(payload?.response?.id ?? '')
   const passkey = getPasskeyCredential(credentialId)
-  if (!passkey || passkey.accountId !== challenge.accountId) {
-    return { ok: false, status: 400, error: 'Passkey is not registered for this account.' }
+  if (!passkey) {
+    // The device offered a passkey this server has no record of: it was removed
+    // from the account, or its account was reset or deleted. The client relays
+    // `unknownCredential` to the Signal API so the device stops offering it.
+    return {
+      ok: false,
+      status: 404,
+      error: 'That passkey is no longer linked to an account here. Choose a different one, or use a recovery code.',
+      unknownCredential: true,
+      credentialId,
+      rpId: challenge.metadata?.rpID ?? null,
+    }
+  }
+  // A username-targeted challenge must be answered by that account's passkey.
+  if (challenge.accountId && passkey.accountId !== challenge.accountId) {
+    return { ok: false, status: 400, error: 'That passkey belongs to a different account than the username you entered.' }
+  }
+  const handleAccountId = accountIdFromUserHandle(payload?.response?.response?.userHandle)
+  if (handleAccountId && handleAccountId !== passkey.accountId) {
+    return { ok: false, status: 400, error: 'Passkey could not be verified.' }
+  }
+  // The discoverable path never looked the account up by name, so status is
+  // checked here: a passkey must not open a deleted or unfinished account.
+  if (passkey.accountStatus !== 'active' || passkey.deletedAt) {
+    return { ok: false, status: 403, error: 'This account is not available. If you think this is a mistake, use a recovery code or contact support.' }
   }
 
   const context = challenge.metadata?.origin && challenge.metadata?.rpID ? { ok: true, ...challenge.metadata } : webAuthnContext(request)
@@ -534,5 +601,13 @@ export async function verifyPasskeyLogin(payload, request) {
     accountId: passkey.accountId,
     username: passkey.username,
     displayName: passkey.displayName,
+    // For the client's signalCurrentUserDetails call, so the device's passkey
+    // picker shows the player's current name rather than the one at signup.
+    passkeyUser: {
+      rpId: context.rpID,
+      userId: userHandleFor(passkey.accountId).toString('base64url'),
+      name: passkey.username,
+      displayName: passkey.displayName,
+    },
   }
 }
