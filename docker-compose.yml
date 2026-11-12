@@ -2,7 +2,7 @@ services:
   fractured-arcanum:
     build: .
     ports:
-      - "${PORT:-43173}:43173"
+      - "127.0.0.1:${PORT:-43173}:43173"
     environment:
       - NODE_ENV=production
       - PORT=43173
